@@ -21,6 +21,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 
 /* ── keyframes ตาม handoff ── */
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
 @keyframes sheetUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes pulseRing {
@@ -222,3 +223,17 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
 .vbars > div[data-clickable='true'] { cursor: pointer; }
 .vbars > div[data-clickable='true']:hover .bar-v { filter: brightness(1.08); }
 .vbars > div[data-on='true'] .tick { color: var(--accent); font-weight: 700; }
+
+/* ── skeleton loader ── */
+.skel {
+  background: linear-gradient(90deg, var(--fill) 25%, var(--fill-2) 37%, var(--fill) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+/* ── โฟกัสด้วยคีย์บอร์ดต้องมองเห็น (accessibility) — โผล่เฉพาะ Tab ไม่โผล่ตอนคลิกเมาส์ ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

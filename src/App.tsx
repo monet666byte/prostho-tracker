@@ -30,9 +30,16 @@ function Guard({ role, children }: { role: 'student' | 'teacher'; children: Reac
 }
 
 function Splash() {
+  // skeleton แทนจอขาว — ช่วง reseed ข้อมูลตัวอย่างใช้เวลา ~1 วินาที
   return (
-    <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-faint)', font: '500 13px var(--font-body)' }}>
-      กำลังเตรียมข้อมูล…
+    <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
+      <div style={{ width: 300, display: 'grid', gap: 12, justifyItems: 'center' }}>
+        <div className="skel" style={{ width: 52, height: 52, borderRadius: 14 }} />
+        <div className="skel" style={{ width: 180, height: 14, borderRadius: 7 }} />
+        <div className="skel" style={{ width: 240, height: 10, borderRadius: 5 }} />
+        <div className="skel" style={{ width: 210, height: 10, borderRadius: 5 }} />
+        <div style={{ font: '500 11px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>กำลังเตรียมข้อมูล…</div>
+      </div>
     </div>
   );
 }

@@ -101,7 +101,8 @@ export default function MyGroup() {
           </button>
           <div className="kpi">
             <div className="kpi__label"><CheckCircle size={14} /> จบเคสปีนี้</div>
-            <div className="kpi__value" style={{ color: 'var(--success)' }}>
+            {/* สีเขียว = สำเร็จ — ใช้เมื่อถึงเป้าเท่านั้น ระหว่างทางเป็นสีตัวเลขปกติ */}
+            <div className="kpi__value" style={{ color: groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0) >= groupRisks.length * settings.req.perYear ? 'var(--success)' : undefined }}>
               {groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0)}
               <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / เป้า {groupRisks.length * settings.req.perYear} ชิ้น</span>
             </div>
@@ -133,10 +134,21 @@ export default function MyGroup() {
                     <tr
                       title={r.reason}
                       onClick={() => (r.pieces.length > 1 || r.donePieces.length > 0) && setOpenRow(open ? null : r.student.id)}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && (r.pieces.length > 1 || r.donePieces.length > 0)) {
+                          e.preventDefault();
+                          setOpenRow(open ? null : r.student.id);
+                        }
+                      }}
+                      tabIndex={r.pieces.length > 1 || r.donePieces.length > 0 ? 0 : undefined}
+                      aria-expanded={r.pieces.length > 1 || r.donePieces.length > 0 ? open : undefined}
                       style={{ cursor: r.pieces.length > 1 || r.donePieces.length > 0 ? 'pointer' : undefined }}
                     >
                       <td>
                         <span
+                          role="img"
+                          aria-label={r.risk === 'high' ? 'เสี่ยงสูง' : r.risk === 'medium' ? 'จับตา' : 'ตามแผน'}
+                          title={r.risk === 'high' ? 'เสี่ยงสูง' : r.risk === 'medium' ? 'จับตา' : 'ตามแผน'}
                           style={{
                             display: 'block', width: 8, height: 8, borderRadius: 99,
                             background: r.risk === 'high' ? 'var(--danger-chart)' : r.risk === 'medium' ? 'var(--warning)' : 'var(--success)',

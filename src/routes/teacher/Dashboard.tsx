@@ -78,7 +78,7 @@ export default function Dashboard() {
               </div>
               <div className="kpi">
                 <div className="kpi__label"><Users size={14} /> จบเคสสะสมปี {yearly.year}</div>
-                <div className="kpi__value" style={{ color: 'var(--success)' }}>
+                <div className="kpi__value" style={{ color: yearly.piecesDone >= yearly.piecesGoal ? 'var(--success)' : undefined }}>
                   {yearly.piecesDone}
                   <span style={{ font: '500 14px var(--font-body)', color: 'var(--text-faint)' }}> / {yearly.piecesGoal}</span>
                 </div>
@@ -100,7 +100,7 @@ export default function Dashboard() {
               <h3>กลุ่มคลินิก PT1–PT12</h3>
               <div className="groupgrid" style={{ marginTop: 13 }}>
                 {groups.map((g) => {
-                  const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--danger-chart)';
+                  const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
                   return (
                     <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
                       <div className="groupcard__code">{g.code.replace('TH-', '')}</div>
