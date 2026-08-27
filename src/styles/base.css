@@ -1,0 +1,224 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+/* scrollbar ของทั้งหน้า ซ่อนไว้ — macOS แบบโชว์ตลอดจะกินความกว้างข้างขวา ทำให้กรอบมือถือเยื้องจากกลางจอ
+   (ตัวที่สกรอลล์จริงคือ html ไม่ใช่ body) */
+html, body { scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #d7dbe2; border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── keyframes ตาม handoff ── */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheetUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(43, 92, 230, 0.45) }
+  70% { box-shadow: 0 0 0 8px rgba(43, 92, 230, 0) }
+  100% { box-shadow: 0 0 0 0 rgba(43, 92, 230, 0) }
+}
+@keyframes shellIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
+
+/* ── shared primitives ── */
+.h1 { font: 700 26px/1.3 var(--font-head); margin: 0; }
+.h2 { font: 600 20px/1.35 var(--font-head); margin: 0; }
+.h3 { font: 600 17px/1.4 var(--font-head); margin: 0; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+.pretty { text-wrap: pretty; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font: 600 10.5px/1 var(--font-body);
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 99px;
+  padding: 4px 10px;
+  font: 600 11px/1.4 var(--font-body);
+  white-space: nowrap;
+}
+
+/* progress bar */
+.bar { background: var(--track); border-radius: 99px; overflow: hidden; flex: 1; }
+.bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ปุ่มหลัก — เงา 0 2px 0 สีเข้ม, กดแล้วตัดเงา */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 15px var(--font-head);
+  box-shadow: 0 2px 0 var(--accent-hover);
+  transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn:disabled { background: var(--text-disabled); box-shadow: none; cursor: not-allowed; }
+.btn--success { background: var(--success); box-shadow: 0 2px 0 var(--success-dark); }
+.btn--success:hover { background: var(--success-dark); }
+.btn--light { background: #fff; color: var(--accent); box-shadow: 0 2px 0 rgba(16, 24, 40, 0.08); }
+.btn--light:hover { background: #f3f6ff; }
+.btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font: 500 14px var(--font-body);
+  height: 44px;
+}
+.btn--ghost:hover { background: var(--fill); }
+.btn--sec {
+  height: 42px;
+  background: var(--fill);
+  color: var(--text-secondary);
+  font: 600 13px var(--font-body);
+  box-shadow: none;
+  border-radius: 12px;
+}
+.btn--sec:hover { background: var(--fill-2); }
+
+/* form */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font: 600 11.5px var(--font-body); color: var(--text-secondary); }
+.input {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border-2);
+  background: #fff;
+  padding: 0 12px;
+  font: 400 13.5px var(--font-body);
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height: 1.55; }
+
+.toggle {
+  width: 44px; height: 26px; border-radius: 99px; background: var(--border-2);
+  position: relative; flex: none; transition: background 0.2s;
+}
+.toggle > i {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  border-radius: 99px; background: #fff; box-shadow: var(--shadow-pop);
+  transition: transform 0.2s;
+}
+.toggle[data-on='true'] { background: var(--accent); }
+.toggle[data-on='true'] > i { transform: translateX(18px); }
+
+.dashed {
+  border: 1px dashed var(--border-2);
+  border-radius: 12px;
+  background: var(--bg-subtle);
+}
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ── รายงาน A4 สำหรับพิมพ์ให้อาจารย์ลงนาม ── */
+/* บนจอมือถือ ตารางรายงานกว้างเกินกรอบ — ให้เลื่อนแนวนอนได้ ส่วนตอนพิมพ์ค่อยกางเต็มหน้า */
+.a4wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.a4 {
+  min-width: 660px;
+  background: #fff;
+  color: #101828;
+  font-family: var(--font-body);
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.a4 h1 { font: 700 15px var(--font-head); margin: 0; }
+.a4 .sub { font: 400 9.5px var(--font-body); color: var(--text-muted); margin-top: 2px; }
+.a4 table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.a4 th, .a4 td {
+  border: 1px solid #d6dae1; padding: 4px 5px; font: 400 8.5px/1.4 var(--font-body);
+  text-align: left; vertical-align: top;
+}
+.a4 th { background: #f2f4f7; font-weight: 600; }
+.a4 td.mono, .a4 th.mono { font-family: var(--font-mono); }
+.a4 th.tick, .a4 td.tick { width: 13px; padding: 4px 1px; text-align: center; font-size: 8px; }
+.a4 .sign { display: flex; gap: 26px; margin-top: 26px; }
+.a4 .sign > div { flex: 1; }
+.a4 .sign .line { border-bottom: 1px dashed #98a2b3; height: 30px; }
+.a4 .sign .cap { font: 400 9px var(--font-body); color: var(--text-muted); margin-top: 5px; text-align: center; }
+
+@media print {
+  body { background: #fff; }
+  .noprint, .canvas > .phone > .tabbar, .toast, .backdrop { display: none !important; }
+  .canvas { padding: 0; display: block; }
+  .phone { width: 100%; height: auto; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
+  .screen { overflow: visible; height: auto; }
+  .a4wrap { overflow: visible; }
+  .a4 { border: 0; padding: 0; border-radius: 0; min-width: 0; }
+  .printonly { display: block !important; }
+}
+.printonly { display: none; }
+
+/* ── กล่องอธิบาย step (กดเลข 0–10 แล้วเห็นว่าข้างในมีอะไร) ── */
+.stepinfo {
+  border: 1px solid var(--accent-ring);
+  background: var(--bg-subtle);
+  border-radius: 12px;
+  padding: 12px 13px;
+  animation: shellIn 0.18s ease;
+}
+.stepinfo__head { display: flex; align-items: center; gap: 10px; }
+.stepinfo__num {
+  width: 30px; height: 30px; border-radius: 99px; flex: none;
+  background: var(--accent); color: #fff;
+  display: grid; place-items: center;
+  font: 600 13px var(--font-mono);
+}
+.stepinfo__body { display: grid; gap: 9px; margin-top: 11px; }
+.stepinfo__type { display: flex; gap: 9px; align-items: flex-start; }
+.stepinfo__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.stepinfo__list li {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font: 400 11px/1.5 var(--font-mono); color: var(--text-secondary);
+}
+.stepinfo__variant {
+  font: 600 10px var(--font-body) !important;
+  color: var(--text-faint) !important;
+  margin-top: 3px;
+}
+
+/* แท่งกราฟที่กดได้ */
+.vbars > div[data-clickable='true'] { cursor: pointer; }
+.vbars > div[data-clickable='true']:hover .bar-v { filter: brightness(1.08); }
+.vbars > div[data-on='true'] .tick { color: var(--accent); font-weight: 700; }

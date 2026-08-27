@@ -1,0 +1,119 @@
+/* Design tokens — ค่าจริงจาก handoff (หัวข้อ Design Tokens) */
+:root {
+  /* accent */
+  --accent: #2b5ce6;
+  --accent-hover: #1e40c8;
+  --accent-tint: #edf1fe;
+  --accent-ring: #e1e8fd;
+  --accent-on-dark: #93b0ff;
+
+  /* text */
+  --text: #101828;
+  --text-secondary: #344054;
+  --text-body: #475467;
+  --text-muted: #667085;
+  --text-faint: #98a2b3;
+  --text-disabled: #c6cdd8;
+
+  /* surface */
+  --surface: #ffffff;
+  --bg-app: #f6f7f9;
+  --bg-dash: #f8f9fb;
+  --bg-canvas: #edeff3;
+  --bg-subtle: #fafbfc;
+  --fill: #f2f4f7;
+  --fill-2: #eff1f4;
+
+  /* line */
+  --border: #eaecf0;
+  --border-2: #e4e7ec;
+  --border-3: #eff1f4;
+  --divider: #f7f8fa;
+  --track: #eaecf0;
+
+  /* status */
+  --success: #0e9f6e;
+  --success-dark: #066b4a;
+  --success-tint: #e7f7f1;
+  --success-mid: #8fd9be;
+  --success-toast: #5ae0a8;
+  --warning: #b54708;
+  --warning-dark: #93370d;
+  --warning-tint: #fef6e7;
+  --warning-border: #f7d9a0;
+  --danger: #d92d20;
+  --danger-dark: #b42318;
+  --danger-tint: #feecea;
+  --danger-border: #f8cfca;
+  --danger-chart: #e9553f;
+  --danger-light: #f4c7c3;
+
+  /* misc */
+  --self: #5b32d6;
+  --self-tint: #f1eefe;
+  --bezel: #14161c;
+  --toast-bg: #101828;
+
+  /* type */
+  --font-head: 'Anuphan', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-body: 'Noto Sans Thai', 'Anuphan', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* shadow */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-pop: 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-toast: 0 8px 24px rgba(16, 24, 40, 0.3);
+  --shadow-accent: 0 6px 18px rgba(43, 92, 230, 0.28);
+  --shadow-frame: 0 20px 50px rgba(16, 24, 40, 0.24);
+
+  /* layout */
+  --phone-w: 390px;
+  --phone-h: 820px;
+  --safe-top: 42px;
+  --tabbar-h: 66px;
+}
+
+/* ── ธีมสีทางเลือก — เลือกได้จากแถบเดโม (จำค่าใน localStorage) ── */
+
+/* เขียวคลินิก: โทนหมอๆ สงบ สบายตา */
+html.theme-teal {
+  --accent: #0d9488;
+  --accent-hover: #0b7a70;
+  --accent-tint: #e6f5f3;
+  --accent-ring: #d2ece8;
+  --accent-on-dark: #7fd4c9;
+  --bg-canvas: #eaefed;
+  --bg-app: #f4f7f6;
+  --bg-dash: #f6f9f8;
+  --bg-subtle: #f9fbfa;
+  --shadow-accent: 0 6px 18px rgba(13, 148, 136, 0.26);
+  --toast-bg: #0f2e2a;
+}
+
+/* กรมท่าอบอุ่น: น้ำเงินเข้มขึ้น พื้นอุ่นขึ้น ดูนิ่งเป็นทางการ */
+html.theme-navy {
+  --accent: #24439b;
+  --accent-hover: #1a3277;
+  --accent-tint: #ecf0fa;
+  --accent-ring: #dde4f4;
+  --accent-on-dark: #9db4f0;
+  --bg-canvas: #edecE8;
+  --bg-app: #f8f7f4;
+  --bg-dash: #faf9f6;
+  --bg-subtle: #fbfaf8;
+  --fill: #f2f1ed;
+  --fill-2: #efeeea;
+  --border: #e9e7e1;
+  --border-2: #e3e1da;
+  --shadow-accent: 0 6px 18px rgba(36, 67, 155, 0.26);
+  --toast-bg: #14203e;
+}
+
+/* สีประจำประเภทงาน */
+.t-CD { --type: #2b5ce6; --type-tint: #edf1fe; }
+.t-APD { --type: #0891b2; --type-tint: #e4f5fa; }
+.t-RPD { --type: #0e9f6e; --type-tint: #e7f7f1; }
+.t-PC { --type: #7a5af8; --type-tint: #f1eefe; }
+.t-CB { --type: #b54708; --type-tint: #fef3e7; }
+.t-RRM { --type: #64748b; --type-tint: #f1f3f7; }
+.t-RFX { --type: #475569; --type-tint: #eef1f5; }

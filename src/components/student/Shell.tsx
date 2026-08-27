@@ -1,0 +1,140 @@
+import {
+  ArrowUUpLeft, BatteryFull, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CheckCircle,
+  CloudSlash, House, UsersThree, WifiHigh,
+} from '@phosphor-icons/react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
+import { undoStep } from '../../data/repo';
+import { useApp } from '../../store/app';
+import { clock } from '../../lib/date';
+import { DemoBar } from '../DemoBar';
+
+const TABS = [
+  { to: '/app', label: 'หน้าแรก', Icon: House, end: true },
+  { to: '/app/patients', label: 'คนไข้', Icon: UsersThree, end: false },
+  { to: '/app/criteria', label: 'เกณฑ์', Icon: ChartDonut, end: false },
+  { to: '/app/checkin', label: 'คาบ', Icon: CalendarCheck, end: false },
+];
+
+/** ความสูงเต็มของเครื่อง (820 + ขอบ 10×2) */
+const PHONE_OUTER = 840;
+
+/**
+ * ย่อทั้งเครื่องด้วย scale ให้พอดีความสูงจอเสมอ — วัดจาก innerHeight จริง
+ * เลยรอดทั้งจอเตี้ย ทั้ง zoom ของเบราว์เซอร์ (ที่ CSS media query จับไม่ได้)
+ */
+function usePhoneScale(): number {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const fit = () => {
+      // มือถือจริง หรือแท็บเล็ตจอสัมผัส (iPad) = เต็มจอ ไม่ย่อ — ให้ตรงกับ media query ฝั่ง CSS
+      const touchTablet = window.matchMedia('(pointer: coarse)').matches && window.innerWidth <= 1400;
+      if (window.innerWidth <= 780 || touchTablet) return setScale(1);
+      const avail = window.innerHeight - 136; // เผื่อแถบเดโม + ระยะขอบ (เผื่อเยอะไว้ กันขอบล่างโดนตัด)
+      setScale(Math.min(1, Math.max(0.5, avail / PHONE_OUTER)));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+  return scale;
+}
+
+export function PhoneFrame({ children }: { children: ReactNode }) {
+  const scale = usePhoneScale();
+  return (
+    <div style={{ height: PHONE_OUTER * scale, display: 'flex', justifyContent: 'center' }}>
+      <div className="phone" style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function StatusBar() {
+  const offline = useApp((s) => s.offline);
+  return (
+    <div className="statusbar">
+      <span>{clock(new Date())}</span>
+      <span className="icons">
+        {offline ? <CellSignalSlash weight="fill" /> : <CellSignalFull weight="fill" />}
+        {offline ? <CloudSlash weight="fill" /> : <WifiHigh weight="fill" />}
+        <BatteryFull weight="fill" />
+      </span>
+    </div>
+  );
+}
+
+function TabBar() {
+  return (
+    <nav className="tabbar">
+      {TABS.map(({ to, label, Icon, end }) => (
+        <NavLink key={to} to={to} end={end} className={({ isActive }) => (isActive ? 'on' : undefined)}>
+          {({ isActive }) => (
+            <>
+              <i>
+                <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
+              </i>
+              {label}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
+function ToastView() {
+  const { toast, hideToast, session, touch } = useApp();
+  if (!toast) return null;
+  return (
+    <div className="toast" role="status">
+      <CheckCircle size={18} weight="fill" color={toast.tone === 'warning' ? '#FDBA5E' : '#5AE0A8'} />
+      <span>{toast.message}</span>
+      {toast.undoWorkpieceId && (
+        <button
+          onClick={async () => {
+            await undoStep(toast.undoWorkpieceId!, session?.role === 'teacher' ? 'อ. ก.' : 'นศ. ก');
+            hideToast();
+            touch();
+          }}
+        >
+          <ArrowUUpLeft size={14} weight="bold" style={{ verticalAlign: -2, marginRight: 3 }} />
+          เลิกทำ
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function Shell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {
+  return (
+    <div className="canvas">
+      <DemoBar />
+      <PhoneFrame>
+        <StatusBar />
+        <div className="screen screen--pad">{children}</div>
+        {footer}
+        <TabBar />
+        <ToastView />
+        {overlay}
+      </PhoneFrame>
+    </div>
+  );
+}
+
+/** หน้าที่ไม่มี tab bar (S3, S7, S8 …) */
+export function PlainShell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {
+  return (
+    <div className="canvas">
+      <DemoBar />
+      <PhoneFrame>
+        <StatusBar />
+        <div className="screen screen--pad">{children}</div>
+        {footer}
+        <ToastView />
+        {overlay}
+      </PhoneFrame>
+    </div>
+  );
+}

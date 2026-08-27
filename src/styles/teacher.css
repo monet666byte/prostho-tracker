@@ -1,0 +1,517 @@
+/* ── Dashboard อาจารย์ (desktop) ── */
+.deskwrap {
+  min-height: 100%;
+  background: var(--bg-canvas);
+  padding: 18px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.window {
+  width: 1420px;
+  max-width: 100%;
+  /* สูงเท่าจอเสมอ เพื่อให้มีสกอลล์บาร์เดียว (อยู่ใน .main) ไม่ใช่สกอลล์ซ้อนสกอลล์ */
+  height: calc(100vh - 94px);
+  min-height: 620px;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-frame);
+  overflow: hidden;
+  display: flex;
+}
+@media (max-width: 1480px) {
+  .deskwrap { padding: 12px 0 0; gap: 10px; }
+  .window { border-radius: 0; box-shadow: none; height: calc(100vh - 62px); min-height: 0; }
+}
+
+.side {
+  width: 214px; flex: none; background: var(--bg-subtle); border-right: 1px solid var(--border);
+  padding: 18px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.side--narrow { width: 186px; }
+.side { overflow-y: auto; }
+.side__logo { display: flex; align-items: center; gap: 9px; padding: 0 6px 16px; }
+.side__logo b { font: 700 14.5px var(--font-head); }
+.side a, .side button.navitem {
+  display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
+  font: 500 12.5px var(--font-body); color: var(--text-body); width: 100%; text-align: left;
+  transition: background .15s, color .15s;
+}
+.side a:hover, .side button.navitem:hover { background: var(--fill); }
+.side a.on, .side button.navitem.on { background: var(--accent-tint); color: var(--accent-hover); font-weight: 600; }
+.side .count {
+  margin-left: auto; background: var(--danger); color: #fff; border-radius: 99px;
+  padding: 1px 6px; font: 600 10px var(--font-mono);
+}
+
+.main { flex: 1; min-width: 0; background: var(--bg-dash); padding: 24px 26px; overflow-y: auto; }
+.main__head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+.main__head h1 { margin: 0; font: 700 22px var(--font-head); }
+.main__head p { margin: 3px 0 0; font: 400 11.5px var(--font-body); color: var(--text-muted); }
+
+.tabs { display: inline-flex; background: var(--fill); border-radius: 10px; padding: 4px; gap: 3px; margin-bottom: 18px; }
+.tabs button {
+  padding: 7px 14px; border-radius: 8px; font: 600 12px var(--font-body); color: var(--text-muted);
+  transition: all .15s;
+}
+.tabs button[data-on='true'] { background: #fff; color: var(--accent-hover); box-shadow: var(--shadow-pop); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.kpi { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 15px 16px; }
+.kpi__label { font: 500 11px var(--font-body); color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.kpi__value { font: 700 27px var(--font-head); margin-top: 7px; }
+.kpi__hint { font: 400 10.5px var(--font-body); color: var(--text-faint); margin-top: 3px; }
+
+.groupgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 11px; }
+.groupcard {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px;
+  text-align: left; transition: all .15s; position: relative;
+}
+.groupcard:hover { border-color: var(--border-2); }
+.groupcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.groupcard__code { font: 600 12.5px var(--font-mono); }
+.groupcard__pct { font: 700 17px var(--font-head); margin-top: 6px; }
+.groupcard__badge {
+  position: absolute; top: 9px; right: 9px;
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--danger-tint); color: var(--danger-dark); border: 1px solid var(--danger-border);
+  border-radius: 99px; padding: 2px 7px; font: 600 9.5px var(--font-mono);
+}
+
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.panel h3 { margin: 0; font: 600 14px var(--font-head); }
+.panel .sub { margin: 3px 0 0; font: 400 10.5px var(--font-body); color: var(--text-faint); }
+
+.tbl { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.tbl th {
+  text-align: left; font: 600 10.5px var(--font-body); color: var(--text-faint);
+  padding: 0 8px 8px; border-bottom: 1px solid var(--border);
+}
+.tbl td { padding: 9px 8px; border-bottom: 1px solid var(--divider); font: 400 12px var(--font-body); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl tr.on td { background: var(--accent-tint); }
+
+.matrix { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+.matrix th { font: 600 10px var(--font-body); color: var(--text-faint); padding: 0 6px 4px; text-align: center; }
+.matrix th:first-child { text-align: left; }
+.matrix td { padding: 0 3px; }
+.cell {
+  width: 100%; height: 34px; border-radius: 8px; font: 600 10px var(--font-body);
+  display: grid; place-items: center; transition: all .15s;
+}
+.cell:hover { filter: brightness(0.97); }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+.legend span { display: flex; align-items: center; gap: 6px; font: 500 10.5px var(--font-body); color: var(--text-muted); }
+.legend i { width: 11px; height: 11px; border-radius: 4px; display: block; }
+
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper button {
+  width: 26px; height: 26px; border-radius: 8px; background: var(--fill); display: grid; place-items: center;
+  color: var(--text-secondary); transition: background .15s;
+}
+.stepper button:hover { background: var(--fill-2); }
+.stepper span { width: 26px; text-align: center; font: 600 13px var(--font-mono); }
+
+.rail { width: 330px; flex: none; border-left: 1px solid var(--border); padding: 20px 18px; overflow-y: auto; background: var(--bg-subtle); }
+.rail h3 { margin: 0 0 3px; font: 600 13.5px var(--font-head); }
+.rail .sub { margin: 0 0 11px; font: 400 10.5px/1.5 var(--font-body); color: var(--text-faint); }
+
+.reviewcard { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 15px; display: flex; gap: 16px; }
+.reviewcard__main { flex: 1; min-width: 0; }
+.reviewcard__side { width: 246px; flex: none; border-left: 1px solid var(--divider); padding-left: 15px; }
+
+.hbar { display: flex; align-items: center; gap: 9px; padding: 5px 0; }
+.hbar__label { width: 118px; flex: none; font: 500 11px var(--font-body); color: var(--text-secondary); }
+.hbar__track { flex: 1; height: 9px; background: var(--track); border-radius: 99px; overflow: hidden; }
+.hbar__track i { display: block; height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+.hbar__value { width: 34px; text-align: right; font: 600 11px var(--font-mono); color: var(--text-muted); }
+
+.vbars { display: flex; align-items: flex-end; gap: 6px; height: 132px; margin-top: 14px; }
+.vbars > div { flex: 1; display: grid; justify-items: center; gap: 5px; }
+.vbars .bar-v { width: 100%; border-radius: 5px 5px 0 0; transition: height .5s cubic-bezier(.4,0,.2,1); }
+.vbars .tick { font: 500 9.5px var(--font-mono); color: var(--text-faint); }
+
+.stacked { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--track); }
+.stacked i { display: block; height: 100%; transition: width .5s ease; }
+
+/* แถวเลือกนักศึกษาในหน้าตรวจงาน — อยู่ในเนื้อหา ไม่ไปแทนที่เมนูซ้าย */
+.pickrow {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.pickrow button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 13px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font: 600 12px var(--font-body);
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.pickrow button:hover { border-color: var(--border-2); background: var(--bg-subtle); }
+.pickrow button span { font: 400 9.5px var(--font-mono); color: var(--text-faint); }
+.pickrow button[data-on='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pickrow button[data-on='true'] span { color: rgba(255, 255, 255, 0.72); }
+
+/* ตัวกรองกลุ่ม PT1–PT12 ในหน้าที่ต้องเลือกกลุ่ม */
+.grouppick { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.grouppick__label { font: 600 11px var(--font-body); color: var(--text-faint); margin-right: 4px; }
+.grouppick button {
+  padding: 6px 11px;
+  border-radius: 8px;
+  background: var(--fill);
+  font: 600 11.5px var(--font-mono);
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); }
+.grouppick button[data-on='true'] { background: var(--accent); color: #fff; }
+
+/* segmented ขนาดเล็กสำหรับตัวกรองในการ์ด */
+.seg--sm button { padding: 6px 11px; font-size: 11.5px; border-radius: 8px; }
+
+/* ── ตารางแท่งเล็ก (heatmap) ── */
+.heat { border-collapse: separate; border-spacing: 4px 5px; width: 100%; }
+.heat th {
+  font: 500 10px var(--font-body);
+  color: var(--text-faint);
+  padding: 0 0 4px;
+  text-align: left;
+  white-space: nowrap;
+}
+.heat th[scope='row'] {
+  font: 500 11px var(--font-body);
+  color: var(--text-secondary);
+  padding: 0 10px 0 0;
+  white-space: nowrap;
+  width: 1%;
+}
+.heat th[scope='row'] span {
+  display: block;
+  font: 400 9px var(--font-mono);
+  color: var(--text-disabled);
+}
+.heat td { padding: 0; min-width: 58px; }
+.heat__cell {
+  position: relative;
+  display: block;
+  height: 14px;
+  border-radius: 99px;
+  background: var(--fill-2);
+  overflow: hidden;
+  transition: background 0.15s;
+}
+.heat__cell > i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #6e93f2;
+  transition: width 0.4s ease, background 0.15s;
+}
+.heat__cell[data-full='true'] > i { background: var(--accent); }
+.heat__cell[data-on='true'] { box-shadow: 0 0 0 2px var(--accent-ring); }
+.heat__cell > b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 700 9px var(--font-mono);
+}
+.heat tbody tr:hover .heat__cell { background: var(--fill); }
+
+/* ── legend ใต้กราฟ ── */
+.chartlegend {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font: 500 10.5px var(--font-body);
+  color: var(--text-muted);
+}
+.chartlegend > span { display: flex; align-items: center; gap: 5px; }
+.chartlegend i { width: 11px; height: 11px; border-radius: 3px; display: block; flex: none; }
+.chartlegend button {
+  margin-left: auto;
+  font: 600 10.5px var(--font-body);
+  color: var(--accent);
+  padding: 3px 8px;
+  border-radius: 7px;
+}
+.chartlegend button:hover { background: var(--accent-tint); }
+
+/* ── แท่งสองทาง (เทียบกับค่าเฉลี่ย) ── */
+.dvg { display: grid; gap: 3px; }
+.dvg__row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.dvg__label { width: 96px; flex: none; font: 500 11px var(--font-body); color: var(--text-secondary); }
+.dvg__track { flex: 1; position: relative; height: 16px; }
+.dvg__zero {
+  position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px;
+  background: var(--border-2);
+}
+.dvg__bar { position: absolute; top: 3px; height: 10px; transition: width 0.4s ease, left 0.4s ease; }
+.dvg__value { width: 34px; flex: none; text-align: right; font: 600 11px var(--font-mono); }
+
+/* ── แถบสรุปเคสในมือ (ใกล้ปิด / ครึ่งทาง / เพิ่งเริ่ม) ── */
+.pipe { display: flex; gap: 3px; }
+.pipe__seg {
+  flex: 1;
+  height: 24px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font: 600 10.5px var(--font-mono);
+}
+.pipe__seg[data-tone='near'] { background: var(--success-tint); color: var(--success-dark); }
+.pipe__seg[data-tone='mid'] { background: var(--accent-tint); color: var(--accent-hover); }
+.pipe__seg[data-tone='early'] { background: var(--fill); color: var(--text-faint); }
+
+/* ── ช่องเกณฑ์ทีละเคส ── */
+.slots { display: flex; gap: 5px; margin-top: 8px; }
+.slots__box {
+  flex: 1;
+  height: 30px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  transition: background 0.3s ease;
+}
+.slots__box[data-state='done'] { background: var(--slot); color: #fff; }
+.slots__box[data-state='active'] {
+  background: color-mix(in srgb, var(--slot) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--slot) 40%, #fff);
+  color: var(--slot);
+  font-weight: 600;
+}
+.slots__box[data-state='empty'] { background: var(--fill); border: 1px dashed var(--border-2); }
+
+/* ── แผนที่เคส (หนึ่งจุด = หนึ่งชิ้นงาน) ── */
+.casemap {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 6px;
+  align-items: end;
+  padding: 10px 0 0;
+  min-height: 150px;
+}
+.casemap__col { display: grid; justify-items: center; gap: 6px; }
+.casemap__count { font: 500 9.5px var(--font-mono); color: var(--text-faint); min-height: 12px; }
+/* กว้างพอดี 4 จุดต่อแถว เพื่อให้กองสูงต่างกันชัด อ่านเป็นฮิสโตแกรมที่ทำจากเคสจริง */
+.casemap__dots {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 3px;
+  width: 40px;
+  min-height: 10px;
+}
+.casemap__dots > i {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  display: block;
+  transition: transform 0.12s;
+}
+.casemap__dots > i[data-stale='true'] {
+  box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--danger-chart);
+}
+.casemap__dots > i[data-on='true'] { transform: scale(1.9); }
+.casemap__step {
+  font: 500 10px var(--font-mono);
+  color: var(--text-faint);
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  background: none;
+  text-align: center;
+}
+button.casemap__step:hover { color: var(--accent); }
+button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; border-top: 2px solid var(--accent); }
+
+/* ปุ่มเลข step ใต้แผนที่เคส */
+.stepbar { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; margin-top: 8px; }
+.stepbar button {
+  height: 24px;
+  border-radius: 7px;
+  background: var(--fill);
+  font: 600 10.5px var(--font-mono);
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.stepbar button:hover { background: var(--accent-tint); color: var(--accent); }
+.stepbar button[data-on='true'] { background: var(--accent); color: #fff; }
+
+/* ── การ์ดประเมินรายคาบ ── */
+.evalcard {
+  display: flex;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 15px;
+  background: var(--bg-subtle);
+}
+.evalcard__info { flex: 1; min-width: 0; }
+.evalcard__scores { width: 330px; flex: none; }
+.scorerow { display: flex; align-items: center; gap: 9px; padding: 2.5px 0; }
+.scorerow__label {
+  flex: 1;
+  font: 400 10.5px var(--font-body);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scorerow__btns { display: flex; gap: 3px; }
+.scorerow__btns button {
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--border-2);
+  font: 600 10.5px var(--font-mono);
+  color: var(--text-muted);
+  transition: all 0.12s;
+}
+.scorerow__btns button:hover { border-color: var(--accent); color: var(--accent); }
+.scorerow__btns button[data-on='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── ปรับขนาดตัวหนังสือ (สำหรับผู้ใช้อาวุโส) ── */
+.textsize {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fff;
+}
+.textsize__label { flex: 1; font: 500 11px var(--font-body); color: var(--text-muted); }
+.textsize__btns { display: flex; gap: 3px; align-items: flex-end; }
+.textsize__btns button {
+  min-width: 30px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--fill);
+  font-family: var(--font-head);
+  font-weight: 600;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  transition: all 0.15s;
+}
+.textsize__btns button:hover { background: var(--fill-2); }
+.textsize__btns button[data-on='true'] { background: var(--accent); color: #fff; }
+
+/* ขยายทั้งหน้าต่างด้วย zoom — ตัวหนังสือและปุ่มโตตามกันหมด
+   จอกว้าง: มีผลเฉพาะ .window ฝั่งอาจารย์ — เฟรมมือถือเดโมไม่ zoom
+   (CSS zoom ชนกับ transform scale ของเฟรมใน Safari: เนื้อหาเยื้อง/ทะลุขอบ แก้ยังไงก็เพี้ยนสักเบราว์เซอร์) */
+@media (min-width: 781px) {
+  :root[data-zoom='lg'] .window { zoom: 1.18; }
+  :root[data-zoom='xl'] .window { zoom: 1.38; }
+  :root[data-zoom='lg'] .window { height: calc((100vh - 94px) / 1.18); }
+  :root[data-zoom='xl'] .window { height: calc((100vh - 94px) / 1.38); }
+}
+/* มือถือ/แท็บเล็ตจริง: เฟรมเต็มจอ ไม่มี transform ชน — zoom ทั้งหน้าได้ปกติ */
+@media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  :root[data-zoom='lg'] .phone { zoom: 1.18; }
+  :root[data-zoom='xl'] .phone { zoom: 1.38; }
+}
+
+/* iPad แนวตั้ง (~768px): ฝั่งอาจารย์บีบ sidebar และระยะขอบลง ให้เนื้อหามีที่หายใจ */
+@media (max-width: 900px) {
+  .side { width: 176px; padding: 14px 10px; }
+  .side--narrow { width: 168px; }
+  .main { padding: 16px 14px; }
+  .evalcard { flex-direction: column; gap: 12px; }
+  .kpis { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* โหมดตัวใหญ่ = ผู้ใช้บอกว่าอ่านยาก — เพิ่ม contrast ของตัวหนังสือรองไปด้วย */
+:root[data-zoom='lg'], :root[data-zoom='xl'] {
+  --text-faint: #6b7585;
+  --text-muted: #4e586a;
+  --text-disabled: #98a2b3;
+}
+
+/* ปุ่มคะแนน 0–3 ใหญ่ขึ้นเสมอ (ของเดิม 26px เล็กไปสำหรับทุกคน) */
+.scorerow__btns button { width: 32px; height: 27px; font-size: 11.5px; }
+.evalcard__scores { width: 350px; }
+
+/* ── กลุ่มที่ดูแล — context กลางของฝั่งอาจารย์ ── */
+.mygroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-ring);
+  background: var(--accent-tint);
+  border-radius: 11px;
+}
+.mygroup__label { flex: 1; font: 600 11px var(--font-body); color: var(--accent-hover); }
+.mygroup select {
+  border: 1px solid var(--accent-ring);
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: 700 12px var(--font-mono);
+  color: var(--accent-hover);
+}
+
+/* ── กลุ่มเมนู: งานกลุ่มเกาะใต้ตัวเลือกกลุ่ม / ส่วนชั้นปีแยกหัวข้อ ── */
+.side__cluster {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 4px;
+  padding: 4px;
+  border: 1px solid var(--accent-ring);
+  border-top: none;
+  border-radius: 0 0 11px 11px;
+  background: color-mix(in srgb, var(--accent-tint) 45%, #fff);
+}
+.mygroup { margin-bottom: 0; border-radius: 11px 11px 0 0; }
+.side__section {
+  font: 600 10px var(--font-body);
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  padding: 12px 10px 4px;
+}
+
+/* ── ช่อง "งานที่กำลังทำ" — ชื่อ step เป็นพระเอก ── */
+.worknow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.worknow__name {
+  font: 600 12.5px var(--font-body);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.worknow__more { font: 600 10.5px var(--font-body); color: var(--accent); flex: none; margin-left: auto; }
+.subrow td { border-bottom: 1px dashed var(--divider); background: var(--bg-subtle); padding-top: 6px; padding-bottom: 6px; }
+
+/* ชื่อ step ใต้เลขในแผนที่เคส (โผล่เมื่อกรองประเภทเดียว) + แถบช่วงงาน (ตอนดูรวม) */
+.casemap__name {
+  display: block;
+  font: 400 8.5px/1.3 var(--font-body);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2px 1px 0;
+  overflow-wrap: break-word;
+  /* สูงเท่ากันทุกคอลัมน์ (2 บรรทัด) — ชื่อยาวสั้นต่างกันจะได้ไม่ดันเส้นแกนให้เบี้ยว */
+  height: 25px;
+  overflow: hidden;
+}

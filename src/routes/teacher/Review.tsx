@@ -1,0 +1,263 @@
+import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, X } from '@phosphor-icons/react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
+import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { RequirementSlots } from '../../components/teacher/RequirementSlots';
+import { setReview } from '../../data/repo';
+import { TYPES } from '../../domain/catalog';
+import {
+  caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
+  progression, sortWorkpieces, yearlyRows,
+} from '../../domain/rules';
+import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../data/db';
+import { thaiShort } from '../../lib/date';
+import { useApp } from '../../store/app';
+
+type Filter = 'all' | 'stale' | 'done';
+
+/**
+ * หน้าตรวจงานรายคน — ใช้เป็นครั้งคราว: ไล่ดูความคืบหน้า/รูปงาน แล้วทิ้งคอมเมนต์ถึงนักศึกษา
+ * (ระบบรายงาน + ขั้นตรวจรับเข้าเกณฑ์ ถูกตัดออกทั้งคู่ตามผู้ใช้ — เคสนับเข้าเกณฑ์ทันทีที่ลง)
+ */
+export default function Review() {
+  const { session, settings, showToast } = useApp();
+  const teacher = useTeacher(session?.teacherId);
+  const students = useAllStudents();
+  const reviews = useReviews();
+  const pending = usePending();
+  const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
+  const teacherById = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
+
+  const groupCode = useApp((st) => st.teacherGroup);
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const [studentId, setStudentId] = useState<string | undefined>(params.get('student') ?? undefined);
+  // เปลี่ยนกลุ่ม (จาก sidebar) แล้วเด้งไปคนแรกของกลุ่มใหม่
+  useEffect(() => setStudentId(undefined), [groupCode]);
+  // เข้าหน้านี้จากการกดชื่อนักศึกษาในสรุปกลุ่ม (?student=) — ประกาศทีหลัง ให้ชนะ effect รีเซ็ตตอน mount
+  useEffect(() => { const q = params.get('student'); if (q) setStudentId(q); }, [params]);
+
+  const groupStudents = useMemo(
+    () => students.filter((s) => s.group === groupCode).sort((a, b) => a.code.localeCompare(b.code)),
+    [students, groupCode],
+  );
+  const advisors = groupStudents[0]?.advisorIds.map((id) => teacherById.get(id)?.name ?? '—').join(' / ') ?? '';
+  const activeId = studentId ?? groupStudents[0]?.id;
+  const active = groupStudents.find((s) => s.id === activeId);
+  const works = useWorkpieces(activeId);
+
+  const [filter, setFilter] = useState<Filter>('all');
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // แผงสรุปเกณฑ์พับไว้เป็นค่าเริ่มต้น — สรุปย่ออยู่ในหัวการ์ดแล้ว กดดูเต็มเมื่อต้องใช้
+  const [showReq, setShowReq] = useState(false);
+
+  const list = useMemo(() => {
+    const sorted = sortWorkpieces(works);
+    if (filter === 'stale') return sorted.filter((w) => isStale(w, settings));
+    if (filter === 'done') return sorted.filter((w) => isComplete(w));
+    return sorted;
+  }, [works, filter, settings]);
+
+  const staleCount = works.filter((w) => isStale(w, settings)).length;
+  const doneCount = works.filter((w) => isComplete(w)).length;
+  const reqRows = caseCount(works, settings);
+  const crownRow = reqRows.find((r) => r.group === 'CROWN');
+  const thisYear = yearlyRows(works, settings).slice(-1)[0] ?? { done: 0, required: settings.req.perYear };
+
+  return (
+    <TeacherShell active="mygroup">
+      <main className="main">
+        <button
+          onClick={() => navigate('/teacher/group')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, marginBottom: 8, cursor: 'pointer', font: '500 12px var(--font-body)', color: 'var(--accent)' }}
+        >
+          <ArrowLeft size={14} weight="bold" /> กลับสรุปกลุ่ม
+        </button>
+        <div className="main__head">
+          <div style={{ flex: 1 }}>
+            <h1>ตรวจงานรายคน</h1>
+            <p>
+              กลุ่ม {groupCode.replace('TH-', '')} · {groupStudents.length} คน
+              {advisors && ` · อาจารย์ที่ปรึกษา ${advisors}`}
+              {' — '}ใช้เป็นครั้งคราว ตอนรับเคสใหม่/เคสจบ (งานประจำคาบอยู่ที่ "ประเมินรายคาบ")
+            </p>
+          </div>
+        </div>
+
+        {/* เลือกนักศึกษา — อยู่ในเนื้อหา ไม่ไปแทนที่เมนูซ้าย */}
+        <div className="pickrow">
+          {groupStudents.map((s) => (
+            <button key={s.id} data-on={s.id === activeId} onClick={() => setStudentId(s.id)}>
+              {s.name}
+              <span className="mono">{s.code}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ font: '600 15px var(--font-head)' }}>{active?.name ?? ''}</div>
+            <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
+              {works.length} ชิ้นงาน · เกณฑ์สะสม{' '}
+              {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
+              {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
+              {' · '}รายปี {thisYear.done}/{thisYear.required}
+            </div>
+          </div>
+          <button
+            className="btn btn--sec"
+            style={{ width: 'auto', height: 34, fontSize: 11.5, padding: '0 12px' }}
+            onClick={() => setShowReq(!showReq)}
+          >
+            <SquaresFour size={14} /> {showReq ? 'ซ่อนเกณฑ์' : 'ดูเกณฑ์'}
+          </button>
+        </div>
+
+        {/* ตัวกรอง — ปุ่มใหญ่แยกบรรทัด มีจำนวนกำกับทุกอัน (แถบเล็กในแผงสรุปเดิมกดยาก) */}
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 13 }}>
+          {(
+            [
+              ['all', 'ทั้งหมด', works.length],
+              ['stale', 'ค้างนาน', staleCount],
+              ['done', 'จบเคสแล้ว', doneCount],
+            ] as Array<[Filter, string, number]>
+          ).map(([k, label, n]) => (
+            <button
+              key={k}
+              onClick={() => setFilter(k)}
+              style={{
+                font: `600 12.5px var(--font-body)`, padding: '9px 15px', borderRadius: 10, cursor: 'pointer',
+                border: `1px solid ${filter === k ? 'var(--accent)' : 'var(--border-2)'}`,
+                background: filter === k ? 'var(--accent)' : '#fff',
+                color: filter === k ? '#fff' : 'var(--text-secondary)',
+              }}
+            >
+              {label} <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{n}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: showReq ? '1fr 320px' : '1fr', gap: 13, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gap: 10 }}>
+          {list.length === 0 && (
+            <div className="dashed" style={{ padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
+              ไม่มีชิ้นงานในหมวดนี้
+            </div>
+          )}
+          {list.map((w) => {
+            const meta = TYPES[w.type];
+            const cur = currentProc(w);
+            const review = reviews.get(w.id);
+            const opened = expanded === w.id;
+            return (
+              <article key={w.id} className="reviewcard" style={{ display: 'block' }}>
+                {/* หัวแถว = ปุ่มเปิด/ปิดทั้งแถบ กดง่ายสำหรับผู้ใช้สูงอายุ */}
+                <button
+                  onClick={() => setExpanded(opened ? null : w.id)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <TypeBadge type={w.type} />
+                    <span style={{ font: '600 13.5px var(--font-head)' }}>{w.detail}</span>
+                    {w.minimumRequirement && (
+                      <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>นับเกณฑ์</span>
+                    )}
+                    {isStale(w, settings) && (
+                      <span className="badge" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>
+                        ค้าง {daysSinceUpdate(w)} วัน
+                      </span>
+                    )}
+                    {pending.has(w.id) && (
+                      <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>รอ sync</span>
+                    )}
+                    {!!(review?.comment) && (
+                      <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
+                        <ChatCircleText size={11} weight="fill" style={{ verticalAlign: -1.5, marginRight: 3 }} />คอมเมนต์แล้ว
+                      </span>
+                    )}
+                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', font: '500 11px var(--font-body)', flex: 'none' }}>
+                      {opened ? 'ซ่อน' : 'รูป · คอมเมนต์'}
+                      <CaretDown size={12} weight="bold" style={{ transform: opened ? 'rotate(180deg)' : undefined, transition: 'transform .15s' }} />
+                    </span>
+                  </div>
+
+                  <div className="mono" style={{ font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 6 }}>
+                    {w.patient.name} · HN {w.patient.hn} · {w.patient.sexAge} · รับเคส {thaiShort(w.acceptedDate)}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
+                    <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={8} />
+                    <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
+                      {Math.max(progression(w), 0)}/{maxProgression(w)}
+                    </span>
+                    <span className="chip" style={{ background: meta.tint, color: meta.color }}>{percentCompleted(w)}%</span>
+                    <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 140 }}>
+                      {cur ? procLabel(w.type, cur) : 'ยังไม่เริ่ม'}
+                    </span>
+                  </div>
+                </button>
+
+                {opened && (
+                  <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+                    <div style={{ flex: '0 1 auto' }}>
+                      <div style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)', marginBottom: 5 }}>
+                        รูปงานที่นักศึกษาแนบ · 2 รูป (เดโม — ยังไม่มีรูปจริง)
+                      </div>
+                      <div style={{ display: 'flex', gap: 7 }}>
+                        <PhotoSlot size={64} filled />
+                        <PhotoSlot size={64} filled />
+                      </div>
+                    </div>
+
+                    <div style={{ flex: '1 1 280px', minWidth: 260 }}>
+                      <textarea
+                        className="input"
+                        style={{ minHeight: 64, fontSize: 12 }}
+                        placeholder="คอมเมนต์ถึงนักศึกษา…"
+                        value={comments[w.id] ?? review?.comment ?? ''}
+                        onChange={(e) => setComments({ ...comments, [w.id]: e.target.value })}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button
+                          className="btn btn--sec"
+                          style={{ height: 38, fontSize: 12, width: 'auto', padding: '0 14px' }}
+                          onClick={async () => {
+                            await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? 'อ. ก.');
+                            showToast({ message: 'บันทึกคอมเมนต์แล้ว', tone: 'success' });
+                          }}
+                        >
+                          <ChatCircleText size={15} /> บันทึกคอมเมนต์
+                        </button>
+
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+          </div>
+
+          {showReq && (
+          <div className="panel" style={{ position: 'sticky', top: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <h3 style={{ flex: 1 }}>เกณฑ์ของ {active?.name ?? ''}</h3>
+              <button className="iconbtn iconbtn--plain" style={{ width: 26, height: 26 }} onClick={() => setShowReq(false)} aria-label="ปิด">
+                <X size={13} weight="bold" />
+              </button>
+            </div>
+            <p className="sub">ทึบ = จบแล้ว · มีเลข = กำลังทำ (step ที่ผ่าน) · ประ = ยังไม่มีเคส</p>
+            <div style={{ marginTop: 6 }}>
+              <RequirementSlots works={works} settings={settings} />
+            </div>
+          </div>
+          )}
+        </div>
+      </main>
+    </TeacherShell>
+  );
+}
