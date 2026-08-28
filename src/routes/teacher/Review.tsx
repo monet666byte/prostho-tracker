@@ -142,7 +142,7 @@ export default function Review() {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: showReq ? '1fr 320px' : '1fr', gap: 13, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: showReq ? 'repeat(auto-fit, minmax(300px, 1fr))' : '1fr', gap: 13, alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: 10 }}>
           {list.length === 0 && (
             <div className="dashed" style={{ padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>

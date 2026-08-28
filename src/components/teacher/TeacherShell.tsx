@@ -2,6 +2,7 @@ import { ChalkboardTeacher, ChartLineUp, GearSix, SquaresFour, Table, Users } fr
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
+import { RoleFab } from '../RoleFab';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
@@ -89,7 +90,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             </NavLink>
           ))}
 
-          <div style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
+          <div className="side__foot" style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
             <TextSizeControl />
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
               <div style={{ font: '600 12.5px var(--font-head)' }}>{t(teacher?.name ?? 'อ. ก.')}</div>
@@ -111,6 +112,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
 
         {children}
       </div>
+      <RoleFab low />
     </div>
   );
 }

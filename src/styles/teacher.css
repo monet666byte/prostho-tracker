@@ -440,6 +440,42 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .kpis { grid-template-columns: 1fr 1fr !important; }
 }
 
+/* โทรศัพท์ (≤780px): ฝั่งอาจารย์เปลี่ยนเป็นคอลัมน์เดียว — เมนูซ้ายกลายเป็นแถบบนเลื่อนแนวนอน */
+@media (max-width: 780px) {
+  .deskwrap { padding: 0; gap: 0; }
+  .window { flex-direction: column; height: 100dvh; }
+  .side {
+    width: 100% !important;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .side::-webkit-scrollbar { display: none; }
+  .side__logo { padding: 0 4px 0 0; flex: none; }
+  .side__logo b { display: none; } /* เหลือแค่โลโก้สี่เหลี่ยม ประหยัดที่ */
+  .mygroup { margin: 0; padding: 4px 6px; flex: none; }
+  .mygroup__label { display: none; }
+  /* เมนูกางเรียงแถวเดียวกัน — เพิ่ม specificity ให้ชนะ .side__cluster ตัวเต็มที่ประกาศทีหลังในไฟล์ */
+  .side .side__cluster { display: flex; gap: 6px; margin: 0; padding: 0; border: 0; background: none; flex: none; }
+  .side .mygroup { border-radius: 11px; }
+  .side__section { display: none; }
+  .side a, .side button.navitem { width: auto; white-space: nowrap; padding: 8px 11px; font-size: 12px; flex: none; }
+  .side__foot { display: none !important; } /* ขนาดตัวหนังสือ + การ์ดชื่ออาจารย์ — ตัดออกบนจอเล็ก */
+  .main { padding: 13px 12px 80px; }
+  .main__head h1 { font-size: 19px; }
+  .kpis { gap: 9px; }
+  .panel { overflow-x: auto; } /* ตารางกว้างเลื่อนในแผงตัวเอง ไม่ดันทั้งหน้า */
+  .evalcard__scores { width: 100%; }
+  .groupgrid { grid-template-columns: repeat(3, 1fr); }
+}
+
 /* โหมดตัวใหญ่ = ผู้ใช้บอกว่าอ่านยาก — เพิ่ม contrast ของตัวหนังสือรองไปด้วย */
 :root[data-zoom='lg'], :root[data-zoom='xl'] {
   --text-faint: #6b7585;

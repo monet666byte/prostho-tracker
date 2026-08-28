@@ -231,6 +231,28 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   animation: shimmer 1.4s ease infinite;
 }
 
+/* ── ปุ่มลอยสลับมุมมอง นศ./อาจารย์ — เฉพาะจอที่แถบเดโมถูกซ่อน (มือถือ + แท็บเล็ตสัมผัส) ── */
+.rolefab { display: none; }
+@media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  .rolefab {
+    position: fixed;
+    right: 14px;
+    bottom: 86px; /* พ้น tab bar ฝั่งนักศึกษา */
+    z-index: 70;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 15px;
+    border-radius: 99px;
+    background: var(--toast-bg);
+    color: #fff;
+    font: 600 12px var(--font-body);
+    box-shadow: 0 8px 22px rgba(16, 24, 40, 0.35);
+    opacity: 0.93;
+  }
+  .rolefab--low { bottom: 18px; } /* ฝั่งอาจารย์ไม่มี tab bar */
+}
+
 /* ── โฟกัสด้วยคีย์บอร์ดต้องมองเห็น (accessibility) — โผล่เฉพาะ Tab ไม่โผล่ตอนคลิกเมาส์ ── */
 :focus-visible {
   outline: 2px solid var(--accent);

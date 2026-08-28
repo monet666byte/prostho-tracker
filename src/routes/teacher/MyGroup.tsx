@@ -261,14 +261,13 @@ export default function MyGroup() {
 
         <div className="panel" style={{ marginTop: 16 }}>
           <h3>{t('เปรียบเทียบกลุ่มกับค่าเฉลี่ยชั้นปี')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '300px 1px 1fr', gap: 26, alignItems: 'start', marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 26, alignItems: 'start', marginTop: 8 }}>
             <DivergingBars
               axes={groupProfile}
               reference={cohortProfile}
               label={`${t('กลุ่ม')} ${group.replace('TH-', '')}`}
               referenceLabel={t('ค่าเฉลี่ยทั้งชั้นปี')}
             />
-            <span style={{ background: 'var(--divider)', alignSelf: 'stretch' }} />
             <div>
               <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>{t('รายคนในกลุ่ม')}</div>
               <p className="sub" style={{ marginBottom: 12 }}>{t('% ของเป้าหมายแต่ละด้าน')}</p>

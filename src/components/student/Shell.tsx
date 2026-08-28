@@ -9,6 +9,7 @@ import { useApp } from '../../store/app';
 import { clock } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { DemoBar } from '../DemoBar';
+import { RoleFab } from '../RoleFab';
 
 const TABS = [
   { to: '/app', label: t('หน้าแรก'), Icon: House, end: true },
@@ -117,6 +118,7 @@ export function Shell({ children, footer, overlay }: { children: ReactNode; foot
         <div className="screen screen--pad">{children}</div>
         {footer}
         <TabBar />
+        <RoleFab />
         <ToastView />
         {overlay}
       </PhoneFrame>
