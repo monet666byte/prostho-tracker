@@ -1,4 +1,5 @@
 import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -146,6 +147,19 @@ export default function Home() {
   const checkedInToday = !!todayCheckIn;
   const todaySteps = useStepsOnDates(session ? [{ studentId: session.studentId, date: today }] : []);
   const todayStepCount = (todaySteps.get(`${session?.studentId}|${today}`) ?? []).length;
+
+  // เตือนเติมกิจกรรมแบบสุภาพ: เปิดแอปช่วงบ่ายแล้วคาบวันนี้ยังว่างอยู่ → toast ครั้งเดียวต่อวัน
+  // (ผู้ใช้ขอให้มีตัวตาม แต่ต้องไม่จิกจนรำคาญ — โนติเด้งนอกแอปรอ backend phase 2)
+  const todayNeedsDetail = !!todayCheckIn && todayCheckIn.activities.length === 0;
+  useEffect(() => {
+    if (!todayNeedsDetail || new Date().getHours() < 12) return;
+    try {
+      if (localStorage.getItem('pt-fill-nudge') === today) return;
+      localStorage.setItem('pt-fill-nudge', today);
+    } catch { /* private mode — เตือนซ้ำได้ ไม่เป็นไร */ }
+    showToast({ message: t('คาบวันนี้ยังไม่ได้เติมกิจกรรม — ว่างแล้วแวะเติมนิดนึงนะครับ'), tone: 'default' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayNeedsDetail]);
 
   // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมมาเติมทีหลังได้
   // (ผู้ใช้ขอ: 9 โมงต้องรีบทำงาน ไม่มีเวลาวุ่นวายกับมือถือ · กดล่วงหน้าก่อนเริ่มคาบได้)

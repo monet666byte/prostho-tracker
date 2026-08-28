@@ -591,6 +591,7 @@ export const DICT: Record<string, string> = {
   'เช็คอินล่วงหน้าก่อนเริ่มคาบได้เลย · เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ (นับตรงเวลาเมื่อก่อน 9:15 เช้า / 13:15 บ่าย)':
     'You can check in before the period starts · time is recorded automatically and cannot be edited (on time = before 9:15 AM / 1:15 PM)',
   'บันทึกกิจกรรม': 'Save activities',
+  'คาบวันนี้ยังไม่ได้เติมกิจกรรม — ว่างแล้วแวะเติมนิดนึงนะครับ': "Today's period has no activities yet — add them when you have a moment",
   'เช็คอินแล้ว {time} น. ✓': 'Checked in at {time} ✓',
   'ว่างเมื่อไหร่ แตะตรงนี้เพื่อเติมว่าคาบนี้ทำอะไรบ้าง': 'When you have a moment, tap here to add what you did this period',
 
