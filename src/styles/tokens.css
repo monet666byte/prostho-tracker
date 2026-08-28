@@ -75,40 +75,6 @@
 
 /* ── ธีมสีทางเลือก — เลือกได้จากแถบเดโม (จำค่าใน localStorage) ── */
 
-/* เขียวคลินิก: โทนหมอๆ สงบ สบายตา */
-html.theme-teal {
-  --accent: #0d9488;
-  --accent-hover: #0b7a70;
-  --accent-tint: #e6f5f3;
-  --accent-ring: #d2ece8;
-  --accent-on-dark: #7fd4c9;
-  --bg-canvas: #eaefed;
-  --bg-app: #f4f7f6;
-  --bg-dash: #f6f9f8;
-  --bg-subtle: #f9fbfa;
-  --shadow-accent: 0 6px 18px rgba(13, 148, 136, 0.26);
-  --toast-bg: #0f2e2a;
-}
-
-/* กรมท่าอบอุ่น: น้ำเงินเข้มขึ้น พื้นอุ่นขึ้น ดูนิ่งเป็นทางการ */
-html.theme-navy {
-  --accent: #24439b;
-  --accent-hover: #1a3277;
-  --accent-tint: #ecf0fa;
-  --accent-ring: #dde4f4;
-  --accent-on-dark: #9db4f0;
-  --bg-canvas: #edecE8;
-  --bg-app: #f8f7f4;
-  --bg-dash: #faf9f6;
-  --bg-subtle: #fbfaf8;
-  --fill: #f2f1ed;
-  --fill-2: #efeeea;
-  --border: #e9e7e1;
-  --border-2: #e3e1da;
-  --shadow-accent: 0 6px 18px rgba(36, 67, 155, 0.26);
-  --toast-bg: #14203e;
-}
-
 /* ม่วงพลัม: หรูขึ้น นุ่มขึ้น */
 html.theme-plum {
   --accent: #6d3fd4;
@@ -137,21 +103,6 @@ html.theme-ink {
   --bg-subtle: #fafafb;
   --shadow-accent: 0 6px 18px rgba(70, 83, 110, 0.24);
   --toast-bg: #1a212c;
-}
-
-/* ฟ้าทะเลลึก: cyan เข้ม สดแต่นิ่ง */
-html.theme-ocean {
-  --accent: #0e7490;
-  --accent-hover: #0a5c73;
-  --accent-tint: #e6f4f8;
-  --accent-ring: #d3ebf2;
-  --accent-on-dark: #7cc8dd;
-  --bg-canvas: #eaeff1;
-  --bg-app: #f4f7f8;
-  --bg-dash: #f6f9fa;
-  --bg-subtle: #f9fbfc;
-  --shadow-accent: 0 6px 18px rgba(14, 116, 144, 0.26);
-  --toast-bg: #0c2b33;
 }
 
 /* สีประจำประเภทงาน */

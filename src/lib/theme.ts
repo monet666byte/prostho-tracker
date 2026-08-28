@@ -3,12 +3,9 @@
 export const THEME_KEY = 'pt-theme';
 
 export const THEMES: Array<{ cls: string; label: string }> = [
-  { cls: '', label: 'น้ำเงิน (เดิม)' },
-  { cls: 'theme-teal', label: 'เขียวคลินิก' },
-  { cls: 'theme-navy', label: 'กรมท่าอบอุ่น' },
-  { cls: 'theme-plum', label: 'ม่วงพลัม' },
-  { cls: 'theme-ink', label: 'เทาหมึก มินิมอล' },
-  { cls: 'theme-ocean', label: 'ฟ้าทะเลลึก' },
+  { cls: '', label: 'น้ำเงิน' },
+  { cls: 'theme-plum', label: 'ม่วง' },
+  { cls: 'theme-ink', label: 'เทา' },
 ];
 
 const ALL = THEMES.map((t) => t.cls).filter(Boolean);
@@ -26,7 +23,9 @@ export function applyTheme(cls: string) {
 
 export function initTheme() {
   try {
-    applyTheme(localStorage.getItem(THEME_KEY) ?? '');
+    const saved = localStorage.getItem(THEME_KEY) ?? '';
+    // ธีมที่เคยมีแล้วถูกตัดออก (teal/navy/ocean) — ถ้าค้างใน localStorage ให้กลับมาเป็นน้ำเงิน
+    applyTheme(THEMES.some((t) => t.cls === saved) ? saved : '');
   } catch {
     /* private mode */
   }
