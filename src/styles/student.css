@@ -50,7 +50,8 @@
 .phone {
   width: var(--phone-w);
   height: var(--phone-h);
-  background: var(--bg-app);
+  /* ไล่ฟ้าอ่อนจางๆ ด้านบน เพิ่มมิติโดยไม่เปลี่ยนโครง (ผู้ใช้ขอ 28 ส.ค. หลังดูบนมือถือแล้ว plain) */
+  background: linear-gradient(178deg, var(--accent-tint) 0%, var(--bg-app) 30%);
   border-radius: 42px;
   border: 10px solid var(--bezel);
   box-shadow: var(--shadow-frame);
@@ -66,7 +67,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--surface);
+  background: transparent;
   font: 600 12.5px var(--font-mono);
   color: var(--text);
   flex: none;
@@ -111,9 +112,8 @@
 .screen--pad { padding-bottom: 18px; }
 
 .s-header {
-  background: var(--surface);
+  background: transparent;
   padding: 12px 20px 13px;
-  border-bottom: 1px solid var(--divider);
 }
 .s-header--row { display: flex; align-items: center; gap: 12px; }
 .iconbtn {

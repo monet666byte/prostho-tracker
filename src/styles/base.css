@@ -85,10 +85,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   width: 100%;
   height: 52px;
   border-radius: 14px;
-  background: var(--accent);
+  background: linear-gradient(160deg, var(--accent) 0%, var(--accent-hover) 130%);
   color: #fff;
   font: 600 15px var(--font-head);
-  box-shadow: 0 2px 0 var(--accent-hover);
+  box-shadow: 0 2px 0 var(--accent-hover), 0 8px 18px rgba(43, 92, 230, 0.22);
   transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
 }
 .btn:hover { background: var(--accent-hover); }
