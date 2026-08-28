@@ -5,7 +5,7 @@ import type { WorkType } from '../../domain/types';
 export function TypeBadge({ type, style }: { type: WorkType; style?: CSSProperties }) {
   const t = TYPES[type];
   return (
-    <span className="badge" style={{ background: t.tint, color: t.color, ...style }}>
+    <span className="badge" style={{ background: t.tint, color: t.ink, ...style }}>
       {t.short}
     </span>
   );

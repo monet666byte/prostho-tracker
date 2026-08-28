@@ -14,19 +14,21 @@ export interface TypeMeta {
   short: string;
   full: string;
   prefix: string;
-  color: string;
-  tint: string;
+  color: string; // สีกราฟ/หลอด/จุด — อ่อนได้
+  tint: string; // พื้นหลัง badge
+  ink: string; // สีตัวหนังสือบน tint — ต้องเข้มพอให้อ่านออก
 }
 
+/* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) และแต่ละประเภทต้องต่างกัน
+   ทั้งเฉดสีและความอ่อน-เข้ม — ฟีดแบควันเดโม 28 ส.ค. */
 export const TYPES: Record<WorkType, TypeMeta> = {
-  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2B5CE6', tint: '#EDF1FE' },
-  /* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) — ฟีดแบควันเดโม 28 ส.ค. */
-  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#7A5AF8', tint: '#F1EEFE' },
-  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C026D3', tint: '#FBE9FC' },
-  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#4338CA', tint: '#EBEAFD' },
-  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#0891B2', tint: '#E4F5FA' },
-  RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7' },
-  RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5' },
+  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2B5CE6', tint: '#EDF1FE', ink: '#2B5CE6' },
+  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#F599C6', tint: '#FDE7F2', ink: '#C11574' },
+  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C026D3', tint: '#FBE9FC', ink: '#A21CAF' },
+  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#3730A3', tint: '#ECEBFA', ink: '#3730A3' },
+  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#0891B2', tint: '#E4F5FA', ink: '#0891B2' },
+  RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7', ink: '#64748B' },
+  RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5', ink: '#475569' },
 };
 
 /** ลำดับการแสดงรายการตาม INTRO ของชีต */

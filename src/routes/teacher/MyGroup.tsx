@@ -181,7 +181,7 @@ export default function MyGroup() {
                               <i style={{ width: `${(main.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                             </span>
                             <span className="mono faint" style={{ fontSize: 10, flex: 'none' }}>{main.progression}/10</span>
-                            <span className="badge" style={{ background: TYPES[main.type].tint, color: TYPES[main.type].color, flex: 'none' }}>
+                            <span className="badge" style={{ background: TYPES[main.type].tint, color: TYPES[main.type].ink, flex: 'none' }}>
                               {main.code}
                             </span>
                             <span className="worknow__name">{main.name}</span>
@@ -223,7 +223,7 @@ export default function MyGroup() {
                                 <i style={{ width: `${(pc.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                               </span>
                               <span className="mono faint" style={{ fontSize: 10, flex: 'none' }}>{pc.progression}/10</span>
-                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].color, flex: 'none' }}>
+                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
                                 {pc.code}
                               </span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>{pc.name}</span>
@@ -242,7 +242,7 @@ export default function MyGroup() {
                                 <i style={{ width: '100%', background: 'var(--success)' }} />
                               </span>
                               <span className="mono" style={{ fontSize: 10, flex: 'none', color: 'var(--success)' }}>10/10</span>
-                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].color, flex: 'none' }}>
+                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
                                 {TYPES[pc.type].prefix}
                               </span>
                               <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>จบเคสแล้ว ✓</span>

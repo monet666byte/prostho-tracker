@@ -194,7 +194,7 @@ export default function Review() {
                     <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
                       {Math.max(progression(w), 0)}/{maxProgression(w)}
                     </span>
-                    <span className="chip" style={{ background: meta.tint, color: meta.color }}>{percentCompleted(w)}%</span>
+                    <span className="chip" style={{ background: meta.tint, color: meta.ink }}>{percentCompleted(w)}%</span>
                     <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 140 }}>
                       {cur ? procLabel(w.type, cur) : 'ยังไม่เริ่ม'}
                     </span>

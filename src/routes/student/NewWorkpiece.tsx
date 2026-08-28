@@ -97,7 +97,7 @@ export default function NewWorkpiece() {
                   setSect2Removable(isRemovable);
                   setSect2Fixed(!isRemovable);
                 }}
-                style={type === k ? { background: TYPES[k].color } : undefined}
+                style={type === k ? { background: TYPES[k].ink } : undefined}
               >
                 {TYPES[k].short}
               </button>
@@ -109,7 +109,7 @@ export default function NewWorkpiece() {
           className={`t-${type}`}
           style={{ background: 'var(--type-tint)', borderRadius: 12, padding: '11px 13px' }}
         >
-          <div style={{ font: '600 12.5px var(--font-head)', color: meta.color }}>{meta.full}</div>
+          <div style={{ font: '600 12.5px var(--font-head)', color: meta.ink }}>{meta.full}</div>
           <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
             <span className="mono">{meta.prefix}</span>-0 ถึง {meta.prefix}-10
           </div>

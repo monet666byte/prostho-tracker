@@ -19,7 +19,7 @@ function TypeBlock({ type, progression }: { type: WorkType; progression: number 
   if (!cast.length && !prefab.length) {
     return (
       <div className="stepinfo__type">
-        <span className="badge" style={{ background: meta.tint, color: meta.color }}>{meta.short}</span>
+        <span className="badge" style={{ background: meta.tint, color: meta.ink }}>{meta.short}</span>
         <span className="faint" style={{ font: '400 11px var(--font-body)' }}>ไม่มีขั้นตอนที่ progression นี้</span>
       </div>
     );
@@ -43,7 +43,7 @@ function TypeBlock({ type, progression }: { type: WorkType; progression: number 
 
   return (
     <div className="stepinfo__type">
-      <span className="badge" style={{ background: meta.tint, color: meta.color, flex: 'none' }}>{meta.short}</span>
+      <span className="badge" style={{ background: meta.tint, color: meta.ink, flex: 'none' }}>{meta.short}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         {differs ? (
           <>
