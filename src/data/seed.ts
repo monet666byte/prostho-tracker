@@ -414,6 +414,16 @@ function buildDemoUpdates(checkins: CheckIn[]): ProgressUpdate[] {
 }
 
 export async function seedIfEmpty(): Promise<void> {
+  const { setSyncPaused } = await import('./cloudSync');
+  setSyncPaused(true);
+  try {
+    await seedIfEmptyInner();
+  } finally {
+    setSyncPaused(false);
+  }
+}
+
+async function seedIfEmptyInner(): Promise<void> {
   const version = await kvGet<number>('seedVersion', 0);
   if (version === SEED_VERSION && (await db.students.count()) > 0) return;
 

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { kvGet, kvSet } from '../data/db';
 import { getSettings, saveSettings } from '../data/repo';
+import { cloudReset, initCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, resetDemoData, seedIfEmpty } from '../data/seed';
+import { cloudEnabled } from '../lib/cloud';
 import type { Role, Settings } from '../domain/types';
 
 export interface Session {
@@ -70,6 +72,8 @@ export const useApp = create<AppState>((set, get) => ({
 
   async init() {
     await seedIfEmpty();
+    // เชื่อมตู้แฟ้มกลาง (ถ้ามีกุญแจใน .env.local) — ไม่บล็อกการเปิดแอป
+    void initCloudSync();
     // เวอร์ชันแชร์ก็ผ่านหน้า login เหมือนกัน — ทุกคนจะได้เห็นป้าย DEMO และเลือกบทบาทเอง
     const [settings, session] = await Promise.all([getSettings(), kvGet<Session | null>('session', null)]);
     // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
@@ -102,7 +106,9 @@ export const useApp = create<AppState>((set, get) => ({
 
   async resetDemo() {
     const session = get().session;
-    await resetDemoData();
+    // โหมด cloud: รีเซ็ต = ดึงความจริงจากตู้กลางลงมาใหม่ (ไม่ seed ทับ — ตู้กลางเป็นของทุกคน)
+    if (cloudEnabled) await cloudReset();
+    else await resetDemoData();
     if (session) await kvSet('session', session);
     const settings = await getSettings();
     set({ settings, sheet: null, toast: null, offline: false, revision: get().revision + 1 });
