@@ -1,9 +1,9 @@
-import { CalendarCheck, CheckCircle, Clock, Exam, Export, HourglassMedium, Plus } from '@phosphor-icons/react';
+import { CalendarCheck, CheckCircle, Clock, Exam, Export, HourglassMedium, NotePencil, Plus } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
-import { addCheckIn } from '../../data/repo';
+import { addCheckIn, updateCheckIn } from '../../data/repo';
 import { ACTIVITIES, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
 import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
@@ -16,6 +16,8 @@ export default function CheckInPage() {
   const checkins = useCheckIns(session?.studentId);
   const works = useWorkpieces(session?.studentId);
   const [formOpen, setFormOpen] = useState(false);
+  // เช็คอินด่วนจากหน้าแรกยังไม่มีกิจกรรม — เปิดฟอร์มโหมดเติมรายละเอียดให้คาบเดิมแทนการสร้างใหม่
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -26,7 +28,19 @@ export default function CheckInPage() {
   const [note, setNote] = useState('');
 
   const today = new Date().toISOString().slice(0, 10);
-  const doneToday = checkins.some((c) => c.date === today);
+  const todayEntry = checkins.find((c) => c.date === today);
+  const doneToday = !!todayEntry;
+  const todayNeedsDetail = !!todayEntry && todayEntry.activities.length === 0;
+
+  function openFillForm() {
+    if (!todayEntry) return;
+    setEditingId(todayEntry.id);
+    setDate(todayEntry.date);
+    setActivities([...todayEntry.activities]);
+    setPatientId(todayEntry.patientId ?? '');
+    setNote(todayEntry.note ?? '');
+    setFormOpen(true);
+  }
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
   const patients = useMemo(() => {
     const seen = new Map<string, string>();
@@ -48,23 +62,30 @@ export default function CheckInPage() {
 
   async function submit() {
     if (!session) return;
-    // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — ตรงเวลา/สายคำนวณจากเวลานี้
-    // (สมมติฐานเดโม: คาบเช้าเริ่ม 09:00 บ่าย 13:00 เผื่อสาย 15 นาที — ของจริงผูกกับตารางคาบ)
-    const now = new Date();
-    const checkinAt = now.toTimeString().slice(0, 5);
-    const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
-    await addCheckIn({
-      studentId: session.studentId,
-      date,
-      punctual,
-      checkinAt,
-      noPatient,
-      patientId: patientId || undefined,
-      activities,
-      note,
-      actor: 'นศ. ก',
-    });
+    if (editingId) {
+      // โหมดเติมรายละเอียด — เวลากับความตรงเวลาถูกล็อกไว้ตั้งแต่ตอนเช็คอินด่วนแล้ว
+      await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, 'นศ. ก');
+    } else {
+      // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — ตรงเวลา/สายคำนวณจากเวลานี้
+      // (สมมติฐานเดโม: คาบเช้าเริ่ม 09:00 บ่าย 13:00 เผื่อสาย 15 นาที — ของจริงผูกกับตารางคาบ)
+      const now = new Date();
+      const checkinAt = now.toTimeString().slice(0, 5);
+      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      await addCheckIn({
+        studentId: session.studentId,
+        date,
+        punctual,
+        checkinAt,
+        noPatient,
+        patientId: patientId || undefined,
+        activities,
+        note,
+        actor: 'นศ. ก',
+      });
+    }
+    const wasEditing = !!editingId;
     setFormOpen(false);
+    setEditingId(null);
     setActivities([]);
     setNote('');
     // เช็คอินคือจุดเริ่มของคาบ — ถ้าบอกแล้วว่าทำกับผู้ป่วยคนไหน พาไปเคสนั้นต่อเลย ไม่ต้องไปหาเอง
@@ -74,23 +95,25 @@ export default function CheckInPage() {
           .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0]
       : undefined;
     showToast({
-      message: target
-        ? t('เช็คอินแล้ว — ไปที่เคส {d} ต่อเลย', { d: target.detail })
-        : t('เช็คอินคาบ {d} แล้ว · รออาจารย์ประเมิน', { d: thaiShort(date) }),
+      message: wasEditing
+        ? t('เติมกิจกรรมเรียบร้อย — ขอบคุณครับ')
+        : target
+          ? t('เช็คอินแล้ว — ไปที่เคส {d} ต่อเลย', { d: target.detail })
+          : t('เช็คอินคาบ {d} แล้ว · รออาจารย์ประเมิน', { d: thaiShort(date) }),
       tone: 'success',
     });
     if (target) navigate(`/app/work/${target.id}`);
   }
 
   const overlay = formOpen ? (
-    <div className="backdrop" onClick={() => setFormOpen(false)}>
+    <div className="backdrop" onClick={() => { setFormOpen(false); setEditingId(null); }}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" />
-        <h3 className="h3">{t('เช็คอินคาบคลินิก')}</h3>
+        <h3 className="h3">{editingId ? t('เติมรายละเอียดคาบวันนี้') : t('เช็คอินคาบคลินิก')}</h3>
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>{t('วันที่คาบ')}</span>
-            <input className="input mono" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="input mono" type="date" value={date} disabled={!!editingId} onChange={(e) => setDate(e.target.value)} />
           </label>
           <span
             style={{
@@ -100,11 +123,13 @@ export default function CheckInPage() {
             }}
           >
             <Clock size={15} weight="fill" style={{ color: 'var(--text-muted)' }} />
-            {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
+            {t('{time} น.', { time: editingId ? (todayEntry?.checkinAt ?? '') : new Date().toTimeString().slice(0, 5) })}
           </span>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ — ตรงเวลา/มาสายตัดสินจากเวลานี้ (เช้า 9:00 / บ่าย 13:00 เผื่อ 15 นาที)')}
+          {editingId
+            ? t('เวลาถูกบันทึกไว้ตั้งแต่ตอนเช็คอินแล้ว — ตรงนี้แค่เติมว่าทำอะไรบ้าง')
+            : t('เช็คอินล่วงหน้าก่อนเริ่มคาบได้เลย · เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ (นับตรงเวลาเมื่อก่อน 9:15 เช้า / 13:15 บ่าย)')}
         </p>
 
         <div className="field" style={{ marginTop: 12 }}>
@@ -143,9 +168,9 @@ export default function CheckInPage() {
 
         <button className="btn" style={{ height: 54, marginTop: 15 }} disabled={activities.length === 0} onClick={submit}>
           <CalendarCheck size={19} weight="fill" />
-          {t('เช็คอิน')}
+          {editingId ? t('บันทึกกิจกรรม') : t('เช็คอิน')}
         </button>
-        <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => setFormOpen(false)}>{t('ยกเลิก')}</button>
+        <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => { setFormOpen(false); setEditingId(null); }}>{t('ยกเลิก')}</button>
       </div>
     </div>
   ) : undefined;
@@ -161,7 +186,21 @@ export default function CheckInPage() {
 
       {/* minmax(0,1fr): กันแถวที่มีชิป nowrap ดันคอลัมน์ grid กว้างทะลุ padding ขวา (เห็นชัดใน Safari) */}
       <div style={{ padding: '14px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 11 }}>
-        {doneToday ? (
+        {todayNeedsDetail ? (
+          <button
+            className="card"
+            style={{ padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left', borderColor: 'var(--accent-ring)' }}
+            onClick={openFillForm}
+          >
+            <NotePencil size={20} color="var(--accent)" style={{ flex: 'none' }} />
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('เช็คอินแล้ว {time} น. ✓', { time: todayEntry?.checkinAt ?? '' })}</span>
+              <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
+                {t('ว่างเมื่อไหร่ แตะตรงนี้เพื่อเติมว่าคาบนี้ทำอะไรบ้าง')}
+              </span>
+            </span>
+          </button>
+        ) : doneToday ? (
           <div
             className="card"
             style={{ padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'center', background: 'var(--success-tint)', borderColor: '#CDEEDF' }}
@@ -209,7 +248,7 @@ export default function CheckInPage() {
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
                   >
-                    {c.activities.map((a) => t(a)).join(' · ')}
+                    {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
                   </span>
                 </span>
                 {!c.punctual && (

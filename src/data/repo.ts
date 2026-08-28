@@ -436,6 +436,21 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
   return entry;
 }
 
+/** เติมรายละเอียดคาบทีหลัง — เช็คอินด่วนแตะเดียวเก็บแค่เวลา แล้วค่อยมาบอกว่าทำอะไร */
+export async function updateCheckIn(
+  id: string,
+  patch: { activities: string[]; patientId?: string; noPatient?: boolean; note?: string },
+  actor: string,
+): Promise<void> {
+  await db.checkins.update(id, {
+    activities: patch.activities,
+    noPatient: !!patch.noPatient,
+    patientId: patch.noPatient ? undefined : patch.patientId,
+    note: patch.note?.trim() || undefined,
+  });
+  await logAudit(`${t('เติมรายละเอียดคาบ')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`, actor);
+}
+
 function checkInDateLabel(iso: string): string {
   const d = new Date(iso);
   return `${d.getDate()}/${d.getMonth() + 1}`;

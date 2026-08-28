@@ -579,6 +579,21 @@ export const DICT: Record<string, string> = {
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
 
+  /* ── เช็คอินด่วน + เติมกิจกรรมทีหลัง ── */
+  'เติมรายละเอียดคาบ': 'Filled in period details',
+  'ยังไม่ระบุกิจกรรม': 'activities not specified yet',
+  'เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย': 'Checked in at {time} — add activities whenever you have time',
+  'เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง': 'Checked in at {time} · tap to add activities when free',
+  'ยังไม่เช็คอิน — แตะครั้งเดียว เช็คอินเลย': 'Not checked in — one tap checks you in',
+  'เติมกิจกรรมเรียบร้อย — ขอบคุณครับ': 'Activities saved — thank you',
+  'เติมรายละเอียดคาบวันนี้': "Fill in today's period",
+  'เวลาถูกบันทึกไว้ตั้งแต่ตอนเช็คอินแล้ว — ตรงนี้แค่เติมว่าทำอะไรบ้าง': 'Time was recorded at check-in — here you only add what you did',
+  'เช็คอินล่วงหน้าก่อนเริ่มคาบได้เลย · เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ (นับตรงเวลาเมื่อก่อน 9:15 เช้า / 13:15 บ่าย)':
+    'You can check in before the period starts · time is recorded automatically and cannot be edited (on time = before 9:15 AM / 1:15 PM)',
+  'บันทึกกิจกรรม': 'Save activities',
+  'เช็คอินแล้ว {time} น. ✓': 'Checked in at {time} ✓',
+  'ว่างเมื่อไหร่ แตะตรงนี้เพื่อเติมว่าคาบนี้ทำอะไรบ้าง': 'When you have a moment, tap here to add what you did this period',
+
   /* ── บรรทัดให้กำลังใจรายวัน ── */
   '{p} เหลือขั้นเดียวก็จบเคสแล้ว — โชคดีกับคาบนี้ครับ 🍀': '{p} is one step from completion — good luck this period! 🍀',
   'เคสของ{p} ใกล้จบแล้ว เหลืออีก {n} ขั้น — ค่อยๆ เก็บครับ': "{p}'s case is almost done, {n} steps to go — steady as you go",

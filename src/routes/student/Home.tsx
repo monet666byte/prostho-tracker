@@ -2,6 +2,7 @@ import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, S
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
+import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { relative } from '../../lib/date';
@@ -127,7 +128,7 @@ function greeting() {
 }
 
 export default function Home() {
-  const { session, settings, openSheet } = useApp();
+  const { session, settings, openSheet, showToast, touch } = useApp();
   const student = useStudent(session?.studentId);
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
@@ -145,6 +146,21 @@ export default function Home() {
   const checkedInToday = !!todayCheckIn;
   const todaySteps = useStepsOnDates(session ? [{ studentId: session.studentId, date: today }] : []);
   const todayStepCount = (todaySteps.get(`${session?.studentId}|${today}`) ?? []).length;
+
+  // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมมาเติมทีหลังได้
+  // (ผู้ใช้ขอ: 9 โมงต้องรีบทำงาน ไม่มีเวลาวุ่นวายกับมือถือ · กดล่วงหน้าก่อนเริ่มคาบได้)
+  async function quickCheckIn() {
+    if (!session || checkedInToday) return;
+    const now = new Date();
+    const checkinAt = now.toTimeString().slice(0, 5);
+    const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+    await addCheckIn({
+      studentId: session.studentId, date: today, punctual, checkinAt,
+      noPatient: false, activities: [], note: '', actor: 'นศ. ก',
+    });
+    touch();
+    showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: checkinAt }), tone: 'success' });
+  }
 
   return (
     <Shell overlay={<ConfirmSheet />}>
@@ -170,33 +186,41 @@ export default function Home() {
 
       {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
       <div style={{ padding: '0 16px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
-      <Link
-        to="/app/checkin"
-        className="card"
-        style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 13px', borderRadius: 16 }}
-      >
-        {checkedInToday ? (
-          <CheckSquare size={26} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
-        ) : (
-          <Square size={26} color="var(--warning)" style={{ flex: 'none' }} />
-        )}
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</span>
-          <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
-            {checkedInToday
-              ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
-              : t('ยังไม่เช็คอิน — กดเพื่อเช็คอิน')}
-          </span>
-          {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555)
-              ก่อนเช็คอินการ์ดโฟกัสที่ปุ่มกดอย่างเดียว · ข้อความเลือกจากสถานการณ์จริงใน domain/cheer.ts */}
-          {checkedInToday && (
-            <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
-              {cheerLine(works, checkins, settings)}
+      {(() => {
+        const inner = (
+          <>
+            {checkedInToday ? (
+              <CheckSquare size={26} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
+            ) : (
+              <Square size={26} color="var(--warning)" style={{ flex: 'none' }} />
+            )}
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</span>
+              <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
+                {checkedInToday
+                  ? (todayCheckIn?.activities.length ?? 0) > 0
+                    ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
+                    : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })
+                  : t('ยังไม่เช็คอิน — แตะครั้งเดียว เช็คอินเลย')}
+              </span>
+              {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555) */}
+              {checkedInToday && (
+                <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
+                  {cheerLine(works, checkins, settings)}
+                </span>
+              )}
             </span>
-          )}
-        </span>
-        <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
-      </Link>
+            <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
+          </>
+        );
+        const cardStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 11, padding: '12px 13px', borderRadius: 16, width: '100%', textAlign: 'left' };
+        // ยังไม่เช็คอิน = แตะเดียวเช็คอินทันที · เช็คอินแล้ว = พาไปหน้าคาบ (เติมกิจกรรม/ดูประวัติ)
+        return checkedInToday ? (
+          <Link to="/app/checkin" className="card" style={cardStyle}>{inner}</Link>
+        ) : (
+          <button className="card" style={cardStyle} onClick={quickCheckIn}>{inner}</button>
+        );
+      })()}
 
       {hero && <HeroCard w={hero} pending={pending.has(hero.id)} stale={isStale(hero, settings)} onPass={() => openSheet(hero.id)} />}
 

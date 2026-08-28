@@ -169,7 +169,7 @@ export default function Evaluate() {
                       )}
                     </div>
                     <div style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-body)', marginTop: 6 }}>
-                      {c.activities.map((a) => t(a)).join(' · ')}
+                      {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)' }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
                       {patient && <span className="mono" style={{ color: 'var(--text-faint)' }}> · {t(patient.name)} (HN {patient.hn})</span>}
                     </div>
                     {c.note && (
@@ -259,7 +259,7 @@ export default function Evaluate() {
                 <tr key={c.id}>
                   <td style={{ font: '600 11.5px var(--font-body)' }}>{t(studentById.get(c.studentId)?.name ?? '')}</td>
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
-                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.map((a) => t(a)).join(' · ')}</td>
+                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}</td>
                   <td>
                     <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
                       <CheckCircle size={11} weight="fill" /> {totalScore(c.scores)}/{MAX_TOTAL}
