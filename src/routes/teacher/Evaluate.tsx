@@ -88,12 +88,19 @@ export default function Evaluate() {
   );
   const evaluatedInGroup = useMemo(() => inGroup.filter((c) => c.status === 'evaluated'), [inGroup]);
 
-  // ค่าเฉลี่ยรายหัวข้อ (0–3) — ต่อคน และของทั้งกลุ่มไว้เป็นเส้นเทียบ
+  // รายหัวข้อ (0–3) ต่อคน และของทั้งกลุ่มไว้เป็นเส้นเทียบ — รูปทรงกราฟใช้ค่าเฉลี่ย
+  // แต่ตัวเลขที่โชว์เป็น "จำนวนครั้ง" ที่ได้ 3/1/0 (อาจารย์คอมเมนต์ว่าไม่อยากเห็นเลขเฉลี่ย)
   const criterionAvg = (rows: CheckIn[]): ProfileAxis[] =>
     CRITERIA.map((cr) => {
       const vals = rows.map((c) => c.scores?.[cr.key] ?? 0);
       const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-      return { key: cr.key, label: t(cr.short), value: Math.round((avg / 3) * 100), detail: `${avg.toFixed(1)}/3` };
+      const count = (n: number) => vals.filter((v) => v === n).length;
+      return {
+        key: cr.key,
+        label: t(cr.short),
+        value: Math.round((avg / 3) * 100),
+        detail: `3×${count(3)} · 1×${count(1)} · 0×${count(0)}`,
+      };
     });
   const selectedId = chartStudent ?? groupStudents[0]?.id ?? null;
   const selectedRows = evaluatedInGroup.filter((c) => c.studentId === selectedId);
@@ -275,7 +282,7 @@ export default function Evaluate() {
 
         <div className="panel" style={{ marginTop: 16 }}>
           <h3>{t('กราฟคะแนนรายคน')}</h3>
-          <p className="sub">{t('เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5 (ขยายช่วงให้เห็นความต่าง)')}</p>
+          <p className="sub">{t('ตัวเลข = จำนวนคาบที่ได้ 3 / 1 / 0 ของแต่ละหัวข้อ · เงาเทา = ค่าเฉลี่ยของกลุ่มไว้เทียบ · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5')}</p>
 
           <div className="pickrow" style={{ marginTop: 10 }}>
             {groupStudents.map((st) => (

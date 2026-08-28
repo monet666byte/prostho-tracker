@@ -398,8 +398,8 @@ export const DICT: Record<string, string> = {
   'พับเหลือ 5 แถว': 'Collapse to 5 rows',
   'ดูทั้งหมด ({n} รายการ)': 'View all ({n} items)',
   'กราฟคะแนนรายคน': 'Per-student score charts',
-  'เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5 (ขยายช่วงให้เห็นความต่าง)':
-    'Averaged over all evaluated periods · grey shade = group average · radar scale: rim = 3, center = 1.5 (zoomed to show differences)',
+  'ตัวเลข = จำนวนคาบที่ได้ 3 / 1 / 0 ของแต่ละหัวข้อ · เงาเทา = ค่าเฉลี่ยของกลุ่มไว้เทียบ · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5':
+    'Numbers = how many periods scored 3 / 1 / 0 per topic · grey shade = group average for comparison · radar scale: rim = 3, center = 1.5',
   'ยังไม่มีคาบที่ประเมินแล้วของคนนี้': 'No evaluated periods for this student yet',
   'เฉลี่ยกลุ่ม': 'Group avg',
   'คะแนนรวมรายคาบ (เต็ม {n})': 'Total score per period (max {n})',

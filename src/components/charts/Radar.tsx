@@ -164,7 +164,7 @@ export function Radar({
             {axes.map((a, i) => (
               <tr key={a.key}>
                 <td style={{ font: '500 11.5px var(--font-body)' }}>{a.label}</td>
-                <td className="mono">{a.detail} · {a.value}%</td>
+                <td className="mono">{a.detail}</td>
                 {reference && <td className="mono faint">{reference[i].value}%</td>}
               </tr>
             ))}
