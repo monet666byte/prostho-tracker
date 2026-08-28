@@ -15,6 +15,7 @@ export function Radar({
   size = 260,
   onAxisClick,
   activeKey,
+  floor = 0,
 }: {
   axes: ProfileAxis[];
   reference?: ProfileAxis[];
@@ -24,6 +25,8 @@ export function Radar({
   /** ถ้าส่งมา: กดจุด/ชื่อหัวข้อได้ (ใช้เปิดกราฟรายหัวข้อ) */
   onAxisClick?: (key: string) => void;
   activeKey?: string | null;
+  /** % ที่ใจกลางวง (ตัดฐานสเกล) — ใช้เมื่อข้อมูลกระจุกช่วงบน เช่นคะแนน 0/1/3 ที่เฉลี่ยแล้วเกาะ 2–3 */
+  floor?: number;
 }) {
   const id = useId();
   const [hover, setHover] = useState<number | null>(null);
@@ -39,7 +42,18 @@ export function Radar({
 
   const point = (index: number, value: number) => {
     const angle = (-90 + (360 / n) * index) * (Math.PI / 180);
-    const d = (Math.max(0, Math.min(100, value)) / 100) * r;
+    const f = Math.max(0, Math.min(1, (value - floor) / (100 - floor)));
+    const d = f * r;
+    return [cx + Math.cos(angle) * d, cy + Math.sin(angle) * d] as const;
+  };
+  // วงกริดตามสเกลจริง: floor 50 (คะแนน 1.5 กลางวง) → วงที่คะแนน 2, 2.5, 3
+  const rings = floor > 0
+    ? [floor + (100 - floor) / 3, floor + ((100 - floor) * 2) / 3, 100]
+    : [50, 100];
+  // ตำแหน่งป้ายชื่อแกน — อิงรัศมีตรงๆ (ไม่ผ่านสเกล floor ไม่งั้นป้ายโดน clamp มาติดขอบวง)
+  const labelPoint = (index: number) => {
+    const angle = (-90 + (360 / n) * index) * (Math.PI / 180);
+    const d = 1.17 * r;
     return [cx + Math.cos(angle) * d, cy + Math.sin(angle) * d] as const;
   };
 
@@ -53,7 +67,7 @@ export function Radar({
           <title id={`${id}-t`}>{label} — โปรไฟล์ความคืบหน้า 6 ด้าน</title>
 
           {/* วงกริดแค่ 50 กับ 100 — น้อยเส้นเท่าที่ยังบอกสเกลได้ */}
-          {[50, 100].map((ring) => (
+          {rings.map((ring) => (
             <polygon
               key={ring}
               points={axes.map((_, i) => point(i, ring).join(',')).join(' ')}
@@ -96,7 +110,7 @@ export function Radar({
 
           {/* ป้ายแกนบรรทัดเดียว — ตัวเลขอยู่ใน tooltip กับตาราง ไม่ยัดลงรูป */}
           {axes.map((a, i) => {
-            const [x, y] = point(i, 117);
+            const [x, y] = labelPoint(i);
             const anchor = Math.abs(x - cx) < 6 ? 'middle' : x > cx ? 'start' : 'end';
             return (
               <text

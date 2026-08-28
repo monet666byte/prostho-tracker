@@ -274,7 +274,7 @@ export default function Evaluate() {
 
         <div className="panel" style={{ marginTop: 16 }}>
           <h3>กราฟคะแนนรายคน</h3>
-          <p className="sub">เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม</p>
+          <p className="sub">เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5 (ขยายช่วงให้เห็นความต่าง)</p>
 
           <div className="pickrow" style={{ marginTop: 10 }}>
             {groupStudents.map((st) => (
@@ -302,6 +302,7 @@ export default function Evaluate() {
                   size={250}
                   onAxisClick={(k) => setCritKey(k === critKey ? null : k)}
                   activeKey={critKey}
+                  floor={50}
                 />
               </div>
               <div style={{ flex: '1 1 320px', minWidth: 270, maxWidth: 500 }}>
