@@ -578,6 +578,18 @@ export const DICT: Record<string, string> = {
   '{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร': '{n} workpieces · hover a dot to see whose case it is',
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
+
+  /* ── บรรทัดให้กำลังใจรายวัน ── */
+  '{p} เหลือขั้นเดียวก็จบเคสแล้ว — โชคดีกับคาบนี้ครับ 🍀': '{p} is one step from completion — good luck this period! 🍀',
+  'เคสของ{p} ใกล้จบแล้ว เหลืออีก {n} ขั้น — ค่อยๆ เก็บครับ': "{p}'s case is almost done, {n} steps to go — steady as you go",
+  'วันนี้คิว {s} ของ{p} — โชคดีกับคาบนี้ครับ 🍀': "Today: {s} for {p} — good luck this period! 🍀",
+  'เก่งมากครับ — ผ่าน {a} เรียบร้อยแล้ว 👏 ขั้นต่อไป {b} รออยู่': 'Well done — {a} is complete 👏 next up: {b}',
+  'ยอดเยี่ยมมาก — ปิดเคสของ{p} ได้แล้ว ภูมิใจได้เลยครับ': "Excellent — {p}'s case is complete. Be proud of that one",
+  'เก่งมากครับ เกณฑ์ปีนี้ครบแล้ว — ที่เหลือจากนี้คือกำไรล้วนๆ': "Well done — this year's requirement is met. Everything from here is a bonus",
+  'วันนี้เป็นคาบที่ {n} ของคุณแล้ว — เดินทางมาไกลมากครับ': "Today is your period no. {n} — you've come a long way",
+  'ขอให้เป็นวันที่ดีในคลินิกครับ 🦷': 'Have a good day in clinic 🦷',
+  'ค่อยเป็นค่อยไป เก็บทีละขั้น — เอาใจช่วยเสมอครับ': 'One step at a time — always rooting for you',
+  'ใจเย็นๆ มือนิ่งๆ วันนี้ผ่านไปด้วยดีแน่ครับ': 'Calm mind, steady hands — today will go just fine',
   'ได้ 3 = {a} คาบ · ได้ 1 = {b} · ได้ 0 = {c}': 'scored 3 in {a} periods · 1 in {b} · 0 in {c}',
   'ได้ 3': 'Scored 3',
   'ได้ 1': 'Scored 1',
