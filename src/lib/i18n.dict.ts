@@ -581,4 +581,8 @@ export const DICT: Record<string, string> = {
   '{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร': '{n} workpieces · hover a dot to see whose case it is',
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
+  'ได้ 3 = {a} คาบ · ได้ 1 = {b} · ได้ 0 = {c}': 'scored 3 in {a} periods · 1 in {b} · 0 in {c}',
+  'ได้ 3': 'Scored 3',
+  'ได้ 1': 'Scored 1',
+  'ได้ 0': 'Scored 0',
 };

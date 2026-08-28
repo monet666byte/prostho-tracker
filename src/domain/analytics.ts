@@ -405,6 +405,8 @@ export interface ProfileAxis {
   detail: string;
   /** ความคืบหน้า (0–1) ของงานที่กำลังทำอยู่ซึ่งจะนับเข้าด้านนี้เมื่อจบ — เรียงมาก→น้อย ใช้เติมช่องในตารางนับชิ้น */
   partials?: number[];
+  /** จำนวนคาบที่ได้คะแนน [3, 1, 0] — มีเมื่อแกนนี้คือหัวข้อประเมิน (ตาราง Radar จะแยกเป็น 3 คอลัมน์) */
+  counts?: [number, number, number];
 }
 
 const pct = (done: number, need: number) => (need <= 0 ? 100 : Math.min(100, Math.round((done / need) * 100)));

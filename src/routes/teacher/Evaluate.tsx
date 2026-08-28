@@ -99,7 +99,8 @@ export default function Evaluate() {
         key: cr.key,
         label: t(cr.short),
         value: Math.round((avg / 3) * 100),
-        detail: `3×${count(3)} · 1×${count(1)} · 0×${count(0)}`,
+        detail: t('ได้ 3 = {a} คาบ · ได้ 1 = {b} · ได้ 0 = {c}', { a: count(3), b: count(1), c: count(0) }),
+        counts: [count(3), count(1), count(0)] as [number, number, number],
       };
     });
   const selectedId = chartStudent ?? groupStudents[0]?.id ?? null;
@@ -301,7 +302,7 @@ export default function Evaluate() {
             // flex-wrap + จัดชิดบน: จอแคบ/ตัวหนังสือใหญ่ กราฟขวาจะตกลงมาเต็มแถวแทนที่จะโดนบีบ
             // และความสูงที่เปลี่ยน (เปิดตาราง/เปิดกราฟหัวข้อ) จะไม่ดันของอย่างอื่นขยับ
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 30, alignItems: 'flex-start', marginTop: 4 }}>
-              <div style={{ flex: '0 1 330px', minWidth: 280 }}>
+              <div style={{ flex: '1 1 400px', minWidth: 300, maxWidth: 560 }}>
                 <Radar
                   axes={criterionAvg(selectedRows)}
                   reference={groupProfile}

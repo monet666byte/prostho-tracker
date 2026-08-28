@@ -156,15 +156,32 @@ export function Radar({
           <thead>
             <tr>
               <th>{t('ด้าน')}</th>
-              <th style={{ width: 92 }}>{label}</th>
-              {reference && <th style={{ width: 92 }}>{referenceLabel ?? t('ค่าเฉลี่ย')}</th>}
+              {axes[0]?.counts ? (
+                <>
+                  {/* หัวข้อประเมิน: แยกจำนวนคาบเป็น 3 คอลัมน์ อ่านง่ายกว่าสตริงยาวๆ */}
+                  <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 3')}</th>
+                  <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 1')}</th>
+                  <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 0')}</th>
+                </>
+              ) : (
+                <th style={{ width: 92 }}>{label}</th>
+              )}
+              {reference && <th style={{ width: 80 }}>{referenceLabel ?? t('ค่าเฉลี่ย')}</th>}
             </tr>
           </thead>
           <tbody>
             {axes.map((a, i) => (
               <tr key={a.key}>
                 <td style={{ font: '500 11.5px var(--font-body)' }}>{a.label}</td>
-                <td className="mono">{a.detail}</td>
+                {a.counts ? (
+                  <>
+                    <td className="mono" style={{ textAlign: 'center', fontWeight: 600, color: a.counts[0] > 0 ? 'var(--success)' : 'var(--text-disabled)' }}>{a.counts[0]}</td>
+                    <td className="mono" style={{ textAlign: 'center', color: a.counts[1] > 0 ? 'var(--warning-dark)' : 'var(--text-disabled)' }}>{a.counts[1]}</td>
+                    <td className="mono" style={{ textAlign: 'center', fontWeight: a.counts[2] > 0 ? 700 : 400, color: a.counts[2] > 0 ? 'var(--danger)' : 'var(--text-disabled)' }}>{a.counts[2]}</td>
+                  </>
+                ) : (
+                  <td className="mono">{a.detail}</td>
+                )}
                 {reference && <td className="mono faint">{reference[i].value}%</td>}
               </tr>
             ))}
