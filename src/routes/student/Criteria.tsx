@@ -40,6 +40,48 @@ export default function Criteria() {
       </header>
 
       <div style={{ padding: '14px 16px 0', display: 'grid', gap: 11 }}>
+        {/* เกณฑ์รายปีขึ้นก่อน — เป้าที่ต้องจัดการปีนี้ ใกล้ตัวกว่าเกณฑ์สะสม 2 ปี */}
+        <article className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarCheck size={16} color="var(--accent)" />
+            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>เกณฑ์รายปี</span>
+            <span className="chip" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
+              ปีละ {settings.req.perYear} ชิ้น
+            </span>
+          </div>
+          <p style={{ margin: '5px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
+            แยกจากเกณฑ์สะสม — ทุกปีการศึกษาต้องจบเคสอย่างน้อย {settings.req.perYear} ชิ้นงาน
+            {settings.perYearCountsAllTypes ? ' (นับทุกประเภท)' : ' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)'}
+          </p>
+
+          <div style={{ display: 'grid', gap: 9, marginTop: 12 }}>
+            {years.map((y) => (
+              <div key={y.year}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                  <span className="mono" style={{ flex: 1, font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)' }}>
+                    ปีการศึกษา {y.year}
+                  </span>
+                  <span style={{ font: '700 12px var(--font-mono)', color: y.complete ? 'var(--success)' : 'var(--warning)' }}>
+                    {y.done} / {y.required}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {Array.from({ length: y.required }, (_, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        flex: 1, height: 10, borderRadius: 4,
+                        background: i < y.done ? 'var(--accent)' : 'var(--track)',
+                        transition: 'background .4s ease',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
         {rows.map((r) => (
           <article key={r.group} className="card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -93,48 +135,6 @@ export default function Criteria() {
             </div>
           </article>
         ))}
-
-        {/* เกณฑ์รายปี — แยกจากเกณฑ์สะสม */}
-        <article className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarCheck size={16} color="var(--accent)" />
-            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>เกณฑ์รายปี</span>
-            <span className="chip" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
-              ปีละ {settings.req.perYear} ชิ้น
-            </span>
-          </div>
-          <p style={{ margin: '5px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            แยกจากเกณฑ์สะสม — ทุกปีการศึกษาต้องจบเคสอย่างน้อย {settings.req.perYear} ชิ้นงาน
-            {settings.perYearCountsAllTypes ? ' (นับทุกประเภท)' : ' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)'}
-          </p>
-
-          <div style={{ display: 'grid', gap: 9, marginTop: 12 }}>
-            {years.map((y) => (
-              <div key={y.year}>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                  <span className="mono" style={{ flex: 1, font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)' }}>
-                    ปีการศึกษา {y.year}
-                  </span>
-                  <span style={{ font: '700 12px var(--font-mono)', color: y.complete ? 'var(--success)' : 'var(--warning)' }}>
-                    {y.done} / {y.required}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 5 }}>
-                  {Array.from({ length: y.required }, (_, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        flex: 1, height: 10, borderRadius: 4,
-                        background: i < y.done ? 'var(--accent)' : 'var(--track)',
-                        transition: 'background .4s ease',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
 
         <p style={{ margin: '2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
           Simple APD และ Recall ไม่นับเข้าเกณฑ์
