@@ -21,12 +21,13 @@ export interface TypeMeta {
 
 /* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) และแต่ละประเภทต้องต่างกัน
    ทั้งเฉดสีและความอ่อน-เข้ม — ฟีดแบควันเดโม 28 ส.ค. */
+/* ชุด "โทนเย็นล้วน" ที่ผู้ใช้เลือก (28 ส.ค.): กรม · ฟ้าอ่อน · ม่วง · ฟ้าหัวเป็ดเข้ม — ไม่มีชมพู */
 export const TYPES: Record<WorkType, TypeMeta> = {
-  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2B5CE6', tint: '#EDF1FE', ink: '#2B5CE6' },
-  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#F599C6', tint: '#FDE7F2', ink: '#C11574' },
-  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C026D3', tint: '#FBE9FC', ink: '#A21CAF' },
-  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#3730A3', tint: '#ECEBFA', ink: '#3730A3' },
-  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#0891B2', tint: '#E4F5FA', ink: '#0891B2' },
+  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#1E40AF', tint: '#E8EDFB', ink: '#1E40AF' },
+  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#7DD3FC', tint: '#E5F6FE', ink: '#0369A1' },
+  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#8B5CF6', tint: '#F1EBFE', ink: '#7C3AED' },
+  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#0E7490', tint: '#E4F3F7', ink: '#0E7490' },
+  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#38BDF8', tint: '#E0F4FE', ink: '#0284C7' },
   RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7', ink: '#64748B' },
   RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5', ink: '#475569' },
 };

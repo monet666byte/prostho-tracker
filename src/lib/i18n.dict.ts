@@ -404,7 +404,7 @@ export const DICT: Record<string, string> = {
   'เฉลี่ยกลุ่ม': 'Group avg',
   'คะแนนรวมรายคาบ (เต็ม {n})': 'Total score per period (max {n})',
   'คะแนน "{s}" รายคาบ (เต็ม 3)': '"{s}" score per period (max 3)',
-  'กดหัวข้อบนกราฟแมงมุม (เช่น เครื่องมือ) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้':
+  'กดหัวข้อบนกราฟแมงมุม (เช่น Instrument) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้':
     'Click a topic on the radar (e.g. Instrument) to see its per-period chart here',
 
   /* ── ตรวจงานรายคน ── */

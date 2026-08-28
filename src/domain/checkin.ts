@@ -5,15 +5,16 @@
  */
 
 /** คอลัมน์คะแนนตาม Part B ของสมุดจริง — ข้อละ 0–3 */
+/* short = ป้ายบนกราฟแมงมุม — ใช้อังกฤษทับศัพท์ทั้งสองภาษา (ศัพท์ในสมุดจริงเป็นอังกฤษ ผู้ใช้บอกไม่ต้องแปล) */
 export const CRITERIA = [
-  { key: 'knowledge', label: 'Overall Knowledge', th: 'ความรู้โดยรวม', short: 'ความรู้' },
-  { key: 'skill', label: 'Overall Skill', th: 'ทักษะโดยรวม', short: 'ทักษะ' },
-  { key: 'precaution', label: 'Universal Precaution', th: 'การป้องกันการติดเชื้อ', short: 'ปลอดเชื้อ' },
-  { key: 'instrument', label: 'Instrument Preparation', th: 'การเตรียมเครื่องมือ', short: 'เครื่องมือ' },
-  { key: 'time', label: 'Time Management in Clinic', th: 'การบริหารเวลาในคลินิก', short: 'เวลา' },
-  { key: 'chart', label: 'Chart Recording', th: 'การบันทึกชาร์ต', short: 'ชาร์ต' },
-  { key: 'communication', label: 'Interpersonal Communication', th: 'การสื่อสาร', short: 'สื่อสาร' },
-  { key: 'conduct', label: 'General Conduct', th: 'ความประพฤติทั่วไป', short: 'ประพฤติ' },
+  { key: 'knowledge', label: 'Overall Knowledge', th: 'ความรู้โดยรวม', short: 'Knowledge' },
+  { key: 'skill', label: 'Overall Skill', th: 'ทักษะโดยรวม', short: 'Skill' },
+  { key: 'precaution', label: 'Universal Precaution', th: 'การป้องกันการติดเชื้อ', short: 'Precaution' },
+  { key: 'instrument', label: 'Instrument Preparation', th: 'การเตรียมเครื่องมือ', short: 'Instrument' },
+  { key: 'time', label: 'Time Management in Clinic', th: 'การบริหารเวลาในคลินิก', short: 'Time' },
+  { key: 'chart', label: 'Chart Recording', th: 'การบันทึกชาร์ต', short: 'Chart' },
+  { key: 'communication', label: 'Interpersonal Communication', th: 'การสื่อสาร', short: 'Comm.' },
+  { key: 'conduct', label: 'General Conduct', th: 'ความประพฤติทั่วไป', short: 'Conduct' },
 ] as const;
 
 export type CriterionKey = (typeof CRITERIA)[number]['key'];

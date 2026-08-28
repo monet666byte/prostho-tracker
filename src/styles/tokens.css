@@ -155,10 +155,10 @@ html.theme-ocean {
 }
 
 /* สีประจำประเภทงาน */
-.t-CD { --type: #2b5ce6; --type-tint: #edf1fe; }
-.t-APD { --type: #0891b2; --type-tint: #e4f5fa; }
-.t-RPD { --type: #f599c6; --type-tint: #fde7f2; }
-.t-PC { --type: #c026d3; --type-tint: #fbe9fc; }
-.t-CB { --type: #3730a3; --type-tint: #ecebfa; }
+.t-CD { --type: #1e40af; --type-tint: #e8edfb; }
+.t-APD { --type: #38bdf8; --type-tint: #e0f4fe; }
+.t-RPD { --type: #7dd3fc; --type-tint: #e5f6fe; }
+.t-PC { --type: #8b5cf6; --type-tint: #f1ebfe; }
+.t-CB { --type: #0e7490; --type-tint: #e4f3f7; }
 .t-RRM { --type: #64748b; --type-tint: #f1f3f7; }
 .t-RFX { --type: #475569; --type-tint: #eef1f5; }

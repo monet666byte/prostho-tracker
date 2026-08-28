@@ -335,7 +335,7 @@ export default function Evaluate() {
                   );
                 })() : (
                   <p className="faint" style={{ font: '400 11px var(--font-body)', marginTop: 10 }}>
-                    {t('กดหัวข้อบนกราฟแมงมุม (เช่น เครื่องมือ) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้')}
+                    {t('กดหัวข้อบนกราฟแมงมุม (เช่น Instrument) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้')}
                   </p>
                 )}
               </div>
