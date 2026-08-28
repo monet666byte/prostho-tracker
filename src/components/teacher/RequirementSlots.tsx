@@ -5,6 +5,7 @@ import {
 } from '../../domain/rules';
 import type { Settings, Workpiece } from '../../domain/types';
 import { academicYear } from '../../lib/date';
+import { t } from '../../lib/i18n';
 
 interface Slot {
   state: 'done' | 'active' | 'empty';
@@ -21,7 +22,7 @@ function slotsFor(pieces: Workpiece[], required: number): Slot[] {
 
   return Array.from({ length: Math.max(required, 1) }, (_, i) => {
     if (i < done.length) {
-      return { state: 'done' as const, label: '', title: `จบเคสแล้ว · ${done[i].detail}` };
+      return { state: 'done' as const, label: '', title: `${t('จบเคสแล้ว')} · ${done[i].detail}` };
     }
     const candidate = active[i - done.length];
     if (candidate) {
@@ -32,7 +33,7 @@ function slotsFor(pieces: Workpiece[], required: number): Slot[] {
         title: `กำลังทำ · ${candidate.detail} · step ${p}`,
       };
     }
-    return { state: 'empty' as const, label: '', title: 'ยังไม่มีเคสในช่องนี้' };
+    return { state: 'empty' as const, label: '', title: t('ยังไม่มีเคสในช่องนี้') };
   });
 }
 
@@ -94,7 +95,7 @@ export function RequirementSlots({ works, settings }: { works: Workpiece[]; sett
         slots={slotsFor(works.filter((w) => w.type === 'RPD'), settings.req.rpd)}
       />
       <Row
-        title="Crown / Bridge (รวม Post-core)"
+        title={t('Crown / Bridge (รวม Post-core)')}
         color={TYPES.CB.color}
         slots={slotsFor(works.filter((w) => w.type === 'CB' || w.type === 'PC'), settings.req.crown)}
         note={
@@ -125,9 +126,9 @@ export function RequirementSlots({ works, settings }: { works: Workpiece[]; sett
         </span>
         <span className="pretty" style={{ font: '500 10.5px/1.6 var(--font-body)', color: 'var(--text-secondary)' }}>
           {rows.every((r) => r.complete)
-            ? 'ครบเกณฑ์สะสมทุกด้านแล้ว'
-            : `ยังขาด ${rows.reduce((n, r) => n + Math.max(0, r.required - r.done), 0)} ชิ้นสำหรับเกณฑ์สะสม` +
-              (crown.postCoreComplete ? '' : ' และต้องมี Post-core อีก 1 ชิ้น')}
+            ? t('ครบเกณฑ์สะสมทุกด้านแล้ว')
+            : t('ยังขาด {n} ชิ้นสำหรับเกณฑ์สะสม', { n: rows.reduce((n, r) => n + Math.max(0, r.required - r.done), 0) }) +
+              (crown.postCoreComplete ? '' : t(' และต้องมี Post-core อีก 1 ชิ้น'))}
         </span>
       </div>
     </div>

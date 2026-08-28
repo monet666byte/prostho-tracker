@@ -5,6 +5,7 @@ import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { relative } from '../../lib/date';
+import { t } from '../../lib/i18n';
 import { TYPES } from '../../domain/catalog';
 import {
   caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression,
@@ -68,7 +69,7 @@ function HeroCard({
 
       {/* ตัดวงเล็บอธิบายท้ายชื่อเคส (เช่น "ไม่เหลือฟันแม้แต่ซี่เดียว") — คนใช้รู้อยู่แล้วว่า CD คืออะไร */}
       <Link to={`/app/work/${w.id}`} className="herocase__patient">
-        {w.patient.name} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
+        {t(w.patient.name)} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
       </Link>
 
       {/* step ถัดไปคือพระเอกของการ์ด — ชื่อใหญ่ อ่านปราดเดียวรู้ว่าวันนี้ต้องทำอะไร */}
@@ -78,16 +79,16 @@ function HeroCard({
           {next ? (
             <>
               <div className="herocase__caption">
-                ขั้นตอนที่กำลังทำ · Step {next.progression}{sibTotal > 1 ? ` · ขั้นย่อย ${subPos}/${sibTotal}` : ''}
+                {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}{sibTotal > 1 ? ` · ${t('ขั้นย่อย')} ${subPos}/${sibTotal}` : ''}
               </div>
               <div className="herocase__step">{next.name}</div>
               {/* หลาย step มีขั้นย่อย 2 อัน — โชว์แค่ชื่อขั้นที่เพิ่งเสร็จ ไม่ใส่เลข step จะได้ไม่ชนกับข้างบน */}
-              {cur && <div className="herocase__done">✓ เสร็จก่อนหน้า: {cur.name}</div>}
+              {cur && <div className="herocase__done">✓ {t('เสร็จก่อนหน้า')}: {cur.name}</div>}
             </>
           ) : (
             <>
-              <div className="herocase__caption">สถานะ</div>
-              <div className="herocase__step">{cur ? procLabel(w.type, cur) : 'ยังไม่เริ่ม'}</div>
+              <div className="herocase__caption">{t('สถานะ')}</div>
+              <div className="herocase__step">{cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}</div>
             </>
           )}
         </div>
@@ -96,7 +97,7 @@ function HeroCard({
       {next && (
         <button className="herocase__btn" onClick={onPass}>
           <CheckCircle size={19} weight="fill" />
-          ทำขั้นนี้เสร็จแล้ว
+          {t('ทำขั้นนี้เสร็จแล้ว')}
         </button>
       )}
       {next && (
@@ -104,13 +105,13 @@ function HeroCard({
           to={`/app/work/${w.id}`}
           style={{ display: 'block', textAlign: 'center', marginTop: 10, font: '500 11.5px var(--font-body)', color: 'var(--accent)' }}
         >
-          ดูขั้นตอนทั้งหมดของเคสนี้ ›
+          {t('ดูขั้นตอนทั้งหมดของเคสนี้')} ›
         </Link>
       )}
       {next?.selfPerformed && (
         <div className="selfrow">
           <HandTap size={15} weight="fill" />
-          step นี้ต้องทำเอง (self-performed)
+          {t('step นี้ต้องทำเอง (self-performed)')}
         </div>
       )}
     </article>
@@ -119,9 +120,9 @@ function HeroCard({
 
 function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'สวัสดีตอนเช้า';
-  if (h < 17) return 'สวัสดีตอนบ่าย';
-  return 'สวัสดีตอนเย็น';
+  if (h < 12) return t('สวัสดีตอนเช้า');
+  if (h < 17) return t('สวัสดีตอนบ่าย');
+  return t('สวัสดีตอนเย็น');
 }
 
 export default function Home() {
@@ -150,20 +151,20 @@ export default function Home() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-            <span style={{ font: '700 19px var(--font-head)' }}>{student?.name ?? 'นศ. ก'}</span>
+            <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. ก')}</span>
             <span className="groupchip">{(student?.group ?? 'TH-PT7').replace('TH-', '')}</span>
           </div>
         </div>
-        <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label="ค้นหา">
+        <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label={t('ค้นหา')}>
           <MagnifyingGlass size={18} />
         </Link>
-        <Link to="/app/sync" className="iconbtn" aria-label="แจ้งเตือน">
+        <Link to="/app/sync" className="iconbtn" aria-label={t('แจ้งเตือน')}>
           <Bell size={18} weight="fill" />
         </Link>
       </header>
 
       <div className="sectiontitle" style={{ padding: '12px 16px 7px' }}>
-        <h4>วันนี้</h4>
+        <h4>{t('วันนี้')}</h4>
       </div>
 
       {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
@@ -179,11 +180,11 @@ export default function Home() {
           <Square size={26} color="var(--warning)" style={{ flex: 'none' }} />
         )}
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>เช็คอินคาบวันนี้</span>
+          <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</span>
           <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
             {checkedInToday
-              ? `${todayCheckIn?.activities[0] ?? ''}${todayStepCount > 0 ? ` · เสร็จแล้ว ${todayStepCount} ขั้น` : ''} · ${todayCheckIn?.status === 'evaluated' ? 'ประเมินแล้ว' : 'รอประเมิน'}`
-              : 'ยังไม่เช็คอิน — กดเพื่อเช็คอิน'}
+              ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
+              : t('ยังไม่เช็คอิน — กดเพื่อเช็คอิน')}
           </span>
         </span>
         <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
@@ -199,9 +200,9 @@ export default function Home() {
             <Link to={`/app/work/${w.id}`} className="minirow__body">
               <span className="minirow__top">
                 <TypeBadge type={w.type} />
-                <span className="minirow__name">{w.patient.name}</span>
+                <span className="minirow__name">{t(w.patient.name)}</span>
                 {w.arch && <span className="minirow__arch">{w.arch === 'upper' ? 'Upper' : 'Lower'}</span>}
-                {w.tooth && <span className="minirow__arch">ซี่ {w.tooth}</span>}
+                {w.tooth && <span className="minirow__arch">{t('ซี่')} {w.tooth}</span>}
                 {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
                 {pending.has(w.id) && <PendingBadge />}
               </span>
@@ -211,7 +212,7 @@ export default function Home() {
               </span>
             </Link>
             {next && (
-              <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={`บันทึกทำ step ${next.progression} เสร็จ`}>
+              <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
                 <CheckCircle size={17} weight="fill" />
                 <span>{next.progression}</span>
               </button>
@@ -223,13 +224,13 @@ export default function Home() {
       <div style={{ display: 'flex', gap: 11 }}>
         <button className="card" style={statBox} onClick={() => navigate('/app/patients')}>
           <span style={statNum}>{active.length}</span>
-          <span style={statLabel}>ชิ้นงานที่กำลังทำ</span>
+          <span style={statLabel}>{t('ชิ้นงานที่กำลังทำ')}</span>
         </button>
         <button className="card" style={statBox} onClick={() => navigate('/app/criteria')}>
           <span style={{ ...statNum, color: totals.allComplete ? 'var(--success)' : 'var(--accent)' }}>
             {totals.done}/{totals.required}
           </span>
-          <span style={statLabel}>เกณฑ์สะสม 2 ปี</span>
+          <span style={statLabel}>{t('เกณฑ์สะสม 2 ปี')}</span>
         </button>
       </div>
       </div>

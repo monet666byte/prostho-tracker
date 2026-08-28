@@ -7,6 +7,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { TYPES } from '../../domain/catalog';
 import { currentProc, maxProgression, procLabel, progression } from '../../domain/rules';
 import { useWorkpieces } from '../../hooks/data';
+import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 const QUICK = ['CD', 'RPD', 'Post-core', '46', 'DEMO-0307'];
@@ -32,7 +33,7 @@ export default function Search() {
     <PlainShell>
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
           <div style={{ flex: 1, position: 'relative' }}>
@@ -41,14 +42,14 @@ export default function Search() {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="ค้นชื่อผู้ป่วย · HN · ซี่ฟัน · ประเภทงาน"
+              placeholder={t('ค้นชื่อผู้ป่วย · HN · ซี่ฟัน · ประเภทงาน')}
               style={{
                 width: '100%', height: 46, borderRadius: 12, background: 'var(--fill)', border: 0,
                 padding: '0 38px 0 38px', font: '400 13px var(--font-body)', outline: 'none',
               }}
             />
             {query && (
-              <button onClick={() => setQuery('')} style={{ position: 'absolute', right: 11, top: 14 }} aria-label="ล้าง">
+              <button onClick={() => setQuery('')} style={{ position: 'absolute', right: 11, top: 14 }} aria-label={t('ล้าง')}>
                 <XCircle size={18} weight="fill" color="var(--text-disabled)" />
               </button>
             )}
@@ -63,12 +64,12 @@ export default function Search() {
       </header>
 
       <div className="sectiontitle">
-        <h4>ผลการค้นหา · {results.length} ชิ้นงาน</h4>
+        <h4>{t('ผลการค้นหา')} · {t('{n} ชิ้นงาน', { n: results.length })}</h4>
       </div>
 
       {results.length === 0 ? (
         <div style={{ padding: '0 16px' }}>
-          <Empty icon={<MagnifyingGlass size={26} />} title="ไม่พบชิ้นงานที่ตรงกับคำค้น" hint="ลองค้นด้วย HN หรือชื่อประเภทงาน" />
+          <Empty icon={<MagnifyingGlass size={26} />} title={t('ไม่พบชิ้นงานที่ตรงกับคำค้น')} hint={t('ลองค้นด้วย HN หรือชื่อประเภทงาน')} />
         </div>
       ) : (
         results.map((w) => {
@@ -78,12 +79,12 @@ export default function Search() {
             <Link key={w.id} to={`/app/work/${w.id}`} className="casecard" style={{ display: 'block' }}>
               <div className="casecard__top">
                 <TypeBadge type={w.type} />
-                <span style={{ font: '600 13.5px var(--font-head)' }}>{w.patient.name}</span>
+                <span style={{ font: '600 13.5px var(--font-head)' }}>{t(w.patient.name)}</span>
                 <span style={{ marginLeft: 'auto', font: '400 10px var(--font-mono)', color: 'var(--text-faint)' }}>
                   HN {w.patient.hn}
                 </span>
               </div>
-              <div className="casecard__meta" style={{ marginTop: 6 }}>{w.detail}</div>
+              <div className="casecard__meta" style={{ marginTop: 6 }}>{tText(w.detail)}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '10px 0 7px' }}>
                 <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={5} />
                 <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)' }}>
@@ -91,7 +92,7 @@ export default function Search() {
                 </span>
               </div>
               <div style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
-                {cur ? procLabel(w.type, cur) : 'ยังไม่เริ่ม'}
+                {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
               </div>
             </Link>
           );

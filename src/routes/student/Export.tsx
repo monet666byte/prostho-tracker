@@ -6,6 +6,7 @@ import { nextRound } from '../../domain/rounds';
 import { currentProc, isComplete, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { thaiLong } from '../../lib/date';
+import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 export default function ExportScreen() {
@@ -21,33 +22,33 @@ export default function ExportScreen() {
     <PlainShell>
       <header className="s-header noprint">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>ส่งออก</h2>
+          <h2 className="h2" style={{ flex: 1 }}>{t('ส่งออก')}</h2>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-          พิมพ์ → อาจารย์ลงนาม → ส่งเลขาภาควิชา ชั้น 15
+          {t('พิมพ์ → อาจารย์ลงนาม → ส่งเลขาภาควิชา ชั้น 15')}
         </p>
       </header>
 
       <div style={{ padding: '14px 16px 0' }}>
         <p className="noprint" style={{ margin: '0 0 8px', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          เลื่อนแนวนอนเพื่อดูช่อง 0–10
+          {t('เลื่อนแนวนอนเพื่อดูช่อง 0–10')}
         </p>
         <div className="a4wrap">
         <div className="a4">
-          <h1>รายงานความก้าวหน้าเคส Prosthodontics · DTPT502</h1>
+          <h1>{t('รายงานความก้าวหน้าเคส Prosthodontics · DTPT502')}</h1>
           <div className="sub">
-            {student?.name ?? 'นศ. ก'} · รหัส {student?.code ?? '6504049'} · กลุ่ม {student?.group ?? 'TH-PT7'} ·
-            {round ? ` ${round.name} (${thaiLong(round.dueDate)})` : ''}
+            {t(student?.name ?? 'นศ. ก')} · {t('รหัส')} {student?.code ?? '6504049'} · {t('กลุ่ม')} {student?.group ?? 'TH-PT7'} ·
+            {round ? ` ${t(round.name)} (${thaiLong(round.dueDate)})` : ''}
           </div>
 
           <table>
             <thead>
               <tr>
                 <th style={{ width: 18 }}>No</th>
-                <th>Prosthodontic work / Step ที่ผ่านแล้ว</th>
+                <th>{t('Prosthodontic work / Step ที่ผ่านแล้ว')}</th>
                 <th className="mono" style={{ width: 54 }}>HN</th>
                 {PROGRESSION_COLUMNS.map((c) => (
                   <th key={c} className="mono tick">{c}</th>
@@ -63,7 +64,7 @@ export default function ExportScreen() {
                   <tr key={w.id}>
                     <td className="mono">{i + 1}</td>
                     <td>
-                      {w.detail}
+                      {tText(w.detail)}
                       <div className="mono" style={{ color: '#667085', fontSize: 7.5, marginTop: 1 }}>
                         {cur ? procLabel(w.type, cur) : '—'}
                       </div>
@@ -83,11 +84,11 @@ export default function ExportScreen() {
           <div className="sign">
             <div>
               <div className="line" />
-              <div className="cap">ลงนามนักศึกษา</div>
+              <div className="cap">{t('ลงนามนักศึกษา')}</div>
             </div>
             <div>
               <div className="line" />
-              <div className="cap">ลงนามอาจารย์ที่ปรึกษากลุ่ม</div>
+              <div className="cap">{t('ลงนามอาจารย์ที่ปรึกษากลุ่ม')}</div>
             </div>
           </div>
         </div>
@@ -97,30 +98,30 @@ export default function ExportScreen() {
       <div className="noprint" style={{ padding: '14px 16px 0', display: 'grid', gap: 9 }}>
         <button className="btn" onClick={() => window.print()}>
           <FilePdf size={19} weight="fill" />
-          สร้าง PDF สำหรับลงนาม
+          {t('สร้าง PDF สำหรับลงนาม')}
         </button>
         <button
           className="btn btn--sec"
           style={{ height: 48 }}
           onClick={() => {
             downloadCsv(reportWorks, `DTPT502-${student?.code ?? 'student'}-progress.csv`);
-            showToast({ message: 'ส่งออก CSV แล้ว', tone: 'success' });
+            showToast({ message: t('ส่งออก CSV แล้ว'), tone: 'success' });
           }}
         >
           <FileCsv size={18} />
-          ส่งออก CSV ตามคอลัมน์ชีตเดิม
+          {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')}
         </button>
         <button
           className="btn btn--sec"
           style={{ height: 48 }}
-          onClick={() => showToast({ message: 'ส่งให้ อ. ก. แล้ว · รอตรวจ', tone: 'success' })}
+          onClick={() => showToast({ message: t('ส่งให้ อ. ก. แล้ว · รอตรวจ'), tone: 'success' })}
         >
           <PaperPlaneTilt size={18} />
-          ส่งให้อาจารย์ที่ปรึกษาในระบบ
+          {t('ส่งให้อาจารย์ที่ปรึกษาในระบบ')}
         </button>
 
         <div className="sectiontitle" style={{ padding: '8px 0 6px' }}>
-          <h4>คอลัมน์ใน CSV</h4>
+          <h4>{t('คอลัมน์ใน CSV')}</h4>
 
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 6 }}>

@@ -1,16 +1,21 @@
+import { lang } from './i18n';
+
 const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const asDate = (v: string | Date) => (v instanceof Date ? v : new Date(v));
 
-/** "25 ส.ค. 69" — รูปแบบที่ใช้ในการ์ดและตาราง */
+/** "25 ส.ค. 69" (พ.ศ.) / โหมดอังกฤษ "25 Aug 26" (ค.ศ.) — รูปแบบที่ใช้ในการ์ดและตาราง */
 export function thaiShort(v: string | Date): string {
   const d = asDate(v);
+  if (lang === 'en') return `${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
   return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${String((d.getFullYear() + 543) % 100).padStart(2, '0')}`;
 }
 
-/** "28 ส.ค. 2569" — รูปแบบเต็มสำหรับรอบส่งรายงาน */
+/** "28 ส.ค. 2569" / "28 Aug 2026" — รูปแบบเต็มสำหรับรอบส่งรายงาน */
 export function thaiLong(v: string | Date): string {
   const d = asDate(v);
+  if (lang === 'en') return `${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
@@ -24,13 +29,14 @@ export function clock(v: string | Date): string {
 export function relative(v: string | Date, now = new Date()): string {
   const diff = now.getTime() - asDate(v).getTime();
   const min = Math.floor(diff / 60_000);
-  if (min < 2) return 'เมื่อครู่';
-  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const en = lang === 'en';
+  if (min < 2) return en ? 'just now' : 'เมื่อครู่';
+  if (min < 60) return en ? `${min} min ago` : `${min} นาทีที่แล้ว`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} ชม.ที่แล้ว`;
+  if (hr < 24) return en ? `${hr} hr ago` : `${hr} ชม.ที่แล้ว`;
   const day = Math.floor(hr / 24);
-  if (day === 1) return 'เมื่อวาน';
-  return `${day} วันที่แล้ว`;
+  if (day === 1) return en ? 'yesterday' : 'เมื่อวาน';
+  return en ? `${day} days ago` : `${day} วันที่แล้ว`;
 }
 
 /** จำนวนวันจากวันนี้ถึงวันที่กำหนด (ลบ = เลยกำหนดแล้ว) */

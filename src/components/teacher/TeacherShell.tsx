@@ -4,6 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
@@ -14,15 +15,15 @@ type NavItem = { key: TeacherNav; label: string; to: string; Icon: typeof Square
 /** งานประจำกลุ่ม — เกาะอยู่ใต้ตัวเลือกกลุ่ม */
 const GROUP_NAV: NavItem[] = [
   // ตรวจงานรายคนยุบเป็นหน้าลูกของสรุปกลุ่ม (กดชื่อนักศึกษาในตาราง) — ไม่มีเมนูของตัวเอง
-  { key: 'mygroup', label: 'สรุปกลุ่ม', to: '/teacher/group', Icon: Users },
-  { key: 'evaluate', label: 'ประเมินรายคาบ', to: '/teacher/evaluate', Icon: Table },
+  { key: 'mygroup', label: t('สรุปกลุ่ม'), to: '/teacher/group', Icon: Users },
+  { key: 'evaluate', label: t('ประเมินรายคาบ'), to: '/teacher/evaluate', Icon: Table },
 ];
 
 /** ระดับชั้นปี */
 const COHORT_NAV: NavItem[] = [
-  { key: 'overview', label: 'ภาพรวม', to: '/teacher?tab=overview', Icon: SquaresFour },
-  { key: 'cohort', label: 'วิเคราะห์รวม', to: '/teacher/analytics', Icon: ChartLineUp },
-  { key: 'settings', label: 'ตั้งค่าเกณฑ์', to: '/teacher/settings', Icon: GearSix },
+  { key: 'overview', label: t('ภาพรวม'), to: '/teacher?tab=overview', Icon: SquaresFour },
+  { key: 'cohort', label: t('วิเคราะห์รวม'), to: '/teacher/analytics', Icon: ChartLineUp },
+  { key: 'settings', label: t('ตั้งค่าเกณฑ์'), to: '/teacher/settings', Icon: GearSix },
 ];
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
@@ -60,7 +61,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
 
           <label className="mygroup">
-            <span className="mygroup__label">กลุ่มที่ดูแล</span>
+            <span className="mygroup__label">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
               {groupCodes.map((code) => (
                 <option key={code} value={code}>{code.replace('TH-', 'PT').replace('PTPT', 'PT')}</option>
@@ -74,13 +75,13 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
                 {label}
                 {key === 'evaluate' && pendingEval > 0 && (
-                  <span className="count" title={`นักศึกษา ${pendingEval} คนรอประเมิน`}>{pendingEval}</span>
+                  <span className="count" title={t('นักศึกษา {n} คนรอประเมิน', { n: pendingEval })}>{pendingEval}</span>
                 )}
               </NavLink>
             ))}
           </div>
 
-          <div className="side__section">ทั้งชั้นปี</div>
+          <div className="side__section">{t('ทั้งชั้นปี')}</div>
           {COHORT_NAV.map(({ key, label, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
@@ -91,9 +92,9 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <div style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
             <TextSizeControl />
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
-              <div style={{ font: '600 12.5px var(--font-head)' }}>{teacher?.name ?? 'อ. ก.'}</div>
+              <div style={{ font: '600 12.5px var(--font-head)' }}>{t(teacher?.name ?? 'อ. ก.')}</div>
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม'} · TH-PT7
+                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')} · TH-PT7
               </div>
               <button
                 onClick={async () => {
@@ -102,7 +103,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 }}
                 style={{ marginTop: 8, font: '500 10.5px var(--font-body)', color: 'var(--text-faint)' }}
               >
-                ออกจากระบบ
+                {t('ออกจากระบบ')}
               </button>
             </div>
           </div>

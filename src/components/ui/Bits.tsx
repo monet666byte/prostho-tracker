@@ -1,12 +1,13 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { t } from '../../lib/i18n';
 import { TYPES } from '../../domain/catalog';
 import type { WorkType } from '../../domain/types';
 
 export function TypeBadge({ type, style }: { type: WorkType; style?: CSSProperties }) {
-  const t = TYPES[type];
+  const m = TYPES[type];
   return (
-    <span className="badge" style={{ background: t.tint, color: t.ink, ...style }}>
-      {t.short}
+    <span className="badge" style={{ background: m.tint, color: m.ink, ...style }}>
+      {m.short}
     </span>
   );
 }
@@ -23,7 +24,7 @@ export function ArchBadge({ arch }: { arch?: 'upper' | 'lower' }) {
 export function SelfBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span className="badge" style={{ background: 'var(--self-tint)', color: 'var(--self)' }}>
-      {compact ? 'ทำเอง' : 'ทำเอง (self-performed)'}
+      {compact ? t('ทำเอง') : t('ทำเอง (self-performed)')}
     </span>
   );
 }
@@ -39,7 +40,7 @@ export function Bar({ value, color, height = 6 }: { value: number; color?: strin
 export function StaleBadge({ days }: { days: number }) {
   return (
     <span className="badge" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>
-      ค้าง {days} วัน
+      {t('ค้าง {d} วัน', { d: days })}
     </span>
   );
 }
@@ -47,7 +48,7 @@ export function StaleBadge({ days }: { days: number }) {
 export function PendingBadge() {
   return (
     <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>
-      รอ sync
+      {t('รอ sync')}
     </span>
   );
 }

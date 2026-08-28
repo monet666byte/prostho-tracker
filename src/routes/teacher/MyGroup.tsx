@@ -9,6 +9,7 @@ import { TYPES } from '../../domain/catalog';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces,
 } from '../../hooks/data';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
@@ -55,21 +56,21 @@ export default function MyGroup() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>กลุ่ม {group.replace('TH-', '')}</h1>
-            <p>{groupStudents.length} คน · <b>step</b> = ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)</p>
+            <h1>{t('กลุ่ม')} {group.replace('TH-', '')}</h1>
+            <p>{t('{n} คน', { n: groupStudents.length })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}</p>
           </div>
         </div>
 
         <div className="kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {/* ยุบการ์ด "ติด step/เงียบหาย" มาเป็นบรรทัดสาเหตุของ "ต้องตาม" — สองการ์ดเดิมชี้คนกลุ่มเดียวกัน */}
           <div className="kpi" style={{ borderColor: gHigh ? 'var(--danger-border)' : undefined }}>
-            <div className="kpi__label"><WarningCircle size={14} /> ต้องตาม</div>
+            <div className="kpi__label"><WarningCircle size={14} /> {t('ต้องตาม')}</div>
             <div className="kpi__value" style={{ color: gHigh ? 'var(--danger-chart)' : 'var(--success)' }}>
               {gHigh + gWatch}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {groupRisks.length} คน</span>
+              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {t('{n} คน', { n: groupRisks.length })}</span>
             </div>
             <div className="kpi__hint">
-              ติด step เดิม {gStuck} · เงียบเกิน {settings.stale} วัน {gSilent} · ช้ากว่าแผน {Math.max(0, gHigh + gWatch - gStuck - gSilent)}
+              {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ช้ากว่าแผน {d}', { a: gStuck, b: settings.stale, c: gSilent, d: Math.max(0, gHigh + gWatch - gStuck - gSilent) })}
             </div>
           </div>
           {/* รอประเมินอยู่กลาง — งานที่ต้องทำวันนี้สำคัญสุด มีจุดแดงเตือนแบบ noti เมื่อมีคิวค้าง */}
@@ -79,7 +80,7 @@ export default function MyGroup() {
             onClick={() => navigate('/teacher/evaluate')}
           >
             <div className="kpi__label" style={{ position: 'relative' }}>
-              <CalendarCheck size={14} /> รอประเมิน
+              <CalendarCheck size={14} /> {t('รอประเมิน')}
               {pendingPeople > 0 && (
                 <span
                   style={{
@@ -93,38 +94,38 @@ export default function MyGroup() {
             </div>
             <div className="kpi__value" style={{ color: pendingPeople ? 'var(--accent)' : undefined }}>
               {pendingPeople}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> คน</span>
+              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> {t('คน')}</span>
             </div>
             <div className="kpi__hint">
-              {pendingEval > pendingPeople ? `${pendingEval} รายการ · ` : ''}เช็คอินแล้ว รออาจารย์ให้คะแนน ›
+              {pendingEval > pendingPeople ? t('{n} รายการ · ', { n: pendingEval }) : ''}{t('เช็คอินแล้ว รออาจารย์ให้คะแนน')} ›
             </div>
           </button>
           <div className="kpi">
-            <div className="kpi__label"><CheckCircle size={14} /> จบเคสปีนี้</div>
+            <div className="kpi__label"><CheckCircle size={14} /> {t('จบเคสปีนี้')}</div>
             {/* สีเขียว = สำเร็จ — ใช้เมื่อถึงเป้าเท่านั้น ระหว่างทางเป็นสีตัวเลขปกติ */}
             <div className="kpi__value" style={{ color: groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0) >= groupRisks.length * settings.req.perYear ? 'var(--success)' : undefined }}>
               {groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0)}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / เป้า {groupRisks.length * settings.req.perYear} ชิ้น</span>
+              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {t('เป้า {n} ชิ้น', { n: groupRisks.length * settings.req.perYear })}</span>
             </div>
-            <div className="kpi__hint">เกณฑ์รายปี คนละ {settings.req.perYear} ชิ้น</div>
+            <div className="kpi__hint">{t('เกณฑ์รายปี คนละ {n} ชิ้น', { n: settings.req.perYear })}</div>
           </div>
         </div>
 
         <div className="panel" style={{ marginTop: 18 }}>
-          <h3>นักศึกษาในกลุ่ม</h3>
-          <p className="sub">🔴 = ควรเข้าไปตาม · เรียงคนที่น่าห่วงไว้บน · กดชื่อเพื่อดูงานรายคน</p>
+          <h3>{t('นักศึกษาในกลุ่ม')}</h3>
+          <p className="sub">{t('🔴 = ควรเข้าไปตาม · เรียงคนที่น่าห่วงไว้บน · กดชื่อเพื่อดูงานรายคน')}</p>
           <table className="tbl">
             <thead>
               <tr>
                 <th style={{ width: 14 }} />
-                <th style={{ width: 120 }}>นักศึกษา</th>
-                <th style={{ width: 66 }}>ชิ้นงานรวม</th>
-                <th>งานที่กำลังทำ</th>
+                <th style={{ width: 120 }}>{t('นักศึกษา')}</th>
+                <th style={{ width: 66 }}>{t('ชิ้นงานรวม')}</th>
+                <th>{t('งานที่กำลังทำ')}</th>
               </tr>
             </thead>
             <tbody>
               {shown.length === 0 && (
-                <tr><td colSpan={4} className="faint" style={{ padding: 18 }}>ทุกคนอยู่ในแผน 🎉</td></tr>
+                <tr><td colSpan={4} className="faint" style={{ padding: 18 }}>{t('ทุกคนอยู่ในแผน')} 🎉</td></tr>
               )}
               {shown.map((r) => {
                 const main = r.pieces[0];
@@ -132,7 +133,7 @@ export default function MyGroup() {
                 return (
                   <Fragment key={r.student.id}>
                     <tr
-                      title={r.reason}
+                      title={t(r.reason)}
                       onClick={() => (r.pieces.length > 1 || r.donePieces.length > 0) && setOpenRow(open ? null : r.student.id)}
                       onKeyDown={(e) => {
                         if ((e.key === 'Enter' || e.key === ' ') && (r.pieces.length > 1 || r.donePieces.length > 0)) {
@@ -147,8 +148,8 @@ export default function MyGroup() {
                       <td>
                         <span
                           role="img"
-                          aria-label={r.risk === 'high' ? 'เสี่ยงสูง' : r.risk === 'medium' ? 'จับตา' : 'ตามแผน'}
-                          title={r.risk === 'high' ? 'เสี่ยงสูง' : r.risk === 'medium' ? 'จับตา' : 'ตามแผน'}
+                          aria-label={r.risk === 'high' ? t('เสี่ยงสูง') : r.risk === 'medium' ? t('จับตา') : t('ตามแผน')}
+                          title={r.risk === 'high' ? t('เสี่ยงสูง') : r.risk === 'medium' ? t('จับตา') : t('ตามแผน')}
                           style={{
                             display: 'block', width: 8, height: 8, borderRadius: 99,
                             background: r.risk === 'high' ? 'var(--danger-chart)' : r.risk === 'medium' ? 'var(--warning)' : 'var(--success)',
@@ -158,17 +159,17 @@ export default function MyGroup() {
                       <td>
                         <button
                           onClick={() => navigate(`/teacher/review?student=${r.student.id}`)}
-                          title="ดูงานรายคน + คอมเมนต์"
+                          title={t('ดูงานรายคน + คอมเมนต์')}
                           style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
                         >
-                          <div style={{ font: '600 12px var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.student.name}</div>
+                          <div style={{ font: '600 12px var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>{t(r.student.name)}</div>
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>{r.student.code}</div>
                         </button>
                       </td>
                       <td>
                         <span
                           className="mono"
-                          title={`จบแล้ว ${r.piecesDone} จากทั้งหมด ${r.piecesTotal} ชิ้นในมือ`}
+                          title={t('จบแล้ว {a} จากทั้งหมด {b} ชิ้นในมือ', { a: r.piecesDone, b: r.piecesTotal })}
                           style={{ font: '600 11.5px var(--font-mono)', color: r.piecesDone > 0 ? 'var(--success)' : 'var(--text-muted)' }}
                         >
                           {r.piecesDone}/{r.piecesTotal}
@@ -187,28 +188,28 @@ export default function MyGroup() {
                             <span className="worknow__name">{main.name}</span>
                             {r.stuckPeriods >= 2 ? (
                               <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)', flex: 'none' }}>
-                                ติดมา {r.stuckPeriods} คาบ
+                                {t('ติดมา {n} คาบ', { n: r.stuckPeriods })}
                               </span>
                             ) : r.silentDays >= settings.stale ? (
                               <span className="chip" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', flex: 'none' }}>
-                                เงียบ {r.silentDays} วัน
+                                {t('เงียบ {n} วัน', { n: r.silentDays })}
                               </span>
                             ) : (
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{main.days} วันก่อน</span>
+                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: main.days })}</span>
                             )}
                             {(r.pieces.length > 1 || r.donePieces.length > 0) && (
                               <span className="worknow__more">
                                 {open
-                                  ? 'ซ่อน ▴'
+                                  ? t('ซ่อน') + ' ▴'
                                   : [
-                                      r.pieces.length > 1 ? `+${r.pieces.length - 1} งาน` : '',
-                                      r.donePieces.length ? `จบแล้ว ${r.donePieces.length}` : '',
+                                      r.pieces.length > 1 ? t('+{n} งาน', { n: r.pieces.length - 1 }) : '',
+                                      r.donePieces.length ? t('จบแล้ว {n}', { n: r.donePieces.length }) : '',
                                     ].filter(Boolean).join(' · ') + ' ▾'}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="faint" style={{ font: '400 11px var(--font-body)' }}>ไม่มีเคสในมือ</span>
+                          <span className="faint" style={{ font: '400 11px var(--font-body)' }}>{t('ไม่มีเคสในมือ')}</span>
                         )}
                       </td>
                     </tr>
@@ -227,7 +228,7 @@ export default function MyGroup() {
                                 {pc.code}
                               </span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>{pc.name}</span>
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{pc.days} วันก่อน</span>
+                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
                           </td>
                         </tr>
@@ -245,8 +246,8 @@ export default function MyGroup() {
                               <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
                                 {TYPES[pc.type].prefix}
                               </span>
-                              <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>จบเคสแล้ว ✓</span>
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{pc.days} วันก่อน</span>
+                              <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{t('จบเคสแล้ว')} ✓</span>
+                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
                           </td>
                         </tr>
@@ -259,18 +260,18 @@ export default function MyGroup() {
         </div>
 
         <div className="panel" style={{ marginTop: 16 }}>
-          <h3>เปรียบเทียบกลุ่มกับค่าเฉลี่ยชั้นปี</h3>
+          <h3>{t('เปรียบเทียบกลุ่มกับค่าเฉลี่ยชั้นปี')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '300px 1px 1fr', gap: 26, alignItems: 'start', marginTop: 8 }}>
             <DivergingBars
               axes={groupProfile}
               reference={cohortProfile}
-              label={`กลุ่ม ${group.replace('TH-', '')}`}
-              referenceLabel="ค่าเฉลี่ยทั้งชั้นปี"
+              label={`${t('กลุ่ม')} ${group.replace('TH-', '')}`}
+              referenceLabel={t('ค่าเฉลี่ยทั้งชั้นปี')}
             />
             <span style={{ background: 'var(--divider)', alignSelf: 'stretch' }} />
             <div>
-              <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>รายคนในกลุ่ม</div>
-              <p className="sub" style={{ marginBottom: 12 }}>% ของเป้าหมายแต่ละด้าน</p>
+              <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>{t('รายคนในกลุ่ม')}</div>
+              <p className="sub" style={{ marginBottom: 12 }}>{t('% ของเป้าหมายแต่ละด้าน')}</p>
               <Heatmap rows={heat} />
             </div>
           </div>

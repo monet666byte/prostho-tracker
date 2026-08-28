@@ -3,6 +3,7 @@ import { Shell } from '../../components/student/Shell';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, caseCountTotals, yearlyRows } from '../../domain/rules';
 import { useWorkpieces } from '../../hooks/data';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 export default function Criteria() {
@@ -19,11 +20,11 @@ export default function Criteria() {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ font: '700 40px/1 var(--font-head)', color: 'var(--accent)' }}>{totals.done}</span>
           <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-muted)' }}>
-            / {totals.required} เคสตามเกณฑ์สะสม {settings.req.years} ปี
+            / {totals.required} {t('เคสตามเกณฑ์สะสม {y} ปี', { y: settings.req.years })}
           </span>
         </div>
         <p style={{ margin: '6px 0 12px', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          เกณฑ์สะสมปี 5–6
+          {t('เกณฑ์สะสมปี 5–6')}
         </p>
         <span className="bar" style={{ height: 10, display: 'block' }}>
           <i
@@ -44,14 +45,14 @@ export default function Criteria() {
         <article className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CalendarCheck size={16} color="var(--accent)" />
-            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>เกณฑ์รายปี</span>
+            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('เกณฑ์รายปี')}</span>
             <span className="chip" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
-              ปีละ {settings.req.perYear} ชิ้น
+              {t('ปีละ {n} ชิ้น', { n: settings.req.perYear })}
             </span>
           </div>
           <p style={{ margin: '5px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            แยกจากเกณฑ์สะสม — ทุกปีการศึกษาต้องจบเคสอย่างน้อย {settings.req.perYear} ชิ้นงาน
-            {settings.perYearCountsAllTypes ? ' (นับทุกประเภท)' : ' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)'}
+            {t('แยกจากเกณฑ์สะสม — ทุกปีการศึกษาต้องจบเคสอย่างน้อย {n} ชิ้นงาน', { n: settings.req.perYear })}
+            {settings.perYearCountsAllTypes ? t(' (นับทุกประเภท)') : t(' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)')}
           </p>
 
           <div style={{ display: 'grid', gap: 9, marginTop: 12 }}>
@@ -59,7 +60,7 @@ export default function Criteria() {
               <div key={y.year}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
                   <span className="mono" style={{ flex: 1, font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)' }}>
-                    ปีการศึกษา {y.year}
+                    {t('ปีการศึกษา')} {y.year}
                   </span>
                   <span style={{ font: '700 12px var(--font-mono)', color: y.complete ? 'var(--success)' : 'var(--warning)' }}>
                     {y.done} / {y.required}
@@ -86,7 +87,7 @@ export default function Criteria() {
           <article key={r.group} className="card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 9, height: 9, borderRadius: 99, background: r.color, flex: 'none' }} />
-              <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{r.label}</span>
+              <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t(r.label)}</span>
               <span style={{ font: '700 14px var(--font-mono)', color: r.complete ? 'var(--success)' : 'var(--text-secondary)' }}>
                 {r.done} / {r.required}
               </span>
@@ -119,7 +120,7 @@ export default function Criteria() {
                 <span style={{ display: 'grid', flex: 'none' }}>
                   {r.postCoreComplete ? <SealCheck size={14} weight="fill" /> : <WarningCircle size={14} weight="fill" />}
                 </span>
-                ในจำนวนนี้ต้องเป็น {TYPES.PC.full} อย่างน้อย {r.postCoreRequired} ชิ้น — ตอนนี้ {r.postCoreDone}/{r.postCoreRequired}
+                {t('ในจำนวนนี้ต้องเป็น {f} อย่างน้อย {n} ชิ้น — ตอนนี้ {a}/{n}', { f: TYPES.PC.full, n: r.postCoreRequired, a: r.postCoreDone ?? 0 })}
               </div>
             )}
 
@@ -131,13 +132,13 @@ export default function Criteria() {
               }}
             >
               {r.complete ? <SealCheck size={14} weight="fill" /> : <HourglassMedium size={14} />}
-              {r.complete ? 'ครบเกณฑ์แล้ว' : `เหลืออีก ${Math.max(0, r.required - r.done)} ชิ้น`}
+              {r.complete ? t('ครบเกณฑ์แล้ว') : t('เหลืออีก {n} ชิ้น', { n: Math.max(0, r.required - r.done) })}
             </div>
           </article>
         ))}
 
         <p style={{ margin: '2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-          Simple APD และ Recall ไม่นับเข้าเกณฑ์
+          {t('Simple APD และ Recall ไม่นับเข้าเกณฑ์')}
         </p>
 
       </div>

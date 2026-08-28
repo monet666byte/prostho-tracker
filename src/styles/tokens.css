@@ -109,6 +109,51 @@ html.theme-navy {
   --toast-bg: #14203e;
 }
 
+/* ม่วงพลัม: หรูขึ้น นุ่มขึ้น */
+html.theme-plum {
+  --accent: #6d3fd4;
+  --accent-hover: #5930b0;
+  --accent-tint: #f1ecfc;
+  --accent-ring: #e4dbf8;
+  --accent-on-dark: #c3aaf5;
+  --bg-canvas: #eeecf2;
+  --bg-app: #f7f6f9;
+  --bg-dash: #f9f8fb;
+  --bg-subtle: #fbfafd;
+  --shadow-accent: 0 6px 18px rgba(109, 63, 212, 0.26);
+  --toast-bg: #221540;
+}
+
+/* เทาหมึก: มินิมอล เป็นกลาง เหมือนเอกสาร */
+html.theme-ink {
+  --accent: #46536e;
+  --accent-hover: #37425a;
+  --accent-tint: #eef0f4;
+  --accent-ring: #e1e5ec;
+  --accent-on-dark: #aebccf;
+  --bg-canvas: #ececee;
+  --bg-app: #f6f6f7;
+  --bg-dash: #f8f8f9;
+  --bg-subtle: #fafafb;
+  --shadow-accent: 0 6px 18px rgba(70, 83, 110, 0.24);
+  --toast-bg: #1a212c;
+}
+
+/* ฟ้าทะเลลึก: cyan เข้ม สดแต่นิ่ง */
+html.theme-ocean {
+  --accent: #0e7490;
+  --accent-hover: #0a5c73;
+  --accent-tint: #e6f4f8;
+  --accent-ring: #d3ebf2;
+  --accent-on-dark: #7cc8dd;
+  --bg-canvas: #eaeff1;
+  --bg-app: #f4f7f8;
+  --bg-dash: #f6f9fa;
+  --bg-subtle: #f9fbfc;
+  --shadow-accent: 0 6px 18px rgba(14, 116, 144, 0.26);
+  --toast-bg: #0c2b33;
+}
+
 /* สีประจำประเภทงาน */
 .t-CD { --type: #2b5ce6; --type-tint: #edf1fe; }
 .t-APD { --type: #0891b2; --type-tint: #e4f5fa; }

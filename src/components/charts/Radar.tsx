@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import type { ProfileAxis } from '../../domain/analytics';
+import { t } from '../../lib/i18n';
 
 /**
  * กราฟแมงมุม — ใช้กับ "คะแนนประเมินรายคาบ 8 หัวข้อ" (หน้าประเมินรายคาบ)
@@ -64,7 +65,7 @@ export function Radar({
     <div>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <svg width={W} height={size} viewBox={`0 0 ${W} ${size}`} style={{ maxWidth: '100%' }} role="img" aria-labelledby={`${id}-t`}>
-          <title id={`${id}-t`}>{label} — โปรไฟล์ความคืบหน้า 6 ด้าน</title>
+          <title id={`${id}-t`}>{label} — {t('โปรไฟล์ความคืบหน้า 6 ด้าน')}</title>
 
           {/* วงกริดแค่ 50 กับ 100 — น้อยเส้นเท่าที่ยังบอกสเกลได้ */}
           {rings.map((ring) => (
@@ -140,23 +141,23 @@ export function Radar({
         {hover !== null
           ? `${axes[hover].label} · ${axes[hover].detail} (${axes[hover].value}%)`
           : onAxisClick
-            ? 'ชี้ที่จุดดูตัวเลข · กดหัวข้อเพื่อดูกราฟหัวข้อนั้น'
-            : 'ชี้ที่จุดเพื่อดูตัวเลข'}
+            ? t('ชี้ที่จุดดูตัวเลข · กดหัวข้อเพื่อดูกราฟหัวข้อนั้น')
+            : t('ชี้ที่จุดเพื่อดูตัวเลข')}
       </div>
 
       <div className="chartlegend">
         <span><i style={{ background: 'var(--accent)' }} /> {label}</span>
-        {reference && <span><i style={{ background: '#98A2B3' }} /> {referenceLabel ?? 'ค่าเฉลี่ย'}</span>}
-        <button onClick={() => setAsTable(!asTable)}>{asTable ? 'ซ่อนตาราง' : 'ดูเป็นตาราง'}</button>
+        {reference && <span><i style={{ background: '#98A2B3' }} /> {referenceLabel ?? t('ค่าเฉลี่ย')}</span>}
+        <button onClick={() => setAsTable(!asTable)}>{asTable ? t('ซ่อนตาราง') : t('ดูเป็นตาราง')}</button>
       </div>
 
       {asTable && (
         <table className="tbl" style={{ marginTop: 4 }}>
           <thead>
             <tr>
-              <th>ด้าน</th>
+              <th>{t('ด้าน')}</th>
               <th style={{ width: 92 }}>{label}</th>
-              {reference && <th style={{ width: 92 }}>{referenceLabel ?? 'ค่าเฉลี่ย'}</th>}
+              {reference && <th style={{ width: 92 }}>{referenceLabel ?? t('ค่าเฉลี่ย')}</th>}
             </tr>
           </thead>
           <tbody>

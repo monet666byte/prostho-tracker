@@ -3,6 +3,7 @@
  * ไม่มีค่าคงที่ที่ hard-code ไว้ ถ้า import ข้อมูลจริงเข้ามา ตัวเลขจะเปลี่ยนตามทันที
  */
 
+import { lang } from '../lib/i18n';
 import { ORDER, REQ_TYPES, TYPES } from './catalog';
 import { ROUNDS } from './rounds';
 import {
@@ -132,7 +133,7 @@ export function riskRows(
             id: w.id,
             type: w.type,
             code: `${TYPES[w.type].prefix}-${Math.min(10, progression(w) + 1)}`,
-            name: next ? next.name : 'รอปิดเคส',
+            name: next ? next.name : (lang === 'en' ? 'awaiting case closure' : 'รอปิดเคส'),
             progression: Math.max(0, progression(w)),
             days: Math.max(0, Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)),
           };
@@ -140,8 +141,8 @@ export function riskRows(
       const currentStepLabel = current
         ? nextProcOfCurrent
           ? `${stuckStep} · ${nextProcOfCurrent.name}`
-          : `${TYPES[current.type].prefix} รอปิดเคส`
-        : 'ไม่มีเคสในมือ';
+          : `${TYPES[current.type].prefix} ${lang === 'en' ? 'awaiting closure' : 'รอปิดเคส'}`
+        : lang === 'en' ? 'no active case' : 'ไม่มีเคสในมือ';
       const passed = stepDates.get(student.id) ?? new Set<string>();
       let stuckPeriods = 0;
       for (const c of myCheckins) {
@@ -158,33 +159,34 @@ export function riskRows(
       const silentDays = Math.min(lastStepDays, lastCheckinDays);
 
       let risk: RiskLevel = 'ok';
-      let reason = 'ผ่านเกณฑ์รายปีแล้ว';
+      const EN = lang === 'en';
+      let reason = EN ? 'Yearly requirement met' : 'ผ่านเกณฑ์รายปีแล้ว';
 
       if (yearGap > 0) {
-        const futureNote = shortPieces > 0 ? ` (รวมเคสที่ยังไม่ได้รับ ${shortPieces} เคส)` : '';
+        const futureNote = shortPieces > 0 ? (EN ? ` (incl. ${shortPieces} not-yet-accepted case(s))` : ` (รวมเคสที่ยังไม่ได้รับ ${shortPieces} เคส)`) : '';
         if (active.length === 0) {
           risk = 'high';
-          reason = 'ยังไม่มีเคสในมือเลย';
+          reason = EN ? 'No active case at all' : 'ยังไม่มีเคสในมือเลย';
         } else if (periodsNeeded > periodsLeft) {
           risk = 'high';
-          reason = `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ แต่คาบที่เหลือมีราว ${periodsLeft}`;
+          reason = EN ? `~${stepsRemaining} steps left${futureNote} ≈ ${periodsNeeded} periods, but only ~${periodsLeft} remain` : `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ แต่คาบที่เหลือมีราว ${periodsLeft}`;
         } else if (periodsNeeded > periodsLeft * 0.7) {
           risk = 'medium';
-          reason = `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ จาก ~${periodsLeft} — พอไหวแต่ห้ามหยุด`;
+          reason = EN ? `~${stepsRemaining} steps left${futureNote} ≈ ${periodsNeeded} of ~${periodsLeft} periods — feasible but no slack` : `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ จาก ~${periodsLeft} — พอไหวแต่ห้ามหยุด`;
         } else if (silentDays >= settings.stale) {
           risk = 'medium';
-          reason = `เหลือ ~${stepsRemaining} step${futureNote} · เงียบมา ${silentDays} วัน`;
+          reason = EN ? `~${stepsRemaining} steps left${futureNote} · silent for ${silentDays} days` : `เหลือ ~${stepsRemaining} step${futureNote} · เงียบมา ${silentDays} วัน`;
         } else {
-          reason = `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ`;
+          reason = EN ? `~${stepsRemaining} steps left${futureNote} ≈ ${periodsNeeded} periods` : `เหลือ ~${stepsRemaining} step${futureNote} ≈ ${periodsNeeded} คาบ`;
         }
 
         // มาเรียนแต่งานไม่ขยับหลายคาบติด = ติดเทคนิค — สัญญาณคนละแบบกับหายตัว
         if (stuckPeriods >= 3 && risk !== 'high') {
           risk = 'high';
-          reason = `ติด ${stuckStep} มา ${stuckPeriods} คาบแล้ว — น่าจะติดเทคนิค ควรเข้าไปดูหน้างาน`;
+          reason = EN ? `Stuck at ${stuckStep} for ${stuckPeriods} periods — likely a technique issue, worth checking chairside` : `ติด ${stuckStep} มา ${stuckPeriods} คาบแล้ว — น่าจะติดเทคนิค ควรเข้าไปดูหน้างาน`;
         } else if (stuckPeriods === 2 && risk === 'ok') {
           risk = 'medium';
-          reason = `ติด ${stuckStep} มา 2 คาบ — จับตาว่าติดอะไร`;
+          reason = EN ? `Stuck at ${stuckStep} for 2 periods — keep an eye on it` : `ติด ${stuckStep} มา 2 คาบ — จับตาว่าติดอะไร`;
         }
       }
 
@@ -219,7 +221,9 @@ export interface MonthPoint {
   future: boolean; // เดือนที่ยังมาไม่ถึงในปีการศึกษานี้
 }
 
-const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const TH_MONTHS = lang === 'en'
+  ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  : ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 /** จบเคสกี่ชิ้นในแต่ละเดือนของปีการศึกษา (มิ.ย. → คาบสุดท้ายเดือน มี.ค.) */
 export function throughputByMonth(works: Workpiece[], now = new Date()): MonthPoint[] {
@@ -453,10 +457,10 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
       partials: partialsFor((w) => w.type === 'PC', (crown.postCoreRequired ?? 0) - (crown.postCoreDone ?? 0)),
     },
     {
-      key: 'year', label: 'เกณฑ์รายปี', value: pct(thisYear, settings.req.perYear), detail: `${thisYear}/${settings.req.perYear}`,
+      key: 'year', label: lang === 'en' ? 'Yearly req.' : 'เกณฑ์รายปี', value: pct(thisYear, settings.req.perYear), detail: `${thisYear}/${settings.req.perYear}`,
       partials: partialsFor(() => true, settings.req.perYear - thisYear),
     },
-    { key: 'self', label: 'lab ทำเอง', value: pct(selfDone, selfAvailable), detail: `${selfDone}/${selfAvailable}` },
+    { key: 'self', label: lang === 'en' ? 'Self-perf. lab' : 'lab ทำเอง', value: pct(selfDone, selfAvailable), detail: `${selfDone}/${selfAvailable}` },
   ];
 }
 
@@ -468,7 +472,7 @@ export function averageProfile(students: Student[], works: Workpiece[], settings
   return profiles[0].map((axis, i) => ({
     ...axis,
     value: Math.round(profiles.reduce((sum, p) => sum + p[i].value, 0) / profiles.length),
-    detail: `เฉลี่ย ${Math.round(profiles.reduce((sum, p) => sum + p[i].value, 0) / profiles.length)}%`,
+    detail: `${lang === 'en' ? 'avg' : 'เฉลี่ย'} ${Math.round(profiles.reduce((sum, p) => sum + p[i].value, 0) / profiles.length)}%`,
   }));
 }
 

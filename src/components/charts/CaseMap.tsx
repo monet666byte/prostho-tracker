@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ORDER, TYPES } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
 import type { WorkType } from '../../domain/types';
+import { t, tText } from '../../lib/i18n';
 
 /**
  * แผนที่เคส — หนึ่งจุดคือชิ้นงานจริงหนึ่งชิ้น เรียงเป็นคอลัมน์ตาม step ที่ทำถึง
@@ -85,9 +86,9 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
         {showTypeLegend && (['CD', 'RPD', 'PC', 'CB'] as WorkType[]).map((t) => (
           <span key={t}><i style={{ background: TYPES[t].color, borderRadius: 99 }} /> {TYPES[t].short}</span>
         ))}
-        <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> ค้างเกิน {staleDays} วัน</span>
+        <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>
-          {hover ? hover.label : `${dots.length} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร`}
+          {hover ? tText(hover.label) : t('{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร', { n: dots.length })}
         </span>
       </div>
     </div>

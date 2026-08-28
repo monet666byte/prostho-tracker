@@ -5,6 +5,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { createWorkpieces } from '../../data/repo';
 import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, ORDER, TYPES } from '../../domain/catalog';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 const KENNEDY: KennedyClass[] = ['Kennedy class I', 'Kennedy class II', 'Kennedy class III', 'Kennedy class IV'];
@@ -57,7 +58,7 @@ export default function NewWorkpiece() {
       designRpd: type === 'RPD' ? designRpd : undefined,
       actor: 'นศ. ก',
     });
-    showToast({ message: `สร้าง ${created.length} ชิ้นงานแล้ว`, tone: 'success' });
+    showToast({ message: t('สร้าง {n} ชิ้นงานแล้ว', { n: created.length }), tone: 'success' });
     navigate('/app/patients');
   }
 
@@ -67,23 +68,23 @@ export default function NewWorkpiece() {
         <div className="footer">
           <button className="btn" style={{ height: 56, borderRadius: 16 }} onClick={submit}>
             <PlusCircle size={19} weight="fill" />
-            สร้างชิ้นงาน{removable && pair ? ' (2 ชิ้น)' : ''}
+            {t('สร้างชิ้นงาน')}{removable && pair ? t(' (2 ชิ้น)') : ''}
           </button>
         </div>
       }
     >
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>เปิดชิ้นงานใหม่</h2>
+          <h2 className="h2" style={{ flex: 1 }}>{t('เปิดชิ้นงานใหม่')}</h2>
         </div>
       </header>
 
       <div style={{ padding: '16px 16px 0', display: 'grid', gap: 16 }}>
         <div className="field">
-          <label>ประเภทงาน</label>
+          <label>{t('ประเภทงาน')}</label>
           <div className="seg">
             {TYPE_KEYS.map((k) => (
               <button
@@ -111,23 +112,23 @@ export default function NewWorkpiece() {
         >
           <div style={{ font: '600 12.5px var(--font-head)', color: meta.ink }}>{meta.full}</div>
           <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
-            <span className="mono">{meta.prefix}</span>-0 ถึง {meta.prefix}-10
+            <span className="mono">{meta.prefix}</span>-0 {t('ถึง')} {meta.prefix}-10
           </div>
         </div>
 
         {removable && DENTURE_CLASSES_FOR[type]?.length > 0 && (
           <div className="field">
-            <label>ชนิดชิ้นงานตามชีต (ช่อง “ชนิดชิ้นงาน UPPER/LOWER denture”)</label>
+            <label>{t('ชนิดชิ้นงานตามชีต (ช่อง “ชนิดชิ้นงาน UPPER/LOWER denture”)')}</label>
             <div className="seg">
               {DENTURE_CLASSES_FOR[type].map((dc) => (
                 <button key={dc} data-on={dentureClass === dc} onClick={() => setDentureClass(dc)}>
-                  {DENTURE_CLASSES[dc].label}
+                  {t(DENTURE_CLASSES[dc].label)}
                 </button>
               ))}
             </div>
             <p style={{ margin: '4px 0 0', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-              {DENTURE_CLASSES[dentureClass].teeth}
-              {DENTURE_CLASSES[dentureClass].countsCDA && ' · นับเข้า Count CDA'}
+              {t(DENTURE_CLASSES[dentureClass].teeth)}
+              {DENTURE_CLASSES[dentureClass].countsCDA && t(' · นับเข้า Count CDA')}
             </p>
           </div>
         )}
@@ -143,9 +144,9 @@ export default function NewWorkpiece() {
           >
             <LinkSimple size={18} color={pair ? 'var(--accent)' : 'var(--text-muted)'} style={{ flex: 'none' }} />
             <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>สร้างคู่ upper + lower</span>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{t('สร้างคู่ upper + lower')}</span>
               <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
-                progress แยกกันคนละแถว
+                {t('progress แยกกันคนละแถว')}
               </span>
             </span>
             <span className="toggle" data-on={pair}><i /></span>
@@ -157,7 +158,7 @@ export default function NewWorkpiece() {
             {['Upper', 'Lower'].map((a) => (
               <div key={a} className="dashed" style={{ flex: 1, padding: '10px 12px' }}>
                 <div style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)' }}>{a}</div>
-                <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>ยังไม่เริ่ม · step 0</div>
+                <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>{t('ยังไม่เริ่ม')} · step 0</div>
               </div>
             ))}
           </div>
@@ -178,7 +179,7 @@ export default function NewWorkpiece() {
 
         {type === 'PC' && (
           <div className="field">
-            <label>ชนิด post</label>
+            <label>{t('ชนิด post')}</label>
             <div className="seg">
               {(['cast', 'prefab'] as const).map((v) => (
                 <button key={v} data-on={variant === v} onClick={() => setVariant(v)}>
@@ -191,8 +192,8 @@ export default function NewWorkpiece() {
 
         {needsTooth && (
           <label className="field">
-            <span>ซี่ฟัน <span className="faint" style={{ fontWeight: 400 }}>— ต้องระบุให้ชัดเจน</span></span>
-            <input className="input mono" value={tooth} onChange={(e) => setTooth(e.target.value)} placeholder="เช่น 46 หรือ 34–36" />
+            <span>{t('ซี่ฟัน')} <span className="faint" style={{ fontWeight: 400 }}>{t('— ต้องระบุให้ชัดเจน')}</span></span>
+            <input className="input mono" value={tooth} onChange={(e) => setTooth(e.target.value)} placeholder={t('เช่น 46 หรือ 34–36')} />
           </label>
         )}
 
@@ -211,7 +212,7 @@ export default function NewWorkpiece() {
               font: '600 11.5px var(--font-body)', color: min ? 'var(--success-dark)' : 'var(--text-muted)',
             }}
           >
-            นับเข้าเกณฑ์
+            {t('นับเข้าเกณฑ์')}
             <span className="toggle" data-on={min} style={{ width: 34, height: 20, background: min ? 'var(--success)' : undefined }}>
               <i style={{ width: 14, height: 14, transform: min ? 'translateX(14px)' : undefined }} />
             </span>
@@ -219,11 +220,11 @@ export default function NewWorkpiece() {
         </div>
 
         <div className="field">
-          <label>ผู้ป่วย</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อผู้ป่วย (สมมติ เช่น ผู้ป่วย E)" />
+          <label>{t('ผู้ป่วย')}</label>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('ชื่อผู้ป่วย (สมมติ เช่น ผู้ป่วย E)')} />
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <input className="input mono" value={hn} onChange={(e) => setHn(e.target.value)} placeholder="HN" />
-            <input className="input" value={sexAge} onChange={(e) => setSexAge(e.target.value)} placeholder="เพศ/อายุ" />
+            <input className="input" value={sexAge} onChange={(e) => setSexAge(e.target.value)} placeholder={t('เพศ/อายุ')} />
           </div>
         </div>
 
@@ -233,7 +234,7 @@ export default function NewWorkpiece() {
             style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', font: '600 12px var(--font-body)', color: 'var(--text-secondary)' }}
           >
             {more ? <CaretUp size={14} weight="bold" /> : <CaretDown size={14} weight="bold" />}
-            ข้อมูลเพิ่มเติม (Payment, Sect II, Design RPD)
+            {t('ข้อมูลเพิ่มเติม (Payment, Sect II, Design RPD)')}
             
           </button>
 
@@ -243,12 +244,12 @@ export default function NewWorkpiece() {
                 <label>Payment</label>
                 <div className="seg">
                   {(['ยังไม่ชำระ', 'ชำระแล้ว', 'ยกเว้น'] as Payment[]).map((p) => (
-                    <button key={p} data-on={payment === p} onClick={() => setPayment(p)}>{p}</button>
+                    <button key={p} data-on={payment === p} onClick={() => setPayment(p)}>{t(p)}</button>
                   ))}
                 </div>
               </div>
               <div className="field">
-                <label>Sect II · Pt. exam &amp; tx. plan <span className="faint" style={{ fontWeight: 400 }}>— ชีตแยกเป็น 2 ช่อง</span></label>
+                <label>Sect II · Pt. exam &amp; tx. plan <span className="faint" style={{ fontWeight: 400 }}>{t('— ชีตแยกเป็น 2 ช่อง')}</span></label>
                 <div style={{ display: 'flex', gap: 9 }}>
                   {(
                     [

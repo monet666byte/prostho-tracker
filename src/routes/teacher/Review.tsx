@@ -14,6 +14,7 @@ import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } fro
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort } from '../../lib/date';
+import { t, tSexAge, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 type Filter = 'all' | 'stale' | 'done';
@@ -29,7 +30,7 @@ export default function Review() {
   const reviews = useReviews();
   const pending = usePending();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
-  const teacherById = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
+  const teacherById = useMemo(() => new Map(teachers.map((tc) => [tc.id, tc])), [teachers]);
 
   const groupCode = useApp((st) => st.teacherGroup);
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ export default function Review() {
     () => students.filter((s) => s.group === groupCode).sort((a, b) => a.code.localeCompare(b.code)),
     [students, groupCode],
   );
-  const advisors = groupStudents[0]?.advisorIds.map((id) => teacherById.get(id)?.name ?? '—').join(' / ') ?? '';
+  const advisors = groupStudents[0]?.advisorIds.map((id) => t(teacherById.get(id)?.name ?? '—')).join(' / ') ?? '';
   const activeId = studentId ?? groupStudents[0]?.id;
   const active = groupStudents.find((s) => s.id === activeId);
   const works = useWorkpieces(activeId);
@@ -75,15 +76,15 @@ export default function Review() {
           onClick={() => navigate('/teacher/group')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, marginBottom: 8, cursor: 'pointer', font: '500 12px var(--font-body)', color: 'var(--accent)' }}
         >
-          <ArrowLeft size={14} weight="bold" /> กลับสรุปกลุ่ม
+          <ArrowLeft size={14} weight="bold" /> {t('กลับสรุปกลุ่ม')}
         </button>
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>ตรวจงานรายคน</h1>
+            <h1>{t('ตรวจงานรายคน')}</h1>
             <p>
-              กลุ่ม {groupCode.replace('TH-', '')} · {groupStudents.length} คน
-              {advisors && ` · อาจารย์ที่ปรึกษา ${advisors}`}
-              {' — '}ใช้เป็นครั้งคราว ตอนรับเคสใหม่/เคสจบ (งานประจำคาบอยู่ที่ "ประเมินรายคาบ")
+              {t('กลุ่ม')} {groupCode.replace('TH-', '')} · {t('{n} คน', { n: groupStudents.length })}
+              {advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}
+              {' — '}{t('ใช้เป็นครั้งคราว ตอนรับเคสใหม่/เคสจบ (งานประจำคาบอยู่ที่ "ประเมินรายคาบ")')}
             </p>
           </div>
         </div>
@@ -92,7 +93,7 @@ export default function Review() {
         <div className="pickrow">
           {groupStudents.map((s) => (
             <button key={s.id} data-on={s.id === activeId} onClick={() => setStudentId(s.id)}>
-              {s.name}
+              {t(s.name)}
               <span className="mono">{s.code}</span>
             </button>
           ))}
@@ -100,12 +101,12 @@ export default function Review() {
 
         <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ font: '600 15px var(--font-head)' }}>{active?.name ?? ''}</div>
+            <div style={{ font: '600 15px var(--font-head)' }}>{t(active?.name ?? '')}</div>
             <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
-              {works.length} ชิ้นงาน · เกณฑ์สะสม{' '}
+              {t('{n} ชิ้นงาน', { n: works.length })} · {t('เกณฑ์สะสม')}{' '}
               {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
               {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
-              {' · '}รายปี {thisYear.done}/{thisYear.required}
+              {' · '}{t('รายปี')} {thisYear.done}/{thisYear.required}
             </div>
           </div>
           <button
@@ -113,7 +114,7 @@ export default function Review() {
             style={{ width: 'auto', height: 34, fontSize: 11.5, padding: '0 12px' }}
             onClick={() => setShowReq(!showReq)}
           >
-            <SquaresFour size={14} /> {showReq ? 'ซ่อนเกณฑ์' : 'ดูเกณฑ์'}
+            <SquaresFour size={14} /> {showReq ? t('ซ่อนเกณฑ์') : t('ดูเกณฑ์')}
           </button>
         </div>
 
@@ -121,9 +122,9 @@ export default function Review() {
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 13 }}>
           {(
             [
-              ['all', 'ทั้งหมด', works.length],
-              ['stale', 'ค้างนาน', staleCount],
-              ['done', 'จบเคสแล้ว', doneCount],
+              ['all', t('ทั้งหมด'), works.length],
+              ['stale', t('ค้างนาน'), staleCount],
+              ['done', t('จบเคสแล้ว'), doneCount],
             ] as Array<[Filter, string, number]>
           ).map(([k, label, n]) => (
             <button
@@ -145,7 +146,7 @@ export default function Review() {
           <div style={{ display: 'grid', gap: 10 }}>
           {list.length === 0 && (
             <div className="dashed" style={{ padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
-              ไม่มีชิ้นงานในหมวดนี้
+              {t('ไม่มีชิ้นงานในหมวดนี้')}
             </div>
           )}
           {list.map((w) => {
@@ -162,31 +163,31 @@ export default function Review() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                     <TypeBadge type={w.type} />
-                    <span style={{ font: '600 13.5px var(--font-head)' }}>{w.detail}</span>
+                    <span style={{ font: '600 13.5px var(--font-head)' }}>{tText(w.detail)}</span>
                     {w.minimumRequirement && (
-                      <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>นับเกณฑ์</span>
+                      <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>{t('นับเกณฑ์')}</span>
                     )}
                     {isStale(w, settings) && (
                       <span className="badge" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>
-                        ค้าง {daysSinceUpdate(w)} วัน
+                        {t('ค้าง {d} วัน', { d: daysSinceUpdate(w) })}
                       </span>
                     )}
                     {pending.has(w.id) && (
-                      <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>รอ sync</span>
+                      <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('รอ sync')}</span>
                     )}
                     {!!(review?.comment) && (
                       <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                        <ChatCircleText size={11} weight="fill" style={{ verticalAlign: -1.5, marginRight: 3 }} />คอมเมนต์แล้ว
+                        <ChatCircleText size={11} weight="fill" style={{ verticalAlign: -1.5, marginRight: 3 }} />{t('คอมเมนต์แล้ว')}
                       </span>
                     )}
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', font: '500 11px var(--font-body)', flex: 'none' }}>
-                      {opened ? 'ซ่อน' : 'รูป · คอมเมนต์'}
+                      {opened ? t('ซ่อน') : t('รูป · คอมเมนต์')}
                       <CaretDown size={12} weight="bold" style={{ transform: opened ? 'rotate(180deg)' : undefined, transition: 'transform .15s' }} />
                     </span>
                   </div>
 
                   <div className="mono" style={{ font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 6 }}>
-                    {w.patient.name} · HN {w.patient.hn} · {w.patient.sexAge} · รับเคส {thaiShort(w.acceptedDate)}
+                    {t(w.patient.name)} · HN {w.patient.hn} · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
@@ -196,7 +197,7 @@ export default function Review() {
                     </span>
                     <span className="chip" style={{ background: meta.tint, color: meta.ink }}>{percentCompleted(w)}%</span>
                     <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 140 }}>
-                      {cur ? procLabel(w.type, cur) : 'ยังไม่เริ่ม'}
+                      {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
                     </span>
                   </div>
                 </button>
@@ -205,7 +206,7 @@ export default function Review() {
                   <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
                     <div style={{ flex: '0 1 auto' }}>
                       <div style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)', marginBottom: 5 }}>
-                        รูปงานที่นักศึกษาแนบ · 2 รูป (เดโม — ยังไม่มีรูปจริง)
+                        {t('รูปงานที่นักศึกษาแนบ · 2 รูป (เดโม — ยังไม่มีรูปจริง)')}
                       </div>
                       <div style={{ display: 'flex', gap: 7 }}>
                         <PhotoSlot size={64} filled />
@@ -217,7 +218,7 @@ export default function Review() {
                       <textarea
                         className="input"
                         style={{ minHeight: 64, fontSize: 12 }}
-                        placeholder="คอมเมนต์ถึงนักศึกษา…"
+                        placeholder={t('คอมเมนต์ถึงนักศึกษา…')}
                         value={comments[w.id] ?? review?.comment ?? ''}
                         onChange={(e) => setComments({ ...comments, [w.id]: e.target.value })}
                       />
@@ -227,10 +228,10 @@ export default function Review() {
                           style={{ height: 38, fontSize: 12, width: 'auto', padding: '0 14px' }}
                           onClick={async () => {
                             await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? 'อ. ก.');
-                            showToast({ message: 'บันทึกคอมเมนต์แล้ว', tone: 'success' });
+                            showToast({ message: t('บันทึกคอมเมนต์แล้ว'), tone: 'success' });
                           }}
                         >
-                          <ChatCircleText size={15} /> บันทึกคอมเมนต์
+                          <ChatCircleText size={15} /> {t('บันทึกคอมเมนต์')}
                         </button>
 
                       </div>
@@ -245,12 +246,12 @@ export default function Review() {
           {showReq && (
           <div className="panel" style={{ position: 'sticky', top: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-              <h3 style={{ flex: 1 }}>เกณฑ์ของ {active?.name ?? ''}</h3>
-              <button className="iconbtn iconbtn--plain" style={{ width: 26, height: 26 }} onClick={() => setShowReq(false)} aria-label="ปิด">
+              <h3 style={{ flex: 1 }}>{t('เกณฑ์ของ')} {t(active?.name ?? '')}</h3>
+              <button className="iconbtn iconbtn--plain" style={{ width: 26, height: 26 }} onClick={() => setShowReq(false)} aria-label={t('ปิด')}>
                 <X size={13} weight="bold" />
               </button>
             </div>
-            <p className="sub">ทึบ = จบแล้ว · มีเลข = กำลังทำ (step ที่ผ่าน) · ประ = ยังไม่มีเคส</p>
+            <p className="sub">{t('ทึบ = จบแล้ว · มีเลข = กำลังทำ (step ที่ผ่าน) · ประ = ยังไม่มีเคส')}</p>
             <div style={{ marginTop: 6 }}>
               <RequirementSlots works={works} settings={settings} />
             </div>

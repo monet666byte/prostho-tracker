@@ -10,10 +10,11 @@ import { currentProc, isComplete, procLabel } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
+import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 const TITLES: Record<string, { title: string; sub: string }> = {
-  overview: { title: 'ภาพรวมชั้นปีที่ 5', sub: '' },
+  overview: { title: t('ภาพรวมชั้นปีที่ 5'), sub: '' },
 };
 
 export default function Dashboard() {
@@ -42,7 +43,7 @@ export default function Dashboard() {
 
   const activePieces = works.filter((w) => !isComplete(w)).length;
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
-  const maxTypeCount = Math.max(1, ...typeCounts.map((t) => t.count));
+  const maxTypeCount = Math.max(1, ...typeCounts.map((x) => x.count));
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
@@ -59,12 +60,12 @@ export default function Dashboard() {
           <div style={{ flex: 1 }}>
             <h1>{meta.title}</h1>
             <p>
-              {students.length} คน · {groups.length} กลุ่ม · {thaiShort(new Date())} {new Date().toTimeString().slice(0, 5)} น.
+              {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
             </p>
           </div>
-          <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px' }}>ภาคเรียน 2569/1</button>
+          <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px' }}>{t('ภาคเรียน 2569/1')}</button>
           <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px' }}>
-            <Export size={16} /> ส่งออก CSV
+            <Export size={16} /> {t('ส่งออก CSV')}
           </button>
         </div>
 
@@ -72,32 +73,32 @@ export default function Dashboard() {
           <>
             <div className="kpis">
               <div className="kpi">
-                <div className="kpi__label"><Stack size={14} /> ชิ้นงานที่กำลังทำ</div>
+                <div className="kpi__label"><Stack size={14} /> {t('ชิ้นงานที่กำลังทำ')}</div>
                 <div className="kpi__value">{activePieces}</div>
-                <div className="kpi__hint">จากทั้งหมด {works.length} ชิ้น</div>
+                <div className="kpi__hint">{t('จากทั้งหมด {n} ชิ้น', { n: works.length })}</div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><Users size={14} /> จบเคสสะสมปี {yearly.year}</div>
+                <div className="kpi__label"><Users size={14} /> {t('จบเคสสะสมปี')} {yearly.year}</div>
                 <div className="kpi__value" style={{ color: yearly.piecesDone >= yearly.piecesGoal ? 'var(--success)' : undefined }}>
                   {yearly.piecesDone}
                   <span style={{ font: '500 14px var(--font-body)', color: 'var(--text-faint)' }}> / {yearly.piecesGoal}</span>
                 </div>
-                <div className="kpi__hint">เป้า {students.length} คน × {settings.req.perYear} ชิ้น/ปี</div>
+                <div className="kpi__hint">{t('เป้า {a} คน × {b} ชิ้น/ปี', { a: students.length, b: settings.req.perYear })}</div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><WarningCircle size={14} /> เคสค้าง &gt; {settings.stale} วัน</div>
+                <div className="kpi__label"><WarningCircle size={14} /> {t('เคสค้าง >')} {settings.stale} {t('วัน')}</div>
                 <div className="kpi__value" style={{ color: 'var(--danger-chart)' }}>{stale.length}</div>
-                <div className="kpi__hint">กระจายใน {new Set(stale.map((s) => s.student.group)).size} กลุ่ม</div>
+                <div className="kpi__hint">{t('กระจายใน {n} กลุ่ม', { n: new Set(stale.map((s) => s.student.group)).size })}</div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><BellRinging size={14} /> นักศึกษารอประเมิน</div>
+                <div className="kpi__label"><BellRinging size={14} /> {t('นักศึกษารอประเมิน')}</div>
                 <div className="kpi__value" style={{ color: pendingEval > 0 ? 'var(--warning)' : undefined }}>{pendingEval}</div>
-                <div className="kpi__hint">ดูที่ ประเมินรายคาบ</div>
+                <div className="kpi__hint">{t('ดูที่ ประเมินรายคาบ')}</div>
               </div>
             </div>
 
             <div className="panel" style={{ marginBottom: 16 }}>
-              <h3>กลุ่มคลินิก PT1–PT12</h3>
+              <h3>{t('กลุ่มคลินิก PT1–PT12')}</h3>
               <div className="groupgrid" style={{ marginTop: 13 }}>
                 {groups.map((g) => {
                   const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
@@ -117,23 +118,23 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
-                <h3>นักศึกษาในกลุ่ม {selected?.code.replace('TH-', '')}</h3>
-                <p className="sub">{selected?.students.length} คน · เรียงตามรหัส</p>
+                <h3>{t('นักศึกษาในกลุ่ม')} {selected?.code.replace('TH-', '')}</h3>
+                <p className="sub">{t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}</p>
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>นักศึกษา</th>
-                      <th style={{ width: 130 }}>ความคืบหน้า</th>
-                      <th style={{ width: 56 }}>ชิ้นงาน</th>
-                      <th style={{ width: 76 }}>เกณฑ์สะสม 2 ปี</th>
-                      <th style={{ width: 46 }}>ค้าง</th>
+                      <th>{t('นักศึกษา')}</th>
+                      <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>
+                      <th style={{ width: 56 }}>{t('ชิ้นงาน')}</th>
+                      <th style={{ width: 76 }}>{t('เกณฑ์สะสม 2 ปี')}</th>
+                      <th style={{ width: 46 }}>{t('ค้าง')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selected?.students.map((s) => (
                       <tr key={s.student.id}>
                         <td>
-                          <div style={{ font: '600 12px var(--font-body)' }}>{s.student.name}</div>
+                          <div style={{ font: '600 12px var(--font-body)' }}>{t(s.student.name)}</div>
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>{s.student.code}</div>
                         </td>
                         <td>
@@ -170,8 +171,8 @@ export default function Dashboard() {
               </div>
 
               <div className="panel">
-                <h3>ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด</h3>
-                <p className="sub">ทั้งชั้นปี {stale.length} ชิ้น</p>
+                <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}</h3>
+                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}</p>
                 <table className="tbl">
                   <tbody>
                     {stale.slice(0, 6).map((r) => {
@@ -180,15 +181,15 @@ export default function Dashboard() {
                       return (
                         <tr key={key}>
                           <td style={{ font: '600 11.5px var(--font-body)', width: 90 }}>
-                            {r.student.name}
+                            {t(r.student.name)}
                             <span className="mono" style={{ display: 'block', font: '400 9px var(--font-mono)', color: 'var(--text-faint)' }}>
                               {r.student.group.replace('TH-', '')}
                             </span>
                           </td>
                           <td>
-                            <div style={{ font: '500 11px var(--font-body)' }}>{r.workpiece.detail}</div>
+                            <div style={{ font: '500 11px var(--font-body)' }}>{tText(r.workpiece.detail)}</div>
                             <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 1 }}>
-                              {cur ? procLabel(r.workpiece.type, cur) : 'ยังไม่เริ่ม'}
+                              {cur ? procLabel(r.workpiece.type, cur) : t('ยังไม่เริ่ม')}
                             </div>
                           </td>
                           <td style={{ width: 44 }}>
@@ -204,10 +205,10 @@ export default function Dashboard() {
                               }}
                               onClick={() => {
                                 setPinged({ ...pinged, [key]: true });
-                                showToast({ message: `เตือน ${r.student.name} แล้ว`, tone: 'success' });
+                                showToast({ message: t('เตือน {n} แล้ว', { n: t(r.student.name) }), tone: 'success' });
                               }}
                             >
-                              {pinged[key] ? 'เตือนแล้ว' : <><BellRinging size={13} /> เตือน</>}
+                              {pinged[key] ? t('เตือนแล้ว') : <><BellRinging size={13} /> {t('เตือน')}</>}
                             </button>
                           </td>
                         </tr>
@@ -220,16 +221,16 @@ export default function Dashboard() {
 
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
                 <div className="panel">
-                  <h3>จำนวนชิ้นงานต่อประเภท (ทั้งชั้นปี)</h3>
-                  <p className="sub">รวม {works.length} ชิ้นงาน</p>
+                  <h3>{t('จำนวนชิ้นงานต่อประเภท (ทั้งชั้นปี)')}</h3>
+                  <p className="sub">{t('รวม {n} ชิ้นงาน', { n: works.length })}</p>
                   <div style={{ marginTop: 10 }}>
-                    {typeCounts.map((t) => (
-                      <div className="hbar" key={t.type}>
-                        <span className="hbar__label">{TYPES[t.type].short}</span>
+                    {typeCounts.map((tc) => (
+                      <div className="hbar" key={tc.type}>
+                        <span className="hbar__label">{TYPES[tc.type].short}</span>
                         <span className="hbar__track">
-                          <i style={{ width: `${(t.count / maxTypeCount) * 100}%`, background: TYPES[t.type].color }} />
+                          <i style={{ width: `${(tc.count / maxTypeCount) * 100}%`, background: TYPES[tc.type].color }} />
                         </span>
-                        <span className="hbar__value">{t.count}</span>
+                        <span className="hbar__value">{tc.count}</span>
                       </div>
                     ))}
                   </div>
@@ -238,13 +239,13 @@ export default function Dashboard() {
                 <div className="panel">
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                      <h3>ชิ้นงานคงค้าง จำแนกตามขั้นงาน</h3>
-                      <p className="sub">เปิดรายละเอียด step ที่กองมากสุดไว้ให้ · กดแท่งอื่นเพื่อสลับ</p>
+                      <h3>{t('ชิ้นงานคงค้าง จำแนกตามขั้นงาน')}</h3>
+                      <p className="sub">{t('เปิดรายละเอียด step ที่กองมากสุดไว้ให้ · กดแท่งอื่นเพื่อสลับ')}</p>
                     </div>
                     <div className="seg seg--sm">
-                      {(['CD', 'RPD', 'PC', 'CB'] as WorkType[]).map((t) => (
-                        <button key={t} data-on={stepType === t} onClick={() => { setStepType(t); setOpenStep(null); }}>
-                          {TYPES[t].short}
+                      {(['CD', 'RPD', 'PC', 'CB'] as WorkType[]).map((ty) => (
+                        <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
+                          {TYPES[ty].short}
                         </button>
                       ))}
                     </div>
@@ -256,7 +257,7 @@ export default function Dashboard() {
                         data-clickable="true"
                         data-on={shownStep === b.progression}
                         onClick={() => setOpenStep(shownStep === b.progression ? -1 : b.progression)}
-                        title={`กดดูขั้นตอนใน step ${b.progression}`}
+                        title={t('กดดูขั้นตอนใน step {n}', { n: b.progression })}
                       >
                         <span className="tick">{b.count || ''}</span>
                         <span
@@ -276,7 +277,7 @@ export default function Dashboard() {
                       <StepInfo
                         progression={shownStep}
                         type={stepType}
-                        meta={`${stepBuckets[shownStep].count} ชิ้นงานกำลังอยู่ที่ step นี้`}
+                        meta={t('{n} ชิ้นงานกำลังอยู่ที่ step นี้', { n: stepBuckets[shownStep].count })}
                         onClose={() => setOpenStep(-1)}
                       />
                     </div>
@@ -285,9 +286,9 @@ export default function Dashboard() {
                     <Info size={15} weight="fill" color="var(--text-faint)" style={{ flex: 'none', marginTop: 1 }} />
                     <span className="pretty" style={{ font: '500 11px/1.55 var(--font-body)', color: 'var(--text-muted)' }}>
                       {busiest.count > 0
-                        ? `งาน ${TYPES[stepType].short} กองอยู่ที่ step ${busiest.progression} มากที่สุด (${busiest.count} ชิ้น) — ${busiest.label}`
-                        : 'ยังไม่มีชิ้นงานที่กำลังทำในประเภทนี้'}
-                      {' · '}ดูวิเคราะห์เชิงลึกได้ที่เมนู “วิเคราะห์”
+                        ? t('งาน {s} กองอยู่ที่ step {p} มากที่สุด ({c} ชิ้น) — {l}', { s: TYPES[stepType].short, p: busiest.progression, c: busiest.count, l: busiest.label })
+                        : t('ยังไม่มีชิ้นงานที่กำลังทำในประเภทนี้')}
+                      {' · '}{t('ดูวิเคราะห์เชิงลึกได้ที่เมนู “วิเคราะห์”')}
                     </span>
                   </div>
                 </div>

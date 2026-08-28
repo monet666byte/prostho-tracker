@@ -8,6 +8,7 @@ import { evaluateCheckIn } from '../../data/repo';
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, totalScore } from '../../domain/checkin';
 import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTeacher } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
+import { t } from '../../lib/i18n';
 import type { CheckIn } from '../../domain/types';
 import { useApp } from '../../store/app';
 
@@ -27,13 +28,13 @@ function ScoreTrend({
 }) {
   const pts = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   if (pts.length < 2) {
-    return <p className="faint" style={{ font: '400 11px var(--font-body)', margin: '20px 0' }}>มีผลประเมินคาบเดียว — เส้นแนวโน้มจะขึ้นเมื่อมีตั้งแต่ 2 คาบ</p>;
+    return <p className="faint" style={{ font: '400 11px var(--font-body)', margin: '20px 0' }}>{t('มีผลประเมินคาบเดียว — เส้นแนวโน้มจะขึ้นเมื่อมีตั้งแต่ 2 คาบ')}</p>;
   }
   const W = 460, H = height, padL = 34, padR = 40, padT = 24, padB = 26;
   const x = (i: number) => padL + (i / (pts.length - 1)) * (W - padL - padR);
   const y = (v: number) => padT + (H - padT - padB) * (1 - v / max);
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="คะแนนรายคาบ">
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('คะแนนรายคาบ')}>
       {ticks.map((v) => (
         <g key={v}>
           <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
@@ -45,13 +46,13 @@ function ScoreTrend({
         fill="none" stroke="var(--accent)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"
       />
       {pts.map((c, i) => {
-        const t = getValue(c);
+        const v = getValue(c);
         return (
           <g key={c.id}>
-            <circle cx={x(i)} cy={y(t)} r={4} fill="var(--accent)" stroke="#fff" strokeWidth={2}>
-              <title>{`${thaiShort(c.date)} · ${t}/${max} · ${c.activities.join(', ')}`}</title>
+            <circle cx={x(i)} cy={y(v)} r={4} fill="var(--accent)" stroke="#fff" strokeWidth={2}>
+              <title>{`${thaiShort(c.date)} · ${v}/${max} · ${c.activities.join(', ')}`}</title>
             </circle>
-            <text x={x(i)} y={y(t) - 9} textAnchor="middle" style={{ font: '600 9.5px var(--font-mono)', fill: 'var(--text-muted)' }}>{t}</text>
+            <text x={x(i)} y={y(v) - 9} textAnchor="middle" style={{ font: '600 9.5px var(--font-mono)', fill: 'var(--text-muted)' }}>{v}</text>
             {(pts.length <= 5 || i % 2 === 0 || i === pts.length - 1) && (
               <text x={x(i)} y={H - 8} textAnchor="middle" style={{ font: '400 9px var(--font-body)', fill: 'var(--text-faint)' }}>{thaiShort(c.date)}</text>
             )}
@@ -92,7 +93,7 @@ export default function Evaluate() {
     CRITERIA.map((cr) => {
       const vals = rows.map((c) => c.scores?.[cr.key] ?? 0);
       const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-      return { key: cr.key, label: cr.short, value: Math.round((avg / 3) * 100), detail: `${avg.toFixed(1)}/3` };
+      return { key: cr.key, label: t(cr.short), value: Math.round((avg / 3) * 100), detail: `${avg.toFixed(1)}/3` };
     });
   const selectedId = chartStudent ?? groupStudents[0]?.id ?? null;
   const selectedRows = evaluatedInGroup.filter((c) => c.studentId === selectedId);
@@ -109,7 +110,7 @@ export default function Evaluate() {
 
   async function sign(id: string) {
     await evaluateCheckIn(id, draftFor(id), teacher?.name ?? 'อ. ก.');
-    showToast({ message: 'บันทึกผลประเมินแล้ว (เทียบเท่าลงนามในสมุด)', tone: 'success' });
+    showToast({ message: t('บันทึกผลประเมินแล้ว (เทียบเท่าลงนามในสมุด)'), tone: 'success' });
   }
 
   return (
@@ -117,21 +118,21 @@ export default function Evaluate() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>ประเมินรายคาบ</h1>
-            <p>กลุ่ม {group.replace('TH-', '')} · คะแนน 3 / 1 / 0</p>
+            <h1>{t('ประเมินรายคาบ')}</h1>
+            <p>{t('กลุ่ม')} {group.replace('TH-', '')} · {t('คะแนน 3 / 1 / 0')}</p>
           </div>
         </div>
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3>
-            รอประเมิน · {new Set(pending.map((c) => c.studentId)).size} คน
-            {pending.length > new Set(pending.map((c) => c.studentId)).size && ` (${pending.length} รายการ)`}
+            {t('รอประเมิน')} · {t('{n} คน', { n: new Set(pending.map((c) => c.studentId)).size })}
+            {pending.length > new Set(pending.map((c) => c.studentId)).size && ` (${t('{n} รายการ', { n: pending.length })})`}
           </h3>
           
 
           {pending.length === 0 && (
             <div className="dashed" style={{ marginTop: 12, padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
-              ประเมินครบทุกคนแล้ว
+              {t('ประเมินครบทุกคนแล้ว')}
             </div>
           )}
 
@@ -145,26 +146,26 @@ export default function Evaluate() {
                 <div key={c.id} className="evalcard">
                   <div className="evalcard__info">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ font: '600 13.5px var(--font-head)' }}>{student?.name}</span>
+                      <span style={{ font: '600 13.5px var(--font-head)' }}>{t(student?.name ?? '')}</span>
                       <span className="mono" style={{ font: '400 10px var(--font-mono)', color: 'var(--text-faint)' }}>
                         {student?.code}
                       </span>
                       <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                        <CalendarCheck size={12} weight="fill" /> {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt} น.` : ''}
+                        <CalendarCheck size={12} weight="fill" /> {thaiShort(c.date)}{c.checkinAt ? ` · ${t('{time} น.', { time: c.checkinAt })}` : ''}
                       </span>
                       {!c.punctual && (
-                        <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>มาสาย</span>
+                        <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('มาสาย')}</span>
                       )}
                       {c.noPatient && (
-                        <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>ไม่มีผู้ป่วย</span>
+                        <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>{t('ไม่มีผู้ป่วย')}</span>
                       )}
                     </div>
                     <div style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-body)', marginTop: 6 }}>
-                      {c.activities.join(' · ')}
-                      {patient && <span className="mono" style={{ color: 'var(--text-faint)' }}> · {patient.name} (HN {patient.hn})</span>}
+                      {c.activities.map((a) => t(a)).join(' · ')}
+                      {patient && <span className="mono" style={{ color: 'var(--text-faint)' }}> · {t(patient.name)} (HN {patient.hn})</span>}
                     </div>
                     {c.note && (
-                      <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>โน้ต: {c.note}</div>
+                      <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>{t('โน้ต')}: {c.note}</div>
                     )}
 
                     {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น */}
@@ -175,7 +176,7 @@ export default function Evaluate() {
                       }}
                     >
                       <div style={{ font: '600 10.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 3 }}>
-                        step ที่ทำเสร็จวันนั้น (จากในระบบ)
+                        {t('step ที่ทำเสร็จวันนั้น (จากในระบบ)')}
                       </div>
                       {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? (
                         <div className="mono" style={{ font: '400 10.5px/1.7 var(--font-mono)', color: 'var(--success-dark)' }}>
@@ -183,14 +184,14 @@ export default function Evaluate() {
                         </div>
                       ) : (
                         <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                          ไม่มีบันทึก step เสร็จ
+                          {t('ไม่มีบันทึก step เสร็จ')}
                         </div>
                       )}
                       {!!c.photoCount && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                           {Array.from({ length: c.photoCount }, (_, i) => <PhotoSlot key={i} size={38} filled />)}
                           <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>
-                            รูปงานจากนักศึกษา · {c.photoCount} รูป (เดโม)
+                            {t('รูปงานจากนักศึกษา · {n} รูป (เดโม)', { n: c.photoCount })}
                           </span>
                         </div>
                       )}
@@ -200,7 +201,7 @@ export default function Evaluate() {
                   <div className="evalcard__scores">
                     {CRITERIA.map((cr) => (
                       <div key={cr.key} className="scorerow">
-                        <span className="scorerow__label" title={cr.th}>{cr.label}</span>
+                        <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
                         <span className="scorerow__btns">
                           {SCORE_OPTIONS.map((n) => (
                             <button
@@ -220,7 +221,7 @@ export default function Evaluate() {
                       </span>
                       <button className="btn" style={{ flex: 1, height: 40, fontSize: 13 }} onClick={() => sign(c.id)}>
                         <Signature size={16} weight="bold" />
-                        บันทึกผล · ลงนาม
+                        {t('บันทึกผล · ลงนาม')}
                       </button>
                     </div>
                   </div>
@@ -231,32 +232,32 @@ export default function Evaluate() {
         </div>
 
         <div className="panel">
-          <h3>ประเมินแล้วล่าสุด · กลุ่ม {group.replace('TH-', '')}</h3>
+          <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {group.replace('TH-', '')}</h3>
           <table className="tbl">
             <thead>
               <tr>
-                <th>นักศึกษา</th>
-                <th style={{ width: 76 }}>วันที่</th>
-                <th>กิจกรรม</th>
-                <th style={{ width: 66 }}>คะแนน</th>
-                <th style={{ width: 88 }}>ผู้ประเมิน</th>
+                <th>{t('นักศึกษา')}</th>
+                <th style={{ width: 76 }}>{t('วันที่')}</th>
+                <th>{t('กิจกรรม')}</th>
+                <th style={{ width: 66 }}>{t('คะแนน')}</th>
+                <th style={{ width: 88 }}>{t('ผู้ประเมิน')}</th>
               </tr>
             </thead>
             <tbody>
               {evaluated.length === 0 && (
-                <tr><td colSpan={5} className="faint" style={{ padding: 16 }}>ยังไม่มีคาบที่ประเมินแล้ว</td></tr>
+                <tr><td colSpan={5} className="faint" style={{ padding: 16 }}>{t('ยังไม่มีคาบที่ประเมินแล้ว')}</td></tr>
               )}
               {evaluated.map((c) => (
                 <tr key={c.id}>
-                  <td style={{ font: '600 11.5px var(--font-body)' }}>{studentById.get(c.studentId)?.name}</td>
+                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(studentById.get(c.studentId)?.name ?? '')}</td>
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
-                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.join(' · ')}</td>
+                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.map((a) => t(a)).join(' · ')}</td>
                   <td>
                     <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
                       <CheckCircle size={11} weight="fill" /> {totalScore(c.scores)}/{MAX_TOTAL}
                     </span>
                   </td>
-                  <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>{c.evaluatedBy}</td>
+                  <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>{t(c.evaluatedBy ?? '')}</td>
                 </tr>
               ))}
             </tbody>
@@ -267,19 +268,19 @@ export default function Evaluate() {
               style={{ height: 34, marginTop: 10, fontSize: 12 }}
               onClick={() => setShowAllEvaluated(!showAllEvaluated)}
             >
-              {showAllEvaluated ? 'พับเหลือ 5 แถว' : `ดูทั้งหมด (${evaluatedAll.length} รายการ)`}
+              {showAllEvaluated ? t('พับเหลือ 5 แถว') : t('ดูทั้งหมด ({n} รายการ)', { n: evaluatedAll.length })}
             </button>
           )}
         </div>
 
         <div className="panel" style={{ marginTop: 16 }}>
-          <h3>กราฟคะแนนรายคน</h3>
-          <p className="sub">เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5 (ขยายช่วงให้เห็นความต่าง)</p>
+          <h3>{t('กราฟคะแนนรายคน')}</h3>
+          <p className="sub">{t('เฉลี่ยจากทุกคาบที่ประเมินแล้ว · เงาเทา = ค่าเฉลี่ยของกลุ่ม · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5 (ขยายช่วงให้เห็นความต่าง)')}</p>
 
           <div className="pickrow" style={{ marginTop: 10 }}>
             {groupStudents.map((st) => (
               <button key={st.id} data-on={st.id === selectedId} onClick={() => setChartStudent(st.id)}>
-                {st.name}
+                {t(st.name)}
                 <span className="mono">{st.code}</span>
               </button>
             ))}
@@ -287,7 +288,7 @@ export default function Evaluate() {
 
           {selectedRows.length === 0 ? (
             <div className="dashed" style={{ padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
-              ยังไม่มีคาบที่ประเมินแล้วของคนนี้
+              {t('ยังไม่มีคาบที่ประเมินแล้วของคนนี้')}
             </div>
           ) : (
             // flex-wrap + จัดชิดบน: จอแคบ/ตัวหนังสือใหญ่ กราฟขวาจะตกลงมาเต็มแถวแทนที่จะโดนบีบ
@@ -297,8 +298,8 @@ export default function Evaluate() {
                 <Radar
                   axes={criterionAvg(selectedRows)}
                   reference={groupProfile}
-                  label={studentById.get(selectedId ?? '')?.name ?? ''}
-                  referenceLabel={`เฉลี่ยกลุ่ม ${group.replace('TH-', '')}`}
+                  label={t(studentById.get(selectedId ?? '')?.name ?? '')}
+                  referenceLabel={`${t('เฉลี่ยกลุ่ม')} ${group.replace('TH-', '')}`}
                   size={250}
                   onAxisClick={(k) => setCritKey(k === critKey ? null : k)}
                   activeKey={critKey}
@@ -306,7 +307,7 @@ export default function Evaluate() {
                 />
               </div>
               <div style={{ flex: '1 1 320px', minWidth: 270, maxWidth: 500 }}>
-                <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>คะแนนรวมรายคาบ (เต็ม {MAX_TOTAL})</div>
+                <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>{t('คะแนนรวมรายคาบ (เต็ม {n})', { n: MAX_TOTAL })}</div>
                 <ScoreTrend rows={selectedRows} />
                 {critKey ? (() => {
                   const crit = CRITERIA.find((cr) => cr.key === critKey)!;
@@ -314,13 +315,13 @@ export default function Evaluate() {
                     <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1, font: '600 12.5px var(--font-head)' }}>
-                          คะแนน "{crit.short}" รายคาบ (เต็ม 3) <span className="faint" style={{ font: '400 10.5px var(--font-body)' }}>{crit.label}</span>
+                          {t('คะแนน "{s}" รายคาบ (เต็ม 3)', { s: t(crit.short) })} <span className="faint" style={{ font: '400 10.5px var(--font-body)' }}>{crit.label}</span>
                         </div>
                         <button
                           onClick={() => setCritKey(null)}
                           style={{ font: '500 11px var(--font-body)', color: 'var(--text-muted)', background: 'var(--fill)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}
                         >
-                          ปิด
+                          {t('ปิด')}
                         </button>
                       </div>
                       <ScoreTrend
@@ -334,7 +335,7 @@ export default function Evaluate() {
                   );
                 })() : (
                   <p className="faint" style={{ font: '400 11px var(--font-body)', marginTop: 10 }}>
-                    กดหัวข้อบนกราฟแมงมุม (เช่น เครื่องมือ) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้
+                    {t('กดหัวข้อบนกราฟแมงมุม (เช่น เครื่องมือ) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้')}
                   </p>
                 )}
               </div>

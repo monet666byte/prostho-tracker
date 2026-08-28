@@ -7,6 +7,7 @@ import { addCheckIn } from '../../data/repo';
 import { ACTIVITIES, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
 import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
+import { t } from '../../lib/i18n';
 import { isComplete } from '../../domain/rules';
 import { useApp } from '../../store/app';
 
@@ -29,7 +30,7 @@ export default function CheckInPage() {
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
   const patients = useMemo(() => {
     const seen = new Map<string, string>();
-    works.forEach((w) => seen.set(w.patient.id, `${w.patient.name} · HN ${w.patient.hn}`));
+    works.forEach((w) => seen.set(w.patient.id, `${t(w.patient.name)} · HN ${w.patient.hn}`));
     return [...seen.entries()];
   }, [works]);
 
@@ -74,8 +75,8 @@ export default function CheckInPage() {
       : undefined;
     showToast({
       message: target
-        ? `เช็คอินแล้ว — ไปที่เคส ${target.detail} ต่อเลย`
-        : `เช็คอินคาบ ${thaiShort(date)} แล้ว · รออาจารย์ประเมิน`,
+        ? t('เช็คอินแล้ว — ไปที่เคส {d} ต่อเลย', { d: target.detail })
+        : t('เช็คอินคาบ {d} แล้ว · รออาจารย์ประเมิน', { d: thaiShort(date) }),
       tone: 'success',
     });
     if (target) navigate(`/app/work/${target.id}`);
@@ -85,10 +86,10 @@ export default function CheckInPage() {
     <div className="backdrop" onClick={() => setFormOpen(false)}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" />
-        <h3 className="h3">เช็คอินคาบคลินิก</h3>
+        <h3 className="h3">{t('เช็คอินคาบคลินิก')}</h3>
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <label className="field" style={{ flex: 1 }}>
-            <span>วันที่คาบ</span>
+            <span>{t('วันที่คาบ')}</span>
             <input className="input mono" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <span
@@ -99,15 +100,15 @@ export default function CheckInPage() {
             }}
           >
             <Clock size={15} weight="fill" style={{ color: 'var(--text-muted)' }} />
-            {new Date().toTimeString().slice(0, 5)} น.
+            {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
           </span>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-          เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ — ตรงเวลา/มาสายตัดสินจากเวลานี้ (เช้า 9:00 / บ่าย 13:00 เผื่อ 15 นาที)
+          {t('เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ — ตรงเวลา/มาสายตัดสินจากเวลานี้ (เช้า 9:00 / บ่าย 13:00 เผื่อ 15 นาที)')}
         </p>
 
         <div className="field" style={{ marginTop: 12 }}>
-          <label>กิจกรรมในคาบ</label>
+          <label>{t('กิจกรรมในคาบ')}</label>
           <div className="seg">
             {ACTIVITIES.map((a) => (
               <button
@@ -117,7 +118,7 @@ export default function CheckInPage() {
                   setActivities(activities.includes(a) ? activities.filter((x) => x !== a) : [...activities, a])
                 }
               >
-                {a}
+                {t(a)}
               </button>
             ))}
           </div>
@@ -125,9 +126,9 @@ export default function CheckInPage() {
 
         {!noPatient && (
           <label className="field" style={{ marginTop: 12 }}>
-            <span>ผู้ป่วยที่นัด</span>
+            <span>{t('ผู้ป่วยที่นัด')}</span>
             <select className="input" value={patientId} onChange={(e) => setPatientId(e.target.value)}>
-              <option value="">— ไม่ระบุ —</option>
+              <option value="">{t('— ไม่ระบุ —')}</option>
               {patients.map(([id, label]) => (
                 <option key={id} value={id}>{label}</option>
               ))}
@@ -136,15 +137,15 @@ export default function CheckInPage() {
         )}
 
         <label className="field" style={{ marginTop: 12 }}>
-          <span>โน้ตเพิ่มเติม (ไม่บังคับ)</span>
-          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="โน้ตถึงอาจารย์" />
+          <span>{t('โน้ตเพิ่มเติม (ไม่บังคับ)')}</span>
+          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('โน้ตถึงอาจารย์')} />
         </label>
 
         <button className="btn" style={{ height: 54, marginTop: 15 }} disabled={activities.length === 0} onClick={submit}>
           <CalendarCheck size={19} weight="fill" />
-          เช็คอิน
+          {t('เช็คอิน')}
         </button>
-        <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => setFormOpen(false)}>ยกเลิก</button>
+        <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => setFormOpen(false)}>{t('ยกเลิก')}</button>
       </div>
     </div>
   ) : undefined;
@@ -152,9 +153,9 @@ export default function CheckInPage() {
   return (
     <Shell overlay={overlay}>
       <header className="s-header">
-        <h2 className="h2">คาบคลินิก</h2>
+        <h2 className="h2">{t('คาบคลินิก')}</h2>
         <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          {checkins.length} คาบ · ประเมินแล้ว {evaluated.length} · ไม่มีผู้ป่วย {noPatientCount}
+          {t('{n} คาบ · ประเมินแล้ว {e} · ไม่มีผู้ป่วย {p}', { n: checkins.length, e: evaluated.length, p: noPatientCount })}
         </p>
       </header>
 
@@ -167,18 +168,18 @@ export default function CheckInPage() {
           >
             <CheckCircle size={20} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
             <span style={{ font: '500 12.5px var(--font-body)', color: 'var(--success-dark)' }}>
-              เช็คอินคาบวันนี้แล้ว — รออาจารย์ประเมิน
+              {t('เช็คอินคาบวันนี้แล้ว — รออาจารย์ประเมิน')}
             </span>
           </div>
         ) : (
           <button className="btn" style={{ height: 54 }} onClick={() => setFormOpen(true)}>
             <Plus size={19} weight="bold" />
-            เช็คอินคาบวันนี้
+            {t('เช็คอินคาบวันนี้')}
           </button>
         )}
 
         {checkins.length === 0 && (
-          <Empty icon={<CalendarCheck size={26} />} title="ยังไม่มีคาบที่บันทึก" hint="" />
+          <Empty icon={<CalendarCheck size={26} />} title={t('ยังไม่มีคาบที่บันทึก')} hint="" />
         )}
 
         {checkins.map((c) => {
@@ -208,11 +209,11 @@ export default function CheckInPage() {
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
                   >
-                    {c.activities.join(' · ')}
+                    {c.activities.map((a) => t(a)).join(' · ')}
                   </span>
                 </span>
                 {!c.punctual && (
-                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>สาย</span>
+                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('สาย')}</span>
                 )}
                 {c.status === 'evaluated' ? (
                   <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
@@ -220,7 +221,7 @@ export default function CheckInPage() {
                   </span>
                 ) : (
                   <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                    <HourglassMedium size={12} /> รอประเมิน
+                    <HourglassMedium size={12} /> {t('รอประเมิน')}
                   </span>
                 )}
               </div>
@@ -239,24 +240,24 @@ export default function CheckInPage() {
                     </div>
                   ))}
                   <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>
-                    ประเมินโดย {c.evaluatedBy} · {c.evaluatedAt ? thaiShort(c.evaluatedAt) : ''}
+                    {t('ประเมินโดย')} {t(c.evaluatedBy ?? '')} · {c.evaluatedAt ? thaiShort(c.evaluatedAt) : ''}
                   </span>
                 </div>
               )}
               {open && (
                 <div style={{ marginTop: 9, borderTop: c.scores ? undefined : '1px solid var(--divider)', paddingTop: c.scores ? 0 : 9 }}>
                   <div style={{ font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-                    step ที่ผ่านในวันนั้น:{' '}
+                    {t('step ที่ผ่านในวันนั้น')}:{' '}
                     {(stepsByDate.get(`${c.studentId}|${c.date}`) ?? []).length > 0 ? (
                       <span className="mono" style={{ color: 'var(--text-secondary)' }}>
                         {(stepsByDate.get(`${c.studentId}|${c.date}`) ?? []).join(' · ')}
                       </span>
                     ) : (
-                      <span className="faint">ยังไม่มีบันทึก</span>
+                      <span className="faint">{t('ยังไม่มีบันทึก')}</span>
                     )}
                   </div>
                   {c.note && (
-                    <div style={{ marginTop: 5, font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>โน้ต: {c.note}</div>
+                    <div style={{ marginTop: 5, font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{t('โน้ต')}: {c.note}</div>
                   )}
                 </div>
               )}
@@ -269,7 +270,7 @@ export default function CheckInPage() {
           className="dashed"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, font: '600 12.5px var(--font-body)', color: 'var(--text-muted)' }}
         >
-          <Export size={16} /> ส่งออกข้อมูลชิ้นงาน (PDF / CSV)
+          <Export size={16} /> {t('ส่งออกข้อมูลชิ้นงาน (PDF / CSV)')}
         </Link>
       </div>
     </Shell>

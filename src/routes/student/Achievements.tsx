@@ -4,6 +4,7 @@ import {
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
+import { t } from '../../lib/i18n';
 
 /**
  * MOCK — หน้าทดลองระบบ achievement (ยังไม่ผูกกับข้อมูลจริง)
@@ -12,19 +13,19 @@ import { PlainShell } from '../../components/student/Shell';
  */
 
 const FIRSTS = [
-  { icon: '🦷', title: 'Delivery ครั้งแรก', detail: 'CD upper · ผู้ป่วย E', date: '14 ก.ค. 69', got: true },
-  { icon: '🎉', title: 'ปิดเคสแรกในชีวิต', detail: 'CD/- (Upper) · 15 สัปดาห์', date: '2 ส.ค. 69', got: true },
-  { icon: '🛠️', title: 'ทำ lab step เองครบชุดแรก', detail: 'Mounting → Remounting · CD', date: '21 ก.ค. 69', got: true },
-  { icon: '🗿', title: 'ปิดเคส RPD ตัวแรก', detail: 'โครง Co-Cr ตัวแรกของคุณ', date: null, got: false },
-  { icon: '👑', title: 'ปิดเคส Crown ตัวแรก', detail: 'ซี่ 46 อยู่ที่ step 9 แล้ว — ใกล้มาก', date: null, got: false },
-  { icon: '🔩', title: 'Post-core ตัวแรก', detail: 'ซี่ 21 กำลังรอคิว ENDO', date: null, got: false },
+  { icon: '🦷', title: t('Delivery ครั้งแรก'), detail: t('CD upper · ผู้ป่วย E'), date: '14 ก.ค. 69', got: true },
+  { icon: '🎉', title: t('ปิดเคสแรกในชีวิต'), detail: t('CD/- (Upper) · 15 สัปดาห์'), date: '2 ส.ค. 69', got: true },
+  { icon: '🛠️', title: t('ทำ lab step เองครบชุดแรก'), detail: 'Mounting → Remounting · CD', date: '21 ก.ค. 69', got: true },
+  { icon: '🗿', title: t('ปิดเคส RPD ตัวแรก'), detail: t('โครง Co-Cr ตัวแรกของคุณ'), date: null, got: false },
+  { icon: '👑', title: t('ปิดเคส Crown ตัวแรก'), detail: t('ซี่ 46 อยู่ที่ step 9 แล้ว — ใกล้มาก'), date: null, got: false },
+  { icon: '🔩', title: t('Post-core ตัวแรก'), detail: t('ซี่ 21 กำลังรอคิว ENDO'), date: null, got: false },
 ];
 
 const WRAPPED = [
-  { big: '6', label: 'ผู้ป่วยที่คุณดูแลปีนี้', sub: 'ทุกคนคือเคสจริง ฟันจริง ความไว้ใจจริง', bg: 'var(--accent)', fg: '#fff' },
-  { big: '47', label: 'ขั้นตอนที่ผ่านมือคุณ', sub: 'จาก Primary impression ถึง Completion', bg: '#0E9F6E', fg: '#fff' },
-  { big: '31', label: 'lab step ที่ทำด้วยมือตัวเอง', sub: 'มากกว่าค่าเฉลี่ยของกลุ่ม 18%', bg: '#7A5AF8', fg: '#fff' },
-  { big: '15', label: 'สัปดาห์กับเคสที่ยาวที่สุด', sub: 'CD คู่แรก — และคุณพามันจบจนได้', bg: '#B54708', fg: '#fff' },
+  { big: '6', label: t('ผู้ป่วยที่คุณดูแลปีนี้'), sub: t('ทุกคนคือเคสจริง ฟันจริง ความไว้ใจจริง'), bg: 'var(--accent)', fg: '#fff' },
+  { big: '47', label: t('ขั้นตอนที่ผ่านมือคุณ'), sub: t('จาก Primary impression ถึง Completion'), bg: '#0E9F6E', fg: '#fff' },
+  { big: '31', label: t('lab step ที่ทำด้วยมือตัวเอง'), sub: t('มากกว่าค่าเฉลี่ยของกลุ่ม 18%'), bg: '#7A5AF8', fg: '#fff' },
+  { big: '15', label: t('สัปดาห์กับเคสที่ยาวที่สุด'), sub: t('CD คู่แรก — และคุณพามันจบจนได้'), bg: '#B54708', fg: '#fff' },
 ];
 
 export default function Achievements() {
@@ -45,29 +46,28 @@ export default function Achievements() {
               </div>
               <div style={{ textAlign: 'center', padding: '6px 0 2px' }}>
                 <span className="celebrate__badge"><Confetti size={30} weight="fill" /></span>
-                <h3 style={{ margin: '12px 0 2px', font: '700 20px var(--font-head)' }}>ปิดเคสแล้ว!</h3>
+                <h3 style={{ margin: '12px 0 2px', font: '700 20px var(--font-head)' }}>{t('ปิดเคสแล้ว!')}</h3>
                 <p style={{ margin: 0, font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
-                  46 Crown (PFM) · ผู้ป่วย C
+                  46 Crown (PFM) · {t('ผู้ป่วย C')}
                 </p>
               </div>
 
               <div className="celebrate__stats">
-                <div><b>10/10</b><span>step ครบ</span></div>
-                <div><b>9</b><span>สัปดาห์</span></div>
-                <div><b>4</b><span>lab ทำเอง</span></div>
-                <div><b>2/2</b><span>Crown ตามเกณฑ์</span></div>
+                <div><b>10/10</b><span>{t('step ครบ')}</span></div>
+                <div><b>9</b><span>{t('สัปดาห์')}</span></div>
+                <div><b>4</b><span>{t('lab ทำเอง')}</span></div>
+                <div><b>2/2</b><span>{t('Crown ตามเกณฑ์')}</span></div>
               </div>
 
               <p className="pretty" style={{ margin: '4px 0 0', textAlign: 'center', font: '400 11.5px/1.7 var(--font-body)', color: 'var(--text-body)' }}>
-                จาก Abutment preparation วันแรก ถึง Permanent cementation วันนี้ —
-                ฟันซี่นี้จะอยู่กับผู้ป่วยไปอีกหลายปี 🦷
+                {t('จาก Abutment preparation วันแรก ถึง Permanent cementation วันนี้ — ฟันซี่นี้จะอยู่กับผู้ป่วยไปอีกหลายปี')} 🦷
               </p>
 
               <div style={{ display: 'flex', gap: 9, marginTop: 16 }}>
-                <button className="btn btn--sec" style={{ height: 46 }}><DownloadSimple size={16} /> เก็บการ์ดไว้</button>
-                <button className="btn" style={{ height: 46 }}><ShareNetwork size={16} weight="fill" /> แชร์</button>
+                <button className="btn btn--sec" style={{ height: 46 }}><DownloadSimple size={16} /> {t('เก็บการ์ดไว้')}</button>
+                <button className="btn" style={{ height: 46 }}><ShareNetwork size={16} weight="fill" /> {t('แชร์')}</button>
               </div>
-              <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => setShowCelebration(false)}>ปิด</button>
+              <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={() => setShowCelebration(false)}>{t('ปิด')}</button>
             </div>
           </div>
         ) : undefined
@@ -75,16 +75,16 @@ export default function Achievements() {
     >
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
           <div style={{ flex: 1 }}>
-            <h2 className="h2">เส้นทางของคุณ</h2>
+            <h2 className="h2">{t('เส้นทางของคุณ')}</h2>
           </div>
           <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>MOCK</span>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-          หน้าทดลอง — ยังไม่ผูกกับข้อมูลจริง ไว้ตัดสินใจกันก่อนว่าเอาแบบไหน
+          {t('หน้าทดลอง — ยังไม่ผูกกับข้อมูลจริง ไว้ตัดสินใจกันก่อนว่าเอาแบบไหน')}
         </p>
       </header>
 
@@ -93,13 +93,13 @@ export default function Achievements() {
         <section className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Confetti size={17} weight="fill" color="var(--accent)" />
-            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>การ์ดฉลองตอนปิดเคส</h4>
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>{t('การ์ดฉลองตอนปิดเคส')}</h4>
           </div>
           <p className="pretty" style={{ margin: '5px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-            เด้งอัตโนมัติครั้งเดียวตอนกด Completion of case — สรุปตัวเลขของเคสนั้น เก็บเป็นรูปหรือแชร์ได้
+            {t('เด้งอัตโนมัติครั้งเดียวตอนกด Completion of case — สรุปตัวเลขของเคสนั้น เก็บเป็นรูปหรือแชร์ได้')}
           </p>
           <button className="btn" style={{ marginTop: 11, height: 46 }} onClick={() => setShowCelebration(true)}>
-            <Sparkle size={17} weight="fill" /> ลองดูตัวอย่าง
+            <Sparkle size={17} weight="fill" /> {t('ลองดูตัวอย่าง')}
           </button>
         </section>
 
@@ -107,11 +107,11 @@ export default function Achievements() {
         <section className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Medal size={17} weight="fill" color="var(--self)" />
-            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>สมุดบันทึกครั้งแรก</h4>
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>{t('สมุดบันทึกครั้งแรก')}</h4>
             <span className="mono" style={{ font: '600 11px var(--font-mono)', color: 'var(--text-muted)' }}>{gotCount}/{FIRSTS.length}</span>
           </div>
           <p className="pretty" style={{ margin: '5px 0 10px', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-            milestone วิชาชีพที่เกิดขึ้นครั้งเดียวในชีวิต — ระบบบันทึกวันที่ให้เอง ไม่ต้องทำอะไรเพิ่ม
+            {t('milestone วิชาชีพที่เกิดขึ้นครั้งเดียวในชีวิต — ระบบบันทึกวันที่ให้เอง ไม่ต้องทำอะไรเพิ่ม')}
           </p>
           <div style={{ display: 'grid', gap: 7 }}>
             {FIRSTS.map((f) => (
@@ -134,7 +134,7 @@ export default function Achievements() {
                   </span>
                 </span>
                 <span className="mono" style={{ font: '500 9.5px var(--font-mono)', color: 'var(--text-faint)', flex: 'none' }}>
-                  {f.date ?? 'รออยู่…'}
+                  {f.date ? t(f.date) : t('รออยู่…')}
                 </span>
               </div>
             ))}
@@ -145,10 +145,10 @@ export default function Achievements() {
         <section className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <FlagCheckered size={17} weight="fill" color="var(--success)" />
-            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>สรุปปีของคุณ (ปลายเทอม)</h4>
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>{t('สรุปปีของคุณ (ปลายเทอม)')}</h4>
           </div>
           <p className="pretty" style={{ margin: '5px 0 10px', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-            เปิดได้ครั้งเดียวตอนจบปีการศึกษา — แตะการ์ดเพื่อเลื่อนดู
+            {t('เปิดได้ครั้งเดียวตอนจบปีการศึกษา — แตะการ์ดเพื่อเลื่อนดู')}
           </p>
 
           <button
@@ -156,7 +156,7 @@ export default function Achievements() {
             style={{ background: WRAPPED[wrappedIndex].bg, color: WRAPPED[wrappedIndex].fg }}
             onClick={() => setWrappedIndex((wrappedIndex + 1) % WRAPPED.length)}
           >
-            <span style={{ font: '400 12px var(--font-body)', opacity: 0.8 }}>ปีการศึกษา 2569</span>
+            <span style={{ font: '400 12px var(--font-body)', opacity: 0.8 }}>{t('ปีการศึกษา')} 2569</span>
             <span style={{ font: '700 56px/1.1 var(--font-head)' }}>{WRAPPED[wrappedIndex].big}</span>
             <span style={{ font: '600 14px var(--font-head)' }}>{WRAPPED[wrappedIndex].label}</span>
             <span style={{ font: '400 11px/1.5 var(--font-body)', opacity: 0.85 }}>{WRAPPED[wrappedIndex].sub}</span>
@@ -172,7 +172,7 @@ export default function Achievements() {
         <section className="dashed" style={{ padding: 13, display: 'flex', gap: 10 }}>
           <TrendUp size={16} color="var(--text-faint)" style={{ flex: 'none', marginTop: 2 }} />
           <p className="pretty" style={{ margin: 0, font: '400 11px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-            <b>ส่วนที่ 3 (ความสม่ำเสมอ) ยังไม่ทำ</b> — รอคุยกันเรื่องรูปแบบ "streak ที่ไม่หาย" ก่อน
+            <b>{t('ส่วนที่ 3 (ความสม่ำเสมอ) ยังไม่ทำ')}</b> — {t('รอคุยกันเรื่องรูปแบบ "streak ที่ไม่หาย" ก่อน')}
           </p>
         </section>
       </div>

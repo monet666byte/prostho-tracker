@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { HeatRow } from '../../domain/analytics';
+import { t } from '../../lib/i18n';
 
 /**
  * ตารางรายคน × ด้านเกณฑ์ — แบบ "ช่องนับชิ้น" (ผู้ใช้เคาะแล้ว 27 ส.ค. หลังลองเทียบกับวงกลมรวมและแท่ง)
@@ -84,7 +85,7 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
             {rows.map((r) => (
               <tr key={r.student.id}>
                 <th scope="row">
-                  {r.student.name}
+                  {t(r.student.name)}
                   <span className="mono">{r.student.code}</span>
                 </th>
                 {r.cells.map((c) => (
@@ -97,10 +98,10 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
       </div>
 
       <div className="chartlegend">
-        <span><i style={{ background: 'var(--accent)', borderRadius: '50%' }} /> 1 วง = 1 ชิ้นตามเป้า · ครบ ✓</span>
-        <span><i style={{ background: `conic-gradient(${PARTIAL} 60%, var(--fill) 0)`, borderRadius: '50%' }} /> กำลังทำ (วนตาม step)</span>
-        <span><i style={{ background: 'var(--fill)', borderRadius: '50%' }} /> ยังไม่เริ่ม</span>
-        <button onClick={() => setAsTable(!asTable)}>{asTable ? 'ซ่อนตัวเลข' : 'ดูตัวเลข'}</button>
+        <span><i style={{ background: 'var(--accent)', borderRadius: '50%' }} /> {t('1 วง = 1 ชิ้นตามเป้า · ครบ ✓')}</span>
+        <span><i style={{ background: `conic-gradient(${PARTIAL} 60%, var(--fill) 0)`, borderRadius: '50%' }} /> {t('กำลังทำ (วนตาม step)')}</span>
+        <span><i style={{ background: 'var(--fill)', borderRadius: '50%' }} /> {t('ยังไม่เริ่ม')}</span>
+        <button onClick={() => setAsTable(!asTable)}>{asTable ? t('ซ่อนตัวเลข') : t('ดูตัวเลข')}</button>
       </div>
 
       {asTable && (
@@ -108,7 +109,7 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
           <table className="tbl" style={{ marginTop: 2 }}>
             <thead>
               <tr>
-                <th>นักศึกษา</th>
+                <th>{t('นักศึกษา')}</th>
                 {columns.map((c) => (
                   <th key={c.key} style={{ width: 76 }}>{c.label}</th>
                 ))}
@@ -117,7 +118,7 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.student.id}>
-                  <td style={{ font: '600 11.5px var(--font-body)' }}>{r.student.name}</td>
+                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(r.student.name)}</td>
                   {r.cells.map((c) => (
                     <td key={c.key} className="mono" style={{ color: c.value >= 100 ? 'var(--success)' : undefined }}>
                       {c.detail}

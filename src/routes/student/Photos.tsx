@@ -7,11 +7,12 @@ import { usePhotos, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { useApp } from '../../store/app';
 import type { PhotoStatus } from '../../domain/types';
+import { t, tText } from '../../lib/i18n';
 
 const CHIP: Record<PhotoStatus, { label: string; bg: string; fg: string }> = {
-  ok: { label: 'อัปโหลดแล้ว', bg: 'var(--success-tint)', fg: 'var(--success)' },
-  queue: { label: 'รออัปโหลด', bg: 'var(--warning-tint)', fg: 'var(--warning)' },
-  fail: { label: 'ส่งไม่สำเร็จ', bg: 'var(--danger-tint)', fg: 'var(--danger-dark)' },
+  ok: { label: t('อัปโหลดแล้ว'), bg: 'var(--success-tint)', fg: 'var(--success)' },
+  queue: { label: t('รออัปโหลด'), bg: 'var(--warning-tint)', fg: 'var(--warning)' },
+  fail: { label: t('ส่งไม่สำเร็จ'), bg: 'var(--danger-tint)', fg: 'var(--danger-dark)' },
 };
 
 export default function Photos() {
@@ -24,7 +25,7 @@ export default function Photos() {
     const target = works.find((w) => w.procIndex >= 0);
     if (!target) return;
     await addPhoto(target.id, offline);
-    showToast({ message: offline ? 'เก็บรูปในเครื่อง · รอ sync' : 'อัปโหลดรูปแล้ว', tone: offline ? 'warning' : 'default' });
+    showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('อัปโหลดรูปแล้ว'), tone: offline ? 'warning' : 'default' });
   }
 
   return (
@@ -70,7 +71,7 @@ export default function Photos() {
               onClick={async () => {
                 if (p.status !== 'fail') return;
                 await retryPhoto(p.id, offline);
-                showToast({ message: 'ลองส่งรูปใหม่แล้ว', tone: 'default' });
+                showToast({ message: t('ลองส่งรูปใหม่แล้ว'), tone: 'default' });
               }}
             >
               <PhotoSlot size={74} filled />
@@ -79,7 +80,7 @@ export default function Photos() {
                   {p.stepLabel}
                 </span>
                 <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>
-                  {p.detail}
+                  {tText(p.detail)}
                 </span>
                 <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>
                   {thaiShort(p.createdAt)} · {p.sizeLabel} · บีบอัดอัตโนมัติ

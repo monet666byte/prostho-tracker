@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { t } from '../lib/i18n';
 
 type Zoom = 'md' | 'lg' | 'xl';
 
 const LEVELS: Array<{ key: Zoom; label: string; size: number }> = [
-  { key: 'md', label: 'ก', size: 13 },
-  { key: 'lg', label: 'ก', size: 16 },
-  { key: 'xl', label: 'ก', size: 19 },
+  { key: 'md', label: t('ก'), size: 13 },
+  { key: 'lg', label: t('ก'), size: 16 },
+  { key: 'xl', label: t('ก'), size: 19 },
 ];
 
 function apply(zoom: Zoom) {
@@ -30,10 +31,10 @@ export function TextSizeControl() {
 
   return (
     <div className="textsize">
-      <span className="textsize__label">ขนาดตัวหนังสือ</span>
+      <span className="textsize__label">{t('ขนาดตัวหนังสือ')}</span>
       <div className="textsize__btns">
         {LEVELS.map((l) => (
-          <button key={l.key} data-on={zoom === l.key} style={{ fontSize: l.size }} onClick={() => setZoom(l.key)} aria-label={`ขนาด ${l.key}`}>
+          <button key={l.key} data-on={zoom === l.key} style={{ fontSize: l.size }} onClick={() => setZoom(l.key)} aria-label={`${t('ขนาด')} ${l.key}`}>
             {l.label}
           </button>
         ))}

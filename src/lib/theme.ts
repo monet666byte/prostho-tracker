@@ -6,6 +6,9 @@ export const THEMES: Array<{ cls: string; label: string }> = [
   { cls: '', label: 'น้ำเงิน (เดิม)' },
   { cls: 'theme-teal', label: 'เขียวคลินิก' },
   { cls: 'theme-navy', label: 'กรมท่าอบอุ่น' },
+  { cls: 'theme-plum', label: 'ม่วงพลัม' },
+  { cls: 'theme-ink', label: 'เทาหมึก มินิมอล' },
+  { cls: 'theme-ocean', label: 'ฟ้าทะเลลึก' },
 ];
 
 const ALL = THEMES.map((t) => t.cls).filter(Boolean);

@@ -7,13 +7,14 @@ import { NavLink } from 'react-router-dom';
 import { undoStep } from '../../data/repo';
 import { useApp } from '../../store/app';
 import { clock } from '../../lib/date';
+import { t } from '../../lib/i18n';
 import { DemoBar } from '../DemoBar';
 
 const TABS = [
-  { to: '/app', label: 'หน้าแรก', Icon: House, end: true },
-  { to: '/app/patients', label: 'คนไข้', Icon: UsersThree, end: false },
-  { to: '/app/criteria', label: 'เกณฑ์', Icon: ChartDonut, end: false },
-  { to: '/app/checkin', label: 'คาบ', Icon: CalendarCheck, end: false },
+  { to: '/app', label: t('หน้าแรก'), Icon: House, end: true },
+  { to: '/app/patients', label: t('คนไข้'), Icon: UsersThree, end: false },
+  { to: '/app/criteria', label: t('เกณฑ์'), Icon: ChartDonut, end: false },
+  { to: '/app/checkin', label: t('คาบ'), Icon: CalendarCheck, end: false },
 ];
 
 /** ความสูงเต็มของเครื่อง (820 + ขอบ 10×2) */
@@ -100,7 +101,7 @@ function ToastView() {
           }}
         >
           <ArrowUUpLeft size={14} weight="bold" style={{ verticalAlign: -2, marginRight: 3 }} />
-          เลิกทำ
+          {t('เลิกทำ')}
         </button>
       )}
     </div>

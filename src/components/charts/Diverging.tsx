@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ProfileAxis } from '../../domain/analytics';
+import { t } from '../../lib/i18n';
 
 /**
  * แท่งสองทาง — ตอบคำถาม "กลุ่มนี้ต่างจากค่าเฉลี่ยด้านไหนบ้าง" ในภาพเดียว
@@ -57,17 +58,17 @@ export function DivergingBars({
       </div>
 
       <div className="chartlegend" style={{ justifyContent: 'flex-end' }}>
-        <button onClick={() => setAsTable(!asTable)}>{asTable ? 'ซ่อนตาราง' : 'ดูเป็นตาราง'}</button>
+        <button onClick={() => setAsTable(!asTable)}>{asTable ? t('ซ่อนตาราง') : t('ดูเป็นตาราง')}</button>
       </div>
 
       {asTable && (
         <table className="tbl" style={{ marginTop: 4 }}>
           <thead>
             <tr>
-              <th>ด้าน</th>
+              <th>{t('ด้าน')}</th>
               <th style={{ width: 90 }}>{label}</th>
               <th style={{ width: 96 }}>{referenceLabel}</th>
-              <th style={{ width: 62 }}>ต่างกัน</th>
+              <th style={{ width: 62 }}>{t('ต่างกัน')}</th>
             </tr>
           </thead>
           <tbody>

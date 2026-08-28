@@ -8,6 +8,7 @@ import { deleteWorkpiece } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { currentProc, daysSinceUpdate, isStale, maxProgression, progression } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
+import { t, tSexAge, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 function MiniRow({
@@ -29,7 +30,7 @@ function MiniRow({
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}
         >
-          {cur ? cur.name : 'ยังไม่เริ่ม'}
+          {cur ? cur.name : t('ยังไม่เริ่ม')}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
           <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={5} />
@@ -44,7 +45,7 @@ function MiniRow({
         <button
           className="delbtn"
           onClick={(e) => { e.preventDefault(); onDelete(w); }}
-          aria-label={`ลบ ${w.detail}`}
+          aria-label={`${t('ลบ')} ${w.detail}`}
         >
           <Trash size={15} />
         </button>
@@ -76,11 +77,11 @@ function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | 
             <WarningCircle size={22} weight="fill" />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 className="h3">ลบชิ้นงานนี้?</h3>
+            <h3 className="h3">{t('ลบชิ้นงานนี้?')}</h3>
             <p style={{ margin: '5px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-body)' }}>
-              {target.detail}
+              {tText(target.detail)}
               <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {target.patient.name} · HN {target.patient.hn}
+                {t(target.patient.name)} · HN {target.patient.hn}
               </span>
             </p>
           </div>
@@ -88,9 +89,9 @@ function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | 
 
         <p className="pretty" style={{ margin: '13px 0 0', font: '400 11.5px/1.65 var(--font-body)', color: 'var(--text-muted)' }}>
           {hasProgress
-            ? `ประวัติ step ที่บันทึกไว้และรูปทั้งหมดของชิ้นนี้จะถูกลบไปด้วย และย้อนกลับไม่ได้ — ถ้าแค่กรอกผิด step ใช้ปุ่ม "เลิกทำ" แทนได้`
-            : 'ชิ้นนี้ยังไม่ได้เริ่มบันทึกอะไร ลบได้โดยไม่เสียประวัติ'}
-          {' '}ถ้าเป็นชิ้นสุดท้ายของผู้ป่วย รายชื่อผู้ป่วยจะถูกลบออกด้วย
+            ? t('ประวัติ step ที่บันทึกไว้และรูปทั้งหมดของชิ้นนี้จะถูกลบไปด้วย และย้อนกลับไม่ได้ — ถ้าแค่กรอกผิด step ใช้ปุ่ม "เลิกทำ" แทนได้')
+            : t('ชิ้นนี้ยังไม่ได้เริ่มบันทึกอะไร ลบได้โดยไม่เสียประวัติ')}
+          {' '}{t('ถ้าเป็นชิ้นสุดท้ายของผู้ป่วย รายชื่อผู้ป่วยจะถูกลบออกด้วย')}
         </p>
 
         <button
@@ -99,10 +100,10 @@ function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | 
           onClick={onConfirm}
         >
           <Trash size={18} weight="fill" />
-          ลบชิ้นงาน
+          {t('ลบชิ้นงาน')}
         </button>
         <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={onCancel}>
-          ยกเลิก
+          {t('ยกเลิก')}
         </button>
       </div>
     </div>
@@ -120,7 +121,7 @@ export default function Patients() {
     if (!target) return;
     await deleteWorkpiece(target.id, 'นศ. ก');
     setTarget(null);
-    showToast({ message: `ลบ ${target.detail} แล้ว`, tone: 'warning' });
+    showToast({ message: t('ลบ {d} แล้ว', { d: target.detail }), tone: 'warning' });
   }
 
   // จัดกลุ่มตามผู้ป่วย โดยคงลำดับที่ sortWorkpieces จัดไว้แล้ว
@@ -135,15 +136,15 @@ export default function Patients() {
     <Shell overlay={<DeleteSheet target={target} onCancel={() => setTarget(null)} onConfirm={confirmDelete} />}>
       <header className="s-header s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 className="h2">คนไข้ + ชิ้นงาน</h2>
+          <h2 className="h2">{t('คนไข้ + ชิ้นงาน')}</h2>
           <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-            {byPatient.size} คน · {works.length} ชิ้นงาน{editing ? ' · แตะถังขยะเพื่อลบ' : ''}
+            {t('{a} คน · {b} ชิ้นงาน', { a: byPatient.size, b: works.length })}{editing ? t(' · แตะถังขยะเพื่อลบ') : ''}
           </p>
         </div>
         <button
           className={`iconbtn${editing ? '' : ' iconbtn--plain'}`}
           onClick={() => setEditing(!editing)}
-          aria-label={editing ? 'เสร็จสิ้น' : 'แก้ไขรายการ'}
+          aria-label={editing ? t('เสร็จสิ้น') : t('แก้ไขรายการ')}
         >
           {editing ? <X size={17} weight="bold" /> : <PencilSimpleLine size={17} />}
         </button>
@@ -166,15 +167,15 @@ export default function Patients() {
           return (
             <section key={pid} className="rowcard">
               <div className="rowcard__head">
-                <span className="avatar">{initial(patient.name)}</span>
+                <span className="avatar">{initial(t(patient.name))}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', font: '600 14px var(--font-head)' }}>{patient.name}</span>
+                  <span style={{ display: 'block', font: '600 14px var(--font-head)' }}>{t(patient.name)}</span>
                   <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>
-                    HN {patient.hn} · {patient.sexAge}
+                    HN {patient.hn} · {tSexAge(patient.sexAge)}
                   </span>
                   {patient.note && (
                     <span style={{ display: 'block', font: '500 10.5px var(--font-body)', color: 'var(--warning)', marginTop: 3 }}>
-                      {patient.note}
+                      {t(patient.note)}
                     </span>
                   )}
                 </span>
@@ -187,7 +188,7 @@ export default function Patients() {
                   <div key={first.pairId} className={`pairbox t-${first.type}`}>
                     <div className="pairlabel">
                       <LinkSimple size={13} weight="bold" />
-                      คู่ upper/lower · รับเคสพร้อมกัน · {TYPES[first.type].short}
+                      {t('คู่ upper/lower · รับเคสพร้อมกัน')} · {TYPES[first.type].short}
                     </div>
                     {pair.map((w) => (
                       <MiniRow
@@ -213,7 +214,7 @@ export default function Patients() {
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}
                     >
-                      {w.detail}
+                      {tText(w.detail)}
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
                       <Bar
@@ -232,7 +233,7 @@ export default function Patients() {
                     <button
                       className="delbtn"
                       onClick={(e) => { e.preventDefault(); setTarget(w); }}
-                      aria-label={`ลบ ${w.detail}`}
+                      aria-label={`${t('ลบ')} ${w.detail}`}
                     >
                       <Trash size={15} />
                     </button>
@@ -252,7 +253,7 @@ export default function Patients() {
           }}
         >
           <PlusCircle size={19} weight="fill" />
-          เพิ่มคนไข้ / ชิ้นงานใหม่
+          {t('เพิ่มคนไข้ / ชิ้นงานใหม่')}
         </Link>
       </div>
     </Shell>

@@ -8,6 +8,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { useState } from 'react';
 
@@ -21,10 +22,10 @@ export default function Sync() {
     <PlainShell>
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>การเชื่อมต่อ &amp; sync</h2>
+          <h2 className="h2" style={{ flex: 1 }}>{t('การเชื่อมต่อ & sync')}</h2>
         </div>
       </header>
 
@@ -42,27 +43,27 @@ export default function Sync() {
           </span>
           <span style={{ flex: 1 }}>
             <span style={{ display: 'block', font: '600 13.5px var(--font-head)' }}>
-              {offline ? 'โหมดออฟไลน์' : 'ออนไลน์'}
+              {offline ? t('โหมดออฟไลน์') : t('ออนไลน์')}
             </span>
             <span className="pretty" style={{ display: 'block', font: '400 11px/1.55 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
               {offline
-                ? 'บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ'
-                : 'ข้อมูลขึ้นเซิร์ฟเวอร์ทันที'}
+                ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
+                : t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')}
             </span>
           </span>
-          <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label="สลับโหมดออฟไลน์">
+          <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
             <i />
           </button>
         </div>
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 9 }}>
-            <h4 style={{ margin: 0, flex: 1, font: '600 13.5px var(--font-head)' }}>คิวรอ sync</h4>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--text-faint)' }}>{queue.length} รายการ</span>
+            <h4 style={{ margin: 0, flex: 1, font: '600 13.5px var(--font-head)' }}>{t('คิวรอ sync')}</h4>
+            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--text-faint)' }}>{t('{n} รายการ', { n: queue.length })}</span>
           </div>
 
           {queue.length === 0 ? (
-            <Empty icon={<CloudCheck size={26} />} title="ไม่มีรายการค้าง" hint="ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว" />
+            <Empty icon={<CloudCheck size={26} />} title={t('ไม่มีรายการค้าง')} hint={t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว')} />
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
               {queue.map((q) => (
@@ -73,10 +74,10 @@ export default function Sync() {
                       {q.label}
                     </span>
                     <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                      {relative(q.createdAt)} · {q.hasPhoto ? 'มีรูปแนบ' : 'ไม่มีรูป'}
+                      {relative(q.createdAt)} · {q.hasPhoto ? t('มีรูปแนบ') : t('ไม่มีรูป')}
                     </span>
                   </span>
-                  <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>รอส่ง</span>
+                  <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('รอส่ง')}</span>
                 </div>
               ))}
             </div>
@@ -89,24 +90,24 @@ export default function Sync() {
             onClick={async () => {
               const n = await syncNow('นศ. ก');
               touch();
-              showToast({ message: n ? `sync สำเร็จ ${n} รายการ` : 'ไม่มีรายการค้าง', tone: n ? 'success' : 'default' });
+              showToast({ message: n ? t('sync สำเร็จ {n} รายการ', { n }) : t('ไม่มีรายการค้าง'), tone: n ? 'success' : 'default' });
             }}
           >
             <ArrowsClockwise size={18} weight="bold" />
-            {offline ? 'ต้องออนไลน์ก่อนจึงจะ sync ได้' : 'sync ทันที'}
+            {offline ? t('ต้องออนไลน์ก่อนจึงจะ sync ได้') : t('sync ทันที')}
           </button>
         </div>
 
         <div className="card" style={{ padding: 14 }}>
-          <h4 style={{ margin: '0 0 3px', font: '600 13.5px var(--font-head)' }}>การแจ้งเตือน</h4>
+          <h4 style={{ margin: '0 0 3px', font: '600 13.5px var(--font-head)' }}>{t('การแจ้งเตือน')}</h4>
           <p style={{ margin: '0 0 6px', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
             
           </p>
           {(
             [
-              { key: 'push', label: 'Push notification', hint: 'ช่องทางหลัก', Icon: BellRinging },
-              { key: 'line', label: 'LINE (สำรอง)', hint: 'ส่งซ้ำถ้าไม่ได้เปิดแอปใน 24 ชม.', Icon: ChatCircleDots },
-              { key: 'email', label: 'อีเมลสรุปรายสัปดาห์', hint: 'ทุกวันจันทร์ 08:00', Icon: EnvelopeSimple },
+              { key: 'push', label: 'Push notification', hint: t('ช่องทางหลัก'), Icon: BellRinging },
+              { key: 'line', label: t('LINE (สำรอง)'), hint: t('ส่งซ้ำถ้าไม่ได้เปิดแอปใน 24 ชม.'), Icon: ChatCircleDots },
+              { key: 'email', label: t('อีเมลสรุปรายสัปดาห์'), hint: t('ทุกวันจันทร์ 08:00'), Icon: EnvelopeSimple },
             ] as const
           ).map(({ key, label, hint, Icon }) => (
             <div key={key} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--divider)' }}>
@@ -137,17 +138,17 @@ export default function Sync() {
         >
           <SignOut size={19} color="var(--text-muted)" style={{ flex: 'none' }} />
           <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>ออกจากระบบ</span>
+            <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{t('ออกจากระบบ')}</span>
             <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-              เปลี่ยนบทบาท
+              {t('เปลี่ยนบทบาท')}
             </span>
           </span>
         </button>
 
         <div className="dashed" style={{ padding: 14 }}>
-          <h4 style={{ margin: '0 0 3px', font: '600 13px var(--font-head)' }}>เครื่องมือสำหรับการนำเสนอ</h4>
+          <h4 style={{ margin: '0 0 3px', font: '600 13px var(--font-head)' }}>{t('เครื่องมือสำหรับการนำเสนอ')}</h4>
           <p style={{ margin: '0 0 11px', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            สำหรับตอนสาธิต
+            {t('สำหรับตอนสาธิต')}
           </p>
           <div style={{ display: 'flex', gap: 9 }}>
             <button
@@ -157,16 +158,16 @@ export default function Sync() {
                 navigate('/teacher');
               }}
             >
-              <ArrowsLeftRight size={16} /> มุมมองอาจารย์
+              <ArrowsLeftRight size={16} /> {t('มุมมองอาจารย์')}
             </button>
             <button
               className="btn btn--sec"
               onClick={async () => {
                 await resetDemo();
-                showToast({ message: 'รีเซ็ตข้อมูลเดโมแล้ว', tone: 'success' });
+                showToast({ message: t('รีเซ็ตข้อมูลเดโมแล้ว'), tone: 'success' });
               }}
             >
-              <ArrowCounterClockwise size={16} /> รีเซ็ตข้อมูล
+              <ArrowCounterClockwise size={16} /> {t('รีเซ็ตข้อมูล')}
             </button>
           </div>
         </div>

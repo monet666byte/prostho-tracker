@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useApp } from './store/app';
+import { t } from './lib/i18n';
 
 import Login from './routes/Login';
 import Home from './routes/student/Home';
@@ -38,7 +39,7 @@ function Splash() {
         <div className="skel" style={{ width: 180, height: 14, borderRadius: 7 }} />
         <div className="skel" style={{ width: 240, height: 10, borderRadius: 5 }} />
         <div className="skel" style={{ width: 210, height: 10, borderRadius: 5 }} />
-        <div style={{ font: '500 11px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>กำลังเตรียมข้อมูล…</div>
+        <div style={{ font: '500 11px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>{t('กำลังเตรียมข้อมูล…')}</div>
       </div>
     </div>
   );

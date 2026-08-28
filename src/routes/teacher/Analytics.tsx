@@ -11,6 +11,7 @@ import {
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
@@ -40,7 +41,7 @@ export default function Analytics() {
   const busiestStep = [...buckets].sort((a, b) => b.count - a.count)[0];
   const shownStep = openStep === null ? (busiestStep && busiestStep.count > 0 ? busiestStep.progression : -1) : openStep;
   const allDots = useMemo(() => caseDots(works, students, settings), [works, students, settings]);
-  const dotCount = (t: WorkType | 'all') => (t === 'all' ? allDots.length : allDots.filter((d) => d.type === t).length);
+  const dotCount = (ty: WorkType | 'all') => (ty === 'all' ? allDots.length : allDots.filter((d) => d.type === ty).length);
   const dots = useMemo(
     () => caseDots(works, students, settings, stepType === 'all' ? undefined : stepType),
     [works, students, settings, stepType],
@@ -52,10 +53,9 @@ export default function Analytics() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>วิเคราะห์รวมทั้งชั้นปี</h1>
+            <h1>{t('วิเคราะห์รวมทั้งชั้นปี')}</h1>
             <p>
-              เหลือ {head.monthsLeft} เดือนก่อนจบปีการศึกษา · <b>step</b> = ขั้นงานของแต่ละเคส
-              (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)
+              {t('เหลือ {n} เดือนก่อนจบปีการศึกษา', { n: head.monthsLeft })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
             </p>
           </div>
         </div>
@@ -65,19 +65,19 @@ export default function Analytics() {
         <div className="panel" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <h3>การกระจายชิ้นงานตามขั้นงาน (ทั้งชั้นปี)</h3>
-              <p className="sub">หนึ่งจุด = หนึ่งชิ้นงาน วางตาม step ที่ทำถึง (0 เริ่ม → 10 ปิดเคส) · เปิดขั้นตอนของ step ที่กองมากสุดไว้ให้ กดเลขใต้กราฟเพื่อสลับ</p>
+              <h3>{t('การกระจายชิ้นงานตามขั้นงาน (ทั้งชั้นปี)')}</h3>
+              <p className="sub">{t('หนึ่งจุด = หนึ่งชิ้นงาน วางตาม step ที่ทำถึง (0 เริ่ม → 10 ปิดเคส) · เปิดขั้นตอนของ step ที่กองมากสุดไว้ให้ กดเลขใต้กราฟเพื่อสลับ')}</p>
             </div>
           </div>
 
           {/* ปุ่มประเภท = ตัวกรอง + legend สี + จำนวนชิ้น ในตัวเดียว (แทน legend ใต้กราฟที่ซ้ำ) */}
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', margin: '10px 0 4px' }}>
-            {(['all', 'CD', 'RPD', 'PC', 'CB'] as Array<WorkType | 'all'>).map((t) => {
-              const on = stepType === t;
+            {(['all', 'CD', 'RPD', 'PC', 'CB'] as Array<WorkType | 'all'>).map((ty) => {
+              const on = stepType === ty;
               return (
                 <button
-                  key={t}
-                  onClick={() => { setStepType(t); setOpenStep(null); }}
+                  key={ty}
+                  onClick={() => { setStepType(ty); setOpenStep(null); }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 7,
                     font: `600 12px var(--font-body)`, padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
@@ -86,11 +86,11 @@ export default function Analytics() {
                     color: on ? '#fff' : 'var(--text-secondary)',
                   }}
                 >
-                  {t !== 'all' && (
-                    <i style={{ width: 9, height: 9, borderRadius: 99, background: TYPES[t].color, flex: 'none' }} />
+                  {ty !== 'all' && (
+                    <i style={{ width: 9, height: 9, borderRadius: 99, background: TYPES[ty].color, flex: 'none' }} />
                   )}
-                  {t === 'all' ? 'ทุกประเภท' : TYPES[t].short}
-                  <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{dotCount(t)}</span>
+                  {ty === 'all' ? t('ทุกประเภท') : TYPES[ty].short}
+                  <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{dotCount(ty)}</span>
                 </button>
               );
             })}
@@ -110,9 +110,9 @@ export default function Analytics() {
               <StepInfo
                 progression={shownStep}
                 type={stepType === 'all' ? undefined : stepType}
-                meta={`${buckets[shownStep].count} ชิ้นงานกำลังอยู่ที่ step นี้${
-                  buckets[shownStep].stale ? ` · ค้างเกิน ${settings.stale} วัน ${buckets[shownStep].stale} ชิ้น` : ''
-                }`}
+                meta={t('{n} ชิ้นงานกำลังอยู่ที่ step นี้', { n: buckets[shownStep].count }) + (
+                  buckets[shownStep].stale ? t(' · ค้างเกิน {d} วัน {c} ชิ้น', { d: settings.stale, c: buckets[shownStep].stale }) : ''
+                )}
                 onClose={() => setOpenStep(-1)}
               />
             </div>
@@ -122,16 +122,16 @@ export default function Analytics() {
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginTop: 16 }}>
             {/* 2. เส้นสะสมเทียบเป้า */}
             <div className="panel">
-              <h3>ชิ้นงานเสร็จสะสม เทียบเป้าหมาย</h3>
-              <p className="sub">ต้นปีต่ำกว่าเป้าเป็นปกติ — เคสแรกใช้เวลา 2–4 เดือน</p>
+              <h3>{t('ชิ้นงานเสร็จสะสม เทียบเป้าหมาย')}</h3>
+              <p className="sub">{t('ต้นปีต่ำกว่าเป้าเป็นปกติ — เคสแรกใช้เวลา 2–4 เดือน')}</p>
               <div style={{ marginTop: 8 }}>
                 <Burnup points={burn} />
               </div>
             </div>
             {/* 3. รับเคสแล้วใช้เวลากี่สัปดาห์ */}
             <div className="panel">
-              <h3>ระยะเวลาทำชิ้นงานจนเสร็จ (มัธยฐาน)</h3>
-              <p className="sub">ค่ามัธยฐาน นับจากวันรับเคส</p>
+              <h3>{t('ระยะเวลาทำชิ้นงานจนเสร็จ (มัธยฐาน)')}</h3>
+              <p className="sub">{t('ค่ามัธยฐาน นับจากวันรับเคส')}</p>
               <div style={{ marginTop: 10 }}>
                 {durations.map((d) => (
                   <div className="hbar" key={d.type}>
@@ -144,21 +144,21 @@ export default function Analytics() {
                 ))}
               </div>
               <p style={{ margin: '10px 0 0', font: '400 10px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-                ช่วงที่พบ: {durations.map((d) => `${TYPES[d.type].short} ${d.minWeeks}–${d.maxWeeks} wk. (${d.samples} เคส)`).join(' · ')}
+                {t('ช่วงที่พบ')}: {durations.map((d) => `${TYPES[d.type].short} ${d.minWeeks}–${d.maxWeeks} wk. (${d.samples} ${t('เคส')})`).join(' · ')}
               </p>
             </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 16 }}>
             <div className="panel">
-              <h3>ความคืบหน้าตามเกณฑ์ขั้นต่ำ (ทั้งชั้นปี)</h3>
-              <p className="sub">เกณฑ์สะสมครอบปี 5–6</p>
+              <h3>{t('ความคืบหน้าตามเกณฑ์ขั้นต่ำ (ทั้งชั้นปี)')}</h3>
+              <p className="sub">{t('เกณฑ์สะสมครอบปี 5–6')}</p>
               <div style={{ marginTop: 12, display: 'grid', gap: 13 }}>
                 {cohortReq.map((r) => (
                   <div key={r.group}>
                     <div style={{ display: 'flex', marginBottom: 6 }}>
-                      <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{r.label}</span>
-                      <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>เกณฑ์ {r.required}</span>
+                      <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{t(r.label)}</span>
+                      <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{t('เกณฑ์')} {r.required}</span>
                     </div>
                     <div className="stacked">
                       <i style={{ width: `${(r.complete / r.total) * 100}%`, background: 'var(--success)' }} />
@@ -169,8 +169,8 @@ export default function Analytics() {
                 ))}
                 <div>
                   <div style={{ display: 'flex', marginBottom: 6 }}>
-                    <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>เกณฑ์รายปี · {yearly.year}</span>
-                    <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>ปีละ {yearly.required}</span>
+                    <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{t('เกณฑ์รายปี')} · {yearly.year}</span>
+                    <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{t('ปีละ')} {yearly.required}</span>
                   </div>
                   <div className="stacked">
                     <i style={{ width: `${(yearly.passed / Math.max(1, yearly.total)) * 100}%`, background: 'var(--success)' }} />
@@ -179,24 +179,24 @@ export default function Analytics() {
                 </div>
               </div>
               <div className="legend">
-                <span><i style={{ background: 'var(--success)' }} /> ครบ</span>
-                <span><i style={{ background: 'var(--success-mid)' }} /> เหลือ 1 ชิ้น</span>
-                <span><i style={{ background: 'var(--danger-light)' }} /> เหลือ ≥2</span>
+                <span><i style={{ background: 'var(--success)' }} /> {t('ครบ')}</span>
+                <span><i style={{ background: 'var(--success-mid)' }} /> {t('เหลือ 1 ชิ้น')}</span>
+                <span><i style={{ background: 'var(--danger-light)' }} /> {t('เหลือ ≥2')}</span>
               </div>
             </div>
           {/* 5. funnel */}
           <div className="panel">
-            <h3>สถานะชิ้นงาน จำแนกตามประเภท</h3>
-            <p className="sub">สัดส่วนต่อประเภท</p>
+            <h3>{t('สถานะชิ้นงาน จำแนกตามประเภท')}</h3>
+            <p className="sub">{t('สัดส่วนต่อประเภท')}</p>
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>ประเภท</th>
-                  <th style={{ width: 46 }}>รับมา</th>
-                  <th style={{ width: 56 }}>ยังไม่เริ่ม</th>
-                  <th style={{ width: 56 }}>กำลังทำ</th>
-                  <th style={{ width: 52 }}>จบเคส</th>
-                  <th style={{ width: 130 }}>อัตราจบเคส</th>
+                  <th>{t('ประเภท')}</th>
+                  <th style={{ width: 46 }}>{t('รับมา')}</th>
+                  <th style={{ width: 56 }}>{t('ยังไม่เริ่ม')}</th>
+                  <th style={{ width: 56 }}>{t('กำลังทำ')}</th>
+                  <th style={{ width: 52 }}>{t('จบเคส')}</th>
+                  <th style={{ width: 130 }}>{t('อัตราจบเคส')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,21 +225,21 @@ export default function Analytics() {
 
           {/* 6. lab step ที่ต้องทำเอง */}
           <div className="panel">
-            <h3>ขั้นตอน lab ที่นักศึกษาทำด้วยตนเอง</h3>
-            <p className="sub">procedure ติดดาว (*) ที่ต้องทำเอง</p>
+            <h3>{t('ขั้นตอน lab ที่นักศึกษาทำด้วยตนเอง')}</h3>
+            <p className="sub">{t('procedure ติดดาว (*) ที่ต้องทำเอง')}</p>
             <div style={{ maxHeight: 300, overflowY: 'auto', marginTop: 4 }}>
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>นักศึกษา</th>
-                    <th style={{ width: 52 }}>กลุ่ม</th>
-                    <th style={{ width: 150 }}>ทำเองไปแล้ว</th>
+                    <th>{t('นักศึกษา')}</th>
+                    <th style={{ width: 52 }}>{t('กลุ่ม')}</th>
+                    <th style={{ width: 150 }}>{t('ทำเองไปแล้ว')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selfRows.slice(0, 12).map((r) => (
                     <tr key={r.student.id}>
-                      <td style={{ font: '600 11.5px var(--font-body)' }}>{r.student.name}</td>
+                      <td style={{ font: '600 11.5px var(--font-body)' }}>{t(r.student.name)}</td>
                       <td className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                         {r.student.group.replace('TH-', '')}
                       </td>
@@ -269,7 +269,7 @@ export default function Analytics() {
         >
           <Info size={16} weight="fill" color="var(--warning)" style={{ flex: 'none', marginTop: 1 }} />
           <span className="pretty" style={{ font: '400 11px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
-            คำนวณสดจากข้อมูลในระบบ — ตอนนี้ยังเป็นข้อมูลสมมติ
+            {t('คำนวณสดจากข้อมูลในระบบ — ตอนนี้ยังเป็นข้อมูลสมมติ')}
           </span>
         </div>
       </main>

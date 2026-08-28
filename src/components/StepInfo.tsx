@@ -1,6 +1,7 @@
 import { HandTap, X } from '@phosphor-icons/react';
 import { REQ_TYPES, TYPES } from '../domain/catalog';
 import { procList } from '../domain/rules';
+import { t } from '../lib/i18n';
 import type { WorkType } from '../domain/types';
 
 /** procedure ทั้งหมดที่อยู่ใน progression นั้นของงานประเภทหนึ่ง */
@@ -20,7 +21,7 @@ function TypeBlock({ type, progression }: { type: WorkType; progression: number 
     return (
       <div className="stepinfo__type">
         <span className="badge" style={{ background: meta.tint, color: meta.ink }}>{meta.short}</span>
-        <span className="faint" style={{ font: '400 11px var(--font-body)' }}>ไม่มีขั้นตอนที่ progression นี้</span>
+        <span className="faint" style={{ font: '400 11px var(--font-body)' }}>{t('ไม่มีขั้นตอนที่ progression นี้')}</span>
       </div>
     );
   }
@@ -33,7 +34,7 @@ function TypeBlock({ type, progression }: { type: WorkType; progression: number 
           <span className="mono">{p.name}</span>
           {p.self && (
             <span className="badge" style={{ background: 'var(--self-tint)', color: 'var(--self)' }}>
-              <HandTap size={10} weight="fill" /> ทำเอง
+              <HandTap size={10} weight="fill" /> {t('ทำเอง')}
             </span>
           )}
         </li>
@@ -88,20 +89,20 @@ export function StepInfo({
           )}
           {!type && (
             <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-              เลขเดียวกันหมายถึงคนละขั้นตอนในแต่ละประเภทงาน
+              {t('เลขเดียวกันหมายถึงคนละขั้นตอนในแต่ละประเภทงาน')}
             </div>
           )}
         </div>
         {onClose && (
-          <button className="iconbtn iconbtn--plain" style={{ width: 28, height: 28 }} onClick={onClose} aria-label="ปิด">
+          <button className="iconbtn iconbtn--plain" style={{ width: 28, height: 28 }} onClick={onClose} aria-label={t('ปิด')}>
             <X size={14} weight="bold" />
           </button>
         )}
       </div>
 
       <div className="stepinfo__body">
-        {types.map((t) => (
-          <TypeBlock key={t} type={t} progression={progression} />
+        {types.map((ty) => (
+          <TypeBlock key={ty} type={ty} progression={progression} />
         ))}
       </div>
     </div>

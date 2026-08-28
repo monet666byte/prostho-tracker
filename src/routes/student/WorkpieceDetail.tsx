@@ -16,6 +16,7 @@ import {
 } from '../../domain/rules';
 import { usePending, useWorkpiece } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
+import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 export default function WorkpieceDetail() {
@@ -27,7 +28,7 @@ export default function WorkpieceDetail() {
   // step ที่ผู้ใช้กดกางดูเอง (นอกเหนือจาก step ที่กำลังทำซึ่งกางอยู่แล้ว)
   const [openStep, setOpenStep] = useState<number | null>(null);
 
-  if (!w) return <PlainShell><div style={{ padding: 24 }}>ไม่พบชิ้นงานนี้</div></PlainShell>;
+  if (!w) return <PlainShell><div style={{ padding: 24 }}>{t('ไม่พบชิ้นงานนี้')}</div></PlainShell>;
 
   const meta = TYPES[w.type];
   const groups = stepGroups(w);
@@ -42,7 +43,7 @@ export default function WorkpieceDetail() {
       {next ? (
         <>
           <div style={{ font: '400 11.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginBottom: 9 }}>
-            ถัดไป: <span className="mono">{next.name}</span>
+            {t('ถัดไป')}: <span className="mono">{next.name}</span>
           </div>
           <button
             className={`btn${next.progression >= max ? ' btn--success' : ''}`}
@@ -50,7 +51,7 @@ export default function WorkpieceDetail() {
             onClick={() => openSheet(w.id)}
           >
             <CheckCircle size={20} weight="fill" />
-            {next.progression >= max ? 'ปิดเคส · Completion of case' : 'ทำขั้นนี้เสร็จแล้ว'}
+            {next.progression >= max ? t('ปิดเคส · Completion of case') : t('ทำขั้นนี้เสร็จแล้ว')}
           </button>
         </>
       ) : (
@@ -62,7 +63,7 @@ export default function WorkpieceDetail() {
           }}
         >
           <SealCheck size={19} weight="fill" />
-          จบเคสแล้ว · นับเข้าเกณฑ์
+          {t('จบเคสแล้ว · นับเข้าเกณฑ์')}
         </div>
       )}
       <div style={{ display: 'flex', gap: 9, marginTop: 8 }}>
@@ -70,13 +71,13 @@ export default function WorkpieceDetail() {
           className="btn btn--sec"
           onClick={async () => {
             await addPhoto(w.id, offline);
-            showToast({ message: offline ? 'เก็บรูปในเครื่อง · รอ sync' : 'แนบรูปแล้ว', tone: offline ? 'warning' : 'default' });
+            showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('แนบรูปแล้ว'), tone: offline ? 'warning' : 'default' });
           }}
         >
-          <CameraPlus size={16} /> แนบรูป
+          <CameraPlus size={16} /> {t('แนบรูป')}
         </button>
         <button className="btn btn--sec" onClick={() => navigate('/app/photos')}>
-          <NotePencil size={16} /> บันทึกโน้ต
+          <NotePencil size={16} /> {t('บันทึกโน้ต')}
         </button>
       </div>
     </div>
@@ -86,16 +87,16 @@ export default function WorkpieceDetail() {
     <PlainShell footer={footer} overlay={<ConfirmSheet />}>
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', font: '600 14.5px var(--font-head)' }}>{w.patient.name}</span>
+            <span style={{ display: 'block', font: '600 14.5px var(--font-head)' }}>{t(w.patient.name)}</span>
             <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>
-              HN {w.patient.hn} · รับเคส {thaiShort(w.acceptedDate)}
+              HN {w.patient.hn} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
             </span>
           </span>
-          <button className="iconbtn iconbtn--plain" aria-label="เมนู">
+          <button className="iconbtn iconbtn--plain" aria-label={t('เมนู')}>
             <DotsThree size={20} weight="bold" />
           </button>
         </div>
@@ -105,7 +106,7 @@ export default function WorkpieceDetail() {
           <ArchBadge arch={w.arch} />
           {w.tooth && (
             <span className="badge mono" style={{ background: 'var(--fill)', color: 'var(--text-muted)', fontWeight: 500 }}>
-              ซี่ {w.tooth}
+              {t('ซี่')} {w.tooth}
             </span>
           )}
           {w.kennedy && (
@@ -113,14 +114,14 @@ export default function WorkpieceDetail() {
           )}
           {w.minimumRequirement && (
             <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
-              <SealCheck size={12} weight="fill" /> นับ minimum requirement
+              <SealCheck size={12} weight="fill" /> {t('นับ minimum requirement')}
             </span>
           )}
           {pending.has(w.id) && <PendingBadge />}
         </div>
 
         <h2 className="h2" style={{ marginTop: 10 }}>{meta.full}</h2>
-        <div style={{ font: '400 11px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>{w.detail}</div>
+        <div style={{ font: '400 11px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>{tText(w.detail)}</div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 13 }}>
           <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={8} />
@@ -159,7 +160,7 @@ export default function WorkpieceDetail() {
                 >
                   <span className="tl__title">
                     {first.name}
-                    {extra > 0 && <span className="faint" style={{ fontWeight: 400 }}> · +{extra} ขั้นตอนย่อย</span>}
+                    {extra > 0 && <span className="faint" style={{ fontWeight: 400 }}> · +{extra} {t('ขั้นตอนย่อย')}</span>}
                   </span>
                   {g.hasSelf && <SelfBadge compact />}
                   <span style={{ marginLeft: 'auto', color: 'var(--text-disabled)', display: 'grid' }}>
@@ -168,12 +169,12 @@ export default function WorkpieceDetail() {
                 </button>
                 <div className="tl__meta">
                   {g.state === 'done'
-                    ? passedDate ? `ผ่านแล้ว · ${passedDate}` : 'ผ่านแล้ว'
+                    ? passedDate ? `${t('ผ่านแล้ว')} · ${passedDate}` : t('ผ่านแล้ว')
                     : g.state === 'active'
                       ? cur && cur.progression === g.progression
-                        ? 'กำลังทำ · ผ่านบางขั้นตอนย่อยแล้ว'
-                        : 'กำลังทำ · ยังไม่บันทึก'
-                      : 'รอดำเนินการ'}
+                        ? t('กำลังทำ · ผ่านบางขั้นตอนย่อยแล้ว')
+                        : t('กำลังทำ · ยังไม่บันทึก')
+                      : t('รอดำเนินการ')}
                 </div>
 
                 {expanded && (
@@ -208,9 +209,9 @@ export default function WorkpieceDetail() {
                         style={{ width: 52, height: 52, display: 'grid', placeItems: 'center', color: 'var(--accent)' }}
                         onClick={async () => {
                           await addPhoto(w.id, offline);
-                          showToast({ message: offline ? 'เก็บรูปในเครื่อง · รอ sync' : 'แนบรูปแล้ว', tone: offline ? 'warning' : 'default' });
+                          showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('แนบรูปแล้ว'), tone: offline ? 'warning' : 'default' });
                         }}
-                        aria-label="เพิ่มรูป"
+                        aria-label={t('เพิ่มรูป')}
                       >
                         <CameraPlus size={19} />
                       </button>

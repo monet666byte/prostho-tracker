@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { BurnupPoint } from '../../domain/analytics';
+import { t } from '../../lib/i18n';
 
 /**
  * เส้นสะสม (burn-up) — เส้นทึบคือจบจริงสะสม เส้นประคือเป้าที่ควรจะเป็น
@@ -34,7 +35,7 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
 
   return (
     <div>
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="ชิ้นงานที่จบสะสม เทียบเป้าหมาย">
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('ชิ้นงานที่จบสะสม เทียบเป้าหมาย')}>
         {gridVals.map((v) => (
           <g key={v}>
             <line x1={padL} y1={y(v)} x2={width - padR} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
@@ -85,16 +86,16 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
       </svg>
 
       <div className="chartlegend">
-        <span><i style={{ background: 'var(--accent)', height: 3, width: 16, borderRadius: 99 }} /> จบจริงสะสม</span>
+        <span><i style={{ background: 'var(--accent)', height: 3, width: 16, borderRadius: 99 }} /> {t('จบจริงสะสม')}</span>
         <span>
-          <i style={{ background: 'transparent', borderTop: '2px dashed var(--text-disabled)', height: 0, width: 16 }} /> เป้าถ้าจะผ่านเกณฑ์รายปีทั้งชั้น
+          <i style={{ background: 'transparent', borderTop: '2px dashed var(--text-disabled)', height: 0, width: 16 }} /> {t('เป้าถ้าจะผ่านเกณฑ์รายปีทั้งชั้น')}
         </span>
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>
           {hover !== null
-            ? `${points[hover].label} · จบจริง ${points[hover].actual ?? '—'} · เป้า ${points[hover].target}`
+            ? `${points[hover].label} · ${t('จบจริง')} ${points[hover].actual ?? '—'} · ${t('เป้า')} ${points[hover].target}`
             : behind > 0
-              ? `ตอนนี้ตามหลังเป้าอยู่ ${behind} ชิ้น`
-              : 'ตอนนี้นำหน้าเป้าอยู่'}
+              ? t('ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น', { n: behind })
+              : t('ตอนนี้นำหน้าเป้าอยู่')}
         </span>
       </div>
     </div>

@@ -11,6 +11,7 @@ import type {
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS } from './seed';
+import { t } from '../lib/i18n';
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -125,7 +126,7 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
       };
       await db.queue.add(item);
     }
-    await db.audit.add({ id: uid('a'), text: `ผ่าน ${label}`, who: input.actor, at: new Date().toISOString() });
+    await db.audit.add({ id: uid('a'), text: `${t('ผ่าน')} ${label}`, who: input.actor, at: new Date().toISOString() });
   });
 
   return { workpiece: updated, label, completedCase: isComplete(updated), queued: input.offline };
@@ -252,7 +253,7 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   }
 
   await db.workpieces.bulkAdd(created);
-  await logAudit(`สร้างชิ้นงาน ${created.map((c) => c.detail).join(' + ')}`, input.actor);
+  await logAudit(`${t('สร้างชิ้นงาน')} ${created.map((c) => c.detail).join(' + ')}`, input.actor);
   return created;
 }
 
@@ -333,7 +334,7 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
   };
   await db.reviews.put(review);
   const w = await db.workpieces.get(workpieceId);
-  await logAudit(`${status === 'approved' ? 'อนุมัติ' : 'ตีกลับให้แก้'} ${w?.detail ?? workpieceId}`, by);
+  await logAudit(`${status === 'approved' ? t('อนุมัติ') : t('ตีกลับให้แก้')} ${w?.detail ?? workpieceId}`, by);
 }
 
 export async function listReviews(): Promise<Map<string, Review>> {
@@ -431,7 +432,7 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
     createdAt: new Date().toISOString(),
   };
   await db.checkins.add(entry);
-  await logAudit(`เช็คอินคาบคลินิก ${checkInDateLabel(input.date)} · ${input.activities.join(', ') || 'ไม่ระบุกิจกรรม'}`, input.actor);
+  await logAudit(`${t('เช็คอินคาบคลินิก')} ${checkInDateLabel(input.date)} · ${input.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`, input.actor);
   return entry;
 }
 
