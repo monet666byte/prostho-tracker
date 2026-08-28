@@ -112,8 +112,8 @@ html.theme-navy {
 /* สีประจำประเภทงาน */
 .t-CD { --type: #2b5ce6; --type-tint: #edf1fe; }
 .t-APD { --type: #0891b2; --type-tint: #e4f5fa; }
-.t-RPD { --type: #0e9f6e; --type-tint: #e7f7f1; }
-.t-PC { --type: #7a5af8; --type-tint: #f1eefe; }
-.t-CB { --type: #b54708; --type-tint: #fef3e7; }
+.t-RPD { --type: #7a5af8; --type-tint: #f1eefe; }
+.t-PC { --type: #c026d3; --type-tint: #fbe9fc; }
+.t-CB { --type: #4338ca; --type-tint: #ebeafd; }
 .t-RRM { --type: #64748b; --type-tint: #f1f3f7; }
 .t-RFX { --type: #475569; --type-tint: #eef1f5; }

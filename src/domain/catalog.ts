@@ -20,9 +20,10 @@ export interface TypeMeta {
 
 export const TYPES: Record<WorkType, TypeMeta> = {
   CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2B5CE6', tint: '#EDF1FE' },
-  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#0E9F6E', tint: '#E7F7F1' },
-  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#7A5AF8', tint: '#F1EEFE' },
-  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#B54708', tint: '#FEF3E7' },
+  /* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) — ฟีดแบควันเดโม 28 ส.ค. */
+  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#7A5AF8', tint: '#F1EEFE' },
+  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C026D3', tint: '#FBE9FC' },
+  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#4338CA', tint: '#EBEAFD' },
   APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#0891B2', tint: '#E4F5FA' },
   RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7' },
   RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5' },
