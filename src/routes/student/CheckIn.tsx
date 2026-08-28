@@ -158,7 +158,8 @@ export default function CheckInPage() {
         </p>
       </header>
 
-      <div style={{ padding: '14px 16px 0', display: 'grid', gap: 11 }}>
+      {/* minmax(0,1fr): กันแถวที่มีชิป nowrap ดันคอลัมน์ grid กว้างทะลุ padding ขวา (เห็นชัดใน Safari) */}
+      <div style={{ padding: '14px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 11 }}>
         {doneToday ? (
           <div
             className="card"
