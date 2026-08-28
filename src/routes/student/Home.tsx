@@ -187,10 +187,13 @@ export default function Home() {
               ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
               : t('ยังไม่เช็คอิน — กดเพื่อเช็คอิน')}
           </span>
-          {/* บรรทัดให้กำลังใจรายวัน — ซ่อนในการ์ดเช็คอิน (ผู้ใช้เลือกแบบ ง จาก mock) เลือกข้อความจากสถานการณ์จริงใน domain/cheer.ts */}
-          <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
-            {cheerLine(works, checkins, settings)}
-          </span>
+          {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555)
+              ก่อนเช็คอินการ์ดโฟกัสที่ปุ่มกดอย่างเดียว · ข้อความเลือกจากสถานการณ์จริงใน domain/cheer.ts */}
+          {checkedInToday && (
+            <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
+              {cheerLine(works, checkins, settings)}
+            </span>
+          )}
         </span>
         <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
       </Link>
