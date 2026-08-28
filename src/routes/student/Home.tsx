@@ -1,4 +1,4 @@
-import { Bell, CalendarCheck, CheckCircle, HandTap, MagnifyingGlass } from '@phosphor-icons/react';
+import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -162,38 +162,35 @@ export default function Home() {
         </Link>
       </header>
 
-      {checkedInToday ? (
-        <Link to="/app/checkin" className="banner banner--slim banner--ok">
-          <i><CalendarCheck size={16} weight="fill" /></i>
-          <span style={{ flex: 1, font: '500 11.5px/1.5 var(--font-body)' }}>
-            <b style={{ fontWeight: 600 }}>คาบวันนี้</b> · {todayCheckIn?.activities[0] ?? ''}
-            {todayStepCount > 0 ? ` · ผ่านแล้ว ${todayStepCount} step` : ''}
-          </span>
-          <span style={{ font: '400 10.5px var(--font-body)', opacity: 0.75 }}>
-            {todayCheckIn?.status === 'evaluated' ? 'ประเมินแล้ว ›' : 'รอประเมิน ›'}
-          </span>
-        </Link>
-      ) : (
-        <Link to="/app/checkin" className="banner banner--slim">
-          <i><CalendarCheck size={16} weight="fill" /></i>
-          <span style={{ flex: 1, font: '500 11.5px/1.5 var(--font-body)' }}>
-            <b style={{ fontWeight: 600 }}>ยังไม่เช็คอินคาบวันนี้</b>
-          </span>
-          <span style={{ font: '400 10.5px var(--font-body)', opacity: 0.75 }}>เช็คอิน ›</span>
-        </Link>
-      )}
-
-      <div className="sectiontitle">
-        <h4>เคสล่าสุด</h4>
+      <div className="sectiontitle" style={{ padding: '12px 16px 7px' }}>
+        <h4>วันนี้</h4>
       </div>
+
+      {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
+      <div style={{ padding: '0 16px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+      <Link
+        to="/app/checkin"
+        className="card"
+        style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 13px', borderRadius: 16 }}
+      >
+        {checkedInToday ? (
+          <CheckSquare size={26} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
+        ) : (
+          <Square size={26} color="var(--warning)" style={{ flex: 'none' }} />
+        )}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>เช็คอินคาบวันนี้</span>
+          <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
+            {checkedInToday
+              ? `${todayCheckIn?.activities[0] ?? ''}${todayStepCount > 0 ? ` · เสร็จแล้ว ${todayStepCount} ขั้น` : ''} · ${todayCheckIn?.status === 'evaluated' ? 'ประเมินแล้ว' : 'รอประเมิน'}`
+              : 'ยังไม่เช็คอิน — กดเพื่อเช็คอิน'}
+          </span>
+        </span>
+        <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
+      </Link>
 
       {hero && <HeroCard w={hero} pending={pending.has(hero.id)} stale={isStale(hero, settings)} onPass={() => openSheet(hero.id)} />}
 
-      {rest.length > 0 && (
-        <div className="sectiontitle" style={{ paddingTop: 6 }}>
-          <h4>เคสอื่นที่กำลังดำเนินการ</h4>
-        </div>
-      )}
       {rest.map((w) => {
         const next = nextProc(w);
         const meta = TYPES[w.type];
@@ -223,7 +220,7 @@ export default function Home() {
         );
       })}
 
-      <div style={{ display: 'flex', gap: 11, margin: '4px 16px 0' }}>
+      <div style={{ display: 'flex', gap: 11 }}>
         <button className="card" style={statBox} onClick={() => navigate('/app/patients')}>
           <span style={statNum}>{active.length}</span>
           <span style={statLabel}>ชิ้นงานที่กำลังทำ</span>
@@ -234,6 +231,7 @@ export default function Home() {
           </span>
           <span style={statLabel}>เกณฑ์สะสม 2 ปี</span>
         </button>
+      </div>
       </div>
     </Shell>
   );

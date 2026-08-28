@@ -112,7 +112,7 @@
 
 .s-header {
   background: var(--surface);
-  padding: 14px 20px 18px;
+  padding: 12px 20px 13px;
   border-bottom: 1px solid var(--divider);
 }
 .s-header--row { display: flex; align-items: center; gap: 12px; }
@@ -285,7 +285,7 @@
   display: flex;
   align-items: stretch;
   gap: 9px;
-  margin: 0 16px 8px;
+  /* margin อยู่ที่กองรวมในหน้าแรกแล้ว (grid gap) */
 }
 .minirow__body {
   flex: 1;
@@ -403,7 +403,6 @@
 
 /* ── การ์ดเคสเด่นหน้าแรก — สไตล์ Apple: ขาวสะอาด เงานุ่ม ตัวหนังสือเป็นพระเอก ── */
 .herocase {
-  margin: 0 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
