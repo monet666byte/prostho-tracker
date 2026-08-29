@@ -187,13 +187,28 @@ export async function pullAll(): Promise<void> {
     const remoteMax = (head.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? '';
     if (remoteMax && lastPulled.get(def.remote) === remoteMax) continue;
 
-    const { data, error } = await supabase.from(def.remote).select('*').limit(10000);
-    if (error || !data) continue;
+    // ⚠️ เซิร์ฟเวอร์ตัดผลลัพธ์ที่ 1,000 แถวเสมอ (ไม่ว่าจะขอเท่าไหร่) — ต้องดึงทีละหน้า
+    // ไม่งั้นข้อมูลหายเงียบๆ พอโตเกินพัน (เจอตอนทดสอบ: มี 1,215 คาบ ดึงได้ 1,000)
+    const remotePkCol = def.rename?.[def.pk] ?? toSnake(def.pk);
+    const PAGE = 1000;
+    const data: Record<string, unknown>[] = [];
+    let failed = false;
+    for (let from = 0; ; from += PAGE) {
+      const page = await supabase
+        .from(def.remote)
+        .select('*')
+        .order(remotePkCol, { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (page.error) { failed = true; break; }
+      data.push(...((page.data ?? []) as Record<string, unknown>[]));
+      if ((page.data?.length ?? 0) < PAGE) break;
+      if (from > 200_000) break; // กันวนไม่รู้จบถ้ามีอะไรผิดปกติ
+    }
+    if (failed) continue;
     // ห้ามทับแถวที่มีงานค้างส่งอยู่ — ไม่งั้น pull ฉบับเก่าจะกลืนสิ่งที่ผู้ใช้เพิ่งกด (บั๊กที่เจอคืนแรก)
     const skip = new Set([...(dirty.get(def.local) ?? []), ...(pendingDeletes.get(def.local) ?? [])]);
-    const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
-    const rows = data.filter((r) => !skip.has((r as Record<string, unknown>)[remotePk]));
-    await applyRemote(def.local, rows.map((r) => (r as Record<string, unknown>)[remotePk]), async () => {
+    const rows = data.filter((r) => !skip.has(r[remotePkCol]));
+    await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
       await db.table(def.local).bulkPut(rows.map((r) => fromRow(def, r)) as never[]);
     });
     lastPulled.set(def.remote, remoteMax);
