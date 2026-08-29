@@ -91,8 +91,10 @@ end $$;
 -- ⑥ บัญชีทดสอบของทีมพัฒนา — ผูกกับตัวละครในข้อมูลตัวอย่าง
 --    (ของจริงตอน pilot จะ import รายชื่อจากชีตภาคมาลงตารางนี้แทน)
 insert into invites (email, role, student_id, teacher_id) values
-  ('nak-test@prostho.local',   'student', 'st-TH-PT7-1', null),
-  ('ajarn-test@prostho.local', 'teacher', null,          'tc-TH-PT7-1')
+  ('nak-test@example.com',   'student', 'st-TH-PT7-1', null),
+  ('ajarn-test@example.com', 'teacher', null,          'tc-TH-PT7-1'),
+  -- บัญชีสาธิตตอนพรี: สลับ นศ.↔อาจารย์ ได้ในบัญชีเดียว (ของจริงคนละคนคนละบัญชี)
+  ('demo@example.com',       'student', 'st-TH-PT7-1', 'tc-TH-PT7-1')
 on conflict (email) do update
   set role = excluded.role,
       student_id = excluded.student_id,
