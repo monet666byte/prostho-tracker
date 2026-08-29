@@ -55,7 +55,10 @@ function fromRow(def: TableDef, row: Record<string, unknown>): Record<string, un
   const back = new Map(Object.entries(def.rename ?? {}).map(([l, r]) => [r, l]));
   const obj: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) {
-    if (k === 'updated_at') continue;
+    if (k === 'updated_at') {
+      obj.updated_at = v; // เก็บไว้ — ตัวบอกว่าแถวนี้ฉบับไหน (toRow จะทิ้งแล้วประทับใหม่ตอนส่งขึ้น)
+      continue;
+    }
     const localKey = back.get(k) ?? k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
     obj[localKey] = v === null ? undefined : v;
   }
@@ -65,7 +68,10 @@ function fromRow(def: TableDef, row: Record<string, unknown>): Record<string, un
 /* ── คิวส่งขึ้น (in-memory + pushAll ตอนเปิดแอปกันตกหล่น) ── */
 
 let paused = false; // ปิดชั่วคราวระหว่าง seed/reset — กันข้อมูล fixture ไหลมั่ว
-let applyingRemote = false; // กัน echo: ของที่เพิ่งดึงลงมา ไม่ต้องส่งกลับขึ้นไป
+// กัน echo แบบระบุรายแถว: เฉพาะ "แถวที่กำลัง apply จากตู้กลาง" เท่านั้นที่ไม่ต้องส่งกลับ
+// (เคยใช้ธงคลุมทั้งระบบ → งานที่ผู้ใช้กดระหว่างจังหวะ apply หายไปเฉยๆ — บั๊กคืนแรก)
+const applyingKeys = new Set<string>();
+const keyOf = (local: string, pk: unknown) => local + '|' + String(pk);
 const dirty = new Map<string, Set<unknown>>(); // local table → set ของ pk ที่ค้างส่ง
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -74,11 +80,11 @@ export function setSyncPaused(v: boolean) {
 }
 
 function markDirty(local: string, keys: unknown[]) {
-  if (!cloudEnabled || paused || applyingRemote || !byLocal.has(local)) return;
+  if (!cloudEnabled || paused || !byLocal.has(local)) return;
   let set = dirty.get(local);
   if (!set) dirty.set(local, (set = new Set()));
-  keys.forEach((k) => k !== undefined && set!.add(k));
-  if (!flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
+  keys.forEach((k) => k !== undefined && !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }
 
 /** middleware ดักทุกการเขียนของ Dexie — จดว่าแถวไหนต้องส่งขึ้นตู้กลาง */
@@ -94,7 +100,7 @@ db.use({
         return {
           ...t,
           mutate(req) {
-            if (def && !paused && !applyingRemote && cloudEnabled) {
+            if (def && !paused && cloudEnabled) {
               if (req.type === 'add' || req.type === 'put') {
                 markDirty(name, (req.values as Record<string, unknown>[]).map((v) => v[def.pk]));
               } else if (req.type === 'delete') {
@@ -115,8 +121,8 @@ const pendingDeletes = new Map<string, Set<unknown>>();
 function markDelete(local: string, keys: unknown[]) {
   let set = pendingDeletes.get(local);
   if (!set) pendingDeletes.set(local, (set = new Set()));
-  keys.forEach((k) => set!.add(k));
-  if (!flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
+  keys.forEach((k) => !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }
 
 /** ส่งของค้างขึ้นตู้กลาง */
@@ -150,23 +156,36 @@ async function flush(): Promise<void> {
 
 /* ── ดึงลง / ดันขึ้น ทั้งตู้ ── */
 
-async function applyRemote(fn: () => Promise<void>) {
-  applyingRemote = true;
+async function applyRemote(local: string, pks: unknown[], fn: () => Promise<void>) {
+  pks.forEach((k) => applyingKeys.add(keyOf(local, k)));
   try {
     await fn();
   } finally {
-    applyingRemote = false;
+    pks.forEach((k) => applyingKeys.delete(keyOf(local, k)));
   }
 }
+
+const lastPulled = new Map<string, string>(); // remote table → max updated_at ที่ดึงล่าสุด
 
 export async function pullAll(): Promise<void> {
   if (!supabase) return;
   for (const def of TABLES) {
+    // เช็คก่อนว่าตารางนี้มีอะไรใหม่มั้ย — ส่วนใหญ่ไม่มี จะได้ไม่ต้องดึง/เขียนทับให้เสี่ยง
+    const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
+    if (head.error) continue;
+    const remoteMax = (head.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? '';
+    if (remoteMax && lastPulled.get(def.remote) === remoteMax) continue;
+
     const { data, error } = await supabase.from(def.remote).select('*').limit(10000);
     if (error || !data) continue;
-    await applyRemote(async () => {
-      await db.table(def.local).bulkPut(data.map((r) => fromRow(def, r)) as never[]);
+    // ห้ามทับแถวที่มีงานค้างส่งอยู่ — ไม่งั้น pull ฉบับเก่าจะกลืนสิ่งที่ผู้ใช้เพิ่งกด (บั๊กที่เจอคืนแรก)
+    const skip = new Set([...(dirty.get(def.local) ?? []), ...(pendingDeletes.get(def.local) ?? [])]);
+    const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
+    const rows = data.filter((r) => !skip.has((r as Record<string, unknown>)[remotePk]));
+    await applyRemote(def.local, rows.map((r) => (r as Record<string, unknown>)[remotePk]), async () => {
+      await db.table(def.local).bulkPut(rows.map((r) => fromRow(def, r)) as never[]);
     });
+    lastPulled.set(def.remote, remoteMax);
   }
 }
 
@@ -191,13 +210,12 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
       const def = byRemote.get(payload.table);
       if (!def) return;
-      void applyRemote(async () => {
-        if (payload.eventType === 'DELETE') {
-          const key = (payload.old as Record<string, unknown>)[def.rename?.[def.pk] ?? toSnake(def.pk)];
-          if (key !== undefined) await db.table(def.local).delete(key as never);
-        } else {
-          await db.table(def.local).put(fromRow(def, payload.new as Record<string, unknown>) as never);
-        }
+      const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
+      const key = ((payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>)[remotePk];
+      if (key === undefined) return;
+      void applyRemote(def.local, [key], async () => {
+        if (payload.eventType === 'DELETE') await db.table(def.local).delete(key as never);
+        else await db.table(def.local).put(fromRow(def, payload.new as Record<string, unknown>) as never);
       });
     })
     .subscribe();
@@ -226,8 +244,24 @@ export async function initCloudSync(): Promise<void> {
       await pushAll(); // ดันของท้องถิ่นที่ตู้ยังไม่มี (กันงานหายช่วงออฟไลน์)
     }
     subscribeRealtime();
-    setInterval(() => void flush(), 30_000);
+    // polling สำรอง: ตารางที่ยังไม่ได้สมัคร realtime publication (0002) ก็ยังเห็นกันภายใน ~15 วิ
+    // ลำดับสำคัญ: ดันของค้างขึ้นก่อนค่อยดึงลง — กันของที่เพิ่งพิมพ์ถูกฉบับเก่าบนตู้ทับ
+    setInterval(() => {
+      void (async () => {
+        await flush();
+        await pullAll();
+      })();
+    }, 15_000);
     window.addEventListener('online', () => void flush());
+    // เปิดจอ/สลับกลับมาที่แอป → sync ทันที (สำคัญกับมือถือที่พักหน้าจอบ่อย — ตอนพักเบราว์เซอร์หน่วง timer)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        void (async () => {
+          await flush();
+          await pullAll();
+        })();
+      }
+    });
   } catch {
     // ต่อตู้กลางไม่ได้ (เน็ตล่ม ฯลฯ) — แอปทำงาน local ต่อได้ปกติ
   }
