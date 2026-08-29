@@ -18,6 +18,8 @@ import CheckInPage from './routes/student/CheckIn';
 import Dashboard from './routes/teacher/Dashboard';
 import Review from './routes/teacher/Review';
 import TeacherSettings from './routes/teacher/Settings';
+import Roster from './routes/teacher/Roster';
+import ImportSheet from './routes/teacher/ImportSheet';
 import Analytics from './routes/teacher/Analytics';
 import MyGroup from './routes/teacher/MyGroup';
 import Evaluate from './routes/teacher/Evaluate';
@@ -87,6 +89,8 @@ export default function App() {
         <Route path="/teacher" element={<Guard role="teacher"><Dashboard /></Guard>} />
         <Route path="/teacher/review" element={<Guard role="teacher"><Review /></Guard>} />
         <Route path="/teacher/settings" element={<Guard role="teacher"><TeacherSettings /></Guard>} />
+        <Route path="/teacher/roster" element={<Guard role="teacher"><Roster /></Guard>} />
+        <Route path="/teacher/import" element={<Guard role="teacher"><ImportSheet /></Guard>} />
         <Route path="/teacher/analytics" element={<Guard role="teacher"><Analytics /></Guard>} />
         <Route path="/teacher/group" element={<Guard role="teacher"><MyGroup /></Guard>} />
         <Route path="/teacher/evaluate" element={<Guard role="teacher"><Evaluate /></Guard>} />

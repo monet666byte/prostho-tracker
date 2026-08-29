@@ -13,6 +13,8 @@ export interface AppUser {
   role: Role;
   studentId: string | null;
   teacherId: string | null;
+  /** หัวหน้าภาค — เห็น audit ทั้งระบบ และจัดการรายชื่อผู้มีสิทธิ์เข้าระบบได้ */
+  isAdmin: boolean;
 }
 
 /** ล็อกอินด้วยอีเมล+รหัสผ่าน — คืน error เป็นข้อความไทยให้เอาไปโชว์ได้เลย */
@@ -39,7 +41,7 @@ export async function getAppUser(): Promise<AppUser | null> {
   if (!auth.user) return null;
   const { data, error } = await supabase
     .from('app_users')
-    .select('uid, email, role, student_id, teacher_id')
+    .select('uid, email, role, student_id, teacher_id, is_admin')
     .eq('uid', auth.user.id)
     .maybeSingle();
   if (error || !data) return null;
@@ -49,6 +51,7 @@ export async function getAppUser(): Promise<AppUser | null> {
     role: data.role as Role,
     studentId: (data.student_id as string | null) ?? null,
     teacherId: (data.teacher_id as string | null) ?? null,
+    isAdmin: !!data.is_admin,
   };
 }
 

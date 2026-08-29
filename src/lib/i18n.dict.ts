@@ -580,6 +580,63 @@ export const DICT: Record<string, string> = {
   '{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร': '{n} workpieces · hover a dot to see whose case it is',
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
+
+  /* ── หน้าจัดการรายชื่อ (หัวหน้าภาค) ── */
+  'จัดการรายชื่อ': 'Roster',
+
+  /* ── หน้านำเข้าจากชีต ── */
+  'นำเข้าจากชีต': 'Import from sheet',
+  'ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ — ทีละคน ดูรายงานก่อนยืนยันทุกครั้ง':
+    'Move existing sheet data into the system — one student at a time, always review the report first',
+  '① เลือกนักศึกษาเจ้าของงาน': '① Pick the student',
+  'ชีตหนึ่งแท็บ = นักศึกษาหนึ่งคน — เลือกให้ตรงก่อนวางไฟล์': 'One sheet tab = one student — pick correctly before dropping the file',
+  '② วางไฟล์ CSV จากชีต': '② Drop the CSV from the sheet',
+  'ในชีต: File → Download → Comma-separated values (.csv) แล้วลากไฟล์มาวางที่นี่':
+    'In the sheet: File → Download → Comma-separated values (.csv), then drop it here',
+  'หรือวางข้อความ CSV ในช่องด้านล่างก็ได้': 'or paste the CSV text below',
+  'วางเนื้อหา CSV ที่นี่…': 'Paste CSV content here…',
+  '③ รายงานตรวจสอบ': '③ Validation report',
+  'นำเข้าได้': 'Importable',
+  'จาก {n} แถว': 'of {n} rows',
+  'ข้ามไป': 'Skipped',
+  'แถวว่าง/แถวสรุป/อ่านไม่ออก': 'blank / summary / unreadable rows',
+  'ต้องตรวจ': 'Needs review',
+  'จุดที่ระบบไม่กล้าเดาเอง': "points the system wouldn't guess",
+  'แถวที่': 'Row',
+  'ช่อง': 'Column',
+  'ค่าที่เจอ': 'Value found',
+  'ปัญหา': 'Problem',
+  '④ ตรวจก่อนยืนยัน': '④ Review before confirming',
+  'อ่านทานสักรอบว่าแปลงถูก โดยเฉพาะ step ที่ผ่านและวันรับเคส':
+    'Give it a read — especially the steps passed and acceptance dates',
+  'กำลังนำเข้า…': 'Importing…',
+  'ยืนยันนำเข้า {n} ชิ้นงาน': 'Confirm import of {n} workpieces',
+  'นำเข้าแล้ว {p} ผู้ป่วย · {w} ชิ้นงาน': 'Imported {p} patients · {w} workpieces',
+  'นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าซ้ำไฟล์เดิมจะได้ข้อมูลซ้ำ ระวังด้วย':
+    'Imported data syncs to the cloud within seconds · re-importing the same file creates duplicates, be careful',
+  'หน้านี้สำหรับหัวหน้าภาคเท่านั้น': 'This page is for the department head only',
+  'ใครมีสิทธิ์เข้าระบบ และเข้าในฐานะใคร — คนที่ไม่อยู่ในรายชื่อนี้ สมัครแล้วก็ใช้งานไม่ได้':
+    'Who may sign in, and as whom — anyone not on this list cannot use the system even after signing up',
+  'เพิ่มคนเข้าระบบ': 'Add a person',
+  'พิมพ์อีเมลที่เขาจะใช้สมัคร แล้วเลือกว่าเขาคือใครในระบบ': 'Enter the email they will sign up with, then pick who they are',
+  'เข้าในฐานะ': 'Sign in as',
+  'คือใคร': 'Which person',
+  '— เลือก —': '— select —',
+  'เพิ่มรายชื่อ': 'Add',
+  'รายชื่อทั้งหมด': 'All entries',
+  '✓ เขียว = สมัครแล้วใช้งานได้ · นาฬิกา = เชิญไว้แต่ยังไม่ได้สมัคร':
+    '✓ green = signed up and active · clock = invited but not signed up yet',
+  'ฐานะ': 'Role',
+  'หัวหน้าภาค': 'Dept. head',
+  'กำลังโหลด…': 'Loading…',
+  'ยังไม่มีใครในรายชื่อ': 'No entries yet',
+  'สมัครแล้ว': 'Signed up',
+  'ยังไม่ได้สมัคร': 'Not signed up yet',
+  'ลบออกจากรายชื่อ': 'Remove from list',
+  'เพิ่มรายชื่อแล้ว — คนนี้สมัครเข้าระบบได้เลย': 'Added — this person can now sign up',
+  'ลบรายชื่อแล้ว — คนใหม่จะสมัครด้วยอีเมลนี้ไม่ได้': 'Removed — this email can no longer sign up',
+  'ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที':
+    'Removing blocks new sign-ups with this email · already-registered accounts must also be disabled in Supabase',
   'เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งภาคเป็นสิทธิ์ของหัวหน้าภาค':
     'You see only your advisory group and your own actions · department-wide view is reserved for the department head',
   'กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})': 'Viewing group {other} — not your advisory group ({mine})',

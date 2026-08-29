@@ -1,4 +1,4 @@
-import { ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, GearSix, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, FileArrowUp, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -9,7 +9,7 @@ import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import';
 
 type NavItem = { key: TeacherNav; label: string; to: string; Icon: typeof SquaresFour };
 
@@ -27,9 +27,15 @@ const COHORT_NAV: NavItem[] = [
   { key: 'settings', label: t('ตั้งค่าเกณฑ์'), to: '/teacher/settings', Icon: GearSix },
 ];
 
+/** เมนูเฉพาะหัวหน้าภาค */
+const ADMIN_NAV: NavItem[] = [
+  { key: 'roster', label: t('จัดการรายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
+  { key: 'import', label: t('นำเข้าจากชีต'), to: '/teacher/import', Icon: FileArrowUp },
+];
+
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup, cloudUser } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   const offGroup = !!myGroup && teacherGroup !== myGroup;
   const teacher = useTeacher(session?.teacherId);
@@ -85,7 +91,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
 
           <div className="side__section">{t('ทั้งชั้นปี')}</div>
-          {COHORT_NAV.map(({ key, label, to, Icon }) => (
+          {[...COHORT_NAV, ...(cloudUser?.isAdmin ? ADMIN_NAV : [])].map(({ key, label, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               {label}
