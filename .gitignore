@@ -28,3 +28,6 @@ dist-share
 
 # session config ของเครื่อง
 .claude
+
+# ไฟล์สำรองข้อมูล — ห้ามขึ้น GitHub เด็ดขาด (มีข้อมูลผู้ป่วย)
+backups
