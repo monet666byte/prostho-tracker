@@ -273,7 +273,11 @@ export const useApp = create<AppState>((set, get) => ({
     // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง = จดไว้ใน audit log
     // (ไม่ได้ห้าม เพราะอาจารย์เวรต้องข้ามกลุ่มได้จริง — แต่ต้องมีร่องรอยว่าใครดูอะไร)
     if (mine && code !== mine) {
-      void logAudit(`เปิดดูข้อมูลกลุ่ม ${code.replace('TH-', '')} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`, get().actorName);
+      void logAudit(
+        `เปิดดูข้อมูลกลุ่ม ${code.replace('TH-', '')} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`,
+        get().actorName,
+        { group: code },
+      );
     }
   },
 

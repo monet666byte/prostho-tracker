@@ -580,6 +580,8 @@ export const DICT: Record<string, string> = {
   '{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร': '{n} workpieces · hover a dot to see whose case it is',
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
+  'เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งภาคเป็นสิทธิ์ของหัวหน้าภาค':
+    'You see only your advisory group and your own actions · department-wide view is reserved for the department head',
   'กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})': 'Viewing group {other} — not your advisory group ({mine})',
   ' · การเข้าดูถูกบันทึกไว้': ' · this access is logged',
   'กลับกลุ่มฉัน': 'Back to my group',

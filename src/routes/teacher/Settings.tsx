@@ -138,6 +138,9 @@ export default function Settings() {
             <div className="panel">
               <h3>Audit log</h3>
               <p className="sub">{t('ใครแก้อะไร เมื่อไหร่ — ย้อนดูได้ทุกการเปลี่ยน step และการอนุมัติ')}</p>
+              <p className="sub" style={{ marginTop: 2 }}>
+                {t('เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งภาคเป็นสิทธิ์ของหัวหน้าภาค')}
+              </p>
               <div style={{ display: 'grid', gap: 2, marginTop: 8, maxHeight: 320, overflowY: 'auto' }}>
                 {audit.length === 0 && (
                   <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>{t('ยังไม่มีรายการ')}</span>

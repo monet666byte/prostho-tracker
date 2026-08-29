@@ -180,6 +180,12 @@ export interface AuditEntry {
   text: string;
   who: string;
   at: string; // ISO datetime
+  /** เรื่องนี้เกี่ยวกับนักศึกษาคนไหน — ใช้จำกัดว่าอาจารย์กลุ่มไหนเห็นได้ */
+  studentId?: string;
+  /** หรือเกี่ยวกับกลุ่มไหน (กรณีไม่ผูกกับ นศ. คนใดคนหนึ่ง เช่น การเปิดดูข้อมูลกลุ่ม) */
+  groupCode?: string;
+  /** ฐานข้อมูลเติมให้จากคนที่ล็อกอิน — ฝั่งแอปไม่ต้องส่ง */
+  actorUid?: string;
 }
 
 /**

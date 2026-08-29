@@ -46,10 +46,27 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
 
 // ── audit ─────────────────────────────────────────────────────
 
-export async function logAudit(text: string, who: string): Promise<void> {
-  const entry: AuditEntry = { id: uid('a'), text, who, at: new Date().toISOString() };
+/**
+ * จดลงสมุดบันทึก — `scope` บอกว่าเรื่องนี้เกี่ยวกับ นศ. คนไหน/กลุ่มไหน
+ * ใช้กรองตอนอ่าน: อาจารย์เห็นเฉพาะกลุ่มที่ดูแล · ไม่ระบุ scope = เรื่องระดับระบบ (หัวหน้าภาคเท่านั้น)
+ * (actor_uid ฐานข้อมูลเติมเองจากคนที่ล็อกอิน — ฝั่งแอปปลอมไม่ได้)
+ */
+export async function logAudit(
+  text: string,
+  who: string,
+  scope?: { studentId?: string; group?: string },
+): Promise<void> {
+  const entry: AuditEntry = {
+    id: uid('a'),
+    text,
+    who,
+    at: new Date().toISOString(),
+    studentId: scope?.studentId,
+    groupCode: scope?.group,
+  };
   await db.audit.add(entry);
 }
+
 
 export async function listAudit(limit = 12): Promise<AuditEntry[]> {
   const all = await db.audit.orderBy('at').reverse().limit(limit).toArray();
@@ -126,7 +143,10 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
       };
       await db.queue.add(item);
     }
-    await db.audit.add({ id: uid('a'), text: `${t('ผ่าน')} ${label}`, who: input.actor, at: new Date().toISOString() });
+    await db.audit.add({
+      id: uid('a'), text: `${t('ผ่าน')} ${label}`, who: input.actor,
+      at: new Date().toISOString(), studentId: w.studentId,
+    });
   });
 
   return { workpiece: updated, label, completedCase: isComplete(updated), queued: input.offline };
@@ -165,6 +185,7 @@ export async function undoStep(workpieceId: string, actor: string): Promise<Work
         text: `แก้ ${procLabel(w.type, undone)} → ย้อนกลับ 1 ขั้น`,
         who: actor,
         at: new Date().toISOString(),
+        studentId: w.studentId,
       });
     }
   });
@@ -253,7 +274,7 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   }
 
   await db.workpieces.bulkAdd(created);
-  await logAudit(`${t('สร้างชิ้นงาน')} ${created.map((c) => c.detail).join(' + ')}`, input.actor);
+  await logAudit(`${t('สร้างชิ้นงาน')} ${created.map((c) => c.detail).join(' + ')}`, input.actor, { studentId: input.studentId });
   return created;
 }
 
@@ -334,7 +355,7 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
   };
   await db.reviews.put(review);
   const w = await db.workpieces.get(workpieceId);
-  await logAudit(`${status === 'approved' ? t('อนุมัติ') : t('ตีกลับให้แก้')} ${w?.detail ?? workpieceId}`, by);
+  await logAudit(`${status === 'approved' ? t('อนุมัติ') : t('ตีกลับให้แก้')} ${w?.detail ?? workpieceId}`, by, { studentId: w?.studentId });
 }
 
 export async function listReviews(): Promise<Map<string, Review>> {
@@ -432,7 +453,11 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
     createdAt: new Date().toISOString(),
   };
   await db.checkins.add(entry);
-  await logAudit(`${t('เช็คอินคาบคลินิก')} ${checkInDateLabel(input.date)} · ${input.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`, input.actor);
+  await logAudit(
+    `${t('เช็คอินคาบคลินิก')} ${checkInDateLabel(input.date)} · ${input.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
+    input.actor,
+    { studentId: input.studentId },
+  );
   return entry;
 }
 
@@ -448,7 +473,12 @@ export async function updateCheckIn(
     patientId: patch.noPatient ? undefined : patch.patientId,
     note: patch.note?.trim() || undefined,
   });
-  await logAudit(`${t('เติมรายละเอียดคาบ')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`, actor);
+  const row = await db.checkins.get(id);
+  await logAudit(
+    `${t('เติมรายละเอียดคาบ')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
+    actor,
+    { studentId: row?.studentId },
+  );
 }
 
 function checkInDateLabel(iso: string): string {
@@ -495,6 +525,7 @@ export async function evaluateCheckIn(
   await logAudit(
     `ประเมินคาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId}`,
     by,
+    { studentId: row.studentId },
   );
   return { ok: true };
 }
@@ -503,7 +534,7 @@ export async function deleteCheckIn(id: string, actor: string): Promise<void> {
   const row = await db.checkins.get(id);
   if (!row) return;
   await db.checkins.delete(id);
-  await logAudit(`ลบเช็คอินคาบ ${checkInDateLabel(row.date)}`, actor);
+  await logAudit(`ลบเช็คอินคาบ ${checkInDateLabel(row.date)}`, actor, { studentId: row.studentId });
 }
 
 /** step ที่นักศึกษากดผ่านจริงในวันนั้น (ไม่รวมรายการเลิกทำ) — ใช้เชื่อมเช็คอินกับงานจริง */
