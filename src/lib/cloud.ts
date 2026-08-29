@@ -14,5 +14,6 @@ const isShareBuild = import.meta.env.MODE === 'share';
 export const cloudEnabled = !!url && !!anonKey && !isShareBuild;
 
 export const supabase: SupabaseClient | null = cloudEnabled
-  ? createClient(url!, anonKey!, { auth: { persistSession: false } })
+  // persistSession: จำการล็อกอินไว้ในเครื่อง — เปิดแอปวันรุ่งขึ้นไม่ต้องล็อกอินใหม่
+  ? createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true } })
   : null;

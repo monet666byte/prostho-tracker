@@ -1,6 +1,6 @@
 import { ArrowCounterClockwise, ChalkboardTeacher, Globe, Palette, SignOut, Sparkle, Student } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../store/app';
+import { useApp, useCanSwitchRole } from '../store/app';
 import type { Role } from '../domain/types';
 import { applyTheme, currentTheme, THEMES } from '../lib/theme';
 import { lang, setLang, t } from '../lib/i18n';
@@ -11,6 +11,7 @@ import { lang, setLang, t } from '../lib/i18n';
  */
 export function DemoBar() {
   const { session, switchRole, resetDemo, showToast, signOut } = useApp();
+  const canSwitch = useCanSwitchRole();
   const navigate = useNavigate();
   if (!session) return null;
 
@@ -25,7 +26,8 @@ export function DemoBar() {
       <span className="demobar__stage" title={t('ตัวเลขคร่าวๆ ไว้สื่อสารว่ายังอยู่ช่วงเริ่มต้น')}>
         {t('DEMO · งาน ~10%')}
       </span>
-      <span className="demobar__label">{t('มุมมอง')}</span>
+      {canSwitch && <span className="demobar__label">{t('มุมมอง')}</span>}
+      {canSwitch && (
       <div className="demobar__seg">
         <button data-on={session.role === 'student'} onClick={() => go('student')}>
           <Student size={15} weight={session.role === 'student' ? 'fill' : 'regular'} />
@@ -36,6 +38,8 @@ export function DemoBar() {
           {t('อาจารย์')}
         </button>
       </div>
+      )}
+      {(canSwitch || session.role === 'student') && (
       <button
         className="demobar__reset"
         onClick={async () => {
@@ -46,6 +50,7 @@ export function DemoBar() {
         <Sparkle size={13} weight="fill" />
         Achievement (mock)
       </button>
+      )}
       <label className="demobar__reset" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
         <Globe size={13} weight="fill" />
         <select

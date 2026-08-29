@@ -579,6 +579,17 @@ export const DICT: Record<string, string> = {
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
 
+  /* ── ล็อกอินจริง (โหมด cloud) ── */
+  'อีเมล': 'Email',
+  'รหัสผ่าน': 'Password',
+  'เข้าสู่ระบบ': 'Sign in',
+  'กำลังเข้าสู่ระบบ…': 'Signing in…',
+  'บัญชีต้องถูกเพิ่มโดยภาควิชาก่อน — ระบบจะรู้เองว่าคุณคือนักศึกษาหรืออาจารย์':
+    'Your account must be added by the department first — the system knows whether you are a student or an instructor',
+  'บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ':
+    'This account is not linked to a student or instructor yet — contact the department to be added',
+  'อีเมลหรือรหัสผ่านไม่ถูกต้อง': 'Incorrect email or password',
+
   /* ── เช็คอินด่วน + เติมกิจกรรมทีหลัง ── */
   'เติมรายละเอียดคาบ': 'Filled in period details',
   'ยังไม่ระบุกิจกรรม': 'activities not specified yet',

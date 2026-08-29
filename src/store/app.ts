@@ -4,6 +4,7 @@ import { getSettings, saveSettings } from '../data/repo';
 import { cloudReset, initCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
+import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
 
 export interface Session {
@@ -38,8 +39,14 @@ interface AppState {
   /** bump ทุกครั้งที่เขียนข้อมูล เพื่อให้ view ที่ไม่ได้ใช้ liveQuery รีเฟรช */
   revision: number;
 
+  /** โหมด cloud: บัญชีที่ล็อกอินอยู่ (null = ยังไม่ล็อกอิน) · โหมด local ไม่ใช้ */
+  cloudUser: AppUser | null;
+  /** ล็อกอินแล้วแต่อีเมลไม่อยู่ในรายชื่อที่ภาคเชิญ — เข้าใช้งานไม่ได้ ต้องติดต่อภาค */
+  cloudUnlinked: boolean;
+
   init: () => Promise<void>;
   signIn: (role: Role) => Promise<void>;
+  signInCloud: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   switchRole: () => Promise<Role>;
   resetDemo: () => Promise<void>;
@@ -55,6 +62,25 @@ interface AppState {
   touch: () => void;
 }
 
+/**
+ * สลับบทบาท นศ.↔อาจารย์ ได้ไหม — โหมดเดโมได้เสมอ (ไว้สาธิต)
+ * โหมด cloud ได้เฉพาะบัญชีที่ผูกไว้ทั้งสองฝั่ง เพราะของจริงคนละคนคนละบัญชี
+ */
+export function useCanSwitchRole(): boolean {
+  const user = useApp((s) => s.cloudUser);
+  if (!cloudEnabled) return true;
+  return !!(user?.studentId && user?.teacherId);
+}
+
+/** แปลงบัญชีที่ล็อกอิน → session ที่ UI ใช้ (ยึด id จาก app_users ไม่ใช่ค่า DEMO) */
+function sessionFromUser(u: AppUser): Session {
+  return {
+    role: u.role,
+    studentId: u.studentId ?? DEMO.studentId,
+    teacherId: u.teacherId ?? DEMO.teacherId,
+  };
+}
+
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useApp = create<AppState>((set, get) => ({
@@ -65,6 +91,8 @@ export const useApp = create<AppState>((set, get) => ({
   toast: null,
   sheet: null,
   installPrompt: false,
+  cloudUser: null,
+  cloudUnlinked: false,
   teacherGroup: (() => {
     try { return localStorage.getItem('teacherGroup') || 'TH-PT7'; } catch { return 'TH-PT7'; }
   })(),
@@ -72,14 +100,46 @@ export const useApp = create<AppState>((set, get) => ({
 
   async init() {
     await seedIfEmpty();
-    // เชื่อมตู้แฟ้มกลาง (ถ้ามีกุญแจใน .env.local) — ไม่บล็อกการเปิดแอป
-    void initCloudSync();
-    // เวอร์ชันแชร์ก็ผ่านหน้า login เหมือนกัน — ทุกคนจะได้เห็นป้าย DEMO และเลือกบทบาทเอง
-    const [settings, session] = await Promise.all([getSettings(), kvGet<Session | null>('session', null)]);
+    const settings = await getSettings();
+
+    if (cloudEnabled) {
+      // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
+      const user = await getAppUser();
+      if (user) {
+        const session = sessionFromUser(user);
+        await kvSet('session', session);
+        set({ ready: true, settings, session, cloudUser: user, cloudUnlinked: false });
+        void initCloudSync();
+      } else {
+        // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
+        const signedIn = await hasCloudSession();
+        set({ ready: true, settings, session: null, cloudUser: null, cloudUnlinked: signedIn });
+      }
+      return;
+    }
+
+    // โหมด local/แชร์เดโม: ล็อกอินปลอมแบบเดิม ทุกคนเห็นป้าย DEMO และเลือกบทบาทเอง
+    const session = await kvGet<Session | null>('session', null);
     // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
     let invite = false;
     try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
     set({ ready: true, settings, session, installPrompt: invite });
+  },
+
+  async signInCloud(email, password) {
+    const res = await signInWithPassword(email, password);
+    if (res.error) return res;
+    const user = await getAppUser();
+    if (!user) {
+      set({ cloudUnlinked: true });
+      return { error: 'บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ' };
+    }
+    const session = sessionFromUser(user);
+    await kvSet('session', session);
+    try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
+    set({ session, cloudUser: user, cloudUnlinked: false });
+    void initCloudSync();
+    return {};
   },
 
   async signIn(role) {
@@ -90,15 +150,21 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async signOut() {
+    if (cloudEnabled) await signOutCloud();
     await kvSet('session', null);
     try { localStorage.setItem('loggedOut', '1'); } catch { /* private mode */ }
-    set({ session: null, sheet: null, toast: null });
+    set({ session: null, sheet: null, toast: null, cloudUser: null, cloudUnlinked: false });
   },
 
   async switchRole() {
     const cur = get().session;
     const role: Role = cur?.role === 'student' ? 'teacher' : 'student';
-    const session: Session = { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
+    const user = get().cloudUser;
+    // โหมด cloud: สลับได้เฉพาะบัญชีที่ผูกไว้ทั้งสองฝั่ง (บัญชีทดสอบ/สาธิต) — ของจริงคนละคนคนละบัญชี
+    if (cloudEnabled && user && !(user.studentId && user.teacherId)) return cur?.role ?? 'student';
+    const session: Session = cloudEnabled && user
+      ? { role, studentId: user.studentId ?? DEMO.studentId, teacherId: user.teacherId ?? DEMO.teacherId }
+      : { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
     await kvSet('session', session);
     set({ session, sheet: null, toast: null });
     return role;

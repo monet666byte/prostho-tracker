@@ -1,7 +1,7 @@
 import { ChalkboardTeacher, Student } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
-import { useApp } from '../store/app';
+import { useApp, useCanSwitchRole } from '../store/app';
 
 /**
  * ปุ่มลอยสลับมุมมอง นศ. ↔ อาจารย์ — สำหรับ iPad/มือถือ ที่แถบเดโมด้านบนถูกซ่อน
@@ -9,8 +9,9 @@ import { useApp } from '../store/app';
  */
 export function RoleFab({ low = false }: { low?: boolean }) {
   const { session, switchRole } = useApp();
+  const canSwitch = useCanSwitchRole();
   const navigate = useNavigate();
-  if (!session) return null;
+  if (!session || !canSwitch) return null;
   const toTeacher = session.role === 'student';
   return (
     <button

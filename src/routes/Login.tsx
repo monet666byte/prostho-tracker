@@ -1,20 +1,37 @@
-import { ChalkboardTeacher, GoogleLogo, LockSimple, Student, Tooth } from '@phosphor-icons/react';
+import { ChalkboardTeacher, GoogleLogo, LockSimple, SignIn, Student, Tooth, WarningCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
+import { cloudEnabled } from '../lib/cloud';
 import { useApp } from '../store/app';
 import { PhoneFrame } from '../components/student/Shell';
 import type { Role } from '../domain/types';
 
 export default function Login() {
   const [role, setRole] = useState<Role | null>(null);
-  const { signIn, installPrompt, dismissInstall, openInstall } = useApp();
+  const { signIn, signInCloud, installPrompt, dismissInstall, openInstall, cloudUnlinked } = useApp();
   const navigate = useNavigate();
+  // โหมด cloud ใช้อีเมล+รหัสผ่านจริง — โหมด local/แชร์เดโมยังเลือกบทบาทเข้าได้เลยเหมือนเดิม
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(cloudUnlinked ? t('บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ') : null);
 
   async function go() {
     if (!role) return;
     await signIn(role);
     navigate(role === 'student' ? '/app' : '/teacher');
+  }
+
+  async function goCloud(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || !email.trim() || !password) return;
+    setBusy(true);
+    setError(null);
+    const res = await signInCloud(email, password);
+    setBusy(false);
+    if (res.error) { setError(res.error); return; }
+    navigate(useApp.getState().session?.role === 'teacher' ? '/teacher' : '/app');
   }
 
   return (
@@ -51,6 +68,50 @@ export default function Login() {
             </span>
           </div>
 
+          {cloudEnabled ? (
+            <form onSubmit={goCloud} style={{ display: 'grid', gap: 10, marginTop: 20 }}>
+              <label className="field">
+                <span>{t('อีเมล')}</span>
+                <input
+                  className="input"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(ev) => setEmail(ev.target.value)}
+                  placeholder="name@student.mahidol.ac.th"
+                />
+              </label>
+              <label className="field">
+                <span>{t('รหัสผ่าน')}</span>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(ev) => setPassword(ev.target.value)}
+                />
+              </label>
+              {error && (
+                <div
+                  style={{
+                    display: 'flex', gap: 8, alignItems: 'flex-start', borderRadius: 12, padding: '10px 12px',
+                    background: 'var(--danger-tint)', color: 'var(--danger-dark)', font: '500 11.5px/1.6 var(--font-body)',
+                  }}
+                >
+                  <WarningCircle size={16} weight="fill" style={{ flex: 'none', marginTop: 1 }} />
+                  {error}
+                </div>
+              )}
+              <button className="btn" type="submit" disabled={busy || !email.trim() || !password}>
+                <SignIn size={19} weight="bold" />
+                {busy ? t('กำลังเข้าสู่ระบบ…') : t('เข้าสู่ระบบ')}
+              </button>
+              <p style={{ margin: '2px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+                {t('บัญชีต้องถูกเพิ่มโดยภาควิชาก่อน — ระบบจะรู้เองว่าคุณคือนักศึกษาหรืออาจารย์')}
+              </p>
+            </form>
+          ) : (
+          <>
           <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
             {(
               [
@@ -91,6 +152,8 @@ export default function Login() {
             <GoogleLogo size={19} weight="bold" />
             {t('เข้าสู่ระบบด้วย Google')}
           </button>
+          </>
+          )}
 
           <button
             onClick={openInstall}
