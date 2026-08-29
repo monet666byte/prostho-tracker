@@ -10,7 +10,7 @@ import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTea
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import type { CheckIn } from '../../domain/types';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 /** เส้นคะแนนรายคาบของนักศึกษาหนึ่งคน — ใช้ได้ทั้งคะแนนรวม (0–24) และรายหัวข้อ (0–3) */
 function ScoreTrend({
@@ -117,7 +117,7 @@ export default function Evaluate() {
     drafts[id] ?? Object.fromEntries(CRITERIA.map((c) => [c.key, 3]));
 
   async function sign(id: string) {
-    await evaluateCheckIn(id, draftFor(id), teacher?.name ?? 'อ. ก.');
+    await evaluateCheckIn(id, draftFor(id), teacher?.name ?? currentActor());
     showToast({ message: t('บันทึกผลประเมินแล้ว (เทียบเท่าลงนามในสมุด)'), tone: 'success' });
   }
 

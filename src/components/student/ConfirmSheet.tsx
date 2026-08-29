@@ -2,7 +2,7 @@ import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@p
 import { advanceStep } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, nextProc } from '../../domain/rules';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 import { useWorkpiece, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -24,7 +24,7 @@ export function ConfirmSheet() {
       performedAt: sheet.performedAt,
       withPhoto: sheet.withPhoto,
       offline,
-      actor: 'นศ. ก',
+      actor: currentActor(),
     });
     closeSheet();
     touch();

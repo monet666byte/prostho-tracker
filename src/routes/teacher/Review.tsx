@@ -15,7 +15,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort } from '../../lib/date';
 import { t, tSexAge, tText } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 type Filter = 'all' | 'stale' | 'done';
 
@@ -227,7 +227,7 @@ export default function Review() {
                           className="btn btn--sec"
                           style={{ height: 38, fontSize: 12, width: 'auto', padding: '0 14px' }}
                           onClick={async () => {
-                            await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? 'อ. ก.');
+                            await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? currentActor());
                             showToast({ message: t('บันทึกคอมเมนต์แล้ว'), tone: 'success' });
                           }}
                         >

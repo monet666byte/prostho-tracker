@@ -37,6 +37,8 @@ export const DICT: Record<string, string> = {
   'นักศึกษา {n} คนรอประเมิน': '{n} students awaiting evaluation',
 
   /* ── ชื่อสมมติในข้อมูลเดโม ── */
+  'นศ. Liv': 'Liv (student)',
+  'อ. Liv': 'Dr. Liv',
   'นศ. ก': 'Student A',
   'นศ. ข': 'Student B',
   'นศ. ค': 'Student C',

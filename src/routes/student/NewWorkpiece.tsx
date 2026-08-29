@@ -6,7 +6,7 @@ import { createWorkpieces } from '../../data/repo';
 import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, ORDER, TYPES } from '../../domain/catalog';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 const KENNEDY: KennedyClass[] = ['Kennedy class I', 'Kennedy class II', 'Kennedy class III', 'Kennedy class IV'];
 const TYPE_KEYS = (Object.keys(TYPES) as WorkType[]).sort((a, b) => ORDER[a] - ORDER[b]);
@@ -56,7 +56,7 @@ export default function NewWorkpiece() {
       sect2Removable,
       sect2Fixed,
       designRpd: type === 'RPD' ? designRpd : undefined,
-      actor: 'นศ. ก',
+      actor: currentActor(),
     });
     showToast({ message: t('สร้าง {n} ชิ้นงานแล้ว', { n: created.length }), tone: 'success' });
     navigate('/app/patients');

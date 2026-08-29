@@ -9,7 +9,7 @@ import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { isComplete } from '../../domain/rules';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 export default function CheckInPage() {
   const { session, showToast } = useApp();
@@ -64,7 +64,7 @@ export default function CheckInPage() {
     if (!session) return;
     if (editingId) {
       // โหมดเติมรายละเอียด — เวลากับความตรงเวลาถูกล็อกไว้ตั้งแต่ตอนเช็คอินด่วนแล้ว
-      await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, 'นศ. ก');
+      await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, currentActor());
     } else {
       // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — ตรงเวลา/สายคำนวณจากเวลานี้
       // (สมมติฐานเดโม: คาบเช้าเริ่ม 09:00 บ่าย 13:00 เผื่อสาย 15 นาที — ของจริงผูกกับตารางคาบ)
@@ -80,7 +80,7 @@ export default function CheckInPage() {
         patientId: patientId || undefined,
         activities,
         note,
-        actor: 'นศ. ก',
+        actor: currentActor(),
       });
     }
     const wasEditing = !!editingId;

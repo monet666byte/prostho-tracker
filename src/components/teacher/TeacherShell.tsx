@@ -93,7 +93,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <div className="side__foot" style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
             <TextSizeControl />
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
-              <div style={{ font: '600 12.5px var(--font-head)' }}>{t(teacher?.name ?? 'อ. ก.')}</div>
+              <div style={{ font: '600 12.5px var(--font-head)' }}>{t(teacher?.name ?? 'อ. Liv')}</div>
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
                 {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')} · TH-PT7
               </div>

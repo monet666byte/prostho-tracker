@@ -96,7 +96,7 @@ function ToastView() {
       {toast.undoWorkpieceId && (
         <button
           onClick={async () => {
-            await undoStep(toast.undoWorkpieceId!, session?.role === 'teacher' ? 'อ. ก.' : 'นศ. ก');
+            await undoStep(toast.undoWorkpieceId!, session?.role === 'teacher' ? 'อ. Liv' : 'นศ. Liv');
             hideToast();
             touch();
           }}

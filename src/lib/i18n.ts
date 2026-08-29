@@ -38,7 +38,7 @@ const TH_LETTER_LATIN: Record<string, string> = {
 
 /** ชื่อสมมติในซีดสร้างจากพยัญชนะไทย ("นศ. ช", "อ. ข.", "ผู้ป่วย C") — แปลงตามแพตเทิร์นแทนการไล่ใส่พจนานุกรม */
 function trMockName(s: string): string | null {
-  const m = s.match(/^(นศ\.|อ\.|ผู้ป่วย)\s*(\S)\.?$/);
+  const m = s.match(/^(นศ\.|อ\.|ผู้ป่วย)\s*(\S+?)\.?$/);
   if (!m) return null;
   const letter = TH_LETTER_LATIN[m[2]] ?? m[2];
   const prefix = m[1] === 'นศ.' ? 'Student' : m[1] === 'อ.' ? 'Instr.' : 'Patient';

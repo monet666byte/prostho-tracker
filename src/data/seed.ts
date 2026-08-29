@@ -31,6 +31,9 @@ const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ
 const GROUPS = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
 const DEMO_STUDENT_ID = 'st-TH-PT7-1';
 const DEMO_TEACHER_ID = 'tc-TH-PT7-1';
+/** ชื่อของสองบัญชีที่ทีมใช้ล็อกอินทดสอบ/สาธิต — คนอื่นในระบบยังเป็น ก ข ค ตามเดิม */
+export const DEMO_STUDENT_NAME = 'นศ. Liv';
+export const DEMO_TEACHER_NAME = 'อ. Liv';
 
 export const DEMO = { studentId: DEMO_STUDENT_ID, teacherId: DEMO_TEACHER_ID, group: 'TH-PT7' };
 
@@ -269,7 +272,7 @@ const SUBMISSION_PATTERN: SubmissionStatus[][] = [
 ];
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 26;
+export const SEED_VERSION = 27;
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -310,7 +313,7 @@ function buildCheckIns(): CheckIn[] {
         noPatient,
         patientId: noPatient ? undefined : 'pt-a',
         ...(scores
-          ? { status: 'evaluated', scores, evaluatedBy: 'อ. ก.', evaluatedAt: `${date}T12:00:00.000Z` }
+          ? { status: 'evaluated', scores, evaluatedBy: DEMO_TEACHER_NAME, evaluatedAt: `${date}T12:00:00.000Z` }
           : {}),
       }),
     );
@@ -339,7 +342,7 @@ function buildCheckIns(): CheckIn[] {
         activities: ['Try in / Delivery'],
         status: 'evaluated',
         scores: { knowledge: 1, skill: 1, precaution: 3, instrument: 3, time: 1, chart: 3, communication: 3, conduct: 3 },
-        evaluatedBy: 'อ. ก.',
+        evaluatedBy: DEMO_TEACHER_NAME,
         evaluatedAt: `${d}T12:00:00.000Z`,
       }),
     );
@@ -392,7 +395,7 @@ function buildDemoUpdates(checkins: CheckIn[]): ProgressUpdate[] {
     rows.push({
       id: `du-${date}`, workpieceId: 'w1', procIndex: 5 + i, progression: 2 + i,
       performedAt: date, selfPerformed: false, photoIds: [],
-      createdBy: 'นศ. ก', createdAt: `${date}T10:30:00.000Z`, syncedAt: `${date}T10:30:00.000Z`,
+      createdBy: DEMO_STUDENT_NAME, createdAt: `${date}T10:30:00.000Z`, syncedAt: `${date}T10:30:00.000Z`,
     });
   });
 
@@ -444,7 +447,11 @@ async function seedIfEmptyInner(): Promise<void> {
   GROUPS.forEach((code, gi) => {
     const advisorIds: [string, string] = [`tc-${code}-1`, `tc-${code}-2`];
     teachers.push(
-      { id: advisorIds[0], name: `อ. ${TH_LETTERS[gi % TH_LETTERS.length]}.`, title: 'อาจารย์ที่ปรึกษากลุ่ม' },
+      {
+        id: advisorIds[0],
+        name: advisorIds[0] === DEMO_TEACHER_ID ? DEMO_TEACHER_NAME : `อ. ${TH_LETTERS[gi % TH_LETTERS.length]}.`,
+        title: 'อาจารย์ที่ปรึกษากลุ่ม',
+      },
       { id: advisorIds[1], name: `อ. ${TH_LETTERS[(gi + 6) % TH_LETTERS.length]}.`, title: 'อาจารย์ที่ปรึกษากลุ่ม' },
     );
 
@@ -455,7 +462,7 @@ async function seedIfEmptyInner(): Promise<void> {
       students.push({
         id,
         code: String(6504001 + gi * 8 + si),
-        name: `นศ. ${TH_LETTERS[si]}`,
+        name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
         group: code,
         year: 5,
         advisorIds,

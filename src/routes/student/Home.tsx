@@ -13,7 +13,7 @@ import { cheerLine } from '../../domain/cheer';
 import {
   caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression,
 } from '../../domain/rules';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
@@ -170,7 +170,7 @@ export default function Home() {
     const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
     await addCheckIn({
       studentId: session.studentId, date: today, punctual, checkinAt,
-      noPatient: false, activities: [], note: '', actor: 'นศ. ก',
+      noPatient: false, activities: [], note: '', actor: currentActor(),
     });
     touch();
     showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: checkinAt }), tone: 'success' });
@@ -182,7 +182,7 @@ export default function Home() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-            <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. ก')}</span>
+            <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. Liv')}</span>
             <span className="groupchip">{(student?.group ?? 'TH-PT7').replace('TH-', '')}</span>
           </div>
         </div>

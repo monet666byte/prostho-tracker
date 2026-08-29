@@ -9,7 +9,7 @@ import { syncNow } from '../../data/repo';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { t } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 import { useState } from 'react';
 
 export default function Sync() {
@@ -88,7 +88,7 @@ export default function Sync() {
             style={{ marginTop: 11 }}
             disabled={offline}
             onClick={async () => {
-              const n = await syncNow('นศ. ก');
+              const n = await syncNow(currentActor());
               touch();
               showToast({ message: n ? t('sync สำเร็จ {n} รายการ', { n }) : t('ไม่มีรายการค้าง'), tone: n ? 'success' : 'default' });
             }}

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { kvGet, kvSet } from '../data/db';
+import { db, kvGet, kvSet } from '../data/db';
 import { getSettings, saveSettings } from '../data/repo';
 import { cloudReset, initCloudSync } from '../data/cloudSync';
-import { DEFAULT_SETTINGS, DEMO, resetDemoData, seedIfEmpty } from '../data/seed';
+import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
@@ -39,6 +39,8 @@ interface AppState {
   /** bump ทุกครั้งที่เขียนข้อมูล เพื่อให้ view ที่ไม่ได้ใช้ liveQuery รีเฟรช */
   revision: number;
 
+  /** ชื่อคนที่ล็อกอินอยู่ — ไว้ลง audit log (อัปเดตทุกครั้งที่ session เปลี่ยน) */
+  actorName: string;
   /** โหมด cloud: บัญชีที่ล็อกอินอยู่ (null = ยังไม่ล็อกอิน) · โหมด local ไม่ใช้ */
   cloudUser: AppUser | null;
   /** ล็อกอินแล้วแต่อีเมลไม่อยู่ในรายชื่อที่ภาคเชิญ — เข้าใช้งานไม่ได้ ต้องติดต่อภาค */
@@ -66,10 +68,27 @@ interface AppState {
  * สลับบทบาท นศ.↔อาจารย์ ได้ไหม — โหมดเดโมได้เสมอ (ไว้สาธิต)
  * โหมด cloud ได้เฉพาะบัญชีที่ผูกไว้ทั้งสองฝั่ง เพราะของจริงคนละคนคนละบัญชี
  */
+/**
+ * ชื่อคนที่กำลังทำรายการ — ใช้ลง audit log / ช่อง "ใครกด"
+ * เดิม hard-code 'นศ. ก' ทุกที่ พอมีล็อกอินจริงแล้วต้องเป็นชื่อคนที่ล็อกอินอยู่จริง
+ */
+export function currentActor(): string {
+  const st = useApp.getState();
+  return st.actorName;
+}
+
 export function useCanSwitchRole(): boolean {
   const user = useApp((s) => s.cloudUser);
   if (!cloudEnabled) return true;
   return !!(user?.studentId && user?.teacherId);
+}
+
+/** อ่านชื่อจริงของคนใน session จากฐานข้อมูล (นศ. หรืออาจารย์ ตามบทบาท) */
+async function actorNameFor(session: Session): Promise<string> {
+  const row = session.role === 'teacher'
+    ? await db.teachers.get(session.teacherId)
+    : await db.students.get(session.studentId);
+  return row?.name ?? DEMO_STUDENT_NAME;
 }
 
 /** แปลงบัญชีที่ล็อกอิน → session ที่ UI ใช้ (ยึด id จาก app_users ไม่ใช่ค่า DEMO) */
@@ -91,6 +110,7 @@ export const useApp = create<AppState>((set, get) => ({
   toast: null,
   sheet: null,
   installPrompt: false,
+  actorName: DEMO_STUDENT_NAME,
   cloudUser: null,
   cloudUnlinked: false,
   teacherGroup: (() => {
@@ -108,7 +128,7 @@ export const useApp = create<AppState>((set, get) => ({
       if (user) {
         const session = sessionFromUser(user);
         await kvSet('session', session);
-        set({ ready: true, settings, session, cloudUser: user, cloudUnlinked: false });
+        set({ ready: true, settings, session, cloudUser: user, cloudUnlinked: false, actorName: await actorNameFor(session) });
         void initCloudSync();
       } else {
         // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
@@ -123,7 +143,7 @@ export const useApp = create<AppState>((set, get) => ({
     // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
     let invite = false;
     try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
-    set({ ready: true, settings, session, installPrompt: invite });
+    set({ ready: true, settings, session, installPrompt: invite, actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME });
   },
 
   async signInCloud(email, password) {
@@ -137,7 +157,7 @@ export const useApp = create<AppState>((set, get) => ({
     const session = sessionFromUser(user);
     await kvSet('session', session);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
-    set({ session, cloudUser: user, cloudUnlinked: false });
+    set({ session, cloudUser: user, cloudUnlinked: false, actorName: await actorNameFor(session) });
     void initCloudSync();
     return {};
   },
@@ -146,7 +166,7 @@ export const useApp = create<AppState>((set, get) => ({
     const session: Session = { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
     await kvSet('session', session);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
-    set({ session });
+    set({ session, actorName: await actorNameFor(session) });
   },
 
   async signOut() {
@@ -166,7 +186,7 @@ export const useApp = create<AppState>((set, get) => ({
       ? { role, studentId: user.studentId ?? DEMO.studentId, teacherId: user.teacherId ?? DEMO.teacherId }
       : { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
     await kvSet('session', session);
-    set({ session, sheet: null, toast: null });
+    set({ session, sheet: null, toast: null, actorName: await actorNameFor(session) });
     return role;
   },
 

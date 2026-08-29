@@ -9,7 +9,7 @@ import { TYPES } from '../../domain/catalog';
 import { currentProc, daysSinceUpdate, isStale, maxProgression, progression } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 function MiniRow({
   w, pending, stale, editing, onDelete,
@@ -119,7 +119,7 @@ export default function Patients() {
 
   async function confirmDelete() {
     if (!target) return;
-    await deleteWorkpiece(target.id, 'นศ. ก');
+    await deleteWorkpiece(target.id, currentActor());
     setTarget(null);
     showToast({ message: t('ลบ {d} แล้ว', { d: target.detail }), tone: 'warning' });
   }
