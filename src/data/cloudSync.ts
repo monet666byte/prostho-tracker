@@ -9,7 +9,7 @@
  *
  * ระดับความเชื่อถือ = pilot: ชนกันใช้ "คนเขียนทีหลังชนะ" · ยังไม่มี auth (ดู TODO ใน 0001_init.sql)
  */
-import { db } from './db';
+import { db, kvGet, kvSet } from './db';
 import { cloudEnabled, supabase } from '../lib/cloud';
 
 /* ── ตารางที่ sync + กติกาแปลงชื่อคอลัมน์ camelCase ↔ snake_case ── */
@@ -225,23 +225,55 @@ function subscribeRealtime() {
 
 let started = false;
 
-/** เรียกครั้งเดียวตอนแอปเปิด (หลัง seed เสร็จ) — ไม่มีกุญแจ = ไม่ทำอะไรเลย */
+/**
+ * ผูกลิ้นชักในเครื่องเข้ากับบัญชีที่ล็อกอิน
+ *
+ * จำเป็นเพราะพอมี RLS รายแถวแล้ว "ลิ้นชักต้องเป็นกระจกสะท้อนสิ่งที่บัญชีนี้มีสิทธิ์เห็น" เท่านั้น
+ * - ข้อมูลตัวอย่าง (fixture 96 คน) ที่ seed ไว้ ไม่ใช่ของเรา → ต้องล้างทิ้ง ไม่งั้น push ขึ้นไปก็โดนปฏิเสธ
+ * - สลับบัญชีบนเครื่องเดียวกัน → ของคนก่อนต้องไม่ค้าง
+ * ล้างเฉพาะตอน "บัญชีเปลี่ยน" — ล็อกอินคนเดิมซ้ำไม่ล้าง งานที่ทำค้างไว้ตอนออฟไลน์จึงไม่หาย
+ */
+async function bindToUser(uid: string): Promise<boolean> {
+  const bound = await kvGet<string | null>('cloudBoundUid', null);
+  if (bound === uid) return false;
+  setSyncPaused(true);
+  try {
+    for (const def of TABLES) await db.table(def.local).clear();
+    dirty.clear();
+    pendingDeletes.clear();
+    lastPulled.clear();
+  } finally {
+    setSyncPaused(false);
+  }
+  await kvSet('cloudBoundUid', uid);
+  return true;
+}
+
+/** เรียกครั้งเดียวตอนแอปเปิด (หลังล็อกอินสำเร็จ) — ไม่มีกุญแจ/ไม่ได้ล็อกอิน = ไม่ทำอะไรเลย */
 export async function initCloudSync(): Promise<void> {
   if (!cloudEnabled || started) return;
   started = true;
   try {
-    // ตู้กลางยังว่าง (ครั้งแรกสุดของทั้งระบบ) → เอา fixture ในเครื่องขึ้นไปตั้งต้น
+    const { data: auth } = await supabase!.auth.getUser();
+    if (!auth.user) {
+      started = false;
+      return; // ยังไม่ล็อกอิน — ไม่แตะตู้กลาง
+    }
+    const freshBind = await bindToUser(auth.user.id);
+
     const { count, error } = await supabase!.from('students').select('*', { count: 'exact', head: true });
     if (error) {
       // ตารางยังไม่ถูกสร้าง (migration ยังไม่รัน) หรือต่อไม่ได้ — เงียบไว้ แอปทำงาน local ต่อ
       started = false;
       return;
     }
-    if ((count ?? 0) === 0) {
+    if ((count ?? 0) === 0 && !freshBind) {
+      // ตู้กลางยังว่างจริงๆ (ครั้งแรกสุดของทั้งระบบ) → เอา fixture ในเครื่องขึ้นไปตั้งต้น
       await pushAll();
     } else {
       await pullAll();
-      await pushAll(); // ดันของท้องถิ่นที่ตู้ยังไม่มี (กันงานหายช่วงออฟไลน์)
+      // เพิ่งผูกบัญชีใหม่ = ลิ้นชักเพิ่งล้าง ไม่มีอะไรต้องดันขึ้น (และกันดัน fixture ของคนอื่น)
+      if (!freshBind) await pushAll(); // ดันของท้องถิ่นที่ตู้ยังไม่มี (กันงานหายช่วงออฟไลน์)
     }
     subscribeRealtime();
     // polling สำรอง: ตารางที่ยังไม่ได้สมัคร realtime publication (0002) ก็ยังเห็นกันภายใน ~15 วิ
@@ -267,11 +299,21 @@ export async function initCloudSync(): Promise<void> {
   }
 }
 
+/** ออกจากระบบ — ปลดสถานะ sync ให้ล็อกอินรอบหน้าเริ่มใหม่สะอาดๆ */
+export function stopCloudSync(): void {
+  started = false;
+  dirty.clear();
+  pendingDeletes.clear();
+  lastPulled.clear();
+  supabase?.removeAllChannels();
+}
+
 /** รีเซ็ตในโหมด cloud = ล้างลิ้นชักแล้วดึงความจริงจากตู้กลางลงมาใหม่ (ไม่ seed ทับ) */
 export async function cloudReset(): Promise<void> {
   setSyncPaused(true);
   try {
     for (const def of TABLES) await db.table(def.local).clear();
+    lastPulled.clear(); // ไม่งั้นตัวเช็ค "ไม่มีอะไรใหม่" จะข้ามการดึงกลับ
   } finally {
     setSyncPaused(false);
   }

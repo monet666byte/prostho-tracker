@@ -467,9 +467,22 @@ export async function listAllCheckIns(): Promise<CheckIn[]> {
 }
 
 /** อาจารย์ให้คะแนน = ลงนามแทนการเซ็นสมุด */
-export async function evaluateCheckIn(id: string, scores: Record<string, number>, by: string): Promise<void> {
+export type EvaluateResult =
+  | { ok: true }
+  | { ok: false; reason: 'missing' }
+  /** มีอาจารย์อีกท่านลงคะแนนคาบนี้ไปแล้ว — ไม่เขียนทับ ให้ UI เตือนก่อน */
+  | { ok: false; reason: 'already'; by: string };
+
+export async function evaluateCheckIn(
+  id: string,
+  scores: Record<string, number>,
+  by: string,
+): Promise<EvaluateResult> {
   const row = await db.checkins.get(id);
-  if (!row) return;
+  if (!row) return { ok: false, reason: 'missing' };
+  // กันสองอาจารย์ลงคะแนนคาบเดียวกันพร้อมกัน (last-write-wins จะทำให้คะแนนของคนแรกหายเงียบ)
+  if (row.status === 'evaluated') return { ok: false, reason: 'already', by: row.evaluatedBy ?? '' };
+
   await db.checkins.put({
     ...row,
     scores,
@@ -477,7 +490,13 @@ export async function evaluateCheckIn(id: string, scores: Record<string, number>
     evaluatedBy: by,
     evaluatedAt: new Date().toISOString(),
   });
-  await logAudit(`ประเมินคาบ ${checkInDateLabel(row.date)} ของนักศึกษา`, by);
+  // ระบุชื่อ นศ. ใน audit log — ถ้าเกิดประเมินผิดคน จะย้อนดูได้ว่าใครลงให้ใครเมื่อไหร่
+  const student = await db.students.get(row.studentId);
+  await logAudit(
+    `ประเมินคาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId}`,
+    by,
+  );
+  return { ok: true };
 }
 
 export async function deleteCheckIn(id: string, actor: string): Promise<void> {

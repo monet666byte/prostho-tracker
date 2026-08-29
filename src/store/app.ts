@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { db, kvGet, kvSet } from '../data/db';
 import { getSettings, saveSettings } from '../data/repo';
-import { cloudReset, initCloudSync } from '../data/cloudSync';
+import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
@@ -170,7 +170,10 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async signOut() {
-    if (cloudEnabled) await signOutCloud();
+    if (cloudEnabled) {
+      stopCloudSync();
+      await signOutCloud();
+    }
     await kvSet('session', null);
     try { localStorage.setItem('loggedOut', '1'); } catch { /* private mode */ }
     set({ session: null, sheet: null, toast: null, cloudUser: null, cloudUnlinked: false });

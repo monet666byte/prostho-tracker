@@ -581,6 +581,16 @@ export const DICT: Record<string, string> = {
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
 
+  /* ── กันประเมินผิดคน ── */
+  'มีเช็คอินใหม่ {n} รายการ — แตะเพื่อแสดง': '{n} new check-in(s) — tap to show',
+  'รายการที่กำลังให้คะแนนจะไม่ขยับ': "the card you're scoring won't move",
+  'ยืนยันบันทึกคะแนนของ': 'Confirm scores for',
+  'ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน': 'Check the name matches the student in front of you before confirming',
+  'ยืนยัน · ลงนาม': 'Confirm · sign',
+  'คาบนี้ {who} ประเมินไปแล้ว — ระบบไม่บันทึกทับ': 'This period was already evaluated by {who} — not overwritten',
+  'อาจารย์ท่านอื่น': 'another instructor',
+  'ไม่พบคาบนี้แล้ว (อาจถูกลบไป)': 'This period no longer exists (it may have been deleted)',
+
   /* ── ล็อกอินจริง (โหมด cloud) ── */
   'อีเมล': 'Email',
   'รหัสผ่าน': 'Password',

@@ -1,6 +1,6 @@
-import { CalendarCheck, CheckCircle, Signature } from '@phosphor-icons/react';
+import { ArrowClockwise, CalendarCheck, CheckCircle, Signature, WarningCircle } from '@phosphor-icons/react';
 import { PhotoSlot } from '../../components/ui/Bits';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
 import type { ProfileAxis } from '../../domain/analytics';
@@ -107,7 +107,43 @@ export default function Evaluate() {
   const selectedRows = evaluatedInGroup.filter((c) => c.studentId === selectedId);
   const groupProfile = useMemo(() => criterionAvg(evaluatedInGroup), [evaluatedInGroup]);
   const stepsByKey = useStepsOnDates(inGroup.map((c) => ({ studentId: c.studentId, date: c.date })));
-  const pending = inGroup.filter((c) => c.status === 'pending');
+  // ชั้นที่ 3 — ยืนยันโดยระบุชื่อ: ต่อให้หน้าจอขยับ ก่อนบันทึกจะมีกล่องบอกชื่อ นศ. เสมอ
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const signing = useRef(false);
+
+  /**
+   * ⚠️ ความปลอดภัย: กันอาจารย์ "ประเมินผิดคน"
+   *
+   * ชั้นที่ 1 — ลำดับคงที่: เรียงตามรหัสนักศึกษาเหมือนใบรายชื่อ (เดิมเรียงใหม่สุดขึ้นบน
+   *   ทำให้การ์ดกระโดดเวลามีคนเช็คอินเข้ามาระหว่างอาจารย์กำลังกด)
+   * ชั้นที่ 2 — ของใหม่ไม่แทรก: คนที่เช็คอินระหว่างนี้ไปรออยู่หลังแถบ "มีเช็คอินใหม่"
+   *   อาจารย์กดเองเมื่อพร้อม รายการที่กำลังทำอยู่จึงไม่ขยับใต้นิ้ว
+   */
+  const pendingAll = useMemo(() => {
+    const rows = inGroup.filter((c) => c.status === 'pending');
+    return rows.sort((a, b) => {
+      const ca = studentById.get(a.studentId)?.code ?? '';
+      const cb = studentById.get(b.studentId)?.code ?? '';
+      return ca.localeCompare(cb) || a.date.localeCompare(b.date);
+    });
+  }, [inGroup, studentById]);
+
+  const pendingKey = pendingAll.map((c) => c.id).join(',');
+  const [snapshot, setSnapshot] = useState<string[]>([]);
+  // "กำลังทำงานอยู่" = แตะปุ่มคะแนนของใครไปแล้ว หรือเปิดกล่องยืนยันค้างไว้
+  // ตอนนี้เท่านั้นที่ล็อกรายการ — ถ้ายังไม่ได้แตะอะไร ของใหม่ไหลเข้ามาได้ตามปกติ
+  const busyScoring = Object.keys(drafts).length > 0 || confirmId !== null;
+  useEffect(() => {
+    if (!busyScoring) setSnapshot(pendingAll.map((c) => c.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busyScoring, pendingKey]);
+
+  const confirmRow = confirmId ? pendingAll.find((c) => c.id === confirmId) ?? null : null;
+  const confirmStudent = confirmRow ? studentById.get(confirmRow.studentId) : undefined;
+  const shown = new Set(snapshot);
+  const pending = pendingAll.filter((c) => shown.has(c.id));
+  const incoming = pendingAll.filter((c) => !shown.has(c.id));
+  const showIncoming = () => setSnapshot(pendingAll.map((c) => c.id));
   const evaluatedAll = inGroup.filter((c) => c.status === 'evaluated');
   // ตารางประวัติยาวมาก — พับไว้ก่อน โชว์ 5 แถวล่าสุดพอ
   const [showAllEvaluated, setShowAllEvaluated] = useState(false);
@@ -117,8 +153,28 @@ export default function Evaluate() {
     drafts[id] ?? Object.fromEntries(CRITERIA.map((c) => [c.key, 3]));
 
   async function sign(id: string) {
-    await evaluateCheckIn(id, draftFor(id), teacher?.name ?? currentActor());
-    showToast({ message: t('บันทึกผลประเมินแล้ว (เทียบเท่าลงนามในสมุด)'), tone: 'success' });
+    if (signing.current) return;
+    signing.current = true;
+    try {
+      const res = await evaluateCheckIn(id, draftFor(id), teacher?.name ?? currentActor());
+      setConfirmId(null);
+      if (res.ok) {
+        // ปล่อย draft ของคาบที่เซ็นแล้ว — ถ้าไม่เหลือใครค้าง รายการจะกลับมาอัปเดตเองตามปกติ
+        setDrafts((d) => {
+          const next = { ...d };
+          delete next[id];
+          return next;
+        });
+        showToast({ message: t('บันทึกผลประเมินแล้ว (เทียบเท่าลงนามในสมุด)'), tone: 'success' });
+      } else if (res.reason === 'already') {
+        // ชั้นที่ 4 — อาจารย์อีกท่านลงคะแนนคาบนี้ไปแล้ว ระบบไม่เขียนทับให้
+        showToast({ message: t('คาบนี้ {who} ประเมินไปแล้ว — ระบบไม่บันทึกทับ', { who: res.by || t('อาจารย์ท่านอื่น') }), tone: 'warning' });
+      } else {
+        showToast({ message: t('ไม่พบคาบนี้แล้ว (อาจถูกลบไป)'), tone: 'warning' });
+      }
+    } finally {
+      signing.current = false;
+    }
   }
 
   return (
@@ -142,6 +198,23 @@ export default function Evaluate() {
             <div className="dashed" style={{ marginTop: 12, padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
               {t('ประเมินครบทุกคนแล้ว')}
             </div>
+          )}
+
+          {incoming.length > 0 && (
+            <button
+              onClick={showIncoming}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 12,
+                background: 'var(--accent-tint)', border: '1px solid var(--accent-ring)', borderRadius: 12,
+                padding: '10px 14px', cursor: 'pointer', font: '600 12px var(--font-body)', color: 'var(--accent-hover)',
+              }}
+            >
+              <ArrowClockwise size={15} weight="bold" />
+              {t('มีเช็คอินใหม่ {n} รายการ — แตะเพื่อแสดง', { n: incoming.length })}
+              <span style={{ marginLeft: 'auto', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)' }}>
+                {t('รายการที่กำลังให้คะแนนจะไม่ขยับ')}
+              </span>
+            </button>
           )}
 
           <div style={{ display: 'grid', gap: 13, marginTop: 12 }}>
@@ -227,7 +300,7 @@ export default function Evaluate() {
                       <span className="mono" style={{ font: '700 14px var(--font-mono)', color: total >= MAX_TOTAL * 0.7 ? 'var(--success)' : 'var(--text-secondary)' }}>
                         {total}/{MAX_TOTAL}
                       </span>
-                      <button className="btn" style={{ flex: 1, height: 40, fontSize: 13 }} onClick={() => sign(c.id)}>
+                      <button className="btn" style={{ flex: 1, height: 40, fontSize: 13 }} onClick={() => setConfirmId(c.id)}>
                         <Signature size={16} weight="bold" />
                         {t('บันทึกผล · ลงนาม')}
                       </button>
@@ -350,6 +423,33 @@ export default function Evaluate() {
             </div>
           )}
         </div>
+        {/* กล่องยืนยันก่อนลงนาม — ชั้นสุดท้ายกันประเมินผิดคน โชว์ชื่อ+รหัส+วันที่+คะแนนตัวใหญ่ */}
+        {confirmRow && (
+          <div className="confirmwrap" onClick={() => setConfirmId(null)}>
+            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
+              <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
+              <div className="confirmbox__who">{t(confirmStudent?.name ?? '')}</div>
+              <div className="confirmbox__meta">
+                <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
+                {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
+              </div>
+              <div className="confirmbox__score">
+                {totalScore(draftFor(confirmRow.id)) ?? 0}<span>/{MAX_TOTAL}</span>
+              </div>
+              <p className="confirmbox__note">
+                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+                {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
+              </p>
+              <div className="confirmbox__actions">
+                <button className="btn btn--sec" onClick={() => setConfirmId(null)}>{t('ยกเลิก')}</button>
+                <button className="btn" onClick={() => sign(confirmRow.id)}>
+                  <Signature size={17} weight="bold" />
+                  {t('ยืนยัน · ลงนาม')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </TeacherShell>
   );
