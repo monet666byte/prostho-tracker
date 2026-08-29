@@ -580,6 +580,9 @@ export const DICT: Record<string, string> = {
   '{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร': '{n} workpieces · hover a dot to see whose case it is',
   'ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น': 'Currently {n} pieces behind target',
   'สลับมุมมอง': 'Switch view',
+  'กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})': 'Viewing group {other} — not your advisory group ({mine})',
+  ' · การเข้าดูถูกบันทึกไว้': ' · this access is logged',
+  'กลับกลุ่มฉัน': 'Back to my group',
 
   /* ── กันประเมินผิดคน ── */
   'มีเช็คอินใหม่ {n} รายการ — แตะเพื่อแสดง': '{n} new check-in(s) — tap to show',

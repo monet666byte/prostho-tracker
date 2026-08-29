@@ -1,4 +1,4 @@
-import { ChalkboardTeacher, ChartLineUp, GearSix, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, GearSix, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -29,7 +29,9 @@ const COHORT_NAV: NavItem[] = [
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
+  // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
+  const offGroup = !!myGroup && teacherGroup !== myGroup;
   const teacher = useTeacher(session?.teacherId);
   const students = useAllStudents();
   const checkins = useAllCheckIns();
@@ -112,6 +114,22 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
 
         {children}
       </div>
+      {offGroup && (
+        <div className="offgroup" role="status">
+          <Eye size={15} weight="fill" style={{ flex: 'none' }} />
+          <span>
+            {t('กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})', {
+              other: teacherGroup.replace('TH-', ''),
+              mine: myGroup!.replace('TH-', ''),
+            })}
+            <b>{t(' · การเข้าดูถูกบันทึกไว้')}</b>
+          </span>
+          <button onClick={() => setTeacherGroup(myGroup!)}>
+            <ArrowUUpLeft size={13} weight="bold" />
+            {t('กลับกลุ่มฉัน')}
+          </button>
+        </div>
+      )}
       <RoleFab low />
     </div>
   );

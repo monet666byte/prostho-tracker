@@ -580,3 +580,31 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .confirmbox__actions { display: flex; gap: 10px; margin-top: 18px; }
 .confirmbox__actions .btn { height: 46px; }
 .confirmbox__actions .btn--sec { flex: 0 0 110px; height: 46px; }
+
+
+/* ── แถบเตือนตอนอาจารย์เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง ── */
+.offgroup {
+  /* วางล่างซ้าย — เห็นตลอดเวลาแต่ไม่บังเมนูบน (บนจอแคบเมนูอาจารย์เป็นแถบบน) */
+  position: fixed; left: 14px; bottom: 16px; z-index: 90;
+  display: flex; align-items: center; gap: 9px;
+  max-width: calc(100vw - 24px);
+  background: var(--warning-tint); color: var(--warning-dark);
+  border: 1px solid var(--warning-border); border-radius: 99px;
+  padding: 8px 10px 8px 15px;
+  font: 500 11.5px/1.4 var(--font-body);
+  box-shadow: 0 6px 20px rgba(16, 24, 40, 0.14);
+  animation: shellIn 0.2s ease;
+}
+.offgroup b { font-weight: 600; opacity: 0.75; }
+.offgroup button {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  background: var(--warning-dark); color: #fff; border-radius: 99px;
+  padding: 5px 11px; font: 600 11px var(--font-body); cursor: pointer;
+}
+.offgroup button:hover { filter: brightness(1.12); }
+@media (max-width: 780px) {
+  /* เลี่ยงปุ่มลอยสลับบทบาทที่มุมขวาล่าง */
+  .offgroup { left: 10px; right: 10px; bottom: 76px; font-size: 10.5px; padding: 7px 8px 7px 12px; gap: 7px; }
+  .offgroup b { display: none; }
+  .offgroup span { flex: 1; min-width: 0; }
+}

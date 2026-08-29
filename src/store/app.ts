@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db, kvGet, kvSet } from '../data/db';
-import { getSettings, saveSettings } from '../data/repo';
+import { getSettings, logAudit, saveSettings } from '../data/repo';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
@@ -36,6 +36,8 @@ interface AppState {
   /** กลุ่มที่อาจารย์กำลังดู — ตั้งครั้งเดียว ใช้ทุกหน้า (ของจริงมาจากตาราง advisor) */
   teacherGroup: string;
   setTeacherGroup: (code: string) => void;
+  /** กลุ่มที่อาจารย์คนนี้เป็นที่ปรึกษาจริง — null ถ้ายังไม่รู้/ไม่ใช่อาจารย์ */
+  myGroup: string | null;
   /** bump ทุกครั้งที่เขียนข้อมูล เพื่อให้ view ที่ไม่ได้ใช้ liveQuery รีเฟรช */
   revision: number;
 
@@ -83,6 +85,12 @@ export function useCanSwitchRole(): boolean {
   return !!(user?.studentId && user?.teacherId);
 }
 
+/** กลุ่มที่อาจารย์คนนี้เป็นที่ปรึกษา — ใช้เป็นหน้าเริ่มต้น จะได้ไม่เผลอทำงานผิดกลุ่ม */
+async function findMyGroup(teacherId: string): Promise<string | null> {
+  const groups = await db.groups.toArray();
+  return groups.find((g) => g.advisorIds.includes(teacherId))?.code ?? null;
+}
+
 /** อ่านชื่อจริงของคนใน session จากฐานข้อมูล (นศ. หรืออาจารย์ ตามบทบาท) */
 async function actorNameFor(session: Session): Promise<string> {
   const row = session.role === 'teacher'
@@ -111,6 +119,7 @@ export const useApp = create<AppState>((set, get) => ({
   sheet: null,
   installPrompt: false,
   actorName: DEMO_STUDENT_NAME,
+  myGroup: null,
   cloudUser: null,
   cloudUnlinked: false,
   teacherGroup: (() => {
@@ -128,7 +137,13 @@ export const useApp = create<AppState>((set, get) => ({
       if (user) {
         const session = sessionFromUser(user);
         await kvSet('session', session);
-        set({ ready: true, settings, session, cloudUser: user, cloudUnlinked: false, actorName: await actorNameFor(session) });
+        const mine = await findMyGroup(session.teacherId);
+        set({
+          ready: true, settings, session, cloudUser: user, cloudUnlinked: false,
+          actorName: await actorNameFor(session),
+          myGroup: mine,
+          teacherGroup: mine ?? get().teacherGroup,
+        });
         void initCloudSync();
       } else {
         // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
@@ -143,7 +158,13 @@ export const useApp = create<AppState>((set, get) => ({
     // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
     let invite = false;
     try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
-    set({ ready: true, settings, session, installPrompt: invite, actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME });
+    const mineLocal = session ? await findMyGroup(session.teacherId) : null;
+    set({
+      ready: true, settings, session, installPrompt: invite,
+      actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME,
+      myGroup: mineLocal,
+      teacherGroup: mineLocal ?? get().teacherGroup,
+    });
   },
 
   async signInCloud(email, password) {
@@ -157,7 +178,13 @@ export const useApp = create<AppState>((set, get) => ({
     const session = sessionFromUser(user);
     await kvSet('session', session);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
-    set({ session, cloudUser: user, cloudUnlinked: false, actorName: await actorNameFor(session) });
+    const myGroup = await findMyGroup(session.teacherId);
+    set({
+      session, cloudUser: user, cloudUnlinked: false,
+      actorName: await actorNameFor(session),
+      myGroup,
+      teacherGroup: myGroup ?? get().teacherGroup,
+    });
     void initCloudSync();
     return {};
   },
@@ -240,8 +267,14 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   setTeacherGroup(code) {
+    const mine = get().myGroup;
     try { localStorage.setItem('teacherGroup', code); } catch { /* private mode */ }
     set({ teacherGroup: code });
+    // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง = จดไว้ใน audit log
+    // (ไม่ได้ห้าม เพราะอาจารย์เวรต้องข้ามกลุ่มได้จริง — แต่ต้องมีร่องรอยว่าใครดูอะไร)
+    if (mine && code !== mine) {
+      void logAudit(`เปิดดูข้อมูลกลุ่ม ${code.replace('TH-', '')} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`, get().actorName);
+    }
   },
 
   dismissInstall() {
