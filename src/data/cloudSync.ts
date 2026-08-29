@@ -125,6 +125,10 @@ function markDelete(local: string, keys: unknown[]) {
   if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }
 
+/** ตารางไหนส่งไม่ผ่านซ้ำๆ (ยามปฏิเสธถาวร) — เลิกลองหลังครบโควตา ไม่วนรบกวนเน็ตทุก 15 วิ */
+const failCount = new Map<string, number>();
+const MAX_PUSH_RETRY = 3;
+
 /** ส่งของค้างขึ้นตู้กลาง */
 async function flush(): Promise<void> {
   if (flushTimer) {
@@ -148,7 +152,14 @@ async function flush(): Promise<void> {
     const objs = (await db.table(local).bulkGet(ids as never[])).filter(Boolean) as Record<string, unknown>[];
     if (objs.length) {
       const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
-      if (error) continue; // เก็บไว้ลองใหม่รอบหน้า
+      if (error) {
+        const n = (failCount.get(local) ?? 0) + 1;
+        failCount.set(local, n);
+        if (n < MAX_PUSH_RETRY) continue; // เก็บไว้ลองใหม่รอบหน้า
+        // ครบโควตาแล้วยังไม่ผ่าน = ไม่มีสิทธิ์เขียนตารางนี้จริงๆ ทิ้งคิวไป (ข้อมูลยังอยู่ในเครื่อง)
+      } else {
+        failCount.delete(local);
+      }
     }
     dirty.delete(local);
   }
@@ -233,9 +244,17 @@ let started = false;
  * - สลับบัญชีบนเครื่องเดียวกัน → ของคนก่อนต้องไม่ค้าง
  * ล้างเฉพาะตอน "บัญชีเปลี่ยน" — ล็อกอินคนเดิมซ้ำไม่ล้าง งานที่ทำค้างไว้ตอนออฟไลน์จึงไม่หาย
  */
+/**
+ * เลขรุ่นของ "กติกาสิทธิ์" — ขยับเลขนี้เมื่อ policy เปลี่ยนจนสิ่งที่แต่ละคนมองเห็นเปลี่ยนไป
+ * ผลคือทุกเครื่องล้างลิ้นชักแล้วดึงใหม่ครั้งเดียว (ของเก่าที่ไม่มีสิทธิ์เห็นแล้วจะหายไปด้วย)
+ * v2 = migration 0004 (per-row RLS: นศ. เห็นเฉพาะของตัวเอง)
+ */
+const POLICY_VERSION = 'v2';
+
 async function bindToUser(uid: string): Promise<boolean> {
+  const key = `${uid}@${POLICY_VERSION}`;
   const bound = await kvGet<string | null>('cloudBoundUid', null);
-  if (bound === uid) return false;
+  if (bound === key) return false;
   setSyncPaused(true);
   try {
     for (const def of TABLES) await db.table(def.local).clear();
@@ -245,7 +264,7 @@ async function bindToUser(uid: string): Promise<boolean> {
   } finally {
     setSyncPaused(false);
   }
-  await kvSet('cloudBoundUid', uid);
+  await kvSet('cloudBoundUid', key);
   return true;
 }
 
