@@ -144,8 +144,25 @@ function progressionToProcIndex(type: WorkType, maxProgression: number): number 
   return idx;
 }
 
-let seq = 0;
-const uid = (p: string) => `${p}-imp-${Date.now().toString(36)}-${(seq++).toString(36)}`;
+/**
+ * id ต้องคงที่จากเนื้อหาแถว ไม่ใช่จากเวลาที่กดนำเข้า
+ *
+ * เดิมใช้ Date.now() → นำเข้าไฟล์เดิมซ้ำได้ผู้ป่วยและชิ้นงานชุดใหม่ทั้งชุด
+ * อันตรายตรงที่ชิ้นงานที่จบแล้วถูกนับซ้ำเข้าเกณฑ์ → ระบบบอกนักศึกษาว่าทำครบ
+ * ทั้งที่ทำชิ้นเดียว  ตอนนี้ id มาจากเนื้อหา นำเข้าซ้ำจึงทับของเดิมแทนที่จะเพิ่ม
+ */
+function hash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+const patientId = (studentId: string, hn: string) => `p-imp-${hash(`${studentId}|${hn}`)}`;
+/** nth = ลำดับของแถวที่ให้กุญแจซ้ำกันในไฟล์เดียว (ไฟล์เรียงคงที่ ค่าจึงคงที่ด้วย) */
+const workpieceId = (studentId: string, hn: string, label: string, accepted: string, nth: number) =>
+  `w-imp-${hash(`${studentId}|${hn}|${label}|${accepted}|${nth}`)}`;
 
 /* ── ตัวนำเข้าหลัก ── */
 
@@ -154,6 +171,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
   const issues: ImportIssue[] = [];
   const patients = new Map<string, Patient>(); // key = HN
   const workpieces: Workpiece[] = [];
+  const seenRow = new Map<string, number>(); // กันแถวที่เหมือนกันเป๊ะในไฟล์เดียวทับกันเอง
 
   if (!rows.length) {
     return { patients: [], workpieces: [], report: { totalRows: 0, imported: 0, skipped: 0, issues } };
@@ -231,7 +249,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     }
 
     const patient: Patient = patients.get(hn) ?? {
-      id: uid('p'),
+      id: patientId(studentId, hn),
       name,
       hn,
       sexAge: '',
@@ -241,8 +259,12 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     patients.set(hn, patient);
 
     const now = new Date().toISOString();
+    // แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง
+    const wkey = `${hn}|${workLabel}|${accepted ?? ''}`;
+    const nth = (seenRow.get(wkey) ?? 0);
+    seenRow.set(wkey, nth + 1);
     workpieces.push({
-      id: uid('w'),
+      id: workpieceId(studentId, hn, workLabel, accepted ?? '', nth),
       patientId: patient.id,
       studentId,
       type,

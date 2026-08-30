@@ -716,4 +716,8 @@ export const DICT: Record<string, string> = {
   'เอาออก': 'Remove',
   'คนนี้สมัครเข้าระบบไปแล้ว — การลบจากรายชื่อไม่ได้ปิดบัญชีเดิม ต้องไปปิดในหน้า Supabase อีกที': 'This person already signed up — removing them here does not close their account; disable it in Supabase as well',
   'คนนี้ยังไม่ได้สมัคร — ลบแล้วจะสมัครด้วยอีเมลนี้ไม่ได้': 'They have not signed up yet — after removal this email can no longer register',
+  'ทับของเดิม': 'Overwrites',
+  'เคยนำเข้าไปแล้ว': 'already imported before',
+  'นำเข้าซ้ำได้ไม่เกิดข้อมูลซ้ำ — {n} ชิ้นที่เคยนำเข้าจะถูกเขียนทับด้วยค่าจากไฟล์นี้': 'Re-importing does not duplicate — {n} existing item(s) will be overwritten from this file',
+  'นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าไฟล์เดิมซ้ำจะทับของเดิม ไม่เพิ่มซ้ำ': 'Imported data reaches the server within seconds \u00b7 re-importing the same file overwrites rather than duplicates',
 };

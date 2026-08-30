@@ -5,7 +5,7 @@
  * ปรัชญา: ไม่เดามั่ว แถวที่อ่านไม่ออกจะขึ้นรายงานพร้อมเหตุผล ให้คนตัดสินเอง
  */
 import { CheckCircle, FileArrowUp, UploadSimple, WarningCircle } from '@phosphor-icons/react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { db } from '../../data/db';
 import { useAllStudents } from '../../hooks/data';
@@ -24,6 +24,8 @@ export default function ImportSheet() {
   const [csv, setCsv] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
   const [saving, setSaving] = useState(false);
+  // จะทับของเดิมกี่ชิ้น — id นำเข้าคงที่จากเนื้อหา นำเข้าซ้ำจึงทับ ไม่ใช่เพิ่มซ้ำ
+  const [dupes, setDupes] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const sorted = useMemo(
@@ -36,6 +38,17 @@ export default function ImportSheet() {
     if (!sid) { setResult(null); return; }
     setResult(importSheetCsv(text, sid));
   }
+
+  // เช็คว่าชิ้นงานในไฟล์นี้มีอยู่ในระบบแล้วกี่ชิ้น
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!result?.workpieces.length) { setDupes(0); return; }
+      const found = await db.workpieces.bulkGet(result.workpieces.map((w) => w.id));
+      if (alive) setDupes(found.filter(Boolean).length);
+    })();
+    return () => { alive = false; };
+  }, [result]);
 
   async function onFile(file: File) {
     const text = await file.text();
@@ -134,7 +147,7 @@ export default function ImportSheet() {
           <>
             <div className="panel" style={{ marginBottom: 16 }}>
               <h3>{t('③ รายงานตรวจสอบ')}</h3>
-              <div className="kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)', margin: '12px 0 0' }}>
+              <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, 1fr)', margin: '12px 0 0' }}>
                 <div className="kpi">
                   <div className="kpi__label"><CheckCircle size={14} /> {t('นำเข้าได้')}</div>
                   <div className="kpi__value" style={{ color: 'var(--success)' }}>{rep.imported}</div>
@@ -144,6 +157,11 @@ export default function ImportSheet() {
                   <div className="kpi__label">{t('ข้ามไป')}</div>
                   <div className="kpi__value">{rep.skipped}</div>
                   <div className="kpi__hint">{t('แถวว่าง/แถวสรุป/อ่านไม่ออก')}</div>
+                </div>
+                <div className="kpi" style={{ borderColor: dupes ? 'var(--warning-border)' : undefined }}>
+                  <div className="kpi__label">{t('ทับของเดิม')}</div>
+                  <div className="kpi__value" style={{ color: dupes ? 'var(--warning)' : undefined }}>{dupes}</div>
+                  <div className="kpi__hint">{t('เคยนำเข้าไปแล้ว')}</div>
                 </div>
                 <div className="kpi" style={{ borderColor: rep.issues.length ? 'var(--warning-border)' : undefined }}>
                   <div className="kpi__label"><WarningCircle size={14} /> {t('ต้องตรวจ')}</div>
@@ -230,7 +248,9 @@ export default function ImportSheet() {
               </button>
               <p style={{ margin: '8px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
                 <FileArrowUp size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                {t('นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าซ้ำไฟล์เดิมจะได้ข้อมูลซ้ำ ระวังด้วย')}
+                {dupes > 0
+                  ? t('นำเข้าซ้ำได้ไม่เกิดข้อมูลซ้ำ — {n} ชิ้นที่เคยนำเข้าจะถูกเขียนทับด้วยค่าจากไฟล์นี้', { n: dupes })
+                  : t('นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าไฟล์เดิมซ้ำจะทับของเดิม ไม่เพิ่มซ้ำ')}
               </p>
             </div>
           </>
