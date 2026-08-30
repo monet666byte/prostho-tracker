@@ -39,6 +39,8 @@ export default function Roster() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [personId, setPersonId] = useState('');
+  // ยืนยันก่อนลบ — เดิมกดถังขยะทีเดียวหายเลย ไอคอนเล็กๆ ในตารางกดพลาดง่ายมากบน iPad
+  const [confirmDel, setConfirmDel] = useState<Invite | null>(null);
 
   async function load() {
     if (!supabase || !isAdmin) return;
@@ -79,6 +81,7 @@ export default function Roster() {
 
   async function removeInvite(inviteEmail: string) {
     if (!supabase) return;
+    setConfirmDel(null);
     const { error: e } = await supabase.from('invites').delete().eq('email', inviteEmail);
     if (e) { setError(e.message); return; }
     showToast({ message: t('ลบรายชื่อแล้ว — คนใหม่จะสมัครด้วยอีเมลนี้ไม่ได้'), tone: 'warning' });
@@ -196,7 +199,7 @@ export default function Roster() {
                         <button
                           className="delbtn"
                           title={t('ลบออกจากรายชื่อ')}
-                          onClick={() => removeInvite(inv.email)}
+                          onClick={() => setConfirmDel(inv)}
                         >
                           <Trash size={15} />
                         </button>
@@ -211,6 +214,30 @@ export default function Roster() {
             {t('ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที')}
           </p>
         </div>
+
+        {confirmDel && (
+          <div className="confirmwrap" onClick={() => setConfirmDel(null)}>
+            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
+              <div className="confirmbox__q">{t('เอาออกจากรายชื่อผู้มีสิทธิ์เข้าระบบ')}</div>
+              <div className="confirmbox__who" style={{ fontSize: 19, wordBreak: 'break-all' }}>{confirmDel.email}</div>
+              <div className="confirmbox__meta">
+                {confirmDel.role === 'student' ? t('นักศึกษา') : t('อาจารย์')} · {t(nameOf(confirmDel))}
+              </div>
+              <p className="confirmbox__note">
+                {linked.has(confirmDel.email.toLowerCase())
+                  ? t('คนนี้สมัครเข้าระบบไปแล้ว — การลบจากรายชื่อไม่ได้ปิดบัญชีเดิม ต้องไปปิดในหน้า Supabase อีกที')
+                  : t('คนนี้ยังไม่ได้สมัคร — ลบแล้วจะสมัครด้วยอีเมลนี้ไม่ได้')}
+              </p>
+              <div className="confirmbox__actions">
+                <button className="btn btn--sec" onClick={() => setConfirmDel(null)}>{t('ยกเลิก')}</button>
+                <button className="btn" onClick={() => removeInvite(confirmDel.email)}>
+                  <Trash size={16} weight="bold" />
+                  {t('เอาออก')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </TeacherShell>
   );

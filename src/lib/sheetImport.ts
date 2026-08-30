@@ -63,19 +63,34 @@ export function parseCsv(text: string): string[][] {
 
 /* ── ตัวแปลงย่อย ── */
 
+/**
+ * ประกอบเป็น ISO เฉพาะเมื่อเป็นวันที่ที่มีอยู่จริงในปฏิทิน
+ *
+ * เดิมไม่เช็คช่วงเลย — "25/13/69" ผ่านเป็น 2026-13-25 และ "31/2/69" ผ่านเป็น 2026-02-31
+ * ทั้งที่หน้านำเข้าประกาศว่า "ไม่เดามั่ว แถวที่อ่านไม่ออกจะขึ้นรายงาน"
+ * เคสจริงที่เจอบ่อย: ชีตที่พิมพ์แบบอเมริกัน (เดือน/วัน/ปี) จะกลายเป็นเดือน 13-25
+ */
+function isoIfReal(year: number, mo: number, d: number): string | null {
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(Date.UTC(year, mo - 1, d));
+  // round-trip: 31 ก.พ. จะเด้งไปเป็น 3 มี.ค. → ค่าไม่ตรง = ไม่มีวันนี้จริง
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return `${year}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 /** วันที่จากชีต: "25/8/69" (พ.ศ. 2 หลัก) · "25/8/2569" · "2026-08-25" → ISO */
 function parseSheetDate(s: string): string | null {
   const v = s.trim();
   if (!v) return null;
-  if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return isoIfReal(+iso[1], +iso[2], +iso[3]);
   const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;
-  const [, d, mo, yRaw] = m;
-  let year = parseInt(yRaw, 10);
+  let year = parseInt(m[3], 10);
   if (year < 100) year = 2500 + year - 543; // พ.ศ. 2 หลัก → ค.ศ.
   else if (year > 2400) year -= 543; // พ.ศ. 4 หลัก → ค.ศ.
   if (year < 2000 || year > 2100) return null;
-  return `${year}-${String(parseInt(mo, 10)).padStart(2, '0')}-${String(parseInt(d, 10)).padStart(2, '0')}`;
+  return isoIfReal(year, parseInt(m[2], 10), parseInt(m[1], 10));
 }
 
 /** ช่องติ๊ก: ✓ / 1 / x / yes ฯลฯ = ติ๊ก · ช่องที่มีข้อความอื่น = "ติ๊กแบบมีเงื่อนไข" ให้รายงาน */

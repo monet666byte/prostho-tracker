@@ -52,12 +52,6 @@ export function toISODate(v: string | Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** แปลง "25/8/69" (รูปแบบที่ใช้ในชีต) → ISO date */
-export function fromSheetDate(s: string): string {
-  const [d, m, y] = s.split('/').map((n) => parseInt(n, 10));
-  const year = y < 100 ? 2500 + y - 543 : y - 543;
-  return `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
 
 /** ISO date → "25/8/69" สำหรับ CSV ที่ต้องตรงคอลัมน์ชีตเดิม */
 export function toSheetDate(v: string | Date): string {

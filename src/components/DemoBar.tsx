@@ -4,10 +4,16 @@ import { useApp, useCanSwitchRole } from '../store/app';
 import type { Role } from '../domain/types';
 import { applyTheme, currentTheme, THEMES } from '../lib/theme';
 import { lang, setLang, t } from '../lib/i18n';
+import { cloudEnabled } from '../lib/cloud';
 
 /**
  * แถบสลับมุมมองสำหรับตอนนำเสนอ — ขึ้นเฉพาะจอกว้าง (ที่แสดงเป็นกรอบมือถือ)
  * เวลาใช้งานจริงบนมือถือจะไม่เห็นแถบนี้
+ *
+ * ⚠️ เดิมแถบนี้ขึ้นในโหมดใช้งานจริงด้วย (ซ่อนแค่ตามความกว้างจอ) อาจารย์ที่เปิดบนโน้ตบุ๊ก
+ * จึงเห็นป้าย "DEMO · งาน ~10%", ปุ่ม "Achievement (mock)" และปุ่ม "รีเซ็ตข้อมูล"
+ * ที่กดแล้วล้างทันทีไม่ถามอะไร — ตอนนี้ของสามอย่างนี้ขึ้นเฉพาะโหมดเดโมเท่านั้น
+ * ส่วนภาษา/ธีม/ออกจากระบบ เป็นของมีประโยชน์จริง เก็บไว้ทั้งสองโหมด
  */
 export function DemoBar() {
   const { session, switchRole, resetDemo, showToast, signOut } = useApp();
@@ -21,11 +27,15 @@ export function DemoBar() {
     navigate(role === 'student' ? '/app' : '/teacher');
   };
 
+  const demoOnly = !cloudEnabled;
+
   return (
     <div className="demobar">
-      <span className="demobar__stage" title={t('ตัวเลขคร่าวๆ ไว้สื่อสารว่ายังอยู่ช่วงเริ่มต้น')}>
-        {t('DEMO · งาน ~10%')}
-      </span>
+      {demoOnly && (
+        <span className="demobar__stage" title={t('ตัวเลขคร่าวๆ ไว้สื่อสารว่ายังอยู่ช่วงเริ่มต้น')}>
+          {t('DEMO · งาน ~10%')}
+        </span>
+      )}
       {canSwitch && <span className="demobar__label">{t('มุมมอง')}</span>}
       {canSwitch && (
       <div className="demobar__seg">
@@ -39,7 +49,7 @@ export function DemoBar() {
         </button>
       </div>
       )}
-      {(canSwitch || session.role === 'student') && (
+      {demoOnly && (canSwitch || session.role === 'student') && (
       <button
         className="demobar__reset"
         onClick={async () => {
@@ -76,6 +86,7 @@ export function DemoBar() {
           ))}
         </select>
       </label>
+      {demoOnly && (
       <button
         className="demobar__reset"
         onClick={async () => {
@@ -86,6 +97,7 @@ export function DemoBar() {
         <ArrowCounterClockwise size={13} />
         {t('รีเซ็ตข้อมูล')}
       </button>
+      )}
       <button
         className="demobar__reset"
         onClick={async () => {

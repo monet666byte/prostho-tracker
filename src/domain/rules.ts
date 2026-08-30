@@ -240,11 +240,22 @@ export interface YearlyRow {
 /** สรุปเกณฑ์รายปีของทุกปีการศึกษาที่มีข้อมูล (อย่างน้อยปีปัจจุบัน) */
 export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date()): YearlyRow[] {
   const current = academicYear(now);
-  const years = new Set<number>([current]);
+  /**
+   * ต้องไล่ "ทุกปีตั้งแต่ปีแรกที่เริ่มมีงาน จนถึงปีปัจจุบัน" ไม่ใช่เฉพาะปีที่มีงานจบ
+   *
+   * บั๊กเดิม: รายชื่อปีสร้างจากปีที่มี completedAt เท่านั้น ปีที่จบ 0 ชิ้นจึงหายไปจากการตรวจ
+   * → นักศึกษาที่ปี 2568 จบ 0 ชิ้น แล้วไปเร่งจบ 6 ชิ้นในปี 2569 ระบบสรุปว่า "ครบเกณฑ์"
+   *   ทั้งที่เกณฑ์คือทุกปีต้องจบอย่างน้อย perYear ชิ้น — ปีที่ว่างคือเคสที่กฎนี้มีไว้จับพอดี
+   */
+  const marks: number[] = [current];
   list.forEach((w) => {
-    if (w.completedAt) years.add(academicYear(w.completedAt));
+    if (w.completedAt) marks.push(academicYear(w.completedAt));
+    if (w.acceptedDate) marks.push(academicYear(w.acceptedDate));
   });
-  return [...years]
+  const first = Math.min(...marks);
+  const years: number[] = [];
+  for (let y = first; y <= current; y++) years.push(y);
+  return years
     .sort((a, b) => a - b)
     .map((year) => {
       const done = completedInYear(list, year, settings).length;

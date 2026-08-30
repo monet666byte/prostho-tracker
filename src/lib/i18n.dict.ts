@@ -709,4 +709,11 @@ export const DICT: Record<string, string> = {
   'แก้ไม่สำเร็จ — คาบนี้อาจถูกลบหรือเปลี่ยนสถานะไปแล้ว': 'Could not edit — this session may have been removed or changed',
   'ให้คะแนนผิดแก้ได้ — กดปุ่มแก้ท้ายแถว · ทุกการแก้ถูกบันทึกในประวัติ ลบไม่ได้': 'Scored the wrong thing? Use Edit at the end of the row \u00b7 every edit is written to the audit log and cannot be deleted',
   'การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ': 'The edit is logged with the previous values, cannot be deleted, and the evaluator becomes you',
+  'ส่งให้อาจารย์ในระบบ (ยังไม่เปิดใช้)': 'Send to advisor in-app (not available yet)',
+  'ยังไม่เปิดใช้': 'Not available yet',
+  'ตอนนี้ยังใช้วิธีเดิม — พิมพ์ออกมาให้อาจารย์ลงนาม แล้วส่งเลขาภาควิชา': 'For now use the existing route \u2014 print it, have your advisor sign, hand it to the department office',
+  'เอาออกจากรายชื่อผู้มีสิทธิ์เข้าระบบ': 'Remove from the access list',
+  'เอาออก': 'Remove',
+  'คนนี้สมัครเข้าระบบไปแล้ว — การลบจากรายชื่อไม่ได้ปิดบัญชีเดิม ต้องไปปิดในหน้า Supabase อีกที': 'This person already signed up — removing them here does not close their account; disable it in Supabase as well',
+  'คนนี้ยังไม่ได้สมัคร — ลบแล้วจะสมัครด้วยอีเมลนี้ไม่ได้': 'They have not signed up yet — after removal this email can no longer register',
 };
