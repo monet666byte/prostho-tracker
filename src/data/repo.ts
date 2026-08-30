@@ -4,6 +4,7 @@
  */
 
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
+import { CRITERIA, totalScore } from '../domain/checkin';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
   Arch, AuditEntry, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
@@ -528,6 +529,58 @@ export async function evaluateCheckIn(
     { studentId: row.studentId },
   );
   return { ok: true };
+}
+
+/**
+ * แก้คะแนนคาบที่ประเมินไปแล้ว
+ *
+ * ทำไมต้องมี: เดิมลงคะแนนแล้วแก้ไม่ได้เลย — อาจารย์กดพลาดทีต้องให้คนดูแลระบบไปแก้ที่ฐานข้อมูล
+ * ซึ่งใช้กับผู้ใช้ 96 คนไม่ได้ การ "กันไม่ให้กดผิด" กับ "แก้ได้เมื่อกดผิดไปแล้ว" เป็นคนละเรื่อง
+ *
+ * หลัก: แก้ได้ แต่ทุกครั้งทิ้งร่องรอย — audit บันทึกค่าเดิม→ค่าใหม่รายหัวข้อ และลบไม่ได้
+ * ใครแก้ได้: อาจารย์ท่านใดก็ได้ (อาจารย์เวรสลับกัน คนที่ประเมินเดิมอาจไม่อยู่แล้ว)
+ */
+export type ReviseResult =
+  | { ok: true; changed: number }
+  | { ok: false; reason: 'missing' }
+  /** คาบนี้ยังไม่เคยประเมิน — ต้องใช้ evaluateCheckIn ไม่ใช่ตัวนี้ */
+  | { ok: false; reason: 'not-evaluated' }
+  | { ok: false; reason: 'nochange' };
+
+export async function reviseCheckIn(
+  id: string,
+  scores: Record<string, number>,
+  by: string,
+): Promise<ReviseResult> {
+  const row = await db.checkins.get(id);
+  if (!row) return { ok: false, reason: 'missing' };
+  if (row.status !== 'evaluated') return { ok: false, reason: 'not-evaluated' };
+
+  const before = row.scores ?? {};
+  const diffs = CRITERIA
+    .filter((cr) => (before[cr.key] ?? 0) !== (scores[cr.key] ?? 0))
+    .map((cr) => `${cr.label} ${before[cr.key] ?? 0}→${scores[cr.key] ?? 0}`);
+  if (!diffs.length) return { ok: false, reason: 'nochange' };
+
+  const wasBy = row.evaluatedBy ?? '';
+  await db.checkins.put({
+    ...row,
+    scores,
+    // ผู้ประเมินเปลี่ยนเป็นคนที่แก้ล่าสุด — คนนี้คือคนที่รับผิดชอบคะแนนชุดที่อยู่ในระบบตอนนี้
+    evaluatedBy: by,
+    evaluatedAt: new Date().toISOString(),
+  });
+
+  const student = await db.students.get(row.studentId);
+  await logAudit(
+    `แก้คะแนนคาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId}`
+      + ` · ${diffs.join(', ')}`
+      + ` · รวม ${totalScore(before) ?? 0}→${totalScore(scores) ?? 0}`
+      + (wasBy && wasBy !== by ? ` (เดิมประเมินโดย ${wasBy})` : ''),
+    by,
+    { studentId: row.studentId },
+  );
+  return { ok: true, changed: diffs.length };
 }
 
 export async function deleteCheckIn(id: string, actor: string): Promise<void> {

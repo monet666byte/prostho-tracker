@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
+import { ToastView } from '../ToastView';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
@@ -136,6 +137,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </button>
         </div>
       )}
+      <ToastView variant="desk" />
       <RoleFab low />
     </div>
   );

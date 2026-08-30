@@ -695,4 +695,18 @@ export const DICT: Record<string, string> = {
   'ได้ 3': 'Scored 3',
   'ได้ 1': 'Scored 1',
   'ได้ 0': 'Scored 0',
+
+  // แก้คะแนนที่ลงไปแล้ว
+  'แก้': 'Edit',
+  'แก้คะแนนคาบนี้': 'Edit this session\u2019s scores',
+  'แก้คะแนนของ': 'Edit scores for',
+  'ประเมินโดย {who}': 'evaluated by {who}',
+  'เดิม': 'was',
+  'ยังไม่ได้แก้อะไร': 'Nothing changed yet',
+  'แก้ {n} หัวข้อ': '{n} item(s) changed',
+  'ยืนยันการแก้': 'Confirm edit',
+  'แก้คะแนนแล้ว {n} หัวข้อ — บันทึกไว้ในประวัติเรียบร้อย': 'Updated {n} item(s) — recorded in the audit log',
+  'แก้ไม่สำเร็จ — คาบนี้อาจถูกลบหรือเปลี่ยนสถานะไปแล้ว': 'Could not edit — this session may have been removed or changed',
+  'ให้คะแนนผิดแก้ได้ — กดปุ่มแก้ท้ายแถว · ทุกการแก้ถูกบันทึกในประวัติ ลบไม่ได้': 'Scored the wrong thing? Use Edit at the end of the row \u00b7 every edit is written to the audit log and cannot be deleted',
+  'การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ': 'The edit is logged with the previous values, cannot be deleted, and the evaluator becomes you',
 };

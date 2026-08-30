@@ -1,10 +1,10 @@
-import { ArrowClockwise, CalendarCheck, CheckCircle, Signature, WarningCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, CalendarCheck, CheckCircle, PencilSimple, Signature, WarningCircle } from '@phosphor-icons/react';
 import { PhotoSlot } from '../../components/ui/Bits';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
 import type { ProfileAxis } from '../../domain/analytics';
-import { evaluateCheckIn } from '../../data/repo';
+import { evaluateCheckIn, reviseCheckIn } from '../../data/repo';
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, totalScore } from '../../domain/checkin';
 import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTeacher } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
@@ -110,6 +110,9 @@ export default function Evaluate() {
   // ชั้นที่ 3 — ยืนยันโดยระบุชื่อ: ต่อให้หน้าจอขยับ ก่อนบันทึกจะมีกล่องบอกชื่อ นศ. เสมอ
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const signing = useRef(false);
+  // แก้คะแนนที่ลงไปแล้ว — คาบที่กำลังแก้ และคะแนนชุดใหม่ที่กำลังกรอก
+  const [reviseId, setReviseId] = useState<string | null>(null);
+  const [reviseDraft, setReviseDraft] = useState<Record<string, number>>({});
 
   /**
    * ⚠️ ความปลอดภัย: กันอาจารย์ "ประเมินผิดคน"
@@ -171,6 +174,42 @@ export default function Evaluate() {
         showToast({ message: t('คาบนี้ {who} ประเมินไปแล้ว — ระบบไม่บันทึกทับ', { who: res.by || t('อาจารย์ท่านอื่น') }), tone: 'warning' });
       } else {
         showToast({ message: t('ไม่พบคาบนี้แล้ว (อาจถูกลบไป)'), tone: 'warning' });
+      }
+    } finally {
+      signing.current = false;
+    }
+  }
+
+  // ── แก้คะแนนที่ลงไปแล้ว ────────────────────────────────────────────────
+  const reviseRow = reviseId ? evaluatedAll.find((c) => c.id === reviseId) ?? null : null;
+  const reviseStudent = reviseRow ? studentById.get(reviseRow.studentId) : undefined;
+  const reviseBefore = reviseRow?.scores ?? {};
+  const reviseDiffs = CRITERIA.filter((cr) => (reviseBefore[cr.key] ?? 0) !== (reviseDraft[cr.key] ?? 0));
+
+  function openRevise(c: CheckIn) {
+    setReviseId(c.id);
+    setReviseDraft(Object.fromEntries(CRITERIA.map((cr) => [cr.key, c.scores?.[cr.key] ?? 0])));
+  }
+  function closeRevise() {
+    setReviseId(null);
+    setReviseDraft({});
+  }
+
+  async function saveRevise() {
+    if (!reviseRow || signing.current) return;
+    signing.current = true;
+    try {
+      const res = await reviseCheckIn(reviseRow.id, reviseDraft, teacher?.name ?? currentActor());
+      if (res.ok) {
+        closeRevise();
+        showToast({
+          message: t('แก้คะแนนแล้ว {n} หัวข้อ — บันทึกไว้ในประวัติเรียบร้อย', { n: res.changed }),
+          tone: 'success',
+        });
+      } else if (res.reason === 'nochange') {
+        closeRevise();
+      } else {
+        showToast({ message: t('แก้ไม่สำเร็จ — คาบนี้อาจถูกลบหรือเปลี่ยนสถานะไปแล้ว'), tone: 'warning' });
       }
     } finally {
       signing.current = false;
@@ -314,6 +353,7 @@ export default function Evaluate() {
 
         <div className="panel">
           <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {group.replace('TH-', '')}</h3>
+          <p className="sub">{t('ให้คะแนนผิดแก้ได้ — กดปุ่มแก้ท้ายแถว · ทุกการแก้ถูกบันทึกในประวัติ ลบไม่ได้')}</p>
           <table className="tbl">
             <thead>
               <tr>
@@ -322,11 +362,12 @@ export default function Evaluate() {
                 <th>{t('กิจกรรม')}</th>
                 <th style={{ width: 66 }}>{t('คะแนน')}</th>
                 <th style={{ width: 88 }}>{t('ผู้ประเมิน')}</th>
+                <th style={{ width: 46 }} />
               </tr>
             </thead>
             <tbody>
               {evaluated.length === 0 && (
-                <tr><td colSpan={5} className="faint" style={{ padding: 16 }}>{t('ยังไม่มีคาบที่ประเมินแล้ว')}</td></tr>
+                <tr><td colSpan={6} className="faint" style={{ padding: 16 }}>{t('ยังไม่มีคาบที่ประเมินแล้ว')}</td></tr>
               )}
               {evaluated.map((c) => (
                 <tr key={c.id}>
@@ -339,6 +380,12 @@ export default function Evaluate() {
                     </span>
                   </td>
                   <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>{t(c.evaluatedBy ?? '')}</td>
+                  <td>
+                    <button className="revisebtn" title={t('แก้คะแนนคาบนี้')} onClick={() => openRevise(c)}>
+                      <PencilSimple size={14} />
+                      {t('แก้')}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -445,6 +492,70 @@ export default function Evaluate() {
                 <button className="btn" onClick={() => sign(confirmRow.id)}>
                   <Signature size={17} weight="bold" />
                   {t('ยืนยัน · ลงนาม')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* กล่องแก้คะแนนที่ลงไปแล้ว — โชว์ค่าเดิมคู่ค่าใหม่ทุกหัวข้อ ไม่ให้แก้แบบไม่รู้ตัว */}
+        {reviseRow && (
+          <div className="confirmwrap" onClick={closeRevise}>
+            <div className="confirmbox confirmbox--wide" onClick={(e) => e.stopPropagation()}>
+              <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
+              <div className="confirmbox__who">{t(reviseStudent?.name ?? '')}</div>
+              <div className="confirmbox__meta">
+                <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
+                {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
+              </div>
+
+              <div className="revisegrid">
+                {CRITERIA.map((cr) => {
+                  const was = reviseBefore[cr.key] ?? 0;
+                  const now = reviseDraft[cr.key] ?? 0;
+                  return (
+                    <div key={cr.key} className="scorerow" data-changed={was !== now}>
+                      <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
+                      {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
+                      <span className="scorerow__btns">
+                        {SCORE_OPTIONS.map((n) => (
+                          <button
+                            key={n}
+                            data-on={now === n}
+                            onClick={() => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="revisesum">
+                {reviseDiffs.length === 0 ? (
+                  <span className="faint">{t('ยังไม่ได้แก้อะไร')}</span>
+                ) : (
+                  <>
+                    <b>{t('แก้ {n} หัวข้อ', { n: reviseDiffs.length })}</b>
+                    <span className="mono">
+                      {totalScore(reviseBefore) ?? 0} → {totalScore(reviseDraft) ?? 0}/{MAX_TOTAL}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <p className="confirmbox__note">
+                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+                {t('การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}
+              </p>
+
+              <div className="confirmbox__actions">
+                <button className="btn btn--sec" onClick={closeRevise}>{t('ยกเลิก')}</button>
+                <button className="btn" disabled={reviseDiffs.length === 0} onClick={saveRevise}>
+                  <PencilSimple size={17} weight="bold" />
+                  {t('ยืนยันการแก้')}
                 </button>
               </div>
             </div>

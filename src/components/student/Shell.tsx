@@ -1,13 +1,12 @@
 import {
-  ArrowUUpLeft, BatteryFull, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CheckCircle,
-  CloudSlash, House, UsersThree, WifiHigh,
+  BatteryFull, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CloudSlash, House, UsersThree, WifiHigh,
 } from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { undoStep } from '../../data/repo';
 import { useApp } from '../../store/app';
 import { clock } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { ToastView } from '../ToastView';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
 
@@ -83,29 +82,6 @@ function TabBar() {
         </NavLink>
       ))}
     </nav>
-  );
-}
-
-function ToastView() {
-  const { toast, hideToast, session, touch } = useApp();
-  if (!toast) return null;
-  return (
-    <div className="toast" role="status">
-      <CheckCircle size={18} weight="fill" color={toast.tone === 'warning' ? '#FDBA5E' : '#5AE0A8'} />
-      <span>{toast.message}</span>
-      {toast.undoWorkpieceId && (
-        <button
-          onClick={async () => {
-            await undoStep(toast.undoWorkpieceId!, session?.role === 'teacher' ? 'อ. Liv' : 'นศ. Liv');
-            hideToast();
-            touch();
-          }}
-        >
-          <ArrowUUpLeft size={14} weight="bold" style={{ verticalAlign: -2, marginRight: 3 }} />
-          {t('เลิกทำ')}
-        </button>
-      )}
-    </div>
   );
 }
 

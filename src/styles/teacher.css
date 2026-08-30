@@ -608,3 +608,63 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .offgroup b { display: none; }
   .offgroup span { flex: 1; min-width: 0; }
 }
+
+/* ── แก้คะแนนที่ลงไปแล้ว ────────────────────────────────────────────────
+   ปุ่มเล็กท้ายแถวตาราง "ประเมินแล้ว" + กล่องแก้ที่โชว์ค่าเดิมคู่ค่าใหม่     */
+.revisebtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 7px;
+  border: 1px solid var(--border-2); background: #fff;
+  font: 500 10.5px var(--font-body); color: var(--text-muted);
+  transition: all 0.12s;
+}
+.revisebtn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* กล่องแก้กว้างกว่ากล่องยืนยันปกติ เพราะต้องใส่ 8 หัวข้อ */
+.confirmbox--wide { width: 430px; text-align: left; }
+.confirmbox--wide .confirmbox__q,
+.confirmbox--wide .confirmbox__who,
+.confirmbox--wide .confirmbox__meta { text-align: center; }
+
+.revisegrid {
+  display: grid; gap: 1px;
+  margin: 16px 0 0; padding: 12px 14px;
+  background: var(--fill); border-radius: 12px;
+}
+/* หัวข้อที่เปลี่ยนค่า — ทำให้เห็นชัดว่าแตะอะไรไปบ้าง */
+.revisegrid .scorerow[data-changed='true'] .scorerow__label {
+  color: var(--accent-hover); font-weight: 600;
+}
+.revisewas {
+  font: 600 9.5px var(--font-mono); color: var(--text-faint);
+  background: var(--surface); border: 1px solid var(--border-2);
+  border-radius: 5px; padding: 2px 5px; flex: none;
+}
+
+.revisesum {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px; padding: 10px 14px;
+  background: var(--accent-tint); border-radius: 10px;
+  font: 500 12px var(--font-body); color: var(--accent-hover);
+}
+.revisesum .mono { margin-left: auto; font: 700 14px var(--font-mono); }
+.revisesum .faint { color: var(--text-faint); font-weight: 400; }
+
+.confirmbox--wide .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 780px) {
+  .confirmbox--wide { width: 100%; padding: 20px 18px 18px; }
+  .revisegrid { padding: 10px 11px; }
+}
+
+/* toast ฝั่งอาจารย์ — จอกว้าง ไม่มีกรอบมือถือ จึงตรึงมุมขวาล่างแทน
+   (ฝั่งนักศึกษาเป็น absolute ในกรอบมือถือ ใช้ค่าเดิมของมันไป) */
+.toast--desk {
+  position: fixed; left: auto; right: 18px; bottom: 18px;
+  width: min(380px, calc(100vw - 36px));
+  z-index: 95;
+}
+@media (max-width: 780px) {
+  /* จอแคบ: หลบแถบเตือน "กำลังดูกลุ่มอื่น" ที่อยู่มุมซ้ายล่าง */
+  .toast--desk { left: 12px; right: 12px; bottom: 74px; width: auto; }
+}
