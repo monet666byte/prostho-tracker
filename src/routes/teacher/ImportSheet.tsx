@@ -26,6 +26,7 @@ export default function ImportSheet() {
   const [saving, setSaving] = useState(false);
   // จะทับของเดิมกี่ชิ้น — id นำเข้าคงที่จากเนื้อหา นำเข้าซ้ำจึงทับ ไม่ใช่เพิ่มซ้ำ
   const [dupes, setDupes] = useState(0);
+  const [readError, setReadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const sorted = useMemo(
@@ -51,8 +52,14 @@ export default function ImportSheet() {
   }, [result]);
 
   async function onFile(file: File) {
-    const text = await file.text();
-    preview(text, studentId);
+    // อ่านไฟล์ไม่ได้ (ไฟล์เสีย/เข้ารหัสแปลก) เดิมเงียบสนิท หน้าจอไม่ขยับ คนกดไม่รู้ว่าเกิดอะไร
+    setReadError(null);
+    try {
+      const text = await file.text();
+      preview(text, studentId);
+    } catch (e) {
+      setReadError(t('อ่านไฟล์นี้ไม่ได้ — ต้องเป็นไฟล์ CSV ที่ export จากชีต') + ' · ' + String((e as Error)?.message ?? e));
+    }
   }
 
   async function confirmImport() {
@@ -133,6 +140,11 @@ export default function ImportSheet() {
               {t('หรือวางข้อความ CSV ในช่องด้านล่างก็ได้')}
             </span>
           </div>
+          {readError && (
+            <p style={{ margin: '10px 0 0', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--danger-dark)', background: 'var(--danger-tint)', borderRadius: 10, padding: '9px 12px' }}>
+              {readError}
+            </p>
+          )}
           <textarea
             className="input"
             style={{ minHeight: 90, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11 }}

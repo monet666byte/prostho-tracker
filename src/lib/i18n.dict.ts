@@ -755,4 +755,5 @@ export const DICT: Record<string, string> = {
   'ถ้าเปิดใน "หน้าต่างส่วนตัว" ให้ลองเปิดในหน้าต่างปกติแทน': 'If you are in a Private window, try a normal window instead',
   'ถ้าเครื่องเต็ม ลองลบไฟล์บางส่วนแล้วเปิดใหม่': 'If your device storage is full, free up some space and reload',
   'ถ้ายังไม่ได้ ลองเบราว์เซอร์อื่นแล้วแจ้งผู้พัฒนา': 'If it still fails, try another browser and tell the developer',
+  'อ่านไฟล์นี้ไม่ได้ — ต้องเป็นไฟล์ CSV ที่ export จากชีต': 'Cannot read this file — it must be a CSV exported from the sheet',
 };

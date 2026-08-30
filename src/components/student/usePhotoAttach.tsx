@@ -31,10 +31,16 @@ export function usePhotoAttach(workpieceId: string | undefined, opts: Options = 
     let bad = 0;
     try {
       for (const file of Array.from(files)) {
-        const img = await compressImage(file);
-        if (!img) { bad++; continue; }
-        await addPhoto(workpieceId, offline, img);
-        ok++;
+        // ไฟล์เสีย/รูปแบบแปลก ทำให้ทั้งชุดล้มได้ — ให้ล้มทีละใบแล้วไปต่อ
+        try {
+          const img = await compressImage(file);
+          if (!img) { bad++; continue; }
+          await addPhoto(workpieceId, offline, img);
+          ok++;
+        } catch (e) {
+          console.error('แนบรูปไม่สำเร็จ', file.name, e);
+          bad++;
+        }
       }
     } finally {
       setBusy(false);
