@@ -7,6 +7,11 @@ import { toSheetDate } from './date';
 export const PROGRESSION_COLUMNS = Array.from({ length: 11 }, (_, i) => String(i));
 
 /** คอลัมน์ต้องเรียงตรงกับ tab PTn ของชีตเดิม */
+/**
+ * ชื่อคอลัมน์ตามชีตจริงของภาค — ห้ามแปล
+ * ไฟล์ที่ export ต้องเปิดในชีตเดิมได้ และตัวนำเข้าก็มองหาชื่อพวกนี้ตรงๆ
+ * (บางคอลัมน์เป็นไทยเพราะชีตต้นฉบับเขียนไว้แบบนั้น)
+ */
 export const CSV_COLUMNS = [
   'No.',
   "Patient's Name-Surname",

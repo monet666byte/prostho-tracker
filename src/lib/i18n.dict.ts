@@ -733,4 +733,17 @@ export const DICT: Record<string, string> = {
   'โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น': 'Demo mode — data stays on this device only',
   'ยังไม่เปิดใช้ในช่วงทดลอง — ตอนนี้ยังไม่มีการแจ้งเตือนส่งออกจากระบบ': 'Not available during the trial — the system does not send any notifications yet',
   'แนบแล้ว {n} รูป': '{n} photo(s) attached',
+  // วลีที่ประกอบเป็นข้อความใน audit log (แปลผ่าน tText)
+  'ประเมินคาบ': 'Evaluated session',
+  'แก้คะแนนคาบ': 'Edited scores for session',
+  'ลบเช็คอินคาบ': 'Deleted check-in for session',
+  'เดิมประเมินโดย': 'originally evaluated by',
+  'ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง': 'not their own advisory group',
+  'เปิดดูข้อมูลกลุ่ม': 'Viewed data for group',
+  'รวม': 'total',
+  'รูปต่อ step': 'Photos per step',
+  'ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง': 'Resized automatically \u00b7 shoot while offline, they upload later',
+  'รูปทั้งหมด · {n} รูป': 'All photos \u00b7 {n}',
+  'ยังไม่มีรูปในเคสนี้': 'No photos for this case yet',
+  'แนบรูปตอนบันทึก step เสร็จได้เลย': 'You can attach one when you complete a step',
 };

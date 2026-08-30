@@ -34,10 +34,10 @@ export default function Photos() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>รูปต่อ step</h2>
+          <h2 className="h2" style={{ flex: 1 }}>{t('รูปต่อ step')}</h2>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง
+          {t('ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง')}
         </p>
       </header>
 
@@ -56,12 +56,12 @@ export default function Photos() {
       </div>
 
       <div className="sectiontitle">
-        <h4>รูปทั้งหมด · {photos.length} รูป</h4>
+        <h4>{t('รูปทั้งหมด · {n} รูป', { n: photos.length })}</h4>
       </div>
 
       <div style={{ padding: '0 16px', display: 'grid', gap: 9 }}>
         {photos.length === 0 && (
-          <Empty icon={<Images size={26} />} title="ยังไม่มีรูปในเคสนี้" hint="แนบรูปตอนบันทึก step เสร็จได้เลย" />
+          <Empty icon={<Images size={26} />} title={t('ยังไม่มีรูปในเคสนี้')} hint={t('แนบรูปตอนบันทึก step เสร็จได้เลย')} />
         )}
         {photos.map((p) => {
           const chip = CHIP[p.status];

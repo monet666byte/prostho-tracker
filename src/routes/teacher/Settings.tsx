@@ -5,7 +5,7 @@ import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
 import { useAllStudents, useAllWorkpieces, useAudit } from '../../hooks/data';
 import { clock } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
@@ -16,6 +16,21 @@ const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['perYear', t('ทุกปีต้องจบอย่างน้อย'), 'var(--accent)', t('เกณฑ์รายปี แยกจากเกณฑ์สะสม')],
   ['years', t('เกณฑ์สะสมกี่ปี'), 'var(--text-muted)', t('ปกติ 2 ปี (ชั้นปีที่ 5 และ 6)')],
 ];
+
+/**
+ * ปรับเกณฑ์ทีละขั้น พร้อมกันค่าที่ขัดกันเอง
+ *
+ * Post-core เป็นส่วนย่อยของ Crown/Bridge — ถ้าตั้ง Post-core มากกว่า Crown
+ * จะกลายเป็นเกณฑ์ที่ไม่มีใครทำได้เลย (ต้องมี Post-core 3 ชิ้น ในโควตา Crown 2 ชิ้น)
+ * ปรับตัวใดตัวหนึ่งแล้วดึงอีกตัวตามให้อยู่ในกรอบเสมอ
+ */
+function bumpReq(req: Requirement, key: keyof Requirement, delta: number): Requirement {
+  const next: Requirement = { ...req, [key]: Math.max(0, req[key] + delta) };
+  if (key === 'crown' || key === 'postCoreMin') {
+    next.postCoreMin = Math.min(next.postCoreMin, next.crown);
+  }
+  return next;
+}
 
 export default function Settings() {
   const { settings, updateSettings } = useApp();
@@ -61,14 +76,14 @@ export default function Settings() {
                     </span>
                     <div className="stepper">
                       <button
-                        onClick={() => updateSettings({ req: { ...settings.req, [key]: Math.max(0, settings.req[key] - 1) } })}
+                        onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, -1) })}
                         aria-label={t('ลด')}
                       >
                         <Minus size={13} weight="bold" />
                       </button>
                       <span>{settings.req[key]}</span>
                       <button
-                        onClick={() => updateSettings({ req: { ...settings.req, [key]: settings.req[key] + 1 } })}
+                        onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, +1) })}
                         aria-label={t('เพิ่ม')}
                       >
                         <Plus size={13} weight="bold" />
@@ -152,7 +167,7 @@ export default function Settings() {
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span className="pretty" style={{ display: 'block', font: '500 11.5px/1.45 var(--font-body)', color: 'var(--text-secondary)' }}>
-                        {a.text}
+                        {tText(a.text)}
                       </span>
                       <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 1 }}>
                         {t(a.who)}
