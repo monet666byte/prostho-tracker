@@ -5,7 +5,6 @@
 
 import { lang } from '../lib/i18n';
 import { ORDER, REQ_TYPES, TYPES } from './catalog';
-import { ROUNDS } from './rounds';
 import {
   caseCount, completedInYear, isComplete, isStale, maxProgression, procAt, procList, progression,
 } from './rules';
@@ -71,9 +70,20 @@ export interface RiskRow {
   reason: string;
 }
 
-/** เดือนที่เหลือก่อนคาบสุดท้ายของปีการศึกษา */
+/**
+ * เดือนที่เหลือก่อนคาบสุดท้ายของปีการศึกษา *ปัจจุบัน*
+ *
+ * เดิมอ่านวันจาก ROUNDS ซึ่งเป็นปฏิทินของปี 2569 ที่ฝังตายไว้
+ * ผลคือพอเลย 26 มี.ค. 2570 ไปแล้ว ค่านี้จะเป็น 0 ตลอดกาล
+ * → ทุกคนถูกตีว่า "เสี่ยงสูง" ถาวร และตัวเลขพยากรณ์ทั้งหน้ากลายเป็นขยะ
+ * ระบบนี้ต้องใช้ข้ามปีการศึกษา จึงต้องคิดจากปีที่กำลังอยู่จริง
+ *
+ * ปีการศึกษาไทยเริ่ม มิ.ย. — คาบสุดท้ายอยู่ปลาย มี.ค. ของปีปฏิทินถัดไป
+ * (ยึดตามวันคาบสุดท้ายใน ROUNDS ของปี 2569 เป็นแบบ)
+ */
 function monthsRemaining(now: Date): number {
-  const final = new Date(ROUNDS[ROUNDS.length - 1].dueDate);
+  const startCal = academicYear(now) - 543;      // ปีการศึกษา 2569 → เริ่ม มิ.ย. 2026
+  const final = new Date(startCal + 1, 2, 26);   // 26 มี.ค. ปีถัดไป
   return Math.max(0, (final.getTime() - now.getTime()) / (DAY * 30.4));
 }
 

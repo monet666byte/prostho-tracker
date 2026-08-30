@@ -8,10 +8,8 @@
 
 import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
 import { procList } from '../domain/rules';
-import { MATRIX_ROUNDS } from '../domain/rounds';
 import type {
-  CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, ReportSubmission, Settings, Student,
-  SubmissionStatus, Teacher, WorkType, Workpiece,
+  CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Settings, Student, Teacher, WorkType, Workpiece,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 
@@ -260,19 +258,9 @@ function generateFor(student: Student, seed: number) {
 
 // ─────────────────────────────────────────────────────────────
 
-const SUBMISSION_PATTERN: SubmissionStatus[][] = [
-  ['approved', 'approved', 'sent', 'none', 'none'],
-  ['approved', 'approved', 'approved', 'none', 'none'],
-  ['approved', 'late', 'sent', 'none', 'none'],
-  ['approved', 'approved', 'none', 'none', 'none'],
-  ['approved', 'approved', 'sent', 'none', 'none'],
-  ['late', 'approved', 'sent', 'none', 'none'],
-  ['approved', 'approved', 'approved', 'none', 'none'],
-  ['approved', 'approved', 'none', 'none', 'none'],
-];
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 27;
+export const SEED_VERSION = 28;
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -442,7 +430,6 @@ async function seedIfEmptyInner(): Promise<void> {
   const groups: ClinicGroup[] = [];
   const patients: Patient[] = [];
   const workpieces: Workpiece[] = [];
-  const submissions: ReportSubmission[] = [];
 
   GROUPS.forEach((code, gi) => {
     const advisorIds: [string, string] = [`tc-${code}-1`, `tc-${code}-2`];
@@ -482,30 +469,17 @@ async function seedIfEmptyInner(): Promise<void> {
       workpieces.push(...gen.works);
     }
 
-    const gi = GROUPS.indexOf(student.group);
-    const si = parseInt(student.id.split('-').pop() ?? '1', 10) - 1;
-    // นศ. ก คือคนที่ใช้เดโม — ให้รอบที่กำลังจะถึงยังไม่ส่ง เพื่อให้เห็นการ์ดเตือนทำงานจริง
-    const pattern: SubmissionStatus[] =
-      student.id === DEMO_STUDENT_ID
-        ? ['approved', 'approved', 'none', 'none', 'none']
-        : SUBMISSION_PATTERN[(gi + si) % SUBMISSION_PATTERN.length];
-    MATRIX_ROUNDS.forEach((round, ri) => {
-      submissions.push({
-        id: `${student.id}-${round.id}`,
-        studentId: student.id,
-        roundId: round.id,
-        status: pattern[ri],
-      });
-    });
+    // เดิมตรงนี้สร้างแถว "รอบส่งรายงาน" 96 คน × 7 รอบ = 672 แถว
+    // ให้ระบบรายงานที่ถูกถอดออกไปแล้ว — ข้อมูลที่ไม่มีใครอ่าน แต่ sync ขึ้นเซิร์ฟเวอร์
+    // และไปกองอยู่ในไฟล์สำรองทุกวัน จึงเลิกสร้าง
   }
 
-  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.submissions, db.checkins, db.updates, db.kv], async () => {
+  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.kv], async () => {
     await db.teachers.bulkPut(teachers);
     await db.students.bulkPut(students);
     await db.groups.bulkPut(groups);
     await db.patients.bulkPut(patients);
     await db.workpieces.bulkPut(workpieces);
-    await db.submissions.bulkPut(submissions);
     const checkinRows = buildCheckIns();
     await db.checkins.bulkPut(checkinRows);
     await db.updates.bulkPut(buildDemoUpdates(checkinRows));
