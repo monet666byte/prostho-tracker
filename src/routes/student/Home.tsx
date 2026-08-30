@@ -192,7 +192,7 @@ export default function Home() {
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. Liv')}</span>
-            <span className="groupchip">{(student?.group ?? 'TH-PT7').replace('TH-', '')}</span>
+            <span className="groupchip">{(student?.group ?? '').replace('TH-', '') || '—'}</span>
           </div>
         </div>
         <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label={t('ค้นหา')}>

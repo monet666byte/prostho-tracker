@@ -40,7 +40,9 @@ export default function ExportScreen() {
         <div className="a4">
           <h1>{t('รายงานความก้าวหน้าเคส Prosthodontics · DTPT502')}</h1>
           <div className="sub">
-            {t(student?.name ?? 'นศ. Liv')} · {t('รหัส')} {student?.code ?? '6504049'} · {t('กลุ่ม')} {student?.group ?? 'TH-PT7'} ·
+            {/* ห้ามใส่ค่าเดโมเป็น fallback — เอกสารนี้พิมพ์ออกไปให้อาจารย์ลงนาม
+                ถ้าดึงข้อมูลไม่ได้ ต้องเห็นว่าว่าง ไม่ใช่เห็นรหัสของคนอื่นที่ดูสมจริง */}
+            {t(student?.name ?? '—')} · {t('รหัส')} {student?.code ?? '—'} · {t('กลุ่ม')} {student?.group ?? '—'} ·
             {round ? ` ${t(round.name)} (${thaiLong(round.dueDate)})` : ''}
           </div>
 

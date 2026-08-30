@@ -10,13 +10,23 @@ import { useWorkpieces } from '../../hooks/data';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
-const QUICK = ['CD', 'RPD', 'Post-core', '46', 'DEMO-0307'];
 
 export default function Search() {
   const navigate = useNavigate();
   const session = useApp((s) => s.session);
   const works = useWorkpieces(session?.studentId);
   const [query, setQuery] = useState('');
+
+  /**
+   * ปุ่มลัดสร้างจากงานของตัวเองจริงๆ
+   * เดิม hard-code ไว้ ['CD','RPD','Post-core','46','DEMO-0307'] — สองอันหลังเป็นเศษข้อมูลเดโม
+   * พอใช้จริง HN "DEMO-0307" ไม่มีทางตรงกับใคร กดแล้วได้ 0 ผลลัพธ์เสมอ
+   */
+  const quick = useMemo(() => {
+    const types = [...new Set(works.map((w) => TYPES[w.type].short))].slice(0, 4);
+    const teeth = [...new Set(works.map((w) => w.tooth).filter(Boolean) as string[])].slice(0, 2);
+    return [...types, ...teeth];
+  }, [works]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -56,11 +66,13 @@ export default function Search() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-          {QUICK.map((q) => (
-            <button key={q} className="qchip mono" onClick={() => setQuery(q)}>{q}</button>
-          ))}
-        </div>
+        {quick.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+            {quick.map((q) => (
+              <button key={q} className="qchip mono" onClick={() => setQuery(q)}>{q}</button>
+            ))}
+          </div>
+        )}
       </header>
 
       <div className="sectiontitle">

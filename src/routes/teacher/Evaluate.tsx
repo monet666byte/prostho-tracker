@@ -136,10 +136,28 @@ export default function Evaluate() {
   // "กำลังทำงานอยู่" = แตะปุ่มคะแนนของใครไปแล้ว หรือเปิดกล่องยืนยันค้างไว้
   // ตอนนี้เท่านั้นที่ล็อกรายการ — ถ้ายังไม่ได้แตะอะไร ของใหม่ไหลเข้ามาได้ตามปกติ
   const busyScoring = Object.keys(drafts).length > 0 || confirmId !== null;
+  /**
+   * การล็อกรายการมีไว้กันการ์ดขยับใต้นิ้ว "ภายในกลุ่มเดียวกัน" เท่านั้น
+   *
+   * บั๊กที่เจอ: ถ้าแตะคะแนนค้างไว้แล้วสลับไปกลุ่มอื่น snapshot ของกลุ่มเดิมยังถูกใช้อยู่
+   * ทุกคนในกลุ่มใหม่จึงถูกนับเป็น "ของใหม่" ไปกองหลังแถบสีฟ้า และหัวข้อขึ้นว่า
+   * "รอประเมิน · 0 คน" ทั้งที่มีคนรอจริง — อาจารย์เวรที่สลับมาเซ็นให้กลุ่มอื่น
+   * จะเข้าใจว่าไม่มีใครรอแล้วเดินจากไป
+   * เปลี่ยนกลุ่ม = เริ่มงานชุดใหม่ ต้องล้างทั้ง snapshot และคะแนนที่ค้างของกลุ่มเดิม
+   */
+  const snapGroup = useRef(group);
   useEffect(() => {
+    const switchedGroup = snapGroup.current !== group;
+    if (switchedGroup) {
+      snapGroup.current = group;
+      setDrafts({});
+      setConfirmId(null);
+      setSnapshot(pendingAll.map((c) => c.id));
+      return;
+    }
     if (!busyScoring) setSnapshot(pendingAll.map((c) => c.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busyScoring, pendingKey]);
+  }, [busyScoring, pendingKey, group]);
 
   const confirmRow = confirmId ? pendingAll.find((c) => c.id === confirmId) ?? null : null;
   const confirmStudent = confirmRow ? studentById.get(confirmRow.studentId) : undefined;
