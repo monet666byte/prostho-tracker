@@ -425,10 +425,16 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   :root[data-zoom='lg'] .window { height: calc((100vh - 94px) / 1.18); }
   :root[data-zoom='xl'] .window { height: calc((100vh - 94px) / 1.38); }
 }
-/* มือถือ/แท็บเล็ตจริง: เฟรมเต็มจอ ไม่มี transform ชน — zoom ทั้งหน้าได้ปกติ */
+/* มือถือ/แท็บเล็ตจริง: เฟรมเต็มจอ ไม่มี transform ชน — zoom ทั้งหน้าได้ปกติ
+   ⚠️ ต้องมี .window ด้วย — ฝั่งอาจารย์ไม่มี .phone (นั่นคือกรอบมือถือของฝั่งนักศึกษา)
+   เดิมใส่แต่ .phone ปุ่มขยายตัวอักษรจึงไม่ทำงานเลยบน iPad
+   ซึ่งเป็นเครื่องที่อาจารย์อาวุโสใช้จริงและเป็นเหตุผลที่ทำปุ่มนี้ขึ้นมาตั้งแต่แรก */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
-  :root[data-zoom='lg'] .phone { zoom: 1.18; }
-  :root[data-zoom='xl'] .phone { zoom: 1.38; }
+  :root[data-zoom='lg'] .phone, :root[data-zoom='lg'] .window { zoom: 1.18; }
+  :root[data-zoom='xl'] .phone, :root[data-zoom='xl'] .window { zoom: 1.38; }
+  /* .window สูงเท่าจอ — ต้องหารกลับ ไม่งั้นล้นออกนอกจอตอน zoom */
+  :root[data-zoom='lg'] .window { height: calc((100vh - 94px) / 1.18); }
+  :root[data-zoom='xl'] .window { height: calc((100vh - 94px) / 1.38); }
 }
 
 /* iPad แนวตั้ง (~768px): ฝั่งอาจารย์บีบ sidebar และระยะขอบลง ให้เนื้อหามีที่หายใจ */
