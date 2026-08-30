@@ -1,5 +1,5 @@
 import { ArrowLeft, CaretDown, CaretUp, LinkSimple, PlusCircle } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { createWorkpieces } from '../../data/repo';
@@ -13,6 +13,10 @@ const TYPE_KEYS = (Object.keys(TYPES) as WorkType[]).sort((a, b) => ORDER[a] - O
 
 export default function NewWorkpiece() {
   const navigate = useNavigate();
+  // saving (state) ไว้เปลี่ยนหน้าตาปุ่ม · busy (ref) ไว้กันกดรัวจริงๆ
+  // setState ไม่ทันงานนี้ — คลิกรัว 4 ทีเกิดก่อน React re-render ทุกที ตัวแปร state จึงยังเป็น false ทั้ง 4 ครั้ง
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
   const { session, showToast } = useApp();
 
   const [type, setType] = useState<WorkType>('CD');
@@ -37,7 +41,11 @@ export default function NewWorkpiece() {
   const needsTooth = type === 'PC' || type === 'CB' || type === 'RFX';
 
   async function submit() {
-    if (!session) return;
+    // กันกดรัว — เดิมกด 3 ที ได้ผู้ป่วย 3 คน ชิ้นงาน 6 ชิ้น แล้วนับเข้าเกณฑ์เกินจริง
+    if (!session || busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
     const created = await createWorkpieces({
       studentId: session.studentId,
       patientName: name,
@@ -58,17 +66,21 @@ export default function NewWorkpiece() {
       designRpd: type === 'RPD' ? designRpd : undefined,
       actor: currentActor(),
     });
-    showToast({ message: t('สร้าง {n} ชิ้นงานแล้ว', { n: created.length }), tone: 'success' });
-    navigate('/app/patients');
+      showToast({ message: t('สร้าง {n} ชิ้นงานแล้ว', { n: created.length }), tone: 'success' });
+      navigate('/app/patients');
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
   }
 
   return (
     <PlainShell
       footer={
         <div className="footer">
-          <button className="btn" style={{ height: 56, borderRadius: 16 }} onClick={submit}>
+          <button className="btn" style={{ height: 56, borderRadius: 16 }} disabled={saving} onClick={submit}>
             <PlusCircle size={19} weight="fill" />
-            {t('สร้างชิ้นงาน')}{removable && pair ? t(' (2 ชิ้น)') : ''}
+            {saving ? t('กำลังสร้าง…') : <>{t('สร้างชิ้นงาน')}{removable && pair ? t(' (2 ชิ้น)') : ''}</>}
           </button>
         </div>
       }

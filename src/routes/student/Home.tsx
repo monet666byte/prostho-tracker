@@ -1,5 +1,5 @@
 import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -161,19 +161,28 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayNeedsDetail]);
 
+  const checkingIn = useRef(false);
+
   // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมมาเติมทีหลังได้
   // (ผู้ใช้ขอ: 9 โมงต้องรีบทำงาน ไม่มีเวลาวุ่นวายกับมือถือ · กดล่วงหน้าก่อนเริ่มคาบได้)
   async function quickCheckIn() {
-    if (!session || checkedInToday) return;
-    const now = new Date();
-    const checkinAt = now.toTimeString().slice(0, 5);
-    const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
-    await addCheckIn({
-      studentId: session.studentId, date: today, punctual, checkinAt,
-      noPatient: false, activities: [], note: '', actor: currentActor(),
-    });
-    touch();
-    showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: checkinAt }), tone: 'success' });
+    // ref กันแตะรัว — checkedInToday มาจาก liveQuery กว่าจะอัปเดตทันก็แตะไปหลายทีแล้ว
+    // (ชั้นข้อมูลใน addCheckIn กันไว้อีกชั้น อันนี้ไว้ให้ปุ่มไม่ยิงซ้ำเปล่าๆ)
+    if (!session || checkedInToday || checkingIn.current) return;
+    checkingIn.current = true;
+    try {
+      const now = new Date();
+      const checkinAt = now.toTimeString().slice(0, 5);
+      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      await addCheckIn({
+        studentId: session.studentId, date: today, punctual, checkinAt,
+        noPatient: false, activities: [], note: '', actor: currentActor(),
+      });
+      touch();
+      showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: checkinAt }), tone: 'success' });
+    } finally {
+      checkingIn.current = false;
+    }
   }
 
   return (

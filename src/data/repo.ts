@@ -430,7 +430,52 @@ export interface CheckInInput {
   actor: string;
 }
 
+/**
+ * เช็คอินคาบ — หนึ่งคนต่อหนึ่งวันได้ครั้งเดียวเท่านั้น
+ *
+ * บั๊กที่เจอตอนลองใช้จริง: การ์ดเช็คอินเป็นปุ่มแตะเดียวจบ ถ้ามือถือช้าแล้วนักศึกษาแตะซ้ำ
+ * (ซึ่งเกิดแน่ๆ ตอน 9 โมงคนกำลังรีบ) จะได้เช็คอินซ้ำเท่าจำนวนครั้งที่แตะ
+ * — แตะ 4 ที ได้ 4 รายการ อาจารย์เห็นชื่อเด็กคนเดียวโผล่ 4 แถวในหน้าประเมิน
+ * ซึ่งพังงาน "กันประเมินผิดคน" ทั้งหมดที่ทำไว้
+ *
+ * กันที่ชั้นข้อมูล ไม่ใช่แค่ที่ปุ่ม เพราะ checkedInToday มาจาก liveQuery
+ * กว่าจะ re-render ทัน แตะครั้งที่สองก็ผ่านไปแล้ว
+ */
 export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
+  const existing = await db.checkins
+    .where('studentId').equals(input.studentId)
+    .and((c) => c.date === input.date)
+    .first();
+  if (existing) {
+    /**
+     * มีคาบของวันนี้อยู่แล้ว — เติมข้อมูลลงของเดิม ไม่สร้างใหม่ และไม่ทิ้งสิ่งที่ผู้ใช้พิมพ์
+     *
+     * สองทางที่มาถึงตรงนี้:
+     *  1. แตะการ์ดเช็คอินรัวๆ — input ว่างเปล่า จึงไม่มีอะไรถูกทับ
+     *  2. เปิดฟอร์มแล้วเลือกวันที่ที่เคยเช็คอินไว้ — ต้องเติมกิจกรรมลงคาบเดิม
+     *     (ถ้า return เฉยๆ สิ่งที่ผู้ใช้เพิ่งพิมพ์จะหายพร้อมข้อความว่าบันทึกสำเร็จ)
+     * เวลาเช็คอินและความตรงต่อเวลาไม่แตะ — ล็อกไว้ตั้งแต่ครั้งแรกแล้ว
+     */
+    const merged: CheckIn = {
+      ...existing,
+      activities: input.activities.length ? input.activities : existing.activities,
+      noPatient: input.noPatient || existing.noPatient,
+      patientId: input.noPatient ? undefined : (input.patientId ?? existing.patientId),
+      note: input.note?.trim() || existing.note,
+    };
+    const changed = JSON.stringify(merged) !== JSON.stringify(existing);
+    if (changed) {
+      await db.checkins.put(merged);
+      const label = merged.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม');
+      await logAudit(
+        `${t('เติมรายละเอียดคาบ')} ${checkInDateLabel(input.date)} · ${label}`,
+        input.actor,
+        { studentId: input.studentId },
+      );
+    }
+    return merged;
+  }
+
   const entry: CheckIn = {
     id: uid('ci'),
     studentId: input.studentId,

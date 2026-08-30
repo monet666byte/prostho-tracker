@@ -729,4 +729,5 @@ export const DICT: Record<string, string> = {
   'รอสักครู่': 'Please wait',
   'ถ่ายรูป': 'Take photo',
   'เลือกจากคลัง': 'Choose from library',
+  'กำลังสร้าง…': 'Creating\u2026',
 };
