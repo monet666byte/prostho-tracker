@@ -33,7 +33,8 @@ export class ProsthoDB extends Dexie {
   kv!: EntityTable<KV, 'key'>;
 
   constructor() {
-    super('prostho-tracker');
+    // โหมดเดโม (npm run dev:demo) แยกลิ้นชักคนละใบ — เล่นยังไงก็ไม่แตะข้อมูลจริงที่ sync มาจากเซิร์ฟเวอร์
+    super(import.meta.env.VITE_DEMO === '1' ? 'prostho-tracker-demo' : 'prostho-tracker');
     this.version(1).stores({
       teachers: 'id',
       students: 'id, group, code',
