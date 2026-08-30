@@ -49,6 +49,8 @@ interface AppState {
   cloudUnlinked: boolean;
 
   init: () => Promise<void>;
+  /** ข้อความอธิบายเมื่อเปิดฐานข้อมูลในเครื่องไม่ได้ (โหมดส่วนตัว / เครื่องเต็ม) */
+  initError: string | null;
   signIn: (role: Role) => Promise<void>;
   signInCloud: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -112,6 +114,7 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
+  initError: null,
   session: null,
   settings: DEFAULT_SETTINGS,
   offline: false,
@@ -128,43 +131,57 @@ export const useApp = create<AppState>((set, get) => ({
   revision: 0,
 
   async init() {
-    await seedIfEmpty();
-    const settings = await getSettings();
 
-    if (cloudEnabled) {
-      // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
-      const user = await getAppUser();
-      if (user) {
-        const session = sessionFromUser(user);
-        await kvSet('session', session);
-        const mine = await findMyGroup(session.teacherId);
-        set({
-          ready: true, settings, session, cloudUser: user, cloudUnlinked: false,
-          actorName: await actorNameFor(session),
-          myGroup: mine,
-          teacherGroup: mine ?? get().teacherGroup,
-        });
-        void initCloudSync();
-      } else {
-        // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
-        const signedIn = await hasCloudSession();
-        set({ ready: true, settings, session: null, cloudUser: null, cloudUnlinked: signedIn });
+    try {
+      await seedIfEmpty();
+      const settings = await getSettings();
+
+      if (cloudEnabled) {
+        // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
+        const user = await getAppUser();
+        if (user) {
+          const session = sessionFromUser(user);
+          await kvSet('session', session);
+          const mine = await findMyGroup(session.teacherId);
+          set({
+            ready: true, settings, session, cloudUser: user, cloudUnlinked: false,
+            actorName: await actorNameFor(session),
+            myGroup: mine,
+            teacherGroup: mine ?? get().teacherGroup,
+          });
+          void initCloudSync();
+        } else {
+          // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
+          const signedIn = await hasCloudSession();
+          set({ ready: true, settings, session: null, cloudUser: null, cloudUnlinked: signedIn });
+        }
+        return;
       }
-      return;
+
+      // โหมด local/แชร์เดโม: ล็อกอินปลอมแบบเดิม ทุกคนเห็นป้าย DEMO และเลือกบทบาทเอง
+      const session = await kvGet<Session | null>('session', null);
+      // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
+      let invite = false;
+      try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
+      const mineLocal = session ? await findMyGroup(session.teacherId) : null;
+      set({
+        ready: true, settings, session, installPrompt: invite,
+        actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME,
+        myGroup: mineLocal,
+        teacherGroup: mineLocal ?? get().teacherGroup,
+      });
+  
+
+    } catch (e) {
+
+      // เปิด IndexedDB ไม่ได้ = ใช้แอปไม่ได้เลย ต้องบอกให้รู้ ไม่ใช่ค้างที่จอโหลด
+
+      console.error('init failed', e);
+
+      set({ ready: true, initError: String((e as Error)?.message ?? e) });
+
     }
 
-    // โหมด local/แชร์เดโม: ล็อกอินปลอมแบบเดิม ทุกคนเห็นป้าย DEMO และเลือกบทบาทเอง
-    const session = await kvGet<Session | null>('session', null);
-    // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
-    let invite = false;
-    try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
-    const mineLocal = session ? await findMyGroup(session.teacherId) : null;
-    set({
-      ready: true, settings, session, installPrompt: invite,
-      actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME,
-      myGroup: mineLocal,
-      teacherGroup: mineLocal ?? get().teacherGroup,
-    });
   },
 
   async signInCloud(email, password) {

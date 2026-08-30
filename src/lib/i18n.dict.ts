@@ -750,4 +750,9 @@ export const DICT: Record<string, string> = {
   'นักศึกษายังไม่ได้แนบรูปของชิ้นงานนี้': 'The student has not attached photos for this piece',
   'บันทึกครบแล้วในเครื่องนี้': 'Everything is saved on this device',
   'ข้อมูล ณ': 'as of',
+  'เปิดแอปไม่ได้ในเบราว์เซอร์นี้': 'This browser cannot run the app',
+  'แอปต้องเก็บข้อมูลไว้ในเครื่องเพื่อให้ใช้ตอนเน็ตหลุดได้ แต่เบราว์เซอร์นี้ไม่ยอมให้เก็บ': 'The app stores data on your device so it works offline, but this browser is blocking storage',
+  'ถ้าเปิดใน "หน้าต่างส่วนตัว" ให้ลองเปิดในหน้าต่างปกติแทน': 'If you are in a Private window, try a normal window instead',
+  'ถ้าเครื่องเต็ม ลองลบไฟล์บางส่วนแล้วเปิดใหม่': 'If your device storage is full, free up some space and reload',
+  'ถ้ายังไม่ได้ ลองเบราว์เซอร์อื่นแล้วแจ้งผู้พัฒนา': 'If it still fails, try another browser and tell the developer',
 };

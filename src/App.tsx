@@ -32,6 +32,33 @@ function Guard({ role, children }: { role: 'student' | 'teacher'; children: Reac
   return <>{children}</>;
 }
 
+/**
+ * เปิดฐานข้อมูลในเครื่องไม่ได้ — บอกสาเหตุที่เป็นไปได้เป็นภาษาคน
+ * เดิมกรณีนี้ค้างที่จอโหลดตลอดไปโดยไม่บอกอะไร นักศึกษาจะรายงานได้แค่ "เปิดไม่ขึ้น"
+ */
+function StorageError({ detail }: { detail: string }) {
+  return (
+    <div style={{ height: '100%', display: 'grid', placeItems: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 340, display: 'grid', gap: 12, textAlign: 'center' }}>
+        <div style={{ font: '700 17px var(--font-head)', color: 'var(--text)' }}>
+          {t('เปิดแอปไม่ได้ในเบราว์เซอร์นี้')}
+        </div>
+        <div style={{ font: '400 13px/1.7 var(--font-body)', color: 'var(--text-body)' }}>
+          {t('แอปต้องเก็บข้อมูลไว้ในเครื่องเพื่อให้ใช้ตอนเน็ตหลุดได้ แต่เบราว์เซอร์นี้ไม่ยอมให้เก็บ')}
+        </div>
+        <ul style={{ textAlign: 'left', margin: 0, paddingLeft: 20, font: '400 12.5px/1.8 var(--font-body)', color: 'var(--text-body)' }}>
+          <li>{t('ถ้าเปิดใน "หน้าต่างส่วนตัว" ให้ลองเปิดในหน้าต่างปกติแทน')}</li>
+          <li>{t('ถ้าเครื่องเต็ม ลองลบไฟล์บางส่วนแล้วเปิดใหม่')}</li>
+          <li>{t('ถ้ายังไม่ได้ ลองเบราว์เซอร์อื่นแล้วแจ้งผู้พัฒนา')}</li>
+        </ul>
+        <div style={{ font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', wordBreak: 'break-all', marginTop: 4 }}>
+          {detail}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Splash() {
   // skeleton แทนจอขาว — ช่วง reseed ข้อมูลตัวอย่างใช้เวลา ~1 วินาที
   return (
@@ -48,7 +75,7 @@ function Splash() {
 }
 
 export default function App() {
-  const { ready, init, session } = useApp();
+  const { ready, init, session, initError } = useApp();
 
   useEffect(() => {
     void init();
@@ -67,6 +94,7 @@ export default function App() {
   }, []);
 
   if (!ready) return <Splash />;
+  if (initError) return <StorageError detail={initError} />;
 
   return (
     <HashRouter>

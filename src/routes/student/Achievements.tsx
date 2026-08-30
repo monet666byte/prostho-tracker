@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { t } from '../../lib/i18n';
+import { academicYear } from '../../lib/date';
 
 /**
  * MOCK — หน้าทดลองระบบ achievement (ยังไม่ผูกกับข้อมูลจริง)
@@ -156,7 +157,7 @@ export default function Achievements() {
             style={{ background: WRAPPED[wrappedIndex].bg, color: WRAPPED[wrappedIndex].fg }}
             onClick={() => setWrappedIndex((wrappedIndex + 1) % WRAPPED.length)}
           >
-            <span style={{ font: '400 12px var(--font-body)', opacity: 0.8 }}>{t('ปีการศึกษา')} 2569</span>
+            <span style={{ font: '400 12px var(--font-body)', opacity: 0.8 }}>{t('ปีการศึกษา')} {academicYear(new Date())}</span>
             <span style={{ font: '700 56px/1.1 var(--font-head)' }}>{WRAPPED[wrappedIndex].big}</span>
             <span style={{ font: '600 14px var(--font-head)' }}>{WRAPPED[wrappedIndex].label}</span>
             <span style={{ font: '400 11px/1.5 var(--font-body)', opacity: 0.85 }}>{WRAPPED[wrappedIndex].sub}</span>
