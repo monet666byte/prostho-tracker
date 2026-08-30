@@ -8,7 +8,7 @@ import { CRITERIA, totalScore } from '../domain/checkin';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
   Arch, AuditEntry, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Settings, SubmissionStatus, WorkType, Workpiece, WorkpieceView,
+  CheckIn, DentureClass, Review, ReviewStatus, Settings, WorkType, Workpiece, WorkpieceView,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS } from './seed';
@@ -379,33 +379,10 @@ export async function listReviews(): Promise<Map<string, Review>> {
   return new Map(all.map((r) => [r.workpieceId, r]));
 }
 
-const CYCLE: SubmissionStatus[] = ['none', 'sent', 'approved', 'issue', 'late'];
 
-export async function cycleSubmission(studentId: string, roundId: string, by: string): Promise<void> {
-  const id = `${studentId}-${roundId}`;
-  const cur = await db.submissions.get(id);
-  const next = CYCLE[(CYCLE.indexOf(cur?.status ?? 'none') + 1) % CYCLE.length];
-  await db.submissions.put({ id, studentId, roundId, status: next, approvedBy: next === 'approved' ? by : undefined });
-}
 
-export async function approveRound(studentIds: string[], roundId: string, by: string): Promise<number> {
-  const rows = await db.submissions.where('roundId').equals(roundId).toArray();
-  const target = rows.filter((r) => studentIds.includes(r.studentId) && r.status === 'sent');
-  await db.submissions.bulkPut(target.map((r) => ({ ...r, status: 'approved' as const, approvedBy: by })));
-  if (target.length) await logAudit(`อนุมัติรายงานรอบนี้ ${target.length} คน`, by);
-  return target.length;
-}
 
-/** อาจารย์ตรวจรับ / ตีกลับว่าชิ้นงานเข้าเกณฑ์หรือยัง (คอลัมน์ "ยังไม่เข้าเกณฑ์ ... รอตรวจ" ในชีต) */
-export async function setReportIssue(studentId: string, text: string): Promise<void> {
-  if (text.trim()) await db.issues.put({ studentId, text });
-  else await db.issues.delete(studentId);
-}
 
-export async function listReportIssues(): Promise<Map<string, string>> {
-  const rows = await db.issues.toArray();
-  return new Map(rows.map((r) => [r.studentId, r.text]));
-}
 
 /**
  * ลบชิ้นงาน — ลบประวัติ step, รูป, คิว sync และผลตรวจของชิ้นนั้นทั้งหมด

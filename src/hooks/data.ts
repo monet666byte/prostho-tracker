@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import {
-  listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReportIssues, listReviews,
+  listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviews,
   listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
@@ -72,9 +72,6 @@ export function useAllWorkpieces() {
   return useLiveQuery(() => db.workpieces.toArray(), [], []) ?? [];
 }
 
-export function useSubmissions() {
-  return useLiveQuery(() => db.submissions.toArray(), [], []) ?? [];
-}
 
 export function useCheckIns(studentId: string | undefined) {
   return useLiveQuery(async () => (studentId ? listCheckIns(studentId) : []), [studentId], []) ?? [];
@@ -108,9 +105,6 @@ export function useAllCheckIns() {
   return useLiveQuery(() => listAllCheckIns(), [], []) ?? [];
 }
 
-export function useReportIssues(): Map<string, string> {
-  return useLiveQuery(() => listReportIssues(), [], new Map<string, string>()) ?? new Map<string, string>();
-}
 
 export function useAllPatients() {
   return useLiveQuery(() => db.patients.toArray(), [], []) ?? [];

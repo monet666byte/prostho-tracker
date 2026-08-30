@@ -1,4 +1,4 @@
-import { ArrowLeft, FileCsv, FilePdf, PaperPlaneTilt } from '@phosphor-icons/react';
+import { ArrowLeft, FileCsv, FilePdf } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { CSV_COLUMNS, PROGRESSION_COLUMNS, downloadCsv, passedProgressions } from '../../lib/export';
@@ -111,18 +111,6 @@ export default function ExportScreen() {
           <FileCsv size={18} />
           {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')}
         </button>
-        {/*
-          ปุ่มนี้เคยขึ้นข้อความ "ส่งให้ อ. ก. แล้ว · รอตรวจ" ทั้งที่ไม่ได้บันทึกอะไรเลย
-          — นักศึกษาเชื่อว่าส่งแล้ว แต่ไม่มีอาจารย์คนไหนเห็น และเปิดใหม่ก็หาย
-          ยังไม่มีระบบรับรายงานฝั่งอาจารย์จริง จึงปิดไว้ก่อนแทนที่จะโกหก
-        */}
-        <button className="btn btn--sec" style={{ height: 48 }} disabled title={t('ยังไม่เปิดใช้')}>
-          <PaperPlaneTilt size={18} />
-          {t('ส่งให้อาจารย์ในระบบ (ยังไม่เปิดใช้)')}
-        </button>
-        <p style={{ margin: '-2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('ตอนนี้ยังใช้วิธีเดิม — พิมพ์ออกมาให้อาจารย์ลงนาม แล้วส่งเลขาภาควิชา')}
-        </p>
 
         <div className="sectiontitle" style={{ padding: '8px 0 6px' }}>
           <h4>{t('คอลัมน์ใน CSV')}</h4>
