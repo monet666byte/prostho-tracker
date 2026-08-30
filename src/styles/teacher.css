@@ -684,3 +684,9 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   /* กล่องยืนยันเป็นด่านสุดท้ายก่อนคะแนนลง ปุ่มต้องกดง่ายและกดพลาดยาก */
   .confirmbox__actions .btn { height: 52px; }
 }
+
+/* แถบเตือน "กำลังดูกลุ่มอื่น" ก็ต้องพ้นแถบขีดขาวของ iPhone เหมือนกัน */
+@media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  .offgroup { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .toast--desk { bottom: calc(74px + env(safe-area-inset-bottom)); }
+}

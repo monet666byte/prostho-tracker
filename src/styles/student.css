@@ -444,3 +444,19 @@
   transition: transform 0.12s ease, background 0.12s ease;
 }
 .herocase__btn:active { transform: scale(0.985); background: var(--accent-hover); }
+
+/* ── กันขอบจอ iPhone ตอนเปิดเป็นแอปเต็มจอ (เพิ่มลงหน้าจอโฮม) ───────────────
+   index.html ตั้ง viewport-fit=cover ไว้ เพื่อให้สีพื้นเต็มขอบจอสวยๆ
+   แต่ผลข้างเคียงคือเนื้อหาไหลไปอยู่ใต้รอยบากบนและแถบขีดขาวล่าง
+   ถ้าไม่กันไว้ แถบเมนูล่างจะโดนแถบขีดขาวทับจนกดยาก และหัวจอชนรอยบาก
+   บนเครื่องที่ไม่มีขอบพิเศษ env() = 0 จึงไม่กระทบอะไร                        */
+@media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  .tabbar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); height: auto; min-height: var(--tabbar-h); }
+  .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .s-header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
+  .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
+  .rolefab { bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .rolefab--low { bottom: calc(18px + env(safe-area-inset-bottom)); }
+}
