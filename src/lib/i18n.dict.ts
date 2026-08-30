@@ -730,4 +730,6 @@ export const DICT: Record<string, string> = {
   'ถ่ายรูป': 'Take photo',
   'เลือกจากคลัง': 'Choose from library',
   'กำลังสร้าง…': 'Creating\u2026',
+  'โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น': 'Demo mode — data stays on this device only',
+  'ยังไม่เปิดใช้ในช่วงทดลอง — ตอนนี้ยังไม่มีการแจ้งเตือนส่งออกจากระบบ': 'Not available during the trial — the system does not send any notifications yet',
 };

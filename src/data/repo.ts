@@ -505,6 +505,7 @@ export async function updateCheckIn(
   patch: { activities: string[]; patientId?: string; noPatient?: boolean; note?: string },
   actor: string,
 ): Promise<void> {
+  const before = await db.checkins.get(id);
   await db.checkins.update(id, {
     activities: patch.activities,
     noPatient: !!patch.noPatient,
@@ -512,16 +513,26 @@ export async function updateCheckIn(
     note: patch.note?.trim() || undefined,
   });
   const row = await db.checkins.get(id);
+  // กดปุ่มบันทึกซ้ำโดยไม่ได้แก้อะไร ไม่ควรงอกบรรทัดใน audit — ประวัติต้องอ่านแล้วเชื่อได้
+  if (before && row && JSON.stringify(before) === JSON.stringify(row)) return;
   await logAudit(
-    `${t('เติมรายละเอียดคาบ')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
+    // ต้องมีวันที่ ไม่งั้นย้อนดูไม่ออกว่าแก้คาบไหน (บรรทัดอื่นในระบบมีวันที่หมด)
+    `${t('เติมรายละเอียดคาบ')} ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
     actor,
     { studentId: row?.studentId },
   );
 }
 
+/**
+ * วันที่สำหรับข้อความใน audit log
+ * - ต้องมีปีด้วย เพราะหลักสูตร 2 ปี "23/8" เฉยๆ ย้อนดูแล้วแยกไม่ออกว่าปีไหน
+ * - กันวันที่เสีย ไม่งั้นได้ "NaN/NaN" ฝังอยู่ในประวัติที่ลบไม่ได้
+ */
 function checkInDateLabel(iso: string): string {
   const d = new Date(iso);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
+  if (Number.isNaN(d.getTime())) return '(ไม่ทราบวันที่)';
+  const be = String(d.getFullYear() + 543).slice(-2);
+  return `${d.getDate()}/${d.getMonth() + 1}/${be}`;
 }
 
 export async function listCheckIns(studentId: string): Promise<CheckIn[]> {

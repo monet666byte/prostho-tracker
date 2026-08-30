@@ -9,14 +9,13 @@ import { syncNow } from '../../data/repo';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { cloudEnabled } from '../../lib/cloud';
 import { currentActor, useApp } from '../../store/app';
-import { useState } from 'react';
 
 export default function Sync() {
   const navigate = useNavigate();
   const { offline, setOffline, showToast, touch, switchRole, resetDemo, signOut } = useApp();
   const queue = useQueue();
-  const [notif, setNotif] = useState({ push: true, line: false, email: true });
 
   return (
     <PlainShell>
@@ -48,7 +47,9 @@ export default function Sync() {
             <span className="pretty" style={{ display: 'block', font: '400 11px/1.55 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
               {offline
                 ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
-                : t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')}
+                : cloudEnabled
+                  ? t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')
+                  : t('โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น')}
             </span>
           </span>
           <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
@@ -99,9 +100,15 @@ export default function Sync() {
         </div>
 
         <div className="card" style={{ padding: 14 }}>
+          {/*
+            ปุ่มเปิด/ปิดพวกนี้เคยกดได้และเปิดค้างไว้ตั้งแต่แรก (push/email = เปิด)
+            ทั้งที่ยังไม่ได้ทำระบบแจ้งเตือนเลยสักช่องทาง — นักศึกษาเห็นว่าเปิดอยู่
+            ก็จะรอการแจ้งเตือนที่ไม่มีวันมา แล้วพลาดกำหนดส่ง
+            ปิดไว้ก่อนและบอกตรงๆ ว่ายังไม่เปิดใช้ จนกว่าจะทำจริง
+          */}
           <h4 style={{ margin: '0 0 3px', font: '600 13.5px var(--font-head)' }}>{t('การแจ้งเตือน')}</h4>
-          <p style={{ margin: '0 0 6px', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-            
+          <p style={{ margin: '0 0 6px', font: '500 10.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+            {t('ยังไม่เปิดใช้ในช่วงทดลอง — ตอนนี้ยังไม่มีการแจ้งเตือนส่งออกจากระบบ')}
           </p>
           {(
             [
@@ -116,12 +123,7 @@ export default function Sync() {
                 <span style={{ display: 'block', font: '500 12px var(--font-body)' }}>{label}</span>
                 <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>{hint}</span>
               </span>
-              <button
-                className="toggle"
-                data-on={notif[key]}
-                onClick={() => setNotif({ ...notif, [key]: !notif[key] })}
-                aria-label={label}
-              >
+              <button className="toggle" data-on={false} disabled aria-label={label} title={t('ยังไม่เปิดใช้')}>
                 <i />
               </button>
             </div>
