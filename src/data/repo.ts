@@ -120,19 +120,15 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
   await db.transaction('rw', [db.workpieces, db.updates, db.queue, db.photos, db.audit], async () => {
     await db.workpieces.put(updated);
     await db.updates.add(update);
+    // เดิมตรงนี้สร้าง "รูป" เปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมา ทั้งที่ไม่มีไฟล์รูปอยู่จริง
+    // ตอนนี้รูปถูกแนบจริงผ่าน usePhotoAttach ตั้งแต่ก่อนกดยืนยัน — แค่ผูกเข้ากับ update นี้
     if (input.withPhoto) {
-      const photo: Photo = {
-        id: uid('ph'),
-        workpieceId: w.id,
-        progression: next.progression,
-        stepLabel: label,
-        sizeLabel: `${(1.4 + Math.random() * 1.6).toFixed(1)} MB`,
-        status: input.offline ? 'queue' : 'ok',
-        createdAt: new Date().toISOString(),
-      };
-      await db.photos.add(photo);
-      update.photoIds.push(photo.id);
-      await db.updates.put(update);
+      const recent = await db.photos.where('workpieceId').equals(w.id).toArray();
+      const ids = recent.map((ph) => ph.id);
+      if (ids.length) {
+        update.photoIds.push(...ids);
+        await db.updates.put(update);
+      }
     }
     if (input.offline) {
       const item: QueueItem = {
@@ -226,7 +222,10 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   await db.patients.add({
     id: patientId,
     name: input.patientName.trim() || 'ผู้ป่วยใหม่',
-    hn: input.hn.trim() || `DEMO-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    // เดิมช่องว่างจะได้ HN ปลอม "DEMO-1234" — ผู้ป่วยจริงที่ไม่มี HN จริง
+    // จับคู่กับแฟ้มของโรงพยาบาลไม่ได้ และคนละคนที่เว้นว่างเหมือนกันจะกลายเป็นคนละ HN
+    // ฟอร์มบังคับกรอกแล้ว ตรงนี้กันไว้อีกชั้นเฉยๆ
+    hn: input.hn.trim(),
     sexAge: input.sexAge.trim() || 'ไม่ระบุ',
     ownerStudentId: input.studentId,
   });

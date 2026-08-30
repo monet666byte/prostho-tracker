@@ -29,6 +29,8 @@ export default function NewWorkpiece() {
   const [more, setMore] = useState(false);
   const [name, setName] = useState('');
   const [hn, setHn] = useState('');
+  // ชื่อกับ HN เป็นตัวระบุผู้ป่วย ขาดไม่ได้ — ตัวนำเข้าจากชีตก็ตีแถวที่ไม่มี HN เป็นใช้ไม่ได้เหมือนกัน
+  const canSave = name.trim().length > 0 && hn.trim().length > 0;
   const [sexAge, setSexAge] = useState('');
   const [payment, setPayment] = useState<Payment>('ยังไม่ชำระ');
   const [sect2Removable, setSect2Removable] = useState(true);
@@ -78,7 +80,7 @@ export default function NewWorkpiece() {
     <PlainShell
       footer={
         <div className="footer">
-          <button className="btn" style={{ height: 56, borderRadius: 16 }} disabled={saving} onClick={submit}>
+          <button className="btn" style={{ height: 56, borderRadius: 16 }} disabled={saving || !canSave} onClick={submit}>
             <PlusCircle size={19} weight="fill" />
             {saving ? t('กำลังสร้าง…') : <>{t('สร้างชิ้นงาน')}{removable && pair ? t(' (2 ชิ้น)') : ''}</>}
           </button>

@@ -3,7 +3,8 @@ import { advanceStep } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, nextProc } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
-import { useWorkpiece, useWorkpieces } from '../../hooks/data';
+import { useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
+import { usePhotoAttach } from './usePhotoAttach';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
 
@@ -11,6 +12,13 @@ export function ConfirmSheet() {
   const { sheet, closeSheet, patchSheet, offline, showToast, session, settings, touch } = useApp();
   const w = useWorkpiece(sheet?.workpieceId);
   const all = useWorkpieces(session?.studentId);
+  /**
+   * ปุ่ม "แนบรูป" เดิมแค่สลับธง แล้วขึ้นว่า "แนบแล้ว 1 รูป" โดยไม่มีรูปจริงสักใบ
+   * (advanceStep จะสร้างแถวรูปเปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมาให้ด้วย)
+   * ตอนนี้เปิดตัวเลือกไฟล์จริง และนับจากรูปที่มีอยู่จริงของชิ้นงานนี้
+   */
+  const attach = usePhotoAttach(sheet?.workpieceId);
+  const shots = useWorkpiecePhotos(sheet?.workpieceId);
   if (!sheet || !w) return null;
 
   const next = nextProc(w);
@@ -22,7 +30,7 @@ export function ConfirmSheet() {
     const res = await advanceStep({
       workpieceId: w.id,
       performedAt: sheet.performedAt,
-      withPhoto: sheet.withPhoto,
+      withPhoto: shots.length > 0,
       offline,
       actor: currentActor(),
     });
@@ -104,20 +112,22 @@ export function ConfirmSheet() {
               />
             </span>
           </label>
+          {attach.input}
           <button
             type="button"
             className="dashed"
-            onClick={() => patchSheet({ withPhoto: !sheet.withPhoto })}
+            disabled={attach.busy}
+            onClick={attach.open}
             style={{
               width: 104, marginTop: 22, height: 44, display: 'grid', placeItems: 'center', gap: 2,
-              borderColor: sheet.withPhoto ? 'var(--accent)' : undefined,
-              background: sheet.withPhoto ? 'var(--accent-tint)' : undefined,
-              color: sheet.withPhoto ? 'var(--accent)' : 'var(--text-muted)',
+              borderColor: shots.length ? 'var(--accent)' : undefined,
+              background: shots.length ? 'var(--accent-tint)' : undefined,
+              color: shots.length ? 'var(--accent)' : 'var(--text-muted)',
               font: '600 11px var(--font-body)',
             }}
           >
-            {sheet.withPhoto ? <ImageSquare size={17} weight="fill" /> : <CameraPlus size={17} />}
-            {sheet.withPhoto ? t('แนบแล้ว 1 รูป') : t('แนบรูป')}
+            {shots.length ? <ImageSquare size={17} weight="fill" /> : <CameraPlus size={17} />}
+            {attach.busy ? t('กำลังย่อรูป…') : shots.length ? t('แนบแล้ว {n} รูป', { n: shots.length }) : t('แนบรูป')}
           </button>
         </div>
 
