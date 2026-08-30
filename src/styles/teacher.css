@@ -483,10 +483,12 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 }
 
 /* โหมดตัวใหญ่ = ผู้ใช้บอกว่าอ่านยาก — เพิ่ม contrast ของตัวหนังสือรองไปด้วย */
+/* โหมดตัวใหญ่ = ผู้ใช้บอกว่าอ่านยาก — เข้มกว่าค่าปกติอีกขั้น
+   (ค่าปกติใหม่คือ faint #667085 / muted #525c6e ซึ่งผ่าน 4.5:1 อยู่แล้ว) */
 :root[data-zoom='lg'], :root[data-zoom='xl'] {
-  --text-faint: #6b7585;
-  --text-muted: #4e586a;
-  --text-disabled: #98a2b3;
+  --text-faint: #596375;
+  --text-muted: #454e5e;
+  --text-disabled: #8b95a5;
 }
 
 /* ปุ่มคะแนน 0–3 ใหญ่ขึ้นเสมอ (ของเดิม 26px เล็กไปสำหรับทุกคน) */
