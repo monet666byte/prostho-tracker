@@ -746,4 +746,6 @@ export const DICT: Record<string, string> = {
   'รูปทั้งหมด · {n} รูป': 'All photos \u00b7 {n}',
   'ยังไม่มีรูปในเคสนี้': 'No photos for this case yet',
   'แนบรูปตอนบันทึก step เสร็จได้เลย': 'You can attach one when you complete a step',
+  'รูปงานที่นักศึกษาแนบ · {n} รูป': 'Photos attached by the student \u00b7 {n}',
+  'นักศึกษายังไม่ได้แนบรูปของชิ้นงานนี้': 'The student has not attached photos for this piece',
 };

@@ -50,6 +50,19 @@ export default function Review() {
   const active = groupStudents.find((s) => s.id === activeId);
   const works = useWorkpieces(activeId);
 
+  /**
+   * รูปงานจริงของแต่ละชิ้น — เดิมตรงนี้เป็นช่องรูปเปล่า 2 ช่องกับป้ายว่า
+   * "2 รูป (เดโม — ยังไม่มีรูปจริง)" ตอนนี้ระบบเก็บรูปจริงแล้วจึงดึงมาแสดง
+   */
+  const photoByWork = useLiveQuery(async () => {
+    const ids = works.map((w) => w.id);
+    if (!ids.length) return new Map<string, { id: string; dataUrl?: string; stepLabel: string }[]>();
+    const rows = await db.photos.where('workpieceId').anyOf(ids).toArray();
+    const map = new Map<string, { id: string; dataUrl?: string; stepLabel: string }[]>();
+    rows.forEach((ph) => map.set(ph.workpieceId, [...(map.get(ph.workpieceId) ?? []), ph]));
+    return map;
+  }, [works.map((w) => w.id).join(',')], new Map()) ?? new Map();
+
   const [filter, setFilter] = useState<Filter>('all');
   const [comments, setComments] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -204,15 +217,25 @@ export default function Review() {
 
                 {opened && (
                   <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-                    <div style={{ flex: '0 1 auto' }}>
-                      <div style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)', marginBottom: 5 }}>
-                        {t('รูปงานที่นักศึกษาแนบ · 2 รูป (เดโม — ยังไม่มีรูปจริง)')}
-                      </div>
-                      <div style={{ display: 'flex', gap: 7 }}>
-                        <PhotoSlot size={64} filled />
-                        <PhotoSlot size={64} filled />
-                      </div>
-                    </div>
+                    {(() => {
+                      const shots = (photoByWork.get(w.id) ?? []) as { id: string; dataUrl?: string; stepLabel: string }[];
+                      return (
+                        <div style={{ flex: '0 1 auto' }}>
+                          <div style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)', marginBottom: 5 }}>
+                            {shots.length
+                              ? t('รูปงานที่นักศึกษาแนบ · {n} รูป', { n: shots.length })
+                              : t('นักศึกษายังไม่ได้แนบรูปของชิ้นงานนี้')}
+                          </div>
+                          {shots.length > 0 && (
+                            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                              {shots.slice(0, 6).map((ph) => (
+                                <PhotoSlot key={ph.id} size={64} filled src={ph.dataUrl} alt={ph.stepLabel} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ flex: '1 1 280px', minWidth: 260 }}>
                       <textarea
