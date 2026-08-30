@@ -64,7 +64,11 @@ export default function Sync() {
           </div>
 
           {queue.length === 0 ? (
-            <Empty icon={<CloudCheck size={26} />} title={t('ไม่มีรายการค้าง')} hint={t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว')} />
+            <Empty
+              icon={<CloudCheck size={26} />}
+              title={t('ไม่มีรายการค้าง')}
+              hint={cloudEnabled ? t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว') : t('บันทึกครบแล้วในเครื่องนี้')}
+            />
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
               {queue.map((q) => (
