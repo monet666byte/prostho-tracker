@@ -13,6 +13,7 @@ import type {
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS } from './seed';
 import { t } from '../lib/i18n';
+import { formatBytes } from '../lib/image';
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -323,7 +324,20 @@ export async function listPhotos(studentId: string): Promise<Array<Photo & { det
     .map((p) => ({ ...p, detail: byId.get(p.workpieceId)?.detail ?? '' }));
 }
 
-export async function addPhoto(workpieceId: string, offline: boolean): Promise<void> {
+/**
+ * แนบรูปงานเข้ากับ step ปัจจุบันของชิ้นงาน
+ *
+ * เดิมฟังก์ชันนี้ไม่รับไฟล์เลย — สร้างแถวเปล่าพร้อม "ขนาดไฟล์" ที่สุ่มขึ้นมา
+ * หน้าจอจึงขึ้นว่า "อัปโหลดรูปแล้ว" ทั้งที่ไม่มีรูปอยู่จริงสักใบ
+ *
+ * TODO เมื่อขยายเกินกลุ่มทดลอง: ย้ายไป Supabase Storage แล้วเก็บแค่ลิงก์
+ * ตอนนี้ data URL อยู่ในแถวเดียวกับข้อมูลอื่น พอสำหรับ 8 คน แต่ 96 คนจะหนัก
+ */
+export async function addPhoto(
+  workpieceId: string,
+  offline: boolean,
+  image: { dataUrl: string; bytes: number },
+): Promise<void> {
   const w = await db.workpieces.get(workpieceId);
   if (!w) return;
   const cur = procAt(w, Math.max(0, w.procIndex));
@@ -332,7 +346,8 @@ export async function addPhoto(workpieceId: string, offline: boolean): Promise<v
     workpieceId,
     progression: cur?.progression ?? 0,
     stepLabel: cur ? procLabel(w.type, cur) : TYPES[w.type].prefix,
-    sizeLabel: `${(1.4 + Math.random() * 1.6).toFixed(1)} MB`,
+    dataUrl: image.dataUrl,
+    sizeLabel: formatBytes(image.bytes),
     status: offline ? 'queue' : 'ok',
     createdAt: new Date().toISOString(),
   });

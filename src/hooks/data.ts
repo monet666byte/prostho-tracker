@@ -39,6 +39,15 @@ export function usePhotos(studentId: string | undefined) {
   return useLiveQuery(async () => (studentId ? listPhotos(studentId) : []), [studentId], []) ?? [];
 }
 
+/** รูปของชิ้นงานชิ้นเดียว — ใช้โชว์ในหน้ารายละเอียด */
+export function useWorkpiecePhotos(workpieceId: string | undefined) {
+  return useLiveQuery(
+    async () => (workpieceId ? db.photos.where('workpieceId').equals(workpieceId).toArray() : []),
+    [workpieceId],
+    [],
+  ) ?? [];
+}
+
 export function useAudit(limit = 12) {
   return useLiveQuery(() => listAudit(limit), [limit], []) ?? [];
 }

@@ -66,7 +66,17 @@ export function Empty({ icon, title, hint }: { icon: ReactNode; title: string; h
   );
 }
 
-export function PhotoSlot({ size = 52, filled }: { size?: number; filled?: boolean }) {
+export function PhotoSlot({ size = 52, filled, src, alt }: { size?: number; filled?: boolean; src?: string; alt?: string }) {
+  // มีรูปจริงก็โชว์รูป — ไอคอนกล้องไว้สำหรับช่องที่ยังว่าง
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={alt ?? ''}
+        style={{ width: size, height: size, borderRadius: 10, objectFit: 'cover', flex: 'none', background: 'var(--fill)' }}
+      />
+    );
+  }
   return (
     <span
       style={{

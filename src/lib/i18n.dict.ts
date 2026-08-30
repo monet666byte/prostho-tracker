@@ -720,4 +720,13 @@ export const DICT: Record<string, string> = {
   'เคยนำเข้าไปแล้ว': 'already imported before',
   'นำเข้าซ้ำได้ไม่เกิดข้อมูลซ้ำ — {n} ชิ้นที่เคยนำเข้าจะถูกเขียนทับด้วยค่าจากไฟล์นี้': 'Re-importing does not duplicate — {n} existing item(s) will be overwritten from this file',
   'นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าไฟล์เดิมซ้ำจะทับของเดิม ไม่เพิ่มซ้ำ': 'Imported data reaches the server within seconds \u00b7 re-importing the same file overwrites rather than duplicates',
+  'ยังไม่มีชิ้นงานที่กำลังทำ — สร้างชิ้นงานก่อนแนบรูป': 'No active workpiece yet — create one before attaching photos',
+  'เก็บรูปแล้ว {n} รูป · อีก {b} รูปใช้ไม่ได้': 'Saved {n} photo(s) \u00b7 {b} could not be used',
+  'ใช้ไฟล์นี้ไม่ได้ — ต้องเป็นไฟล์รูป และไม่ใหญ่เกินไป': 'Cannot use this file — it must be an image and not too large',
+  'เก็บรูปในเครื่องแล้ว {n} รูป · จะส่งขึ้นเองเมื่อเน็ตกลับมา': 'Saved {n} photo(s) on this device \u00b7 they upload when you are back online',
+  'เก็บรูปแล้ว {n} รูป': 'Saved {n} photo(s)',
+  'กำลังย่อรูป…': 'Resizing\u2026',
+  'รอสักครู่': 'Please wait',
+  'ถ่ายรูป': 'Take photo',
+  'เลือกจากคลัง': 'Choose from library',
 };

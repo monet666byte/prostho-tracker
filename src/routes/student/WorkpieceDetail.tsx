@@ -9,12 +9,12 @@ import {
 } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { PlainShell } from '../../components/student/Shell';
-import { addPhoto } from '../../data/repo';
+import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { TYPES } from '../../domain/catalog';
 import {
   currentProc, isComplete, maxProgression, nextProc, percentCompleted, progression, stepGroups,
 } from '../../domain/rules';
-import { usePending, useWorkpiece } from '../../hooks/data';
+import { usePending, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
@@ -24,9 +24,12 @@ export default function WorkpieceDetail() {
   const navigate = useNavigate();
   const w = useWorkpiece(id);
   const pending = usePending();
-  const { openSheet, offline, showToast } = useApp();
+  const { openSheet } = useApp();
   // step ที่ผู้ใช้กดกางดูเอง (นอกเหนือจาก step ที่กำลังทำซึ่งกางอยู่แล้ว)
   const [openStep, setOpenStep] = useState<number | null>(null);
+  // ต้องเรียกก่อน early return ด้านล่าง — กฎของ hook
+  const attach = usePhotoAttach(id);
+  const shots = useWorkpiecePhotos(id);
 
   if (!w) return <PlainShell><div style={{ padding: 24 }}>{t('ไม่พบชิ้นงานนี้')}</div></PlainShell>;
 
@@ -67,14 +70,9 @@ export default function WorkpieceDetail() {
         </div>
       )}
       <div style={{ display: 'flex', gap: 9, marginTop: 8 }}>
-        <button
-          className="btn btn--sec"
-          onClick={async () => {
-            await addPhoto(w.id, offline);
-            showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('แนบรูปแล้ว'), tone: offline ? 'warning' : 'default' });
-          }}
-        >
-          <CameraPlus size={16} /> {t('แนบรูป')}
+        {attach.input}
+        <button className="btn btn--sec" disabled={attach.busy} onClick={attach.open}>
+          <CameraPlus size={16} /> {attach.busy ? t('กำลังย่อรูป…') : t('แนบรูป')}
         </button>
         <button className="btn btn--sec" onClick={() => navigate('/app/photos')}>
           <NotePencil size={16} /> {t('บันทึกโน้ต')}
@@ -202,15 +200,13 @@ export default function WorkpieceDetail() {
                     })}
                     {g.state === 'active' && (
                     <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
-                      <PhotoSlot filled />
-                      <PhotoSlot filled />
+                      {shots.slice(0, 4).map((ph) => (
+                        <PhotoSlot key={ph.id} src={ph.dataUrl} alt={ph.stepLabel} filled />
+                      ))}
                       <button
                         className="dashed"
                         style={{ width: 52, height: 52, display: 'grid', placeItems: 'center', color: 'var(--accent)' }}
-                        onClick={async () => {
-                          await addPhoto(w.id, offline);
-                          showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('แนบรูปแล้ว'), tone: offline ? 'warning' : 'default' });
-                        }}
+                        onClick={attach.open}
                         aria-label={t('เพิ่มรูป')}
                       >
                         <CameraPlus size={19} />

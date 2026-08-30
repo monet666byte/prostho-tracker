@@ -2,12 +2,13 @@ import { ArrowLeft, Camera, Images, WarningCircle } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom';
 import { Empty, PhotoSlot } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
-import { addPhoto, retryPhoto } from '../../data/repo';
+import { retryPhoto } from '../../data/repo';
 import { usePhotos, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { useApp } from '../../store/app';
 import type { PhotoStatus } from '../../domain/types';
 import { t, tText } from '../../lib/i18n';
+import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 
 const CHIP: Record<PhotoStatus, { label: string; bg: string; fg: string }> = {
   ok: { label: t('อัปโหลดแล้ว'), bg: 'var(--success-tint)', fg: 'var(--success)' },
@@ -21,12 +22,10 @@ export default function Photos() {
   const photos = usePhotos(session?.studentId);
   const works = useWorkpieces(session?.studentId);
 
-  async function shoot() {
-    const target = works.find((w) => w.procIndex >= 0);
-    if (!target) return;
-    await addPhoto(target.id, offline);
-    showToast({ message: offline ? t('เก็บรูปในเครื่อง · รอ sync') : t('อัปโหลดรูปแล้ว'), tone: offline ? 'warning' : 'default' });
-  }
+  const target = works.find((w) => w.procIndex >= 0);
+  const cam = usePhotoAttach(target?.id, { camera: true });
+  const lib = usePhotoAttach(target?.id);
+  const busy = cam.busy || lib.busy;
 
   return (
     <PlainShell>
@@ -38,18 +37,21 @@ export default function Photos() {
           <h2 className="h2" style={{ flex: 1 }}>รูปต่อ step</h2>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          บีบอัดอัตโนมัติ · เข้าคิวเมื่อออฟไลน์
+          ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง
         </p>
       </header>
 
+      {cam.input}
+      {lib.input}
+
       <div style={{ display: 'flex', gap: 11, padding: '14px 16px 0' }}>
-        <button className="card" style={bigBtn} onClick={shoot}>
+        <button className="card" style={bigBtn} disabled={busy} onClick={cam.open}>
           <Camera size={24} weight="fill" color="var(--accent)" />
-          ถ่ายรูป
+          {busy ? t('กำลังย่อรูป…') : t('ถ่ายรูป')}
         </button>
-        <button className="card" style={bigBtn} onClick={shoot}>
+        <button className="card" style={bigBtn} disabled={busy} onClick={lib.open}>
           <Images size={24} weight="fill" color="var(--accent)" />
-          เลือกจากคลัง
+          {busy ? t('รอสักครู่') : t('เลือกจากคลัง')}
         </button>
       </div>
 
@@ -74,7 +76,7 @@ export default function Photos() {
                 showToast({ message: t('ลองส่งรูปใหม่แล้ว'), tone: 'default' });
               }}
             >
-              <PhotoSlot size={74} filled />
+              <PhotoSlot size={74} filled src={p.dataUrl} alt={p.stepLabel} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', font: '500 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
                   {p.stepLabel}
@@ -83,7 +85,7 @@ export default function Photos() {
                   {tText(p.detail)}
                 </span>
                 <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>
-                  {thaiShort(p.createdAt)} · {p.sizeLabel} · บีบอัดอัตโนมัติ
+                  {thaiShort(p.createdAt)} · {p.sizeLabel}
                 </span>
               </span>
               <span className="chip" style={{ background: chip.bg, color: chip.fg, flex: 'none' }}>
