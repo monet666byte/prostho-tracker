@@ -136,32 +136,48 @@ async function flush(): Promise<void> {
     flushTimer = null;
   }
   if (!supabase) return;
+  /**
+   * ⚠️ ห้ามล้างทั้งชุดหลัง await
+   *
+   * ระหว่างรอเน็ต (bulkGet + upsert กินเวลาเป็นวินาทีบนเน็ตคลินิก) ผู้ใช้กดบันทึกเพิ่มได้
+   * markDirty จะใส่คีย์ใหม่ลง Set ก้อนเดิมที่ยังอยู่ใน map — ถ้าจบด้วย dirty.delete(local)
+   * คีย์ที่เพิ่งเข้าคิวจะถูกทิ้งไปทั้งที่ยังไม่เคยส่งขึ้นเลย
+   * แล้ว pullAll รอบถัดไปจะไม่ skip แถวนั้น (เพราะไม่อยู่ใน dirty แล้ว) → ของเก่าจากเซิร์ฟเวอร์
+   * ทับสิ่งที่ผู้ใช้เพิ่งกด = ข้อมูลหายจริงโดยไม่มีใครรู้
+   * จึงต้องเอาออกเฉพาะคีย์ที่ "ส่งไปแล้วจริง" เท่านั้น
+   */
+  const clearSent = (map: Map<string, Set<unknown>>, local: string, keys: Set<unknown>, sent: unknown[]) => {
+    sent.forEach((k) => keys.delete(k));
+    if (!keys.size) map.delete(local);
+    else if (!flushTimer) flushTimer = setTimeout(() => void flush(), 1500); // ของที่เข้าคิวระหว่างทาง ส่งต่อรอบหน้า
+  };
+
   // ลบก่อน (แถวที่ถูกลบ local)
   for (const [local, keys] of [...pendingDeletes]) {
     const def = byLocal.get(local)!;
     const ids = [...keys];
-    if (!ids.length) continue;
+    if (!ids.length) { pendingDeletes.delete(local); continue; }
     const { error } = await supabase.from(def.remote).delete().in(def.rename?.[def.pk] ?? toSnake(def.pk), ids);
-    if (!error) pendingDeletes.delete(local);
+    if (!error) clearSent(pendingDeletes, local, keys, ids);
   }
   // แล้วค่อย upsert แถวที่แก้ (อ่านสถานะล่าสุดจาก dexie ตอนส่งจริง)
   for (const [local, keys] of [...dirty]) {
     const def = byLocal.get(local)!;
     const ids = [...keys];
-    if (!ids.length) continue;
+    if (!ids.length) { dirty.delete(local); continue; }
     const objs = (await db.table(local).bulkGet(ids as never[])).filter(Boolean) as Record<string, unknown>[];
     if (objs.length) {
       const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
       if (error) {
         const n = (failCount.get(local) ?? 0) + 1;
         failCount.set(local, n);
-        if (n < MAX_PUSH_RETRY) continue; // เก็บไว้ลองใหม่รอบหน้า
+        if (n < MAX_PUSH_RETRY) continue; // เก็บทั้งชุดไว้ลองใหม่รอบหน้า
         // ครบโควตาแล้วยังไม่ผ่าน = ไม่มีสิทธิ์เขียนตารางนี้จริงๆ ทิ้งคิวไป (ข้อมูลยังอยู่ในเครื่อง)
       } else {
         failCount.delete(local);
       }
     }
-    dirty.delete(local);
+    clearSent(dirty, local, keys, ids);
   }
 }
 
@@ -239,6 +255,15 @@ function subscribeRealtime() {
       const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
       const key = ((payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>)[remotePk];
       if (key === undefined) return;
+      /**
+       * ⚠️ แถวที่เรายังส่งไม่ขึ้น ห้ามให้ของจากเซิร์ฟเวอร์ทับ
+       *
+       * pullAll กันไว้แล้ว (ตัวแปร skip) แต่ทาง realtime ไม่เคยกัน — ของที่ผู้ใช้เพิ่งกด
+       * ยังรออยู่ในคิว 1.5 วิ ถ้ามี event ของแถวเดียวกันเข้ามาพอดี จะถูกเขียนทับทันที
+       * แล้ว flush ก็จะส่งค่าที่โดนทับแล้วขึ้นไปอีก = สิ่งที่ผู้ใช้กดหายไปเงียบๆ
+       * ปล่อยให้ flush ส่งของเราขึ้นก่อน แล้วค่อยรับของใหม่จากรอบถัดไป
+       */
+      if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;
       void applyRemote(def.local, [key], async () => {
         if (payload.eventType === 'DELETE') await db.table(def.local).delete(key as never);
         else await db.table(def.local).put(fromRow(def, payload.new as Record<string, unknown>) as never);
