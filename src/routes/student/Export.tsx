@@ -2,10 +2,9 @@ import { ArrowLeft, FileCsv, FilePdf } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { CSV_COLUMNS, PROGRESSION_COLUMNS, downloadCsv, passedProgressions } from '../../lib/export';
-import { nextRound } from '../../domain/rounds';
 import { currentProc, isComplete, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
-import { thaiLong } from '../../lib/date';
+import { thaiLong, academicYear } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
@@ -14,7 +13,6 @@ export default function ExportScreen() {
   const { session, showToast } = useApp();
   const works = useWorkpieces(session?.studentId);
   const student = useStudent(session?.studentId);
-  const round = nextRound();
 
   const reportWorks = works.filter((w) => !isComplete(w) || w.minimumRequirement);
 
@@ -43,7 +41,10 @@ export default function ExportScreen() {
             {/* ห้ามใส่ค่าเดโมเป็น fallback — เอกสารนี้พิมพ์ออกไปให้อาจารย์ลงนาม
                 ถ้าดึงข้อมูลไม่ได้ ต้องเห็นว่าว่าง ไม่ใช่เห็นรหัสของคนอื่นที่ดูสมจริง */}
             {t(student?.name ?? '—')} · {t('รหัส')} {student?.code ?? '—'} · {t('กลุ่ม')} {student?.group ?? '—'} ·
-            {round ? ` ${t(round.name)} (${thaiLong(round.dueDate)})` : ''}
+            {/* เดิมใส่ชื่อ "รอบส่งรายงาน" จากปฏิทินที่ฝังตายไว้ปีเดียว
+                — ระบบรายงานถูกถอดออกไปแล้ว และหลัง มี.ค. 2570 ป้ายจะหายไปเฉยๆ ตลอดกาล
+                เปลี่ยนเป็นปีการศึกษา + วันที่พิมพ์ ซึ่งจริงเสมอและจำเป็นกว่าบนเอกสารที่เซ็นจริง */}
+            {` ${t('ปีการศึกษา')} ${academicYear(new Date())} · ${t('ข้อมูล ณ')} ${thaiLong(new Date())}`}
           </div>
 
           <table>
