@@ -13,7 +13,8 @@ import { academicYear } from '../../lib/date';
  * โทน: ฉลอง milestone ที่มีความหมายทางวิชาชีพจริง — ไม่มีแต้ม ไม่มี leaderboard
  */
 
-const FIRSTS = [
+// export ให้การ์ดสรุปบนหน้าแรกใช้ชุดเดียวกัน — แก้ที่นี่ที่เดียวแล้วตรงกันทั้งสองหน้า
+export const FIRSTS = [
   { icon: '🦷', title: t('Delivery ครั้งแรก'), detail: t('CD upper · ผู้ป่วย E'), date: '14 ก.ค. 69', got: true },
   { icon: '🎉', title: t('ปิดเคสแรกในชีวิต'), detail: t('CD/- (Upper) · 15 สัปดาห์'), date: '2 ส.ค. 69', got: true },
   { icon: '🛠️', title: t('ทำ lab step เองครบชุดแรก'), detail: 'Mounting → Remounting · CD', date: '21 ก.ค. 69', got: true },

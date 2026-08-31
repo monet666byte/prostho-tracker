@@ -1,4 +1,4 @@
-import { Bell, CaretDown, CaretRight, CaretUp, CheckCircle, CheckSquare, Circle, CircleDashed, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
+import { Bell, CaretDown, CaretRight, CaretUp, CheckCircle, CheckSquare, Circle, CircleDashed, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
@@ -17,6 +17,7 @@ import {
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
+import { FIRSTS } from './Achievements';
 
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
@@ -422,6 +423,28 @@ export default function Home() {
           <span style={statLabel}>{t('เกณฑ์สะสม 2 ปี')}</span>
         </button>
       </div>
+
+      {/* การ์ดความสำเร็จ — เติมพื้นที่โล่งท้ายหน้า (ผู้ใช้ขอ 31 ส.ค.) · ข้อมูลยัง mock เหมือนหน้า achievement */}
+      <Link to="/app/achievements" className="card achhome">
+        <span className="achhome__head">
+          <Medal size={16} weight="fill" color="var(--accent)" />
+          <span className="achhome__title">{t('ความสำเร็จ')}</span>
+          <span className="achhome__count">
+            {FIRSTS.filter((f) => f.got).length}/{FIRSTS.length} · mock
+          </span>
+          <CaretRight size={14} color="var(--text-disabled)" />
+        </span>
+        <span className="achhome__row" aria-hidden>
+          {FIRSTS.map((f) => (
+            <span key={f.title} className={`achhome__badge${f.got ? '' : ' achhome__badge--locked'}`} title={f.title}>
+              {f.icon}
+            </span>
+          ))}
+        </span>
+        <span className="achhome__sub">
+          {t('ล่าสุด')}: {FIRSTS.filter((f) => f.got).slice(-1)[0]?.title ?? '—'}
+        </span>
+      </Link>
       </div>
     </Shell>
   );
