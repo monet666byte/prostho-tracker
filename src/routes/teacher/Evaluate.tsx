@@ -297,6 +297,12 @@ export default function Evaluate() {
                       {c.noPatient && (
                         <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>{t('ไม่มีผู้ป่วย')}</span>
                       )}
+                      {/* นักศึกษาแก้บันทึกหลังเช็คอิน — โชว์ให้อาจารย์เห็นตรงๆ ว่ามีการแก้และเมื่อไหร่ (รายละเอียดเต็มอยู่ audit log) */}
+                      {c.editedAt && (
+                        <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
+                          {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}
+                        </span>
+                      )}
                     </div>
                     <div style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-body)', marginTop: 6 }}>
                       {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)' }}>{t('ยังไม่ระบุกิจกรรม')}</i>}

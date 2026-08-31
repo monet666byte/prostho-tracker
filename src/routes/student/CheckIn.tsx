@@ -1,12 +1,12 @@
-import { CalendarCheck, CheckCircle, Clock, Exam, Export, HourglassMedium, NotePencil, Plus } from '@phosphor-icons/react';
+import { CalendarCheck, CheckCircle, Clock, Exam, Export, HourglassMedium, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
-import { addCheckIn, updateCheckIn } from '../../data/repo';
+import { addCheckIn, deleteCheckIn, updateCheckIn } from '../../data/repo';
 import { ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
 import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { isComplete } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
@@ -19,26 +19,34 @@ export default function CheckInPage() {
   // เช็คอินด่วนจากหน้าแรกยังไม่มีกิจกรรม — เปิดฟอร์มโหมดเติมรายละเอียดให้คาบเดิมแทนการสร้างใหม่
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // ลบคาบ: กดครั้งแรกเปลี่ยนเป็น "ยืนยันลบ?" กันมือลั่น — เปลี่ยนคาบ/พับแถวเมื่อไหร่รีเซ็ต
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // form state
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toISODate(new Date()));
   const [activities, setActivities] = useState<string[]>([]);
   const [patientId, setPatientId] = useState('');
   const [note, setNote] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toISODate(new Date());
   const todayEntry = checkins.find((c) => c.date === today);
+  const editingEntry = editingId ? checkins.find((c) => c.id === editingId) : undefined;
   const doneToday = !!todayEntry;
   const todayNeedsDetail = !!todayEntry && todayEntry.activities.length === 0;
 
   function openFillForm() {
-    if (!todayEntry) return;
-    setEditingId(todayEntry.id);
-    setDate(todayEntry.date);
-    setActivities([...todayEntry.activities]);
-    setPatientId(todayEntry.patientId ?? '');
-    setNote(todayEntry.note ?? '');
+    if (todayEntry) openEditForm(todayEntry);
+  }
+
+  /** เปิดฟอร์มแก้คาบใดๆ ที่ยังไม่ถูกประเมิน — กดผิด/ลืมติ๊ก แก้เองได้ไม่ต้องรออาจารย์ (ผู้ใช้ขอ 1 ก.ย.) */
+  function openEditForm(entry: (typeof checkins)[number]) {
+    if (entry.status === 'evaluated') return;
+    setEditingId(entry.id);
+    setDate(entry.date);
+    setActivities([...entry.activities]);
+    setPatientId(entry.patientId ?? '');
+    setNote(entry.note ?? '');
     setFormOpen(true);
   }
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
@@ -96,20 +104,21 @@ export default function CheckInPage() {
       : undefined;
     showToast({
       message: wasEditing
-        ? t('เติมกิจกรรมเรียบร้อย — ขอบคุณครับ')
+        ? t('บันทึกการแก้ไขแล้ว — คาบนี้ยังรออาจารย์ประเมินตามปกติ')
         : target
           ? t('เช็คอินแล้ว — ไปที่เคส {d} ต่อเลย', { d: target.detail })
           : t('เช็คอินคาบ {d} แล้ว · รออาจารย์ประเมิน', { d: thaiShort(date) }),
       tone: 'success',
     });
-    if (target) navigate(`/app/work/${target.id}`);
+    // เด้งไปหน้าเคสเฉพาะเช็คอินใหม่ (จุดเริ่มคาบ) — แก้คาบย้อนหลังต้องอยู่หน้าลิสต์เดิม ไม่งั้นงง
+    if (target && !wasEditing) navigate(`/app/work/${target.id}`);
   }
 
   const overlay = formOpen ? (
     <div className="backdrop" onClick={() => { setFormOpen(false); setEditingId(null); }}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" />
-        <h3 className="h3">{editingId ? t('เติมรายละเอียดคาบวันนี้') : t('เช็คอินคาบคลินิก')}</h3>
+        <h3 className="h3">{editingId ? t('แก้ไขคาบ {d}', { d: thaiShort(editingEntry?.date ?? date) }) : t('เช็คอินคาบคลินิก')}</h3>
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>{t('วันที่คาบ')}</span>
@@ -123,7 +132,7 @@ export default function CheckInPage() {
             }}
           >
             <Clock size={15} weight="fill" style={{ color: 'var(--text-muted)' }} />
-            {t('{time} น.', { time: editingId ? (todayEntry?.checkinAt ?? '') : new Date().toTimeString().slice(0, 5) })}
+            {t('{time} น.', { time: editingId ? (editingEntry?.checkinAt ?? '') : new Date().toTimeString().slice(0, 5) })}
           </span>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
@@ -228,7 +237,7 @@ export default function CheckInPage() {
               key={c.id}
               className="card"
               style={{ padding: '12px 14px', textAlign: 'left' }}
-              onClick={() => setExpanded(open ? null : c.id)}
+              onClick={() => { setExpanded(open ? null : c.id); setConfirmDelete(null); }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span
@@ -252,6 +261,11 @@ export default function CheckInPage() {
                 </span>
                 {!c.punctual && (
                   <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('สาย')}</span>
+                )}
+                {c.editedAt && c.status !== 'evaluated' && (
+                  <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }} title={t('แก้ไขล่าสุด')}>
+                    {t('แก้ไข')} {thaiShort(c.editedAt)}
+                  </span>
                 )}
                 {c.status === 'evaluated' ? (
                   <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
@@ -280,6 +294,34 @@ export default function CheckInPage() {
                   <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>
                     {t('ประเมินโดย')} {t(c.evaluatedBy ?? '')} · {c.evaluatedAt ? thaiShort(c.evaluatedAt) : ''}
                   </span>
+                </div>
+              )}
+              {open && c.status !== 'evaluated' && (
+                <div
+                  style={{ display: 'flex', gap: 8, marginTop: 10, borderTop: '1px solid var(--divider)', paddingTop: 10 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="btn btn--sec"
+                    style={{ height: 40, flex: 1, font: '600 11.5px var(--font-body)' }}
+                    onClick={() => openEditForm(c)}
+                  >
+                    <PencilSimple size={14} /> {t('แก้ไขคาบนี้')}
+                  </button>
+                  <button
+                    className="btn btn--sec"
+                    style={{ height: 40, flex: 1, font: '600 11.5px var(--font-body)', color: 'var(--danger)' }}
+                    onClick={async () => {
+                      // เผลอเช็คอินผิดวัน (เปิดแอปเล่นแล้วกด) — ลบคาบทิ้งได้ตราบที่ยังไม่ถูกประเมิน
+                      if (confirmDelete !== c.id) { setConfirmDelete(c.id); return; }
+                      await deleteCheckIn(c.id, currentActor());
+                      setConfirmDelete(null);
+                      setExpanded(null);
+                      showToast({ message: t('ลบคาบ {d} แล้ว', { d: thaiShort(c.date) }), tone: 'success' });
+                    }}
+                  >
+                    <Trash size={14} /> {confirmDelete === c.id ? t('ยืนยันลบ?') : t('ลบคาบนี้')}
+                  </button>
                 </div>
               )}
               {open && (

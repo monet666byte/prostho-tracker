@@ -146,6 +146,8 @@ export interface CheckIn {
   scores?: Record<string, number>;
   evaluatedBy?: string;
   evaluatedAt?: string;
+  /** ครั้งล่าสุดที่นักศึกษาแก้กิจกรรม/คนไข้/โน้ตหลังเช็คอิน (ISO) — โชว์ป้ายให้อาจารย์เห็นว่าคาบนี้มีการแก้ */
+  editedAt?: string;
   createdAt: string;
 }
 

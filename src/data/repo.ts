@@ -5,6 +5,7 @@
 
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
+import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
   Arch, AuditEntry, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
@@ -165,7 +166,7 @@ export async function undoStep(workpieceId: string, actor: string): Promise<Work
       workpieceId: w.id,
       procIndex: w.procIndex,
       progression: undone?.progression ?? 0,
-      performedAt: new Date().toISOString().slice(0, 10),
+      performedAt: toISODate(new Date()),
       selfPerformed: false,
       photoIds: [],
       reversal: true,
@@ -505,6 +506,8 @@ export async function updateCheckIn(
   actor: string,
 ): Promise<void> {
   const before = await db.checkins.get(id);
+  // ประเมินแล้ว = คะแนนออกแล้ว ห้ามนักศึกษาแก้ย้อน (กันไว้ชั้นข้อมูล เผื่อ UI พลาด)
+  if (before?.status === 'evaluated') return;
   await db.checkins.update(id, {
     activities: patch.activities,
     noPatient: !!patch.noPatient,
@@ -514,6 +517,8 @@ export async function updateCheckIn(
   const row = await db.checkins.get(id);
   // กดปุ่มบันทึกซ้ำโดยไม่ได้แก้อะไร ไม่ควรงอกบรรทัดใน audit — ประวัติต้องอ่านแล้วเชื่อได้
   if (before && row && JSON.stringify(before) === JSON.stringify(row)) return;
+  // แก้จริง → ประทับเวลาไว้ ป้าย "แก้ไขล่าสุด" ฝั่งอาจารย์อ่านจากตรงนี้
+  await db.checkins.update(id, { editedAt: new Date().toISOString() });
   await logAudit(
     // ต้องมีวันที่ ไม่งั้นย้อนดูไม่ออกว่าแก้คาบไหน (บรรทัดอื่นในระบบมีวันที่หมด)
     `${t('เติมรายละเอียดคาบ')} ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
