@@ -536,7 +536,7 @@
   background: var(--fill); text-align: center;
   font: 400 9.5px/1.35 var(--font-body); color: var(--text-muted);
 }
-.growcard__stat b { font: 700 18px var(--font-head); color: var(--success-dark); }
+.growcard__stat b { font: 700 18px var(--font-head); color: var(--warning-dark); } /* โทนส้มไฟ ให้เข้ากับ 🔥 */
 .growcard__sub { display: block; margin-top: 9px; font: 400 10.5px var(--font-body); color: var(--text-faint); }
 
 /* ── การ์ดความสำเร็จท้ายหน้าแรก — สรุปป้ายจากหน้า achievement (mock) ───────

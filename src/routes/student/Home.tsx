@@ -19,6 +19,9 @@ import { tapFeedback } from '../../lib/haptic';
 import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { FIRSTS } from './Achievements';
 
+// การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
+const SHOW_ACHIEVEMENT_CARD = false;
+
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
   const R = 30;
@@ -442,7 +445,9 @@ export default function Home() {
         <span className="growcard__sub">{t('ทุกครั้งที่มาเติมไฟสะสมทั้งหมด — ไฟนี้ไม่มีวันดับครับ')}</span>
       </div>
 
-      {/* การ์ดความสำเร็จ — เติมพื้นที่โล่งท้ายหน้า (ผู้ใช้ขอ 31 ส.ค.) · ข้อมูลยัง mock เหมือนหน้า achievement */}
+      {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)
+          เปิดกลับ: เปลี่ยน SHOW_ACHIEVEMENT_CARD เป็น true */}
+      {SHOW_ACHIEVEMENT_CARD && (
       <Link to="/app/achievements" className="card achhome">
         <span className="achhome__head">
           <Medal size={16} weight="fill" color="var(--accent)" />
@@ -463,6 +468,7 @@ export default function Home() {
           {t('ล่าสุด')}: {FIRSTS.filter((f) => f.got).slice(-1)[0]?.title ?? '—'}
         </span>
       </Link>
+      )}
       </div>
     </Shell>
   );
