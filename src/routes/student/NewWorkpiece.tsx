@@ -6,6 +6,7 @@ import { createWorkpieces } from '../../data/repo';
 import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, ORDER, TYPES } from '../../domain/catalog';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
+import { toISODate } from '../../lib/date';
 import { currentActor, useApp } from '../../store/app';
 
 const KENNEDY: KennedyClass[] = ['Kennedy class I', 'Kennedy class II', 'Kennedy class III', 'Kennedy class IV'];
@@ -24,7 +25,7 @@ export default function NewWorkpiece() {
   const [tooth, setTooth] = useState('');
   const [kennedy, setKennedy] = useState<KennedyClass>('Kennedy class I');
   const [variant, setVariant] = useState<'cast' | 'prefab'>('cast');
-  const [acceptedDate, setAcceptedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [acceptedDate, setAcceptedDate] = useState(toISODate(new Date()));
   const [min, setMin] = useState(true);
   const [more, setMore] = useState(false);
   const [name, setName] = useState('');

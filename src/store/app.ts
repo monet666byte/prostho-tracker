@@ -4,6 +4,7 @@ import { getSettings, logAudit, saveSettings } from '../data/repo';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
+import { toISODate } from '../lib/date';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
 
@@ -264,7 +265,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   openSheet(workpieceId) {
     set({
-      sheet: { workpieceId, performedAt: new Date().toISOString().slice(0, 10), withPhoto: false },
+      sheet: { workpieceId, performedAt: toISODate(new Date()), withPhoto: false },
       toast: null,
     });
   },

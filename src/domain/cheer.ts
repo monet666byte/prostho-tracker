@@ -8,6 +8,7 @@
  * - ไม่มี streak เช็คอิน (เข้าทุกคาบเป็นหน้าที่อยู่แล้ว) — มีแค่ฉลองคาบเลขสวย
  */
 import { t } from '../lib/i18n';
+import { toISODate } from '../lib/date';
 import { currentProc, isComplete, maxProgression, nextProc, progression, yearlyRows } from './rules';
 import type { CheckIn, Settings, WorkpieceView } from './types';
 
@@ -45,7 +46,7 @@ export function cheerLine(
   settings: Settings,
   now = new Date(),
 ): string {
-  const today = now.toISOString().slice(0, 10);
+  const today = toISODate(now);
   const active = works.filter((w) => !isComplete(w));
   const daysSince = (iso: string) => Math.floor((now.getTime() - new Date(iso).getTime()) / DAY);
 

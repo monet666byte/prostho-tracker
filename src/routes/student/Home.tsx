@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
-import { relative, weekMonday } from '../../lib/date';
+import { relative, toISODate, weekMonday } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
@@ -181,7 +181,7 @@ export default function Home() {
   const rest = recent.slice(1, 5);
   const totals = caseCountTotals(works, settings);
   const checkins = useCheckIns(session?.studentId);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toISODate(new Date());
   const todayCheckIn = checkins.find((c) => c.date === today);
   const checkedInToday = !!todayCheckIn;
   const todaySteps = useStepsOnDates(session ? [{ studentId: session.studentId, date: today }] : []);

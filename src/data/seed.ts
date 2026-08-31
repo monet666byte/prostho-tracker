@@ -7,6 +7,7 @@
  */
 
 import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
+import { toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
 import type {
   CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Settings, Student, Teacher, WorkType, Workpiece,
@@ -308,7 +309,7 @@ function buildCheckIns(): CheckIn[] {
   });
 
   // เพื่อนร่วมกลุ่ม PT7 — เช็คอินวันนี้ รอประเมิน (ให้ฝั่งอาจารย์มีคิวให้ลองกด)
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toISODate(new Date());
   const acts = [['Oral examination'], ['Primary impression'], ['Laboratory work'], ['Try in / Delivery']];
   for (let i = 2; i <= 5; i++) {
     rows.push(
@@ -322,7 +323,7 @@ function buildCheckIns(): CheckIn[] {
   }
   // ตัวอย่าง "มาคลินิกแต่ step ไม่ขยับหลายคาบติด" — st-TH-PT7-4 เช็คอินย้อนหลัง 2 สัปดาห์ (ประเมินแล้ว) โดยไม่มี step ผ่านเลย
   for (const daysBack of [7, 14]) {
-    const d = new Date(Date.now() - daysBack * 86_400_000).toISOString().slice(0, 10);
+    const d = toISODate(new Date(Date.now() - daysBack * 86_400_000));
     rows.push(
       mk({
         studentId: 'st-TH-PT7-4',
@@ -347,7 +348,7 @@ function buildCheckIns(): CheckIn[] {
       if (g === 7 && (sIdx === 1 || sIdx === 4)) continue;
       // ประวัติ ~6 คาบย้อนหลัง (ประเมินแล้ว) — ให้กราฟเส้นคะแนนมีหลายจุด
       for (const back of [7, 14, 21, 28, 35, 42]) {
-        const d = new Date(Date.now() - (back + ((g + sIdx) % 3)) * 86_400_000).toISOString().slice(0, 10);
+        const d = toISODate(new Date(Date.now() - (back + ((g + sIdx) % 3)) * 86_400_000));
         rows.push(
           mk({
             studentId: sid, date: d,
