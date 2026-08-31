@@ -85,6 +85,13 @@
   html, body, #root, .canvas { background: var(--bg-app); }
   .canvas { padding: 0; display: block; gap: 0; }
 
+  /* ⚠️ หัวใจของบั๊ก "แถบล่างไม่ตรึง" ที่แก้ไม่หายมา 2 รอบ:
+     PhoneFrame ใส่ transform: scale() ให้กรอบเสมอ (ไว้ย่อกรอบให้พอดีจอบนคอม)
+     กฎ CSS: element ใต้ตัวที่มี transform จะใช้ position: fixed กับหน้าจอไม่ได้
+     — ถูกลดชั้นเป็นตรึงกับกรอบแทน แถบเลยขยับตามกรอบตอน Safari ยืด/หดแถบเครื่องมือ
+     บนมือถือกรอบเต็มจออยู่แล้วไม่ต้องย่อ จึงปิด transform ทิ้งให้ fixed ทำงานจริง */
+  .phone { transform: none !important; }
+
     .phone {
     width: 100%;
     max-width: 700px; /* iPad จอกว้าง — เนื้อหาเป็นคอลัมน์กลางจอ ไม่ยืดจนโหวง */
@@ -170,7 +177,10 @@
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: max(10px, env(safe-area-inset-bottom));
+  /* ระยะจากขอบล่าง: บนคอม 12px — บนมือถือขอชิดใกล้เคียงกัน
+     safe-area ของ iPhone = 34px ซึ่งลอยเกิน จึงหักออกให้เหลือ ~12px
+     เครื่องไม่มีแถบขีดขาว (safe-area=0) ได้ 8px */
+  bottom: max(8px, calc(env(safe-area-inset-bottom) - 22px));
   z-index: 30;
   height: 60px;
   border-radius: 30px;
@@ -208,7 +218,7 @@
 .tabbar a i { font-size: 22px; display: grid; }
 
 /* เนื้อหาต้องเลื่อนพ้นแถบลอย ไม่งั้นบรรทัดสุดท้ายโดนบัง */
-.screen { padding-bottom: calc(60px + 22px + max(10px, env(safe-area-inset-bottom))); }
+.screen { padding-bottom: calc(60px + 20px + max(8px, calc(env(safe-area-inset-bottom) - 22px))); }
 
 /* ── deadline banner ── */
 .banner {
@@ -312,7 +322,7 @@
 
 /* ── toast ── */
 .toast {
-  position: absolute; left: 14px; right: 14px; bottom: calc(60px + 18px + max(10px, env(safe-area-inset-bottom)));
+  position: absolute; left: 14px; right: 14px; bottom: calc(60px + 16px + max(8px, calc(env(safe-area-inset-bottom) - 22px)));
   background: var(--toast-bg); border-radius: 14px; padding: 13px 15px;
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-toast);
   animation: toastIn 0.22s ease; z-index: 50;
@@ -519,7 +529,7 @@
 
   /* จอแคบมีปุ่มลอย "สลับมุมมอง" มุมขวาล่างด้วย — เผื่อที่ให้เลื่อนพ้น
      ไม่งั้นปุ่มสุดท้ายของหน้า (เช่น ส่งออกข้อมูล) จะโดนทับจนกดไม่โดน */
-  .screen { padding-bottom: calc(60px + 70px + max(10px, env(safe-area-inset-bottom))); }
+  .screen { padding-bottom: calc(60px + 68px + max(8px, calc(env(safe-area-inset-bottom) - 22px))); }
   /* หน้าที่ไม่มีแถบล่าง ไม่ต้องเผื่อ — ต้องอยู่ในสาขาเดียวกัน ไม่งั้นกฎด้านบนถูกทับ */
   .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
@@ -527,6 +537,6 @@
   /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
   .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
-  .rolefab { bottom: calc(82px + max(10px, env(safe-area-inset-bottom))); }
+  .rolefab { bottom: calc(80px + max(8px, calc(env(safe-area-inset-bottom) - 22px))); }
   .rolefab--low { bottom: calc(18px + env(safe-area-inset-bottom)); }
 }
