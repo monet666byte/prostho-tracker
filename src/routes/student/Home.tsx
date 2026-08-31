@@ -1,5 +1,5 @@
 import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -16,6 +16,7 @@ import {
 } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
+import { ACTIVITIES, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
@@ -172,6 +173,37 @@ export default function Home() {
    * (จำการข้ามไว้ในเครื่อง — พรุ่งนี้ค่อยถามใหม่)
    */
   const [askCheckIn, setAskCheckIn] = useState(false);
+  // ฟอร์มในแผ่นถาม — เลือกกิจกรรม/คนไข้ได้เลยตั้งแต่ตอนเด้ง (ผู้ใช้ขอ)
+  const [askActs, setAskActs] = useState<string[]>([]);
+  const [askPatient, setAskPatient] = useState('');
+  const askNoPatient = askActs.includes(NO_PATIENT_ACTIVITY);
+  const askPatients = useMemo(() => {
+    const seen = new Map<string, string>();
+    works.forEach((w) => seen.set(w.patient.id, `${t(w.patient.name)} · HN ${w.patient.hn}`));
+    return [...seen.entries()];
+  }, [works]);
+
+  async function submitAskCheckIn() {
+    if (!session || checkingIn.current) return;
+    checkingIn.current = true;
+    tapFeedback();
+    try {
+      const now = new Date();
+      const checkinAt = now.toTimeString().slice(0, 5);
+      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      await addCheckIn({
+        studentId: session.studentId, date: today, punctual, checkinAt,
+        noPatient: askNoPatient,
+        patientId: askNoPatient ? undefined : (askPatient || undefined),
+        activities: askActs, note: '', actor: currentActor(),
+      });
+      setAskCheckIn(false);
+      touch();
+      showToast({ message: t('เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ', { time: checkinAt }), tone: 'success' });
+    } finally {
+      checkingIn.current = false;
+    }
+  }
   useEffect(() => {
     if (!session || checkedInToday) return;
     let skipped = '';
@@ -212,24 +244,40 @@ export default function Home() {
     <Shell overlay={<>
       {askCheckIn && !checkedInToday && (
         <div className="backdrop" onClick={skipCheckInAsk}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้เลยไหม')}</h3>
-            <p style={{ margin: '6px 0 14px', font: '400 12.5px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-              {t('แตะครั้งเดียวจบ ระบบจับเวลาให้เอง — กิจกรรมมาเติมทีหลังได้')}
+          <div className="sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '82%', overflowY: 'auto' }}>
+            <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</h3>
+            <p style={{ margin: '5px 0 12px', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+              {t('เลือกได้เลยว่าวันนี้ทำอะไรกับคนไข้คนไหน — หรือยังไม่รู้ก็เช็คอินก่อนได้')}
             </p>
-            <button
-              className="btn"
-              style={{ height: 50 }}
-              onClick={async () => { setAskCheckIn(false); await quickCheckIn(); }}
-            >
+
+            <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
+            <div className="seg" style={{ marginBottom: 14 }}>
+              {ACTIVITIES.map((a) => (
+                <button
+                  key={a}
+                  data-on={askActs.includes(a)}
+                  onClick={() => setAskActs(askActs.includes(a) ? askActs.filter((x) => x !== a) : [...askActs, a])}
+                >
+                  {t(a)}
+                </button>
+              ))}
+            </div>
+
+            {!askNoPatient && (
+              <>
+                <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('ผู้ป่วยที่นัด')}</div>
+                <select className="input" value={askPatient} onChange={(e) => setAskPatient(e.target.value)} style={{ marginBottom: 14 }}>
+                  <option value="">{t('— ไม่ระบุ —')}</option>
+                  {askPatients.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </>
+            )}
+
+            <button className="btn" style={{ height: 50 }} onClick={submitAskCheckIn}>
               <CheckCircle size={18} weight="fill" />
               {t('เช็คอินเลย')}
             </button>
-            <button
-              className="btn btn--sec"
-              style={{ height: 44, marginTop: 8 }}
-              onClick={skipCheckInAsk}
-            >
+            <button className="btn btn--sec" style={{ height: 44, marginTop: 8 }} onClick={skipCheckInAsk}>
               {t('ไว้ก่อน — วันนี้ไม่ต้องถามอีก')}
             </button>
           </div>

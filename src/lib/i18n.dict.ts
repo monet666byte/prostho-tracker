@@ -762,4 +762,6 @@ export const DICT: Record<string, string> = {
   'แตะครั้งเดียวจบ ระบบจับเวลาให้เอง — กิจกรรมมาเติมทีหลังได้': 'One tap \u2014 time is stamped automatically; activities can be filled in later',
   'เช็คอินเลย': 'Check in now',
   'ไว้ก่อน — วันนี้ไม่ต้องถามอีก': 'Not now \u2014 don\u2019t ask again today',
+  'เลือกได้เลยว่าวันนี้ทำอะไรกับคนไข้คนไหน — หรือยังไม่รู้ก็เช็คอินก่อนได้': 'Pick today\u2019s activity and patient \u2014 or just check in first if you\u2019re not sure yet',
+  'เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ': 'Checked in at {time} \u2014 good luck this session!',
 };
