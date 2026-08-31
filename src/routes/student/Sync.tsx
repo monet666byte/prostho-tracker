@@ -1,6 +1,6 @@
 import {
   ArrowLeft, ArrowsClockwise, ArrowsLeftRight, CloudArrowUp, CloudCheck, CloudSlash, EnvelopeSimple,
-  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut,
+  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
@@ -8,7 +8,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
 import { currentActor, useApp } from '../../store/app';
 
@@ -101,6 +101,29 @@ export default function Sync() {
             <ArrowsClockwise size={18} weight="bold" />
             {offline ? t('ต้องออนไลน์ก่อนจึงจะ sync ได้') : t('sync ทันที')}
           </button>
+        </div>
+
+        {/* สลับภาษา — เดิมอยู่แค่แถบเดโมบนคอม มือถือเปลี่ยนไม่ได้ (ผู้ใช้ขอ 1 ก.ย.)
+            เขียนชื่อภาษาด้วยภาษาตัวเองเสมอ คนอ่านไม่ออกอีกภาษาจะได้หาปุ่มเจอ */}
+        <div className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Translate size={17} color="var(--text-muted)" />
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)' }}>ภาษา · Language</h4>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              className={`langbtn${lang === 'th' ? ' langbtn--on' : ''}`}
+              onClick={() => lang !== 'th' && setLang('th')}
+            >
+              ไทย
+            </button>
+            <button
+              className={`langbtn${lang === 'en' ? ' langbtn--on' : ''}`}
+              onClick={() => lang !== 'en' && setLang('en')}
+            >
+              English
+            </button>
+          </div>
         </div>
 
         <div className="card" style={{ padding: 14 }}>
