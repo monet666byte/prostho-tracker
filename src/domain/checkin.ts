@@ -47,6 +47,16 @@ export const ACTIVITIES = [
 
 export const NO_PATIENT_ACTIVITY = 'ไม่มีผู้ป่วย (no patient)';
 
+/**
+ * จัดกิจกรรมเป็นหมวดตามช่วงงาน — ผู้ใช้ทักว่าชิป 11 อันกองรวมกันไม่เป็นระเบียบ
+ * (11 อันเดิมยังอยู่ใน ACTIVITIES ครบ แค่จัดกลุ่มให้กวาดตาง่าย)
+ */
+export const ACTIVITY_GROUPS: ReadonlyArray<{ label: string; items: readonly string[] }> = [
+  { label: 'ตรวจ · พิมพ์ปาก', items: ['Oral examination', 'Primary impression', 'Final impression', 'Bite registration'] },
+  { label: 'งานข้างเก้าอี้', items: ['Tooth preparation', 'Try in / Delivery', 'ปรับแก้หลังใส่งาน', 'Recall'] },
+  { label: 'อื่นๆ', items: ['Laboratory work', 'ส่งงาน · ตรวจงานกับอาจารย์', NO_PATIENT_ACTIVITY] },
+];
+
 export function totalScore(scores: Record<string, number> | undefined): number | null {
   if (!scores) return null;
   return CRITERIA.reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);

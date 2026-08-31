@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
 import { addCheckIn, updateCheckIn } from '../../data/repo';
-import { ACTIVITIES, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
+import { ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
 import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -134,19 +134,18 @@ export default function CheckInPage() {
 
         <div className="field" style={{ marginTop: 12 }}>
           <label>{t('กิจกรรมในคาบ')}</label>
-          <div className="seg">
-            {ACTIVITIES.map((a) => (
-              <button
-                key={a}
-                data-on={activities.includes(a)}
-                onClick={() =>
-                  setActivities(activities.includes(a) ? activities.filter((x) => x !== a) : [...activities, a])
-                }
-              >
-                {t(a)}
-              </button>
-            ))}
-          </div>
+          {ACTIVITY_GROUPS.map((g) => (
+                <div key={g.label} className="actgroup">
+                  <div className="actgroup__label">{t(g.label)}</div>
+                  <div className="actgrid">
+                    {g.items.map((a) => (
+                      <button key={a} data-on={activities.includes(a)} onClick={() => setActivities(activities.includes(a) ? activities.filter((x) => x !== a) : [...activities, a])}>
+                        {t(a)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
         </div>
 
         {!noPatient && (

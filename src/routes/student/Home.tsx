@@ -16,7 +16,7 @@ import {
 } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
-import { ACTIVITIES, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
+import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
@@ -251,17 +251,18 @@ export default function Home() {
             </p>
 
             <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
-            <div className="seg" style={{ marginBottom: 14 }}>
-              {ACTIVITIES.map((a) => (
-                <button
-                  key={a}
-                  data-on={askActs.includes(a)}
-                  onClick={() => setAskActs(askActs.includes(a) ? askActs.filter((x) => x !== a) : [...askActs, a])}
-                >
-                  {t(a)}
-                </button>
+            {ACTIVITY_GROUPS.map((g) => (
+                <div key={g.label} className="actgroup">
+                  <div className="actgroup__label">{t(g.label)}</div>
+                  <div className="actgrid">
+                    {g.items.map((a) => (
+                      <button key={a} data-on={askActs.includes(a)} onClick={() => setAskActs(askActs.includes(a) ? askActs.filter((x) => x !== a) : [...askActs, a])}>
+                        {t(a)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </div>
 
             {!askNoPatient && (
               <>
