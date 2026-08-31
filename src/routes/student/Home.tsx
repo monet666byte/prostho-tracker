@@ -1,5 +1,5 @@
 import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -165,6 +165,26 @@ export default function Home() {
 
   const checkingIn = useRef(false);
 
+  /**
+   * แผ่นถามเช็คอินตอนเปิดแอป (ผู้ใช้ขอ 31 ส.ค.)
+   * เหตุผล: ทำงานอย่างอื่นเพลินแล้วลืมว่ายังไม่ได้เช็คอิน — เด้งถามก่อนเลย
+   * กติกา: ถามเฉพาะยังไม่เช็คอินวันนี้ · กด "ไว้ก่อน" แล้ววันนั้นไม่กวนซ้ำ
+   * (จำการข้ามไว้ในเครื่อง — พรุ่งนี้ค่อยถามใหม่)
+   */
+  const [askCheckIn, setAskCheckIn] = useState(false);
+  useEffect(() => {
+    if (!session || checkedInToday) return;
+    let skipped = '';
+    try { skipped = localStorage.getItem('pt-checkin-ask') ?? ''; } catch { /* private mode */ }
+    if (skipped !== today) setAskCheckIn(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkedInToday, today]);
+
+  function skipCheckInAsk() {
+    try { localStorage.setItem('pt-checkin-ask', today); } catch { /* private mode */ }
+    setAskCheckIn(false);
+  }
+
   // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมมาเติมทีหลังได้
   // (ผู้ใช้ขอ: 9 โมงต้องรีบทำงาน ไม่มีเวลาวุ่นวายกับมือถือ · กดล่วงหน้าก่อนเริ่มคาบได้)
   async function quickCheckIn() {
@@ -189,7 +209,34 @@ export default function Home() {
   }
 
   return (
-    <Shell overlay={<ConfirmSheet />}>
+    <Shell overlay={<>
+      {askCheckIn && !checkedInToday && (
+        <div className="backdrop" onClick={skipCheckInAsk}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้เลยไหม')}</h3>
+            <p style={{ margin: '6px 0 14px', font: '400 12.5px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+              {t('แตะครั้งเดียวจบ ระบบจับเวลาให้เอง — กิจกรรมมาเติมทีหลังได้')}
+            </p>
+            <button
+              className="btn"
+              style={{ height: 50 }}
+              onClick={async () => { setAskCheckIn(false); await quickCheckIn(); }}
+            >
+              <CheckCircle size={18} weight="fill" />
+              {t('เช็คอินเลย')}
+            </button>
+            <button
+              className="btn btn--sec"
+              style={{ height: 44, marginTop: 8 }}
+              onClick={skipCheckInAsk}
+            >
+              {t('ไว้ก่อน — วันนี้ไม่ต้องถามอีก')}
+            </button>
+          </div>
+        </div>
+      )}
+      <ConfirmSheet />
+    </>}>
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>

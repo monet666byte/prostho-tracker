@@ -758,4 +758,8 @@ export const DICT: Record<string, string> = {
   'อ่านไฟล์นี้ไม่ได้ — ต้องเป็นไฟล์ CSV ที่ export จากชีต': 'Cannot read this file — it must be a CSV exported from the sheet',
   'ข้อมูลสมมติ': 'sample data',
   'รุ่นทดลอง — ข้อมูลเป็นของสมมติ และเก็บอยู่ในเครื่องนี้เท่านั้น': 'Trial version — all data is fictional and stays on this device only',
+  'เช็คอินคาบวันนี้เลยไหม': 'Check in for today\u2019s session?',
+  'แตะครั้งเดียวจบ ระบบจับเวลาให้เอง — กิจกรรมมาเติมทีหลังได้': 'One tap \u2014 time is stamped automatically; activities can be filled in later',
+  'เช็คอินเลย': 'Check in now',
+  'ไว้ก่อน — วันนี้ไม่ต้องถามอีก': 'Not now \u2014 don\u2019t ask again today',
 };
