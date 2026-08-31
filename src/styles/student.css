@@ -91,7 +91,11 @@
      แก้: ล็อกทุกชั้นนอกไม่ให้เลื่อน เหลือ .screen เป็นตัวเลื่อนเดียวของแอป */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   #root { height: 100%; }
-  .canvas { padding: 0; display: block; gap: 0; height: 100dvh; overflow: hidden; }
+  /* ⚠️ iOS Safari ไม่เคารพ overflow:hidden บน body — หน้าเว็บยังปัดเลื่อนได้
+     (เหตุที่แก้รอบก่อนได้ผลบนเครื่องทดสอบแต่ไม่ได้ผลบน iPhone จริง)
+     วิธีเดียวที่ iOS ยอม: ตอกทั้งแอปเป็น fixed ติดหน้าจอ — เทคนิคเดียวกับ
+     แถบล่างที่ตรึงสำเร็จไปแล้ว พอทั้งแอป fixed หน้าเว็บก็ไม่เหลืออะไรให้เลื่อน */
+  .canvas { position: fixed; inset: 0; padding: 0; display: block; gap: 0; height: auto; overflow: hidden; }
   /* กล่องห่อกรอบมีความสูงจาก JS (ไว้จัดกลางบนเดสก์ท็อป) — บนมือถือบังคับเต็มจอ
      (ห้ามใช้ .canvas > div เหวี่ยงแห — เคยไปโดนแถบเดโมจนหน้าพังทั้งจอ) */
   .phonewrap { height: 100% !important; display: block; }
