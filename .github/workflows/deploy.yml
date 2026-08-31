@@ -1,0 +1,46 @@
+# เผยแพร่แอปขึ้น GitHub Pages อัตโนมัติทุกครั้งที่ push ขึ้น main
+#
+# สิ่งที่เผยแพร่คือ "โหมดตัวอย่าง" — ไม่ใส่กุญแจเซิร์ฟเวอร์ใดๆ
+# แอปจึงเก็บข้อมูลไว้ในเครื่องคนเปิดเท่านั้น ไม่ต่อฐานข้อมูลจริง
+# (เหมาะกับให้เพื่อน/อาจารย์ลองกดเล่น โดยไม่แตะข้อมูลของใคร)
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # กดสั่งเองได้จากหน้า Actions
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:pages
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

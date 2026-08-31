@@ -6,6 +6,12 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 // โหมด share: แพ็คทั้งแอป (JS/CSS/ฟอนต์) เป็น index.html ไฟล์เดียว เอาไปวางที่ไหนก็เปิดได้
 // ไม่ใส่ service worker เพราะปลายทาง (artifact host) จัดการ cache เองไม่ได้
 export default defineConfig(({ mode }) => ({
+  /**
+   * GitHub Pages วางเว็บไว้ใต้ /ชื่อ-repo/ ไม่ใช่รากโดเมน
+   * ถ้าไม่ตั้ง base ไฟล์ JS/CSS/ฟอนต์จะถูกอ้างจากรากแล้วโหลดไม่เจอ = จอขาว
+   * (โหมดอื่นไม่ตั้ง เพราะ share build เป็นไฟล์เดียวเอาไปวางที่ไหนก็ได้)
+   */
+  base: mode === 'pages' ? '/prostho-tracker/' : '/',
   build:
     mode === 'share'
       ? { outDir: 'dist-share', assetsInlineLimit: 100_000_000, chunkSizeWarningLimit: 8000 }
@@ -25,8 +31,9 @@ export default defineConfig(({ mode }) => ({
         background_color: '#F6F7F9',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        // ต้องตรงกับ base ไม่งั้นไอคอนบนหน้าจอโฮมเปิดไปที่รากโดเมนแล้วเจอ 404
+        start_url: mode === 'pages' ? '/prostho-tracker/' : '/',
+        scope: mode === 'pages' ? '/prostho-tracker/' : '/',
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },

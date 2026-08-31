@@ -259,3 +259,13 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* ── ป้ายรุ่นทดลอง ── ขึ้นทุกขนาดจอ เพราะแถบเดโมด้านบนซ่อนบนมือถือ */
+.betabadge {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px; border-radius: 6px;
+  background: var(--warning-tint); color: var(--warning-dark);
+  border: 1px solid var(--warning-border);
+  font: 700 9.5px/1.5 var(--font-mono); letter-spacing: .06em;
+  flex: none; white-space: nowrap;
+}

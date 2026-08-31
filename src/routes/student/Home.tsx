@@ -8,6 +8,7 @@ import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
 import { cheerLine } from '../../domain/cheer';
 import {
@@ -193,6 +194,7 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. Liv')}</span>
             <span className="groupchip">{(student?.group ?? '').replace('TH-', '') || '—'}</span>
+            <BetaBadge compact />
           </div>
         </div>
         <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label={t('ค้นหา')}>
