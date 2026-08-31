@@ -80,7 +80,23 @@
 
 /* โหมดเต็มจอ = มือถือจริง หรือแท็บเล็ตจอสัมผัส (iPad) — ไม่โชว์กรอบเครื่องเดโม */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  /* บนมือถือไม่มี "กรอบ" แล้ว — พื้นหลังทุกชั้นต้องเป็นสีเดียวกับหน้าแอป
+     ไม่งั้นถ้าความสูงคลาดกันนิดเดียว จะเห็นแถบเทาตายโผล่ท้ายจอ (เจอในวิดีโอ) */
+  html, body, #root, .canvas { background: var(--bg-app); }
   .canvas { padding: 0; display: block; gap: 0; }
+
+  /* แถบกระจกคลุมพื้นที่นาฬิกา/รอยบาก — เนื้อหาเลื่อนลอดใต้แถบนี้แทนที่จะไปชนตัวเลขเวลา
+     (คู่กับแถบล่าง ให้บนล่างเป็นภาษาเดียวกัน) */
+  .phone::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: env(safe-area-inset-top);
+    z-index: 25;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    pointer-events: none;
+  }
   .phone {
     width: 100%;
     max-width: 700px; /* iPad จอกว้าง — เนื้อหาเป็นคอลัมน์กลางจอ ไม่ยืดจนโหวง */
@@ -99,7 +115,11 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  /* overscroll-behavior: contain ทำให้เลื่อนสุดขอบแล้ว "ตึ้ก" หยุดตาย
+     ซึ่งเป็นสาเหตุที่รู้สึกว่าไม่ลื่นเหมือนแอปจริง — iOS ต้องได้เด้งกลับ (rubber band)
+     ใช้ contain เฉพาะแกนนอน กันปัดซ้าย/ขวาแล้วเบราว์เซอร์ย้อนหน้า แต่ปล่อยแกนตั้งให้เด้ง */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   background: var(--bg-app);
   animation: shellIn 0.22s ease;
   /* ซ่อน scrollbar ในจอโทรศัพท์ — มือถือจริงไม่มี และแถบนี้กินที่ฝั่งขวาจนเนื้อหาดูเบี้ยว
