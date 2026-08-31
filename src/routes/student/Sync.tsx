@@ -151,6 +151,8 @@ export default function Sync() {
           </span>
         </button>
 
+        {/* เฉพาะโหมดเดโม — ของตกค้างชุดเดียวกับแถบเดโมที่เคยกวาด (โผล่ในโหมดจริงมาตลอด) */}
+        {!cloudEnabled && (
         <div className="dashed" style={{ padding: 14 }}>
           <h4 style={{ margin: '0 0 3px', font: '600 13px var(--font-head)' }}>{t('เครื่องมือสำหรับการนำเสนอ')}</h4>
           <p style={{ margin: '0 0 11px', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
@@ -169,14 +171,17 @@ export default function Sync() {
             <button
               className="btn btn--sec"
               onClick={async () => {
+                // ล้างธง "ไว้ก่อน" ของ popup เช็คอิน + เตือนบ่าย — รีเซ็ตแล้วต้องได้ลองใหม่ทั้ง flow
+                try { localStorage.removeItem('pt-checkin-ask'); localStorage.removeItem('pt-fill-nudge'); } catch { /* private mode */ }
                 await resetDemo();
-                showToast({ message: t('รีเซ็ตข้อมูลเดโมแล้ว'), tone: 'success' });
+                showToast({ message: t('รีเซ็ตแล้ว — popup เช็คอินจะกลับมาถามใหม่'), tone: 'success' });
               }}
             >
               <ArrowCounterClockwise size={16} /> {t('รีเซ็ตข้อมูล')}
             </button>
           </div>
         </div>
+        )}
       </div>
     </PlainShell>
   );

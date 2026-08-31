@@ -764,4 +764,8 @@ export const DICT: Record<string, string> = {
   'ไว้ก่อน — วันนี้ไม่ต้องถามอีก': 'Not now \u2014 don\u2019t ask again today',
   'เลือกได้เลยว่าวันนี้ทำอะไรกับคนไข้คนไหน — หรือยังไม่รู้ก็เช็คอินก่อนได้': 'Pick today\u2019s activity and patient \u2014 or just check in first if you\u2019re not sure yet',
   'เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ': 'Checked in at {time} \u2014 good luck this session!',
+  'รีเซ็ตแล้ว — ข้อมูลกลับเป็นชุดตัวอย่าง ลองใหม่ได้เลย': 'Reset done \u2014 sample data restored, try again',
+  'รีเซ็ตข้อมูลเดโม': 'Reset demo data',
+  'ล้างทุกอย่างกลับเป็นข้อมูลตัวอย่าง — popup เช็คอินจะกลับมาถามใหม่': 'Restores the sample data \u2014 the check-in popup will ask again',
+  'รีเซ็ตแล้ว — popup เช็คอินจะกลับมาถามใหม่': 'Reset done \u2014 the check-in popup will ask again',
 };
