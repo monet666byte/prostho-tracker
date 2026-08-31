@@ -53,6 +53,14 @@ export function toISODate(v: string | Date): string {
 }
 
 
+/** จันทร์ของสัปดาห์ที่วันนั้นอยู่ — ใช้เป็นคีย์นับ "สัปดาห์ที่มาคลินิก" (เวลาท้องถิ่น ห้ามใช้ toISOString เพราะ UTC เลื่อนวัน) */
+export function weekMonday(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00`);
+  const day = (d.getDay() + 6) % 7; // จันทร์ = 0
+  d.setDate(d.getDate() - day);
+  return toISODate(d);
+}
+
 /** ISO date → "25/8/69" สำหรับ CSV ที่ต้องตรงคอลัมน์ชีตเดิม */
 export function toSheetDate(v: string | Date): string {
   const d = asDate(v);

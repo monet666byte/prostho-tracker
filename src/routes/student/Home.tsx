@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
-import { relative } from '../../lib/date';
+import { relative, weekMonday } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
@@ -422,6 +422,24 @@ export default function Home() {
           </span>
           <span style={statLabel}>{t('เกณฑ์สะสม 2 ปี')}</span>
         </button>
+      </div>
+
+      {/* แถบกำลังใจแบบสะสม — ผู้ใช้ 1 ก.ย.: streak รายสัปดาห์ไม่เข้ากับตารางคลินิก (บางสัปดาห์ไม่มีคาบ)
+          เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" */}
+      <div className="card growcard">
+        <span className="growcard__head">🌱 {t('เก็บสะสมมาเรื่อยๆ')}</span>
+        <div className="growcard__row">
+          <span className="growcard__stat">
+            <b>{checkins.length}</b>{t('ครั้งที่มาคลินิก')}
+          </span>
+          <span className="growcard__stat">
+            <b>{new Set(checkins.map((c) => weekMonday(c.date))).size}</b>{t('สัปดาห์ที่ได้ลงมือ')}
+          </span>
+          <span className="growcard__stat">
+            <b>{works.reduce((a, w) => a + Math.max(0, w.procIndex + 1), 0)}</b>{t('ขั้นที่ผ่านมือคุณ')}
+          </span>
+        </div>
+        <span className="growcard__sub">{t('ทุกครั้งที่มานับสะสมทั้งหมด — ไม่มีวันรีเซ็ตครับ')}</span>
       </div>
 
       {/* การ์ดความสำเร็จ — เติมพื้นที่โล่งท้ายหน้า (ผู้ใช้ขอ 31 ส.ค.) · ข้อมูลยัง mock เหมือนหน้า achievement */}
