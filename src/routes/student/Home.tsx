@@ -10,7 +10,7 @@ import { relative, weekMonday } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
-import { cheerLine } from '../../domain/cheer';
+import { cheerLine, dailyQuote } from '../../domain/cheer';
 import {
   caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression, stepGroups,
 } from '../../domain/rules';
@@ -442,7 +442,7 @@ export default function Home() {
             <b>{works.reduce((a, w) => a + Math.max(0, w.procIndex + 1), 0)}</b>{t('ขั้นที่ผ่านมือคุณ')}
           </span>
         </div>
-        <span className="growcard__sub">{t('ทุกครั้งที่มาเติมไฟสะสมทั้งหมด — ไฟนี้ไม่มีวันดับครับ')}</span>
+        <span className="growcard__sub growcard__sub--quote">“{dailyQuote()}”</span>
       </div>
 
       {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)

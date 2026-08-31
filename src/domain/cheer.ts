@@ -20,6 +20,25 @@ const DEFAULTS = [
   'ใจเย็นๆ มือนิ่งๆ วันนี้ผ่านไปด้วยดีแน่ครับ',
 ];
 
+/** quote สั้นๆ ท้ายการ์ดไฟ 🔥 — หมุนตามวัน (วันเดียวกันเห็นประโยคเดิม พรุ่งนี้ค่อยเปลี่ยน)
+ *  ผู้ใช้เคาะ 1 ก.ย.: เป็นอังกฤษทั้งสองภาษา — โทน minimal แบบ "bit by bit"
+ *  (แปลไทยแล้วไม่สวย เลยไม่แปล — แนวเดียวกับหัวข้อ radar ที่เป็นอังกฤษทั้งคู่) */
+const QUOTES = [
+  'bit by bit',
+  'slow is fine — just keep going',
+  'small steps still count',
+  'quietly adding up',
+  'no rush, no stopping',
+  'one more step today',
+  'steady beats fast',
+  'still growing',
+];
+
+export function dailyQuote(now = new Date()): string {
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / DAY);
+  return QUOTES[dayOfYear % QUOTES.length];
+}
+
 export function cheerLine(
   works: WorkpieceView[],
   checkins: CheckIn[],

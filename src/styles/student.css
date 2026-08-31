@@ -546,6 +546,7 @@
 }
 .growcard__stat b { font: 700 18px var(--font-head); color: var(--warning-dark); } /* โทนส้มไฟ ให้เข้ากับ 🔥 */
 .growcard__sub { display: block; margin-top: 9px; font: 400 10.5px var(--font-body); color: var(--text-faint); }
+.growcard__sub--quote { font: italic 500 11px/1.6 var(--font-body); color: var(--text-muted); text-align: center; }
 
 /* ── การ์ดความสำเร็จท้ายหน้าแรก — สรุปป้ายจากหน้า achievement (mock) ───────
    ป้ายที่ยังไม่ปลดล็อกโชว์แบบจาง ให้เห็นว่ามีอะไรรออยู่ — ชวนกดเข้าไปดู */
