@@ -85,19 +85,7 @@
   html, body, #root, .canvas { background: var(--bg-app); }
   .canvas { padding: 0; display: block; gap: 0; }
 
-  /* แถบกระจกคลุมพื้นที่นาฬิกา/รอยบาก — เนื้อหาเลื่อนลอดใต้แถบนี้แทนที่จะไปชนตัวเลขเวลา
-     (คู่กับแถบล่าง ให้บนล่างเป็นภาษาเดียวกัน) */
-  .phone::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0;
-    height: env(safe-area-inset-top);
-    z-index: 25;
-    background: var(--glass-bg);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    pointer-events: none;
-  }
-  .phone {
+    .phone {
     width: 100%;
     max-width: 700px; /* iPad จอกว้าง — เนื้อหาเป็นคอลัมน์กลางจอ ไม่ยืดจนโหวง */
     margin: 0 auto;
@@ -133,9 +121,25 @@
 /* หน้าที่ไม่มีแถบล่าง (PlainShell) ไม่ต้องเผื่อที่ให้แคปซูล */
 .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 
+/* หัวเรื่องตรึงไว้ ไม่เลื่อนหายไปกับเนื้อหา (แบบเดียวกับแอปทั่วไป)
+   เนื้อหาเลื่อนลอดใต้แถบกระจก แทนที่จะไปชนนาฬิกาบนรอยบาก
+   sticky ทำงานได้เพราะ .screen เป็นตัวที่เลื่อน */
 .s-header {
-  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 12px 20px 13px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  /* เส้นคั่นบางๆ โผล่เฉพาะตอนเลื่อนแล้วมีเนื้อหาอยู่ข้างหลัง */
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.screen[data-scrolled='true'] .s-header { border-bottom-color: var(--border); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .s-header { background: var(--bg-app); }
 }
 .s-header--row { display: flex; align-items: center; gap: 12px; }
 .iconbtn {
@@ -157,15 +161,19 @@
    เปลี่ยนเป็นแคปซูลลอยเหนือเนื้อหา แบบเดียวกับแอปที่คนไทยใช้กันทุกวัน
    ลอยอยู่ใน .phone (ซึ่ง position: relative) จึงใช้ได้ทั้งกรอบมือถือบนเดสก์ท็อป
    และเต็มจอบนมือถือจริง โดยไม่ต้องเขียนสองชุด                              */
+/* ── แถบล่าง ── แคปซูลลอยแบบ LINE แต่ตรึงกับ "หน้าจอ" ไม่ใช่กรอบ
+   บทเรียนจาก 2 รอบก่อน: ทรงที่ถูกคือแคปซูล (ผู้ใช้เลือกจากรูป LINE)
+   แต่การยึดที่ถูกคือ fixed — absolute ผูกกับกรอบ .phone ซึ่งขยับได้
+   เวลา Safari ยืด/หดแถบเครื่องมือ ทำให้แถบเลื่อนตาม (เห็นในวิดีโอ)
+   ระยะจากขอบใช้ max(): เครื่องมีแถบขีดขาวลอยเหนือมันพอดี เครื่องเก่าลอย 10px */
 .tabbar {
-  position: absolute;
+  position: fixed;
   left: 14px;
   right: 14px;
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  bottom: max(10px, env(safe-area-inset-bottom));
   z-index: 30;
   height: 60px;
   border-radius: 30px;
-  /* กระจกฝ้า: เบลอสิ่งที่อยู่ข้างหลัง + ดันความอิ่มสีขึ้นนิด ให้ไม่ดูซีด */
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
@@ -176,8 +184,15 @@
   align-items: center;
   padding: 0 6px;
 }
+/* จอกว้าง (กรอบมือถือจำลองบนเดสก์ท็อป) — แคปซูลต้องอยู่ในกรอบ */
+@media (min-width: 781px) and (pointer: fine) {
+  .tabbar { position: absolute; bottom: 12px; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar { background: var(--surface); border-color: var(--border); }
+}
+
 .tabbar a {
-  position: relative;
   display: grid; place-items: center; gap: 2px;
   height: 48px; border-radius: 24px;
   color: var(--text-faint); font: 500 10px var(--font-body);
@@ -193,7 +208,7 @@
 .tabbar a i { font-size: 22px; display: grid; }
 
 /* เนื้อหาต้องเลื่อนพ้นแถบลอย ไม่งั้นบรรทัดสุดท้ายโดนบัง */
-.screen { padding-bottom: calc(60px + 26px + env(safe-area-inset-bottom)); }
+.screen { padding-bottom: calc(60px + 22px + max(10px, env(safe-area-inset-bottom))); }
 
 /* ── deadline banner ── */
 .banner {
@@ -297,7 +312,7 @@
 
 /* ── toast ── */
 .toast {
-  position: absolute; left: 14px; right: 14px; bottom: calc(60px + 26px + env(safe-area-inset-bottom));
+  position: absolute; left: 14px; right: 14px; bottom: calc(60px + 18px + max(10px, env(safe-area-inset-bottom)));
   background: var(--toast-bg); border-radius: 14px; padding: 13px 15px;
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-toast);
   animation: toastIn 0.22s ease; z-index: 50;
@@ -504,7 +519,7 @@
 
   /* จอแคบมีปุ่มลอย "สลับมุมมอง" มุมขวาล่างด้วย — เผื่อที่ให้เลื่อนพ้น
      ไม่งั้นปุ่มสุดท้ายของหน้า (เช่น ส่งออกข้อมูล) จะโดนทับจนกดไม่โดน */
-  .screen { padding-bottom: calc(60px + 74px + env(safe-area-inset-bottom)); }
+  .screen { padding-bottom: calc(60px + 70px + max(10px, env(safe-area-inset-bottom))); }
   /* หน้าที่ไม่มีแถบล่าง ไม่ต้องเผื่อ — ต้องอยู่ในสาขาเดียวกัน ไม่งั้นกฎด้านบนถูกทับ */
   .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
@@ -512,6 +527,6 @@
   /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
   .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
-  .rolefab { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .rolefab { bottom: calc(82px + max(10px, env(safe-area-inset-bottom))); }
   .rolefab--low { bottom: calc(18px + env(safe-area-inset-bottom)); }
 }

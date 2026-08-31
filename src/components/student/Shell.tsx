@@ -85,13 +85,24 @@ function TabBar() {
   );
 }
 
+
+/**
+ * ติดธง data-scrolled ให้ตัวที่เลื่อน — หัวเรื่องใช้โชว์เส้นคั่นเฉพาะตอนมีเนื้อหาข้างหลัง
+ * ใช้ onScroll ตรงๆ แทน useEffect+ref เพราะ ref ผูกพลาดได้ตอน remount ข้ามบทบาท
+ * (เจอจริง: effect ไม่รันหลังสลับหน้า attribute เลยไม่ลง) — onScroll อยู่กับ element เสมอ
+ */
+function markScrolled(e: React.UIEvent<HTMLDivElement>) {
+  const el = e.currentTarget;
+  el.dataset.scrolled = el.scrollTop > 4 ? 'true' : 'false';
+}
+
 export function Shell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {
   return (
     <div className="canvas">
       <DemoBar />
       <PhoneFrame>
         <StatusBar />
-        <div className="screen screen--pad">{children}</div>
+        <div className="screen screen--pad" onScroll={markScrolled}>{children}</div>
         {footer}
         <TabBar />
         <RoleFab />
@@ -109,7 +120,7 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
       <DemoBar />
       <PhoneFrame>
         <StatusBar />
-        <div className="screen screen--plain">{children}</div>
+        <div className="screen screen--plain" onScroll={markScrolled}>{children}</div>
         {footer}
         <ToastView />
         {overlay}
