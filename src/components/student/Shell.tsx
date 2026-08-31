@@ -109,7 +109,7 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
       <DemoBar />
       <PhoneFrame>
         <StatusBar />
-        <div className="screen screen--pad">{children}</div>
+        <div className="screen screen--plain">{children}</div>
         {footer}
         <ToastView />
         {overlay}

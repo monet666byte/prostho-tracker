@@ -109,7 +109,9 @@
 .screen::-webkit-scrollbar { display: none; }
 .sheet { scrollbar-width: none; }
 .sheet::-webkit-scrollbar { display: none; }
-.screen--pad { padding-bottom: 18px; }
+/* หน้าที่ไม่มีแถบล่าง (PlainShell) ใช้ระยะปกติ ไม่ต้องเผื่อแคปซูล */
+/* หน้าที่ไม่มีแถบล่าง (PlainShell) ไม่ต้องเผื่อที่ให้แคปซูล */
+.screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 
 .s-header {
   background: transparent;
@@ -130,22 +132,48 @@
   border-radius: 99px; padding: 3px 10px; font: 600 11px var(--font-mono);
 }
 
+/* ── แถบล่างแบบลอย (ทรงแคปซูล) ────────────────────────────────────────
+   เดิมเป็นแถบทึบเต็มความกว้างติดขอบล่าง มีเส้นคาดบน ดูเป็น "เว็บ" มากกว่าแอป
+   เปลี่ยนเป็นแคปซูลลอยเหนือเนื้อหา แบบเดียวกับแอปที่คนไทยใช้กันทุกวัน
+   ลอยอยู่ใน .phone (ซึ่ง position: relative) จึงใช้ได้ทั้งกรอบมือถือบนเดสก์ท็อป
+   และเต็มจอบนมือถือจริง โดยไม่ต้องเขียนสองชุด                              */
 .tabbar {
-  height: var(--tabbar-h);
-  padding-bottom: 6px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 30;
+  height: 60px;
+  border-radius: 30px;
+  /* กระจกฝ้า: เบลอสิ่งที่อยู่ข้างหลัง + ดันความอิ่มสีขึ้นนิด ให้ไม่ดูซีด */
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  flex: none;
+  align-items: center;
+  padding: 0 6px;
 }
 .tabbar a {
-  display: grid; place-items: center; gap: 3px;
+  position: relative;
+  display: grid; place-items: center; gap: 2px;
+  height: 48px; border-radius: 24px;
   color: var(--text-faint); font: 500 10px var(--font-body);
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
-.tabbar a.on { color: var(--accent); font-weight: 600; }
+/* แท็บที่เลือกอยู่มีพื้นอ่อนรองไว้ — บอกตำแหน่งชัดโดยไม่ต้องใช้เส้น */
+.tabbar a.on { color: var(--accent); font-weight: 600; background: var(--accent-tint); }
+
+/* เบราว์เซอร์ที่เบลอไม่ได้ (Firefox บางรุ่น) — ใช้พื้นทึบแทน ไม่งั้นตัวหนังสือจะจมกับเนื้อหาข้างหลัง */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar { background: var(--surface); border-color: var(--border); }
+}
 .tabbar a i { font-size: 22px; display: grid; }
+
+/* เนื้อหาต้องเลื่อนพ้นแถบลอย ไม่งั้นบรรทัดสุดท้ายโดนบัง */
+.screen { padding-bottom: calc(60px + 26px + env(safe-area-inset-bottom)); }
 
 /* ── deadline banner ── */
 .banner {
@@ -249,7 +277,7 @@
 
 /* ── toast ── */
 .toast {
-  position: absolute; left: 14px; right: 14px; bottom: calc(var(--tabbar-h) + 12px);
+  position: absolute; left: 14px; right: 14px; bottom: calc(60px + 26px + env(safe-area-inset-bottom));
   background: var(--toast-bg); border-radius: 14px; padding: 13px 15px;
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-toast);
   animation: toastIn 0.22s ease; z-index: 50;
@@ -451,12 +479,19 @@
    ถ้าไม่กันไว้ แถบเมนูล่างจะโดนแถบขีดขาวทับจนกดยาก และหัวจอชนรอยบาก
    บนเครื่องที่ไม่มีขอบพิเศษ env() = 0 จึงไม่กระทบอะไร                        */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
-  .tabbar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); height: auto; min-height: var(--tabbar-h); }
+  /* แถบล่างเป็นแคปซูลลอยแล้ว จัดการ safe-area ด้วย bottom ของตัวเอง
+     ไม่ต้องมีกฎ padding แบบแถบทึบเดิมอีก (ถ้าใส่จะไปทับความสูงจนไอคอนเบี้ยว) */
+
+  /* จอแคบมีปุ่มลอย "สลับมุมมอง" มุมขวาล่างด้วย — เผื่อที่ให้เลื่อนพ้น
+     ไม่งั้นปุ่มสุดท้ายของหน้า (เช่น ส่งออกข้อมูล) จะโดนทับจนกดไม่โดน */
+  .screen { padding-bottom: calc(60px + 74px + env(safe-area-inset-bottom)); }
+  /* หน้าที่ไม่มีแถบล่าง ไม่ต้องเผื่อ — ต้องอยู่ในสาขาเดียวกัน ไม่งั้นกฎด้านบนถูกทับ */
+  .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .s-header { padding-top: calc(12px + env(safe-area-inset-top)); }
   /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
   .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
-  .rolefab { bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .rolefab { bottom: calc(84px + env(safe-area-inset-bottom)); }
   .rolefab--low { bottom: calc(18px + env(safe-area-inset-bottom)); }
 }
