@@ -1,11 +1,13 @@
 import {
-  ArrowLeft, Confetti, DownloadSimple, FlagCheckered, Medal, ShareNetwork, Sparkle, TrendUp,
+  ArrowLeft, Confetti, DownloadSimple, Fire, FlagCheckered, Medal, ShareNetwork, Sparkle,
 } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
+import { useCheckIns } from '../../hooks/data';
+import { useApp } from '../../store/app';
 import { t } from '../../lib/i18n';
-import { academicYear } from '../../lib/date';
+import { academicYear, toISODate } from '../../lib/date';
 
 /**
  * MOCK — หน้าทดลองระบบ achievement (ยังไม่ผูกกับข้อมูลจริง)
@@ -30,8 +32,51 @@ const WRAPPED = [
   { big: '15', label: t('สัปดาห์กับเคสที่ยาวที่สุด'), sub: t('CD คู่แรก — และคุณพามันจบจนได้'), bg: '#B54708', fg: '#fff' },
 ];
 
+/* ผู้ใช้ขอ 1 ก.ย.: กดเข้ามาให้เห็นแค่สมุดบันทึก + streak ก่อน
+   การ์ดฉลองปิดเคส กับ Wrapped ปลายปี ซ่อนไว้ — เปิดกลับด้วย true เมื่อพร้อมคุยต่อ */
+const SHOW_EXTRAS = false;
+
+/** จันทร์ของสัปดาห์ที่วันนั้นอยู่ (คีย์สัปดาห์แบบไม่ต้องคำนวณเลข ISO week)
+ *  ต้องใช้ toISODate (เวลาท้องถิ่น) — toISOString เป็น UTC จะเลื่อนวันสำหรับเขตเวลาไทย */
+function weekKey(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00`);
+  const day = (d.getDay() + 6) % 7; // จันทร์ = 0
+  d.setDate(d.getDate() - day);
+  return toISODate(d);
+}
+
 export default function Achievements() {
   const navigate = useNavigate();
+  const { session } = useApp();
+  const checkins = useCheckIns(session?.studentId);
+
+  /* streak แบบ "ไม่หายง่าย" (ตามที่คุยกัน): นับเป็นสัปดาห์ ไม่ใช่วัน
+     — คลินิกไม่ได้มีทุกวัน ขาดวันเดียวเลยไม่ควรดับ ต้องหายทั้งสัปดาห์ถึงเริ่มนับใหม่
+     — สัปดาห์นี้ยังไม่เช็คอินก็ยังไม่ตัด (ยังมีเวลาถึงอาทิตย์) */
+  const weeks = new Set(checkins.map((c) => weekKey(c.date)));
+  const thisWeek = weekKey(toISODate(new Date()));
+  const back = (base: string, n: number) => {
+    const d = new Date(`${base}T00:00`);
+    d.setDate(d.getDate() - 7 * n);
+    return toISODate(d);
+  };
+  let streak = 0;
+  {
+    // เริ่มนับจากสัปดาห์นี้ ถ้ายังว่างให้เริ่มจากสัปดาห์ก่อน (ยังไม่ถือว่าขาด)
+    const start = weeks.has(thisWeek) ? 0 : 1;
+    for (let i = start; weeks.has(back(thisWeek, i)); i++) streak++;
+  }
+  let best = streak;
+  {
+    // สถิติดีสุดจากทั้งหมด: ไล่จากสัปดาห์เก่าสุดถึงปัจจุบัน
+    const sorted = [...weeks].sort();
+    let run = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      run = i > 0 && back(sorted[i], 1) === sorted[i - 1] ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+  }
+  const recentWeeks = Array.from({ length: 8 }, (_, i) => back(thisWeek, 7 - i));
   const [showCelebration, setShowCelebration] = useState(false);
   const [wrappedIndex, setWrappedIndex] = useState(0);
   const gotCount = FIRSTS.filter((f) => f.got).length;
@@ -91,7 +136,8 @@ export default function Achievements() {
       </header>
 
       <div style={{ padding: '14px 16px 8px', display: 'grid', gap: 14 }}>
-        {/* ② การ์ดฉลองจบเคส */}
+        {/* ② การ์ดฉลองจบเคส — ซ่อนชั่วคราว (SHOW_EXTRAS) */}
+        {SHOW_EXTRAS && (
         <section className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Confetti size={17} weight="fill" color="var(--accent)" />
@@ -104,6 +150,7 @@ export default function Achievements() {
             <Sparkle size={17} weight="fill" /> {t('ลองดูตัวอย่าง')}
           </button>
         </section>
+        )}
 
         {/* ① สมุดบันทึกครั้งแรก */}
         <section className="card" style={{ padding: 14 }}>
@@ -143,7 +190,8 @@ export default function Achievements() {
           </div>
         </section>
 
-        {/* ④ Wrapped ปลายปี */}
+        {/* ④ Wrapped ปลายปี — ซ่อนชั่วคราว (SHOW_EXTRAS) */}
+        {SHOW_EXTRAS && (
         <section className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <FlagCheckered size={17} weight="fill" color="var(--success)" />
@@ -169,12 +217,46 @@ export default function Achievements() {
             </span>
           </button>
         </section>
+        )}
 
-        {/* ③ streak — ตัวอย่างแนวคิดไว้คุยต่อ */}
-        <section className="dashed" style={{ padding: 13, display: 'flex', gap: 10 }}>
-          <TrendUp size={16} color="var(--text-faint)" style={{ flex: 'none', marginTop: 2 }} />
-          <p className="pretty" style={{ margin: 0, font: '400 11px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-            <b>{t('ส่วนที่ 3 (ความสม่ำเสมอ) ยังไม่ทำ')}</b> — {t('รอคุยกันเรื่องรูปแบบ "streak ที่ไม่หาย" ก่อน')}
+        {/* ③ streak — ของจริง: นับจากเช็คอินในเครื่อง ไม่ใช่ mock */}
+        <section className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Fire size={17} weight="fill" color="var(--warning)" />
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)', flex: 1 }}>{t('ความสม่ำเสมอ')}</h4>
+            <span className="mono" style={{ font: '600 11px var(--font-mono)', color: 'var(--text-muted)' }}>
+              {t('นับจริง')}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 9 }}>
+            <span style={{ font: '700 40px/1 var(--font-head)', color: 'var(--warning-dark)' }}>{streak}</span>
+            <span style={{ font: '600 13px var(--font-head)', color: 'var(--text-secondary)' }}>
+              {t('สัปดาห์ติดต่อกันที่มาเช็คอิน')}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 5, marginTop: 12 }} aria-hidden>
+            {recentWeeks.map((wk) => (
+              <span
+                key={wk}
+                title={wk}
+                style={{
+                  flex: 1, height: 9, borderRadius: 99,
+                  background: weeks.has(wk) ? 'var(--warning)' : 'var(--fill)',
+                  border: weeks.has(wk) ? 'none' : '1px solid var(--border)',
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
+            <span>{t('8 สัปดาห์ล่าสุด')}</span>
+            <span>{t('สัปดาห์นี้')}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 14, marginTop: 11, font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>
+            <span>🏆 {t('ดีสุด {n} สัปดาห์', { n: best })}</span>
+            <span>📋 {t('เช็คอินสะสม {n} ครั้ง', { n: checkins.length })}</span>
+          </div>
+          <p className="pretty" style={{ margin: '9px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+            {t('streak แบบไม่ใจร้าย: นับเป็นสัปดาห์ ขาดวันเดียวไม่ดับ — หายทั้งสัปดาห์ถึงเริ่มนับใหม่')}
           </p>
         </section>
       </div>
