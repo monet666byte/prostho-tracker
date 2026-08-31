@@ -44,7 +44,7 @@ function usePhoneScale(): number {
 export function PhoneFrame({ children }: { children: ReactNode }) {
   const scale = usePhoneScale();
   return (
-    <div style={{ height: PHONE_OUTER * scale, display: 'flex', justifyContent: 'center' }}>
+    <div className="phonewrap" style={{ height: PHONE_OUTER * scale, display: 'flex', justifyContent: 'center' }}>
       <div className="phone" style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
         {children}
       </div>
