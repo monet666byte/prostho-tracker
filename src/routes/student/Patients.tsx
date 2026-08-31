@@ -134,7 +134,8 @@ export default function Patients() {
 
   return (
     <Shell overlay={<DeleteSheet target={target} onCancel={() => setTarget(null)} onConfirm={confirmDelete} />}>
-      <header className="s-header s-header--row">
+      <header className="s-header">
+        <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 className="h2">{t('คนไข้ + ชิ้นงาน')}</h2>
           <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
@@ -148,6 +149,7 @@ export default function Patients() {
         >
           {editing ? <X size={17} weight="bold" /> : <PencilSimpleLine size={17} />}
         </button>
+        </div>
       </header>
 
       <div style={{ paddingTop: 14 }}>

@@ -188,7 +188,8 @@ export default function Home() {
 
   return (
     <Shell overlay={<ConfirmSheet />}>
-      <header className="s-header s-header--row">
+      <header className="s-header">
+        <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
@@ -203,6 +204,7 @@ export default function Home() {
         <Link to="/app/sync" className="iconbtn" aria-label={t('แจ้งเตือน')}>
           <Bell size={18} weight="fill" />
         </Link>
+        </div>
       </header>
 
       <div className="sectiontitle" style={{ padding: '12px 16px 7px' }}>
