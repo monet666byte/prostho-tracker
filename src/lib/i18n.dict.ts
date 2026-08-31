@@ -83,7 +83,7 @@ export const DICT: Record<string, string> = {
   'ครั้งที่มาคลินิก': 'clinic visits',
   'สัปดาห์ที่ได้ลงมือ': 'weeks of hands-on',
   'ขั้นที่ผ่านมือคุณ': 'steps done by you',
-  'ทุกครั้งที่มานับสะสมทั้งหมด — ไม่มีวันรีเซ็ตครับ': 'Every visit counts and adds up — this never resets',
+  'ทุกครั้งที่มาเติมไฟสะสมทั้งหมด — ไฟนี้ไม่มีวันดับครับ': 'Every visit adds fuel to the fire — and this one never goes out',
   'step นี้ต้องทำเอง (self-performed)': 'This step must be self-performed',
   'ซี่': 'Tooth',
   'บันทึกทำ step {n} เสร็จ': 'Mark step {n} done',

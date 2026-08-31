@@ -427,7 +427,7 @@ export default function Home() {
       {/* แถบกำลังใจแบบสะสม — ผู้ใช้ 1 ก.ย.: streak รายสัปดาห์ไม่เข้ากับตารางคลินิก (บางสัปดาห์ไม่มีคาบ)
           เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" */}
       <div className="card growcard">
-        <span className="growcard__head">🌱 {t('เก็บสะสมมาเรื่อยๆ')}</span>
+        <span className="growcard__head">🔥 {t('เก็บสะสมมาเรื่อยๆ')}</span>
         <div className="growcard__row">
           <span className="growcard__stat">
             <b>{checkins.length}</b>{t('ครั้งที่มาคลินิก')}
@@ -439,7 +439,7 @@ export default function Home() {
             <b>{works.reduce((a, w) => a + Math.max(0, w.procIndex + 1), 0)}</b>{t('ขั้นที่ผ่านมือคุณ')}
           </span>
         </div>
-        <span className="growcard__sub">{t('ทุกครั้งที่มานับสะสมทั้งหมด — ไม่มีวันรีเซ็ตครับ')}</span>
+        <span className="growcard__sub">{t('ทุกครั้งที่มาเติมไฟสะสมทั้งหมด — ไฟนี้ไม่มีวันดับครับ')}</span>
       </div>
 
       {/* การ์ดความสำเร็จ — เติมพื้นที่โล่งท้ายหน้า (ผู้ใช้ขอ 31 ส.ค.) · ข้อมูลยัง mock เหมือนหน้า achievement */}
