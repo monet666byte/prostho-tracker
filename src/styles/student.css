@@ -135,8 +135,9 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  /* ผู้ใช้ขอหนาขึ้น (31 ส.ค.) — ให้เป็นแถบที่รู้สึกจับต้องได้ ไม่ใช่แค่ข้อความลอย */
-  padding: 20px 20px 18px;
+  /* กลับไปความหนาเดิมของวันที่ผู้ใช้บอกว่า "หน้าคาบ/เกณฑ์ได้แล้ว"
+     (ลองเพิ่มเป็น 16 แล้ว 20 — ผู้ใช้บอกกลายเป็นไม่ถูก จึงถอยกลับ) */
+  padding: 12px 20px 13px;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
@@ -534,7 +535,7 @@
   /* หน้าที่ไม่มีแถบล่าง ไม่ต้องเผื่อ — ต้องอยู่ในสาขาเดียวกัน ไม่งั้นกฎด้านบนถูกทับ */
   .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  .s-header { padding-top: calc(20px + env(safe-area-inset-top)); }
+  .s-header { padding-top: calc(12px + env(safe-area-inset-top)); }
   /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
   .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
