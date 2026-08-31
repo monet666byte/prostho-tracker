@@ -768,4 +768,5 @@ export const DICT: Record<string, string> = {
   'รีเซ็ตข้อมูลเดโม': 'Reset demo data',
   'ล้างทุกอย่างกลับเป็นข้อมูลตัวอย่าง — popup เช็คอินจะกลับมาถามใหม่': 'Restores the sample data \u2014 the check-in popup will ask again',
   'รีเซ็ตแล้ว — popup เช็คอินจะกลับมาถามใหม่': 'Reset done \u2014 the check-in popup will ask again',
+  'ปรับแก้หลังใส่งาน': 'Post-delivery adjustment',
 };

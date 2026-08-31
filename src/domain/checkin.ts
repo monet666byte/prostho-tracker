@@ -25,13 +25,23 @@ export const MAX_SCORE = 3;
 export const MAX_TOTAL = CRITERIA.length * MAX_SCORE; // 24
 
 /** กิจกรรมในคาบ — จากช่อง "Appointed Patient (Name/Work)" ที่เด็กเคยต้องเขียนมือ */
+/**
+ * ขยายให้ครอบทั้งเส้นทาง 10 ขั้นของงานจริง (ผู้ใช้ทัก 31 ส.ค. — 7 อันเดิม
+ * ไม่ครอบ เช่นวันพิมพ์ final วันกรอฟัน วันปรับแก้ วัน recall)
+ * ขั้นแล็บช่วงกลาง (Set up · Waxing · Flasking …) รวมอยู่ใน Laboratory work
+ * เรียงตามลำดับที่เกิดจริงในคลินิก
+ */
 export const ACTIVITIES = [
   'Oral examination',
   'Primary impression',
+  'Final impression',
   'Bite registration',
-  'Try in / Delivery',
-  'ส่งงาน · ตรวจงานกับอาจารย์',
+  'Tooth preparation',
   'Laboratory work',
+  'Try in / Delivery',
+  'ปรับแก้หลังใส่งาน',
+  'Recall',
+  'ส่งงาน · ตรวจงานกับอาจารย์',
   'ไม่มีผู้ป่วย (no patient)',
 ] as const;
 
