@@ -1,0 +1,47 @@
+Copyright © 2026 Phatchara Decharkom (พชร เดชอาคม)
+All rights reserved.
+
+Prostho Tracker — a clinical case tracking system for DTPT502
+(Clinic Prosthodontics II), Faculty of Dentistry, Mahidol University.
+
+------------------------------------------------------------------------
+TERMS
+------------------------------------------------------------------------
+
+This source code is made publicly readable for review, study, and
+academic evaluation. It is NOT released under an open-source licence.
+
+You MAY:
+  - read and study this source code
+  - reference it for academic or educational discussion
+
+You MAY NOT, without prior written permission from the copyright holder:
+  - copy, redistribute, or publish this code or substantial parts of it
+  - use it, in whole or in part, in another product or service
+  - deploy it for any organisation or institution
+  - create and distribute derivative works
+
+------------------------------------------------------------------------
+INSTITUTIONAL USE
+------------------------------------------------------------------------
+
+Arrangements for use, maintenance, and ownership of this system by the
+Department of Prosthodontics and/or the Faculty of Dentistry, Mahidol
+University are under discussion and are not yet settled. Nothing in this
+notice is intended to prevent such an arrangement being made.
+
+Where university regulations on works created by students apply, those
+regulations govern to the extent of any conflict with this notice.
+
+------------------------------------------------------------------------
+NO PATIENT DATA
+------------------------------------------------------------------------
+
+This repository contains NO real patient information. All names, hospital
+numbers, and clinical records included here are fictional test data.
+The public demo build cannot connect to any live database.
+
+------------------------------------------------------------------------
+
+Contact: phatcharaliv@gmail.com
+Repository first published: 27 August 2026

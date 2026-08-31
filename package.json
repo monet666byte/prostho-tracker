@@ -38,5 +38,8 @@
     "vite": "^8.2.2",
     "vite-plugin-pwa": "^1.3.0",
     "vite-plugin-singlefile": "^2.3.3"
-  }
+  },
+  "author": "Phatchara Decharkom <phatcharaliv@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "description": "ระบบติดตามความคืบหน้าเคสงานทันตกรรมประดิษฐ์ รายวิชา DTPT502 คณะทันตแพทยศาสตร์ ม.มหิดล"
 }
