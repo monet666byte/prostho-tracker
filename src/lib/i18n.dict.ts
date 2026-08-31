@@ -75,6 +75,8 @@ export const DICT: Record<string, string> = {
   'ยังไม่เริ่ม': 'Not started',
   'ทำขั้นนี้เสร็จแล้ว': 'Mark this step done',
   'ดูขั้นตอนทั้งหมดของเคสนี้': 'View all steps of this case',
+  'ดูขั้นย่อยของขั้นนี้': 'Show sub-steps of this step',
+  'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'step นี้ต้องทำเอง (self-performed)': 'This step must be self-performed',
   'ซี่': 'Tooth',
   'บันทึกทำ step {n} เสร็จ': 'Mark step {n} done',

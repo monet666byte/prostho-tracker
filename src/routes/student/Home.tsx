@@ -1,7 +1,7 @@
-import { Bell, CaretRight, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
+import { Bell, CaretDown, CaretRight, CaretUp, CheckCircle, CheckSquare, Circle, CircleDashed, HandTap, MagnifyingGlass, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArchBadge, Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
+import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
@@ -12,7 +12,7 @@ import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
 import { cheerLine } from '../../domain/cheer';
 import {
-  caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression,
+  caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression, stepGroups,
 } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
@@ -48,6 +48,9 @@ function HeroCard({
   const next = nextProc(w);
   const prog = Math.max(progression(w), 0);
   const max = maxProgression(w);
+  // ปุ่มฟ้าเล็ก: กางเฉพาะขั้นย่อยของ step ที่กำลังทำ (กล่องเดียวกับหน้า step เต็ม — ผู้ใช้ขอ 31 ส.ค.)
+  // ส่วนการไปหน้า step เต็ม ใช้กดที่ชื่อ step ตัวใหญ่แทน
+  const [showSteps, setShowSteps] = useState(false);
   // step หนึ่งมีขั้นย่อยได้หลายอัน — บอกตำแหน่งไว้ จะได้ไม่เข้าใจว่ากดแล้วจบทั้ง step
   let sibTotal = 0;
   let subPos = 0;
@@ -87,7 +90,10 @@ function HeroCard({
               <div className="herocase__caption">
                 {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}{sibTotal > 1 ? ` · ${t('ขั้นย่อย')} ${subPos}/${sibTotal}` : ''}
               </div>
-              <div className="herocase__step">{next.name}</div>
+              {/* กดที่ชื่อ step ใหญ่เพื่อเปิดหน้าขั้นตอนเต็มได้เลย — แทนลิงก์ฟ้าเล็กที่เคยอยู่ใต้ปุ่ม (ผู้ใช้ขอ 31 ส.ค. ลดความรก) */}
+              <Link to={`/app/work/${w.id}`} className="herocase__step herocase__step--link">
+                {next.name} <CaretRight size={13} weight="bold" className="herocase__steparrow" />
+              </Link>
               {/* หลาย step มีขั้นย่อย 2 อัน — โชว์แค่ชื่อขั้นที่เพิ่งเสร็จ ไม่ใส่เลข step จะได้ไม่ชนกับข้างบน */}
               {cur && <div className="herocase__done">✓ {t('เสร็จก่อนหน้า')}: {cur.name}</div>}
             </>
@@ -107,12 +113,38 @@ function HeroCard({
         </button>
       )}
       {next && (
-        <Link
-          to={`/app/work/${w.id}`}
-          style={{ display: 'block', textAlign: 'center', marginTop: 10, font: '500 11.5px var(--font-body)', color: 'var(--accent)' }}
+        <button
+          className="herocase__more"
+          onClick={() => { tapFeedback(); setShowSteps((v) => !v); }}
         >
-          {t('ดูขั้นตอนทั้งหมดของเคสนี้')} ›
-        </Link>
+          {showSteps ? t('ซ่อนขั้นย่อย') : t('ดูขั้นย่อยของขั้นนี้')}
+          {showSteps ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
+        </button>
+      )}
+      {next && showSteps && (
+        <div className="tl__panel" style={{ marginTop: 8 }}>
+          {(stepGroups(w).find((g) => g.state === 'active')?.procs ?? []).map((p) => {
+            const passed = w.procIndex >= p.index;
+            const isNext = w.procIndex + 1 === p.index;
+            return (
+              <div className="tl__proc" key={p.index}>
+                <span style={{ flex: 'none', marginTop: 1, display: 'grid' }}>
+                  {passed ? (
+                    <CheckCircle size={15} weight="fill" color="var(--success)" />
+                  ) : isNext ? (
+                    <CircleDashed size={15} color="var(--accent)" />
+                  ) : (
+                    <Circle size={15} color="var(--text-disabled)" />
+                  )}
+                </span>
+                <span style={{ flex: 1, color: passed ? 'var(--text-faint)' : 'var(--text-secondary)' }}>
+                  {p.name}
+                </span>
+                {p.selfPerformed && <SelfBadge compact />}
+              </div>
+            );
+          })}
+        </div>
       )}
       {next?.selfPerformed && (
         <div className="selfrow">
