@@ -102,7 +102,7 @@ export function Shell({ children, footer, overlay }: { children: ReactNode; foot
       <DemoBar />
       <PhoneFrame>
         <StatusBar />
-        <div className="screen screen--pad" onScroll={markScrolled}>{children}</div>
+        <div className="screen screen--pad" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
         <TabBar />
         <RoleFab />
@@ -120,7 +120,7 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
       <DemoBar />
       <PhoneFrame>
         <StatusBar />
-        <div className="screen screen--plain" onScroll={markScrolled}>{children}</div>
+        <div className="screen screen--plain" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
         <ToastView />
         {overlay}

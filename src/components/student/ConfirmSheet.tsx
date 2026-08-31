@@ -7,6 +7,7 @@ import { useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/dat
 import { usePhotoAttach } from './usePhotoAttach';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { tapFeedback } from '../../lib/haptic';
 
 export function ConfirmSheet() {
   const { sheet, closeSheet, patchSheet, offline, showToast, session, settings, touch } = useApp();
@@ -27,6 +28,7 @@ export function ConfirmSheet() {
 
   async function confirm() {
     if (!sheet || !w || !next) return;
+    tapFeedback();
     const res = await advanceStep({
       workpieceId: w.id,
       performedAt: sheet.performedAt,

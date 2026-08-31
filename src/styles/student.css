@@ -96,6 +96,11 @@
      วิธีเดียวที่ iOS ยอม: ตอกทั้งแอปเป็น fixed ติดหน้าจอ — เทคนิคเดียวกับ
      แถบล่างที่ตรึงสำเร็จไปแล้ว พอทั้งแอป fixed หน้าเว็บก็ไม่เหลืออะไรให้เลื่อน */
   .canvas { position: fixed; inset: 0; padding: 0; display: block; gap: 0; height: auto; overflow: hidden; }
+  /* เด้งดึ๋งได้แม้เนื้อหาสั้น (ผู้ใช้ขอ 31 ส.ค.) — iOS จะให้ rubber-band
+     ก็ต่อเมื่อมีอะไรให้เลื่อนจริง จึงบังคับให้เนื้อหาสูงกว่าพื้นที่ 1px เสมอ
+     (1px มองไม่เห็น แต่พอให้ iOS นับว่า "เลื่อนได้" แล้วปล่อยเด้ง) */
+  .screenfill { min-height: calc(100% + 1px); }
+
   /* กล่องห่อกรอบมีความสูงจาก JS (ไว้จัดกลางบนเดสก์ท็อป) — บนมือถือบังคับเต็มจอ
      (ห้ามใช้ .canvas > div เหวี่ยงแห — เคยไปโดนแถบเดโมจนหน้าพังทั้งจอ) */
   .phonewrap { height: 100% !important; display: block; }
@@ -131,7 +136,7 @@
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
   background: var(--bg-app);
-  animation: shellIn 0.22s ease;
+  animation: pageIn 0.22s ease;
   /* ซ่อน scrollbar ในจอโทรศัพท์ — มือถือจริงไม่มี และแถบนี้กินที่ฝั่งขวาจนเนื้อหาดูเบี้ยว
      (โผล่เมื่อ macOS ตั้ง Show scroll bars: Always) เลื่อนด้วยล้อเมาส์/trackpad ได้ปกติ */
   scrollbar-width: none;
@@ -150,9 +155,10 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  /* กลับไปความหนาเดิมของวันที่ผู้ใช้บอกว่า "หน้าคาบ/เกณฑ์ได้แล้ว"
-     (ลองเพิ่มเป็น 16 แล้ว 20 — ผู้ใช้บอกกลายเป็นไม่ถูก จึงถอยกลับ) */
+  /* ความหนาฐาน 12/13 (ค่าที่ผู้ใช้ชอบ) — ตอนเลื่อนจะยุบบางลงอีกนิดแบบ iOS
+     (กฎยุบอยู่ถัดลงไป ทำงานด้วย data-scrolled) */
   padding: 12px 20px 13px;
+  transition: padding 0.18s ease;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
@@ -161,6 +167,8 @@
   transition: border-color 0.2s;
 }
 .screen[data-scrolled='true'] .s-header { border-bottom-color: var(--border); }
+/* ยุบหัวตอนเลื่อน — กลิ่นอาย large title ของ iOS แบบเบาๆ */
+.screen[data-scrolled='true'] .s-header { padding-top: 7px; padding-bottom: 8px; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .s-header { background: var(--bg-app); }
@@ -551,9 +559,21 @@
   .screen--plain { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .s-header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .screen[data-scrolled='true'] .s-header { padding-top: calc(7px + env(safe-area-inset-top)); }
   /* แผ่นเลื่อนขึ้นจากล่างและปุ่มลอย ต้องหนีแถบขีดขาวเหมือนกัน */
   .sheet { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   /* ปุ่มลอยต้องพ้นทั้งแถบเมนูและแถบขีดขาว — ค่าฐานมาจาก base.css (86px / 16px) */
   .rolefab { bottom: calc(80px + max(8px, calc(env(safe-area-inset-bottom) - 22px))); }
   .rolefab--low { bottom: calc(18px + env(safe-area-inset-bottom)); }
+}
+
+
+/* เข้าเพจแบบสไลด์นิดๆ จากขวา — ให้การเปลี่ยนหน้ารู้สึกมีทิศทางแบบแอป
+   (คนที่ตั้งค่าลดการเคลื่อนไหว จะได้ fade เฉยๆ แทน) */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen { animation: shellIn 0.15s ease; }
 }

@@ -15,6 +15,7 @@ import {
   caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression,
 } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
+import { tapFeedback } from '../../lib/haptic';
 
 /** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
 function Ring({ value, max }: { value: number; max: number }) {
@@ -171,6 +172,7 @@ export default function Home() {
     // (ชั้นข้อมูลใน addCheckIn กันไว้อีกชั้น อันนี้ไว้ให้ปุ่มไม่ยิงซ้ำเปล่าๆ)
     if (!session || checkedInToday || checkingIn.current) return;
     checkingIn.current = true;
+    tapFeedback();
     try {
       const now = new Date();
       const checkinAt = now.toTimeString().slice(0, 5);
