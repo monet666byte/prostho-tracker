@@ -689,6 +689,9 @@
    โชว์เฉพาะขั้นย่อยของ step ที่กำลังทำ กันรก · รางเส้นเดียวลากหลังทุกแถว
    จุดตำแหน่งเจาะวงรอบตัวเองด้วยสีพื้นการ์ด (--hero-bg) ให้ดูลอยเหนือราง */
 .herocase__meta { margin-left: auto; font: 500 10px var(--font-mono); color: var(--text-faint); }
+/* โซนหัวการ์ด: คนไข้+caption ซ้าย · วงแหวนรวมทั้งเคสขวา (ผู้ใช้ขอวงแหวนคืน 1 ก.ย.) */
+.herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.herocase__lead .herocase__patient { margin-top: 0; }
 .heropath { position: relative; margin-top: 9px; display: grid; gap: 6px; }
 .heropath::before {
   content: '';

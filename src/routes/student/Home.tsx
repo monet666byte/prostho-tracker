@@ -23,6 +23,24 @@ import { groupShort } from '../../domain/group';
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
 const SHOW_ACHIEVEMENT_CARD = false;
 
+/** วงแหวนความคืบหน้ารวมของเคส — ผู้ใช้ขอคืนมาคู่กับเส้นทางด่าน (1 ก.ย.) เลยย่อไซซ์ลงไปอยู่มุมหัวการ์ด */
+function Ring({ value, max }: { value: number; max: number }) {
+  const R = 25;
+  const C = 2 * Math.PI * R;
+  const f = Math.max(0, Math.min(1, value / max));
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" style={{ flex: 'none' }} aria-hidden>
+      <circle cx="32" cy="32" r={R} fill="none" stroke="var(--accent-ring)" strokeWidth="6.5" />
+      <circle
+        cx="32" cy="32" r={R} fill="none" stroke="var(--accent)" strokeWidth="6.5" strokeLinecap="round"
+        strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 32 32)"
+      />
+      <text x="32" y="31" textAnchor="middle" style={{ font: '700 14px var(--font-head)', fill: 'var(--text)' }}>{value}</text>
+      <text x="32" y="43" textAnchor="middle" style={{ font: '400 9px var(--font-mono)', fill: 'var(--text-faint)' }}>/ {max}</text>
+    </svg>
+  );
+}
+
 function HeroCard({
   w, pending, stale, onPass,
 }: {
@@ -45,20 +63,27 @@ function HeroCard({
         <ArchBadge arch={w.arch} />
         {pending && <PendingBadge />}
         {stale && <StaleBadge days={daysSinceUpdate(w)} />}
-        {/* ตัวเลขรวม prog/max ย้ายมาอยู่มุมนี้แทนวงแหวนที่ถูกเส้นทางด่านแทนที่ */}
-        <span className="herocase__meta">{prog}/{max} · {relative(w.lastUpdatedAt)}</span>
+        <span className="herocase__meta">{relative(w.lastUpdatedAt)}</span>
       </div>
 
-      {/* ตัดวงเล็บอธิบายท้ายชื่อเคส (เช่น "ไม่เหลือฟันแม้แต่ซี่เดียว") — คนใช้รู้อยู่แล้วว่า CD คืออะไร */}
-      <Link to={`/app/work/${w.id}`} className="herocase__patient">
-        {t(w.patient.name)} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
-      </Link>
+      {/* โซนหัว: ชื่อคนไข้+caption ชิดซ้าย วงแหวนรวมทั้งเคสชิดขวา — เส้นทางด่านล่างได้เต็มความกว้าง */}
+      <div className="herocase__lead">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* ตัดวงเล็บอธิบายท้ายชื่อเคส (เช่น "ไม่เหลือฟันแม้แต่ซี่เดียว") — คนใช้รู้อยู่แล้วว่า CD คืออะไร */}
+          <Link to={`/app/work/${w.id}`} className="herocase__patient">
+            {t(w.patient.name)} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
+          </Link>
+          {next && (
+            <div className="herocase__caption" style={{ marginTop: 8 }}>
+              {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}
+            </div>
+          )}
+        </div>
+        {next && <Ring value={prog} max={max} />}
+      </div>
 
       {next ? (
         <>
-          <div className="herocase__caption" style={{ marginTop: 12 }}>
-            {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}
-          </div>
           {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด (ผู้ใช้ทักว่าปุ่มกลางทางรก, 1 ก.ย.) */}
           <div className="heropath">
             {procs.map((p) => {
