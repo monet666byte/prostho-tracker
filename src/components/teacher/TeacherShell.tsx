@@ -76,7 +76,10 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             <span className="mygroup__label">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
               {groupCodes.map((code) => (
-                <option key={code} value={code}>{`${groupShort(code)} · ${t('ปี')} ${groupYear(code)}`}</option>
+                /* ชั้นปีเกิน 6 = รุ่นที่เรียนจบไปแล้ว — เขียน "จบแล้ว" ไม่ใช่ "ปี 7" ซึ่งไม่มีจริง */
+                <option key={code} value={code}>
+                  {`${groupShort(code)} · ${groupYear(code) > 6 ? t('จบแล้ว') : `${t('ปี')} ${groupYear(code)}`}`}
+                </option>
               ))}
             </select>
           </label>
