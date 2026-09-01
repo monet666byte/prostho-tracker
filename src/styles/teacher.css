@@ -901,3 +901,27 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   border-color: var(--accent);
   color: var(--accent-hover);
 }
+
+/* หัวการ์ดตารางนักศึกษา — เลือกกลุ่มและค้นหาได้ในที่เดียว ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่ม */
+.tblhead { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.tblhead h3 { margin: 0; }
+.tblhead__group {
+  border: 2px solid var(--accent-ring);
+  background: var(--accent-tint);
+  color: var(--accent-hover);
+  border-radius: 9px;
+  padding: 5px 9px;
+  font: 700 12.5px var(--font-mono);
+  cursor: pointer;
+}
+.tblhead__search {
+  flex: 1;
+  min-width: 130px;
+  border: 2px solid var(--border-2);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font: 400 12px var(--font-body);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+.tblhead__search:focus { outline: none; border-color: var(--accent); }

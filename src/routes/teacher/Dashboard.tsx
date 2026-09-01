@@ -39,6 +39,8 @@ export default function Dashboard() {
   const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   // รุ่นที่เลือกดูในโหมด "จบแล้ว" (null = ทุกรุ่นที่จบ) — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกได้
   const [cohortPick, setCohortPick] = useState<number | null>(null);
+  // ค้นหานักศึกษาข้ามกลุ่มภายในรุ่นที่กำลังดู
+  const [query, setQuery] = useState('');
   const students = useMemo(
     () => {
       // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
@@ -71,6 +73,13 @@ export default function Dashboard() {
   const stale = useMemo(() => staleRows(students, works, settings), [students, works, settings]);
   const typeCounts = useMemo(() => countByType(works), [works]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
+
+  // แถวที่แสดงในตาราง: พิมพ์ค้นหา = มองข้ามกลุ่ม หาทั้งรุ่น · ไม่พิมพ์ = เฉพาะกลุ่มที่เลือก
+  const shownStudents = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return selected?.students ?? [];
+    return summaries.filter((s) => `${s.student.name} ${s.student.code}`.toLowerCase().includes(q));
+  }, [query, selected, summaries]);
 
   // รุ่นที่จบแล้วทั้งหมดในระบบ เรียงใหม่→เก่า ใช้ทำปุ่มเลือกรุ่น
   const alumniCohorts = useMemo(
@@ -205,10 +214,35 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
-                <h3>{t('นักศึกษาในกลุ่ม')} {groupShort(selected?.code)}</h3>
+                {/* เลือกกลุ่มได้จากในการ์ดนี้เลย ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่มด้านบน
+                    + ค้นหาข้ามทุกกลุ่มในรุ่น (ผู้ใช้ขอ 1 ก.ย.: หาคนที่อยู่กลุ่มอื่นไม่เจอ) */}
+                <div className="tblhead">
+                  <h3>{t('นักศึกษา')}</h3>
+                  <select
+                    className="tblhead__group"
+                    value={selected?.code ?? ''}
+                    onChange={(e) => { setGroup(e.target.value); setQuery(''); }}
+                    aria-label={t('เลือกกลุ่ม')}
+                  >
+                    {groups.map((g) => (
+                      <option key={g.code} value={g.code}>{groupShort(g.code)}</option>
+                    ))}
+                  </select>
+                  <input
+                    className="tblhead__search"
+                    type="search"
+                    value={query}
+                    placeholder={t('ค้นชื่อ/รหัส ทั้งรุ่น')}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </div>
                 <p className="sub">
-                  {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${selected.year > 6 ? t('จบแล้ว') : `${t('ชั้นปีที่')} ${selected.year}`} · `}
-                  {t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}
+                  {query
+                    ? t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })
+                    : <>
+                        {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${selected.year > 6 ? t('จบแล้ว') : `${t('ชั้นปีที่')} ${selected.year}`} · `}
+                        {t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}
+                      </>}
                 </p>
                 <table className="tbl">
                   <thead>
@@ -222,11 +256,15 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selected?.students.map((s) => (
+                    {shownStudents.map((s) => (
                       <tr key={s.student.id}>
                         <td>
                           <div style={{ font: '600 12px var(--font-body)' }}>{t(s.student.name)}</div>
-                          <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>{s.student.code}</div>
+                          <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
+                            {s.student.code}
+                            {/* ผลค้นหามาจากหลายกลุ่ม — ต้องบอกว่าใครอยู่กลุ่มไหน ไม่งั้นกดต่อไม่ถูก */}
+                            {query && ` · ${groupShort(s.student.group)}`}
+                          </div>
                         </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
