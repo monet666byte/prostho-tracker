@@ -10,6 +10,7 @@ import type {
   AuditEntry, ClinicGroup, Patient, Photo, ProgressUpdate, QueueItem,
   CheckIn, ReportIssue, ReportSubmission, Review, Student, Teacher, Workpiece,
 } from '../domain/types';
+import { entryYearFromClassYear } from '../domain/cohort';
 
 export interface KV {
   key: string;
@@ -52,6 +53,19 @@ export class ProsthoDB extends Dexie {
     });
     this.version(2).stores({
       checkins: 'id, studentId, date, status',
+    });
+    /**
+     * v3 — "รุ่น" (entryYear) แทนชั้นปีตายตัว เพื่อให้ นศ. เลื่อนชั้นเองทุก 1 มิ.ย.
+     * (อาจารย์ขอ 1 ก.ย. 69) · ข้อมูลเดิมมีแค่ year 5/6 จึงเดารุ่นย้อนจากปีการศึกษา
+     * ที่ติดตั้งอยู่ตอนอัปเกรด ซึ่งถูกต้องเพราะค่า year นั้นเป็นความจริง ณ ตอนนั้น
+     */
+    this.version(3).stores({
+      students: 'id, group, code, entryYear',
+    }).upgrade(async (tx) => {
+      const now = new Date();
+      await tx.table('students').toCollection().modify((s: { year?: number; entryYear?: number }) => {
+        if (!s.entryYear) s.entryYear = entryYearFromClassYear(s.year ?? 5, now);
+      });
     });
   }
 }

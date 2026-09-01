@@ -7,7 +7,7 @@
  */
 
 import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
-import { toISODate } from '../lib/date';
+import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
 import type {
   CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Settings, Student, Teacher, WorkType, Workpiece,
@@ -459,6 +459,8 @@ async function seedIfEmptyInner(): Promise<void> {
         name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
         group: code,
         year: y6 ? 6 : 5,
+        // รุ่น = ปีการศึกษาที่ขึ้นคลินิกปีแรก · ปี 6 เข้าคลินิกก่อนปี 5 หนึ่งปี
+        entryYear: academicYear(new Date()) - (y6 ? 1 : 0),
         advisorIds,
       });
     }
