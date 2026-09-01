@@ -712,9 +712,11 @@
 .heropath__node--done { background: var(--success); color: #fff; }
 .heropath__node--todo { background: var(--surface); border: 2px solid var(--border-2); box-sizing: border-box; }
 .heropath__node--now {
-  width: 36px; height: 36px; margin-left: 0;
+  width: 34px; height: 34px; margin-left: 1px;
   background: var(--accent); color: #fff;
-  font: 700 15px var(--font-head);
+  /* เลข 15px ในวง 36 = 42% ของเส้นผ่านศูนย์กลาง อัดแน่นเกิน (ผู้ใช้ทัก 1 ก.ย.)
+     12.5/34 ≈ 37% — เว้นขอบรอบตัวเลขให้หายใจ ใกล้เคียงวงแหวนรวมด้านบน */
+  font: 700 12.5px var(--font-head);
   box-shadow: 0 3px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
 }
 .heropath__name { flex: 1; min-width: 0; font: 500 11.5px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
