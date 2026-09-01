@@ -693,8 +693,8 @@
 .herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 .herocase__lead .herocase__patient { margin-top: 0; }
 .herocase__ringwrap { flex: none; display: grid; justify-items: center; }
-/* ป้ายใต้วงแหวน กัน 5/10 ถูกอ่านเป็นคะแนน */
-.herocase__ringlabel { font: 400 9px var(--font-body); color: var(--text-faint); margin-top: -3px; }
+/* ป้ายใต้วงแหวน กัน 5/10 ถูกอ่านเป็นคะแนน — โมโนตัวจิ๋วให้เข้าชุดกับ "/ 10" ในวง */
+.herocase__ringlabel { font: 500 8.5px var(--font-mono); color: var(--text-faint); margin-top: -3px; letter-spacing: 0.04em; }
 /* หน้าต่างแคบ 3 แถว "หน้า 1 หลัง 1" — แถวข้างเคียงย่อเล็ก ให้ขั้นปัจจุบันเด่น (ผู้ใช้ขอ 1 ก.ย.) */
 .heropath { position: relative; margin-top: 9px; display: grid; gap: 5px; }
 .heropath::before {

@@ -56,6 +56,19 @@ function HeroCard({
   // เส้นทางด่านหน้าต่างแคบ "หน้า 1 หลัง 1" (ผู้ใช้ขอ 1 ก.ย. รอบสอง — ทั้งกลุ่ม active ยังแน่นไป):
   // ขั้นล่าสุดที่เสร็จ = cur อยู่แล้ว · ขั้นถัดจากปัจจุบันดึงตรงๆ ข้ามขอบกลุ่มได้เลย
   const upcoming = next ? procAt(w, w.procIndex + 2) : undefined;
+  // step หนึ่งมีขั้นย่อยได้หลายอัน (Post-core step 3 มีถึง 9) — ไม่กางหมดแต่บอกตำแหน่งใน caption แทน
+  let sibTotal = 0;
+  let subPos = 0;
+  if (next) {
+    for (let i = 0; ; i++) {
+      const pa = procAt(w, i);
+      if (!pa) break;
+      if (pa.progression === next.progression) {
+        sibTotal++;
+        if (pa.index === next.index) subPos = sibTotal;
+      }
+    }
+  }
   return (
     <article className={`herocase t-${w.type}`}>
       <div className="herocase__top">
@@ -75,15 +88,15 @@ function HeroCard({
           </Link>
           {next && (
             <div className="herocase__caption" style={{ marginTop: 8 }}>
-              {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}
+              {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}{sibTotal > 1 ? ` · ${t('ขั้นย่อย')} ${subPos}/${sibTotal}` : ''}
             </div>
           )}
         </div>
         {next && (
           <div className="herocase__ringwrap">
             <Ring value={prog} max={max} />
-            {/* กันอ่านเป็น "คะแนน 5/10" — ป้ายจิ๋วบอกว่านี่คือจำนวนขั้นที่ผ่าน (ผู้ใช้ทัก 1 ก.ย.) */}
-            <span className="herocase__ringlabel">{t('ขั้นที่ทำแล้ว')}</span>
+            {/* กันอ่านเป็น "คะแนน 5/10" — คำเดียวพอ และเป็นอังกฤษทั้งสองภาษาแบบหัวข้อ radar (ผู้ใช้เลือก 1 ก.ย.) */}
+            <span className="herocase__ringlabel">steps</span>
           </div>
         )}
       </div>

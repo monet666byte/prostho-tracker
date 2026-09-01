@@ -69,7 +69,6 @@ export const DICT: Record<string, string> = {
   'รอประเมิน': 'Awaiting evaluation',
   'ยังไม่เช็คอิน — กดเพื่อเช็คอิน': 'Not checked in yet — tap to check in',
   'ขั้นตอนที่กำลังทำ': 'Current procedure',
-  'ขั้นที่ทำแล้ว': 'steps done',
   'ขั้นย่อย': 'sub-step',
   'เสร็จก่อนหน้า': 'Previously completed',
   'สถานะ': 'Status',
