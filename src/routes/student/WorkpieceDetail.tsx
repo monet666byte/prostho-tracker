@@ -1,7 +1,4 @@
-import {
-  ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, DotsThree, NotePencil,
-  SealCheck,
-} from '@phosphor-icons/react';
+import { ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, DotsThree, Images, SealCheck } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -74,8 +71,10 @@ export default function WorkpieceDetail() {
         <button className="btn btn--sec" disabled={attach.busy} onClick={attach.open}>
           <CameraPlus size={16} /> {attach.busy ? t('กำลังย่อรูป…') : t('แนบรูป')}
         </button>
+        {/* เดิมป้ายเขียน "บันทึกโน้ต" แต่หน้า photos ไม่มีช่องโน้ต — ป้ายต้องตรงกับของจริง
+            (ระบบโน้ตต่อเคสยังไม่ทำ ถ้าจะทำค่อยแยกปุ่มใหม่) */}
         <button className="btn btn--sec" onClick={() => navigate('/app/photos')}>
-          <NotePencil size={16} /> {t('บันทึกโน้ต')}
+          <Images size={16} /> {t('คลังรูปงาน')}
         </button>
       </div>
     </div>
