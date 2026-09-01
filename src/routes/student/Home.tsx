@@ -393,7 +393,7 @@ export default function Home() {
             </Link>
             {next && (
               <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
-                <CheckCircle size={17} weight="fill" />
+                <CheckCircle size={15} weight="fill" />
                 <span>{next.progression}</span>
               </button>
             )}
