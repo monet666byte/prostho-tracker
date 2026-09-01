@@ -1,4 +1,4 @@
-import { ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, DotsThree, Images, SealCheck } from '@phosphor-icons/react';
+import { ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -93,9 +93,8 @@ export default function WorkpieceDetail() {
               HN {w.patient.hn} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
             </span>
           </span>
-          <button className="iconbtn iconbtn--plain" aria-label={t('เมนู')}>
-            <DotsThree size={20} weight="bold" />
-          </button>
+          {/* เคยมีปุ่มเมนู ⋯ ตรงนี้ แต่ไม่เคยผูกอะไรเลย (กดแล้วเงียบ) — เอาออกจนกว่าจะมีเมนูจริง
+              การลบชิ้นงานทำได้ที่หน้าคนไข้ (โหมดแก้ไข) */}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
