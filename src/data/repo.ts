@@ -5,12 +5,12 @@
 
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
-import { cohortOf, isAlumni, isWithinRetention } from '../domain/cohort';
+import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
 import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
-  Arch, AuditEntry, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Settings, WorkType, Workpiece, WorkpieceView,
+  Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
+  CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS } from './seed';
@@ -757,4 +757,129 @@ export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): 
 
   await logAudit(`ลบข้อมูลรุ่นที่เกินกำหนดเก็บ: ${cohorts.map((c) => `DTMU${c - 2514}`).join(', ')} · ${doomed.length} คน`, by);
   return { cohorts, students: doomed.length };
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   นำเข้ารายชื่อนักศึกษารุ่นใหม่ (roster) — ภาคส่งรายชื่อมาทุกปี
+   ผู้ใช้ยืนยัน 1 ก.ย. 69: "DTMU56 และต่อๆ ไปเดี๋ยวมี roster ให้"
+   ══════════════════════════════════════════════════════════════════ */
+
+export interface RosterRow {
+  code: string;   // รหัสนักศึกษา เช่น 6604001
+  name: string;
+  group: string;  // PT1–PT12 (ใส่มาแบบสั้นก็ได้)
+  /** เลขรุ่น DTMU เช่น 56 — ไม่ใส่ก็ใช้ค่าที่เลือกไว้ตอนนำเข้า */
+  dtmu?: number;
+}
+
+export interface RosterParseResult {
+  rows: RosterRow[];
+  /** บรรทัดที่อ่านไม่ออก พร้อมเหตุผล — โชว์ให้เห็นก่อนกดนำเข้า */
+  errors: Array<{ line: number; text: string; reason: string }>;
+}
+
+/**
+ * อ่านรายชื่อจากข้อความที่วางมา — รองรับทั้ง CSV, TSV และวางจาก Excel
+ * รูปแบบ: รหัส, ชื่อ, กลุ่ม[, เลขรุ่น]  ·  บรรทัดหัวตารางข้ามให้อัตโนมัติ
+ */
+export function parseRoster(text: string): RosterParseResult {
+  const rows: RosterRow[] = [];
+  const errors: RosterParseResult['errors'] = [];
+  const seen = new Set<string>();
+
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) return;
+    const cells = line.split(/\t|,|\s{2,}/).map((c) => c.trim()).filter(Boolean);
+    // ข้ามหัวตาราง: ไม่มีเซลล์ไหนขึ้นต้นด้วยตัวเลข 7 หลัก
+    const code = cells.find((c) => /^\d{7}$/.test(c));
+    if (!code) {
+      // หัวตารางต้องอยู่บรรทัดแรกเท่านั้น — บรรทัดอื่นที่ไม่มีรหัสถือว่าผิดจริง
+      if (i === 0 && /รหัส|code|ชื่อ|name|กลุ่ม|group/i.test(line)) return;
+      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบรหัสนักศึกษา 7 หลัก' });
+      return;
+    }
+    if (seen.has(code)) {
+      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'รหัสซ้ำกับบรรทัดก่อนหน้า' });
+      return;
+    }
+    const group = cells.find((c) => /^(TH\d*-)?PT\d{1,2}$/i.test(c));
+    if (!group) {
+      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบกลุ่ม (PT1–PT12)' });
+      return;
+    }
+    const dtmuCell = cells.find((c) => /^(DTMU)?\d{2}$/i.test(c) && c !== code);
+    const name = cells.find((c) => c !== code && c !== group && c !== dtmuCell) ?? '';
+    if (!name) {
+      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบชื่อ' });
+      return;
+    }
+    seen.add(code);
+    rows.push({
+      code,
+      name,
+      group: group.toUpperCase().replace(/^TH\d*-/, ''),
+      dtmu: dtmuCell ? Number(dtmuCell.replace(/\D/g, '')) : undefined,
+    });
+  });
+  return { rows, errors };
+}
+
+export interface RosterImportResult {
+  added: number;
+  updated: number;
+  cohort: number;
+}
+
+/**
+ * บันทึกรายชื่อเข้าระบบ — รหัสที่มีอยู่แล้วจะอัปเดต (ย้ายกลุ่ม/แก้ชื่อ) ไม่สร้างซ้ำ
+ * @param dtmu เลขรุ่นของรายชื่อชุดนี้ (ใช้เมื่อแถวไม่ได้ระบุมาเอง)
+ */
+export async function importRoster(rows: RosterRow[], dtmu: number, by: string): Promise<RosterImportResult> {
+  const existing = await db.students.toArray();
+  const byCode = new Map(existing.map((s) => [s.code, s]));
+  const groups = await db.groups.toArray();
+  const groupByCode = new Map(groups.map((g) => [g.code, g]));
+
+  let added = 0;
+  let updated = 0;
+  const toPut: Student[] = [];
+  const newGroups: ClinicGroup[] = [];
+
+  rows.forEach((r) => {
+    const entryYear = entryYearFromDtmu(r.dtmu ?? dtmu);
+    // รหัสกลุ่มติด tag รุ่น เพื่อไม่ให้ PT1 ของคนละรุ่นชนกัน
+    const groupCode = `TH${r.dtmu ?? dtmu}-${r.group}`;
+    const prev = byCode.get(r.code);
+    if (prev) {
+      toPut.push({ ...prev, name: r.name, group: groupCode, entryYear, year: 5 });
+      updated++;
+    } else {
+      toPut.push({
+        id: `st-${groupCode}-${r.code}`,
+        code: r.code,
+        name: r.name,
+        group: groupCode,
+        year: 5,
+        entryYear,
+        advisorIds: groupByCode.get(groupCode)?.advisorIds ?? ['', ''],
+      });
+      added++;
+    }
+    if (!groupByCode.has(groupCode) && !newGroups.some((g) => g.code === groupCode)) {
+      newGroups.push({ code: groupCode, advisorIds: ['', ''], studentIds: [] });
+    }
+  });
+
+  await db.transaction('rw', [db.students, db.groups], async () => {
+    if (newGroups.length) await db.groups.bulkPut(newGroups);
+    await db.students.bulkPut(toPut);
+    // อัปเดตรายชื่อสมาชิกของกลุ่มให้ตรงกับความจริง
+    const all = await db.students.toArray();
+    const groupsNow = await db.groups.toArray();
+    await db.groups.bulkPut(groupsNow.map((g) => ({ ...g, studentIds: all.filter((s) => s.group === g.code).map((s) => s.id) })));
+  });
+
+  await logAudit(`นำเข้ารายชื่อ DTMU${dtmu}: เพิ่ม ${added} คน · อัปเดต ${updated} คน`, by);
+  return { added, updated, cohort: entryYearFromDtmu(dtmu) };
 }

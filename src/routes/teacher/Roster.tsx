@@ -6,15 +6,18 @@
  *
  * เดิมต้องพิมพ์ SQL ทุกครั้งที่เพิ่มคน — หน้านี้ทำให้ภาคทำเองได้
  */
-import { CheckCircle, Clock, Plus, Trash, UserPlus, Users } from '@phosphor-icons/react';
+import { CheckCircle, Clock, Plus, Trash, UserPlus, Users, UsersThree } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { useAllStudents } from '../../hooks/data';
 import { supabase } from '../../lib/cloud';
 import { t } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
+import { importRoster, parseRoster } from '../../data/repo';
+import { entryYearFromDtmu } from '../../domain/cohort';
+import { academicYear } from '../../lib/date';
 
 interface Invite {
   email: string;
@@ -37,6 +40,30 @@ export default function Roster() {
 
   // ฟอร์มเพิ่มคน
   const [email, setEmail] = useState('');
+  // นำเข้ารายชื่อรุ่นใหม่
+  const [dtmu, setDtmu] = useState('');
+  const [rosterText, setRosterText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const parsed = useMemo(() => (rosterText.trim() ? parseRoster(rosterText) : null), [rosterText]);
+
+  async function doImportRoster() {
+    if (!parsed?.rows.length || !dtmu) return;
+    setImporting(true);
+    try {
+      const res = await importRoster(parsed.rows, Number(dtmu), currentActor());
+      setRosterText('');
+      // รุ่นที่ยังไม่ถึงปีขึ้นคลินิกจะยังไม่โผล่ในตัวกรองปี 5/6 — บอกไว้กันเข้าใจว่านำเข้าไม่สำเร็จ
+      const startsLater = res.cohort > academicYear(new Date());
+      showToast({
+        message: startsLater
+          ? t('นำเข้าแล้ว {a} คน — จะเริ่มแสดงเป็นชั้นปี 5 ในปีการศึกษา {y}', { a: res.added + res.updated, y: res.cohort })
+          : t('นำเข้าแล้ว — เพิ่ม {a} คน · อัปเดต {b} คน', { a: res.added, b: res.updated }),
+        tone: 'success',
+      });
+    } finally {
+      setImporting(false);
+    }
+  }
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [personId, setPersonId] = useState('');
   // ยืนยันก่อนลบ — เดิมกดถังขยะทีเดียวหายเลย ไอคอนเล็กๆ ในตารางกดพลาดง่ายมากบน iPad
@@ -121,6 +148,61 @@ export default function Roster() {
             {error}
           </div>
         )}
+
+        {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3><UsersThree size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
+          <p className="sub">{t('วางรายชื่อจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม (คั่นด้วยจุลภาคหรือแท็บ)')}</p>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 12 }}>
+            <label className="field" style={{ flex: '0 0 130px' }}>
+              <span>{t('รุ่น (DTMU)')}</span>
+              <input
+                className="input"
+                type="number"
+                value={dtmu}
+                onChange={(e) => setDtmu(e.target.value)}
+                placeholder="56"
+              />
+            </label>
+            <p style={{ flex: 1, margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+              {t('รุ่นนี้จะเริ่มเป็นชั้นปี 5 ในปีการศึกษา')} <b>{dtmu ? entryYearFromDtmu(Number(dtmu)) : '—'}</b>
+              {' · '}{t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}
+            </p>
+          </div>
+
+          <textarea
+            className="input"
+            style={{ marginTop: 10, minHeight: 108, fontFamily: 'var(--font-mono)', fontSize: 11.5, resize: 'vertical' }}
+            value={rosterText}
+            onChange={(e) => setRosterText(e.target.value)}
+            placeholder={'6604001, นศ. ก, PT1\n6604002, นศ. ข, PT1'}
+          />
+
+          {parsed && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ margin: 0, font: '500 12px var(--font-body)', color: parsed.rows.length ? 'var(--success-dark)' : 'var(--text-muted)' }}>
+                {t('อ่านได้ {n} คน', { n: parsed.rows.length })}
+                {parsed.errors.length > 0 && ` · ${t('ข้ามไป {n} บรรทัด', { n: parsed.errors.length })}`}
+              </p>
+              {parsed.errors.slice(0, 5).map((e) => (
+                <p key={e.line} style={{ margin: '4px 0 0', font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
+                  {t('บรรทัด')} {e.line}: {e.text} — {e.reason}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <button
+            className="btn"
+            style={{ marginTop: 12, height: 44, width: 'auto', padding: '0 20px' }}
+            disabled={!parsed?.rows.length || !dtmu || importing}
+            onClick={doImportRoster}
+          >
+            <UsersThree size={16} weight="bold" />
+            {importing ? t('กำลังนำเข้า…') : t('นำเข้ารายชื่อ')}
+          </button>
+        </div>
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3><UserPlus size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('เพิ่มคนเข้าระบบ')}</h3>

@@ -17,6 +17,19 @@ export const DICT: Record<string, string> = {
   'รายชื่อ': 'Roster',
   'นำเข้า': 'Import',
   'จบแล้ว': 'Graduated',
+  'นำเข้ารายชื่อรุ่นใหม่': 'Import new cohort roster',
+  'วางรายชื่อจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม (คั่นด้วยจุลภาคหรือแท็บ)': 'Paste from Excel or CSV — ID, name, group (comma or tab separated)',
+  'รุ่น (DTMU)': 'Cohort (DTMU)',
+  'รุ่นนี้จะเริ่มเป็นชั้นปี 5 ในปีการศึกษา': 'This cohort starts year 5 in academic year',
+  'ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน': 'Class year advances automatically every 1 June',
+  'อ่านได้ {n} คน': 'Parsed {n} students',
+  'ข้ามไป {n} บรรทัด': 'skipped {n} lines',
+  'บรรทัด': 'Line',
+  'นำเข้ารายชื่อ': 'Import roster',
+  'นำเข้าแล้ว {a} คน — จะเริ่มแสดงเป็นชั้นปี 5 ในปีการศึกษา {y}': 'Imported {a} students — they appear as year 5 in academic year {y}',
+  'กำลังนำเข้า…': 'Importing…',
+  'นำเข้าแล้ว — เพิ่ม {a} คน · อัปเดต {b} คน': 'Imported — {a} added · {b} updated',
+
   'ข้อมูลย้อนหลัง': 'Data retention',
   'เก็บ {n} รุ่นล่าสุด — รุ่นที่เก่ากว่านั้นลบได้เพื่อไม่ให้ข้อมูลบวม': 'Keeps the {n} most recent cohorts — older ones can be removed to keep the database lean',
   'รุ่นที่เก็บอยู่': 'Cohorts retained',
@@ -671,7 +684,6 @@ export const DICT: Record<string, string> = {
   '④ ตรวจก่อนยืนยัน': '④ Review before confirming',
   'อ่านทานสักรอบว่าแปลงถูก โดยเฉพาะ step ที่ผ่านและวันรับเคส':
     'Give it a read — especially the steps passed and acceptance dates',
-  'กำลังนำเข้า…': 'Importing…',
   'ยืนยันนำเข้า {n} ชิ้นงาน': 'Confirm import of {n} workpieces',
   'นำเข้าแล้ว {p} ผู้ป่วย · {w} ชิ้นงาน': 'Imported {p} patients · {w} workpieces',
   'นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าซ้ำไฟล์เดิมจะได้ข้อมูลซ้ำ ระวังด้วย':

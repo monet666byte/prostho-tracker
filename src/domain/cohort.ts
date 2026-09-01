@@ -35,6 +35,11 @@ export function isAlumni(s: Pick<Student, 'year' | 'entryYear'>, asOf: Date = ne
   return studentYear(s, asOf) > CLINIC_LAST_YEAR;
 }
 
+/** รับรายชื่อไว้ล่วงหน้าแล้ว แต่ยังไม่ถึงปีที่ขึ้นคลินิก — จะโผล่เองวันที่ 1 มิ.ย. */
+export function isUpcoming(s: Pick<Student, 'year' | 'entryYear'>, asOf: Date = new Date()): boolean {
+  return studentYear(s, asOf) < CLINIC_START_YEAR;
+}
+
 /** ยังเรียนอยู่ในคลินิก (ปี 5 หรือ 6) */
 export function isActiveStudent(s: Pick<Student, 'year' | 'entryYear'>, asOf: Date = new Date()): boolean {
   const y = studentYear(s, asOf);
