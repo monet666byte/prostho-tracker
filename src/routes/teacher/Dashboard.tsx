@@ -9,13 +9,11 @@ import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, isComplete, procLabel } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/data';
+import { useYearView } from '../../hooks/useYearView';
+import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-
-const TITLES: Record<string, { title: string; sub: string }> = {
-  overview: { title: t('ภาพรวมชั้นปีที่ 5'), sub: '' },
-};
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -29,11 +27,20 @@ export default function Dashboard() {
   const { settings, showToast } = useApp();
   const [params] = useSearchParams();
   const raw = params.get('tab') ?? 'overview';
-  const view = (raw in TITLES ? raw : 'overview') as TeacherNav;
+  const view = 'overview' as TeacherNav; void raw;
 
-  const students = useAllStudents();
-  const works = useAllWorkpieces();
-  const allCheckIns = useAllCheckIns();
+  const allStudents = useAllStudents();
+  const allWorks = useAllWorkpieces();
+  const everyCheckIn = useAllCheckIns();
+  // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
+  const [yearView, setYearView] = useYearView();
+  const students = useMemo(
+    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
+    [allStudents, yearView],
+  );
+  const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
+  const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
+  const allCheckIns = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
 
   const group = useApp((st) => st.teacherGroup);
   const setGroup = useApp((st) => st.setTeacherGroup);
@@ -59,20 +66,20 @@ export default function Dashboard() {
 
 
 
-  const meta = TITLES[view] ?? TITLES.overview;
 
   return (
     <TeacherShell active={view}>
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{meta.title}</h1>
+            <h1>{yearView === 'all' ? t('ภาพรวมทุกชั้นปี') : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}</h1>
             <p>
               {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
             </p>
           </div>
           {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
               — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
+          <YearSeg view={yearView} onChange={setYearView} />
           <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
             {t('ภาคเรียน')} {termLabel(new Date())}
           </span>
@@ -107,7 +114,7 @@ export default function Dashboard() {
             </div>
 
             <div className="panel" style={{ marginBottom: 16 }}>
-              <h3>{t('กลุ่มคลินิก PT1–PT12')}</h3>
+              <h3>{t('กลุ่มคลินิก')} {groups[0]?.code.replace('TH-', '')}–{groups[groups.length - 1]?.code.replace('TH-', '')}</h3>
               <div className="groupgrid" style={{ marginTop: 13 }}>
                 {groups.map((g) => {
                   const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';

@@ -11,16 +11,27 @@ import {
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
+import { useYearView } from '../../hooks/useYearView';
+import { YearSeg } from '../../components/teacher/YearSeg';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
 export default function Analytics() {
   const { settings } = useApp();
-  const students = useAllStudents();
-  const works = useAllWorkpieces();
-  const checkinsAll = useAllCheckIns();
+  const allStudents = useAllStudents();
+  const allWorks = useAllWorkpieces();
+  const everyCheckIn = useAllCheckIns();
   const updatesAll = useAllProgressUpdates();
+  // ตัวกรองชั้นปีเดียวกับหน้าสรุปกลุ่ม (จำค่าร่วมกัน) — กรองต้นทาง ทุกกราฟได้ผลตาม
+  const [yearView, setYearView] = useYearView();
+  const students = useMemo(
+    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
+    [allStudents, yearView],
+  );
+  const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
+  const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
+  const checkinsAll = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
   const [stepType, setStepType] = useState<WorkType | 'all'>('all');
   // null = ยังไม่ได้เลือกเอง → เปิด step ที่กองมากสุดให้ · -1 = ผู้ใช้กดปิด
   const [openStep, setOpenStep] = useState<number | null>(null);
@@ -53,11 +64,12 @@ export default function Analytics() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('วิเคราะห์รวมทั้งชั้นปี')}</h1>
+            <h1>{yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}</h1>
             <p>
               {t('เหลือ {n} เดือนก่อนจบปีการศึกษา', { n: head.monthsLeft })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
             </p>
           </div>
+          <YearSeg view={yearView} onChange={setYearView} />
         </div>
 
         {/* สรุปสิ่งที่ต้องทำอะไรต่อ */}

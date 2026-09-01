@@ -261,7 +261,7 @@ function generateFor(student: Student, seed: number) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 28;
+export const SEED_VERSION = 29; // 29: แยกชั้นปี 5/6 ใน seed (ตัวกรองชั้นปีหน้าอาจารย์)
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -449,10 +449,11 @@ async function seedIfEmptyInner(): Promise<void> {
       studentIds.push(id);
       students.push({
         id,
-        code: String(6504001 + gi * 8 + si),
+        // PT1–6 = รุ่นพี่ปี 6 (รหัสรุ่น 64) · PT7–12 = ปี 5 (รหัส 65 — นศ. เดโมอยู่ PT7 รหัส 6504049 คงเดิม)
+        code: String((gi < 6 ? 6404001 : 6504001) + gi * 8 + si),
         name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
         group: code,
-        year: 5,
+        year: gi < 6 ? 6 : 5,
         advisorIds,
       });
     }
