@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => ({
    * (โหมดอื่นไม่ตั้ง เพราะ share build เป็นไฟล์เดียวเอาไปวางที่ไหนก็ได้)
    */
   base: mode === 'pages' ? '/prostho-tracker/' : '/',
+  // เผื่อรัน dev server ซ้อนกันหลายตัว (เช่น Claude สอง session): ถ้า runner กำหนดพอร์ตมาทาง env ก็ใช้ตามนั้น
+  server: process.env.PORT ? { port: Number(process.env.PORT) } : undefined,
   build:
     mode === 'share'
       ? { outDir: 'dist-share', assetsInlineLimit: 100_000_000, chunkSizeWarningLimit: 8000 }
