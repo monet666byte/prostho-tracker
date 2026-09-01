@@ -710,11 +710,10 @@
   box-shadow: 0 3px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
 }
 .heropath__name { flex: 1; min-width: 0; font: 500 12px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
-.heropath__name--done { color: var(--text-faint); text-decoration: line-through; }
+/* ขั้นที่เสร็จแล้ว: ติ๊กเขียว + สีจางพอแล้ว — ขีดฆ่าทำให้ลายตา (ผู้ใช้ทักว่ารก) */
+.heropath__name--done { color: var(--text-faint); }
 .heropath__name--now {
   font: 700 15.5px/1.35 var(--font-head); color: var(--text);
   -webkit-tap-highlight-color: transparent;
 }
 .heropath__name--now:active { opacity: 0.55; }
-/* ปุ่มอยู่กลางเส้นทาง (ใต้ขั้นปัจจุบัน) — ทึบพอที่รางด้านหลังจะมุดผ่านช่องว่างได้สวยๆ */
-.heropath__btn { margin-top: 4px; margin-bottom: 2px; position: relative; }

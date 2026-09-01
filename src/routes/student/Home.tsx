@@ -59,37 +59,37 @@ function HeroCard({
           <div className="herocase__caption" style={{ marginTop: 12 }}>
             {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}
           </div>
+          {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด (ผู้ใช้ทักว่าปุ่มกลางทางรก, 1 ก.ย.) */}
           <div className="heropath">
-            {procs.flatMap((p) => {
+            {procs.map((p) => {
               const passed = w.procIndex >= p.index;
               const isNow = w.procIndex + 1 === p.index;
               if (isNow) {
-                // ปุ่มเสียบใต้ขั้นปัจจุบันเลย (ตาม mock ที่ผู้ใช้เลือก) — ขั้นที่ยังไม่ถึงต่อท้ายปุ่ม
-                return [
+                return (
                   <div className="heropath__row" key={p.index}>
                     <span className="heropath__node heropath__node--now">{p.progression}</span>
                     {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม (แทนลิงก์ฟ้าเล็กเดิม — ธรรมเนียมตั้งแต่ 31 ส.ค.) */}
                     <Link to={`/app/work/${w.id}`} className="heropath__name heropath__name--now">
                       {p.name} <CaretRight size={13} weight="bold" className="herocase__steparrow" />
                     </Link>
-                  </div>,
-                  <button className="herocase__btn heropath__btn" onClick={onPass} key="pass">
-                    <CheckCircle size={19} weight="fill" />
-                    {t('ทำขั้นนี้เสร็จแล้ว')}
-                  </button>,
-                ];
+                  </div>
+                );
               }
-              return [
+              return (
                 <div className="heropath__row" key={p.index}>
                   <span className={`heropath__node ${passed ? 'heropath__node--done' : 'heropath__node--todo'}`}>
                     {passed && <Check size={13} weight="bold" />}
                   </span>
                   <span className={`heropath__name${passed ? ' heropath__name--done' : ''}`}>{p.name}</span>
                   {p.selfPerformed && <SelfBadge compact />}
-                </div>,
-              ];
+                </div>
+              );
             })}
           </div>
+          <button className="herocase__btn" onClick={onPass}>
+            <CheckCircle size={19} weight="fill" />
+            {t('ทำขั้นนี้เสร็จแล้ว')}
+          </button>
         </>
       ) : (
         <div style={{ marginTop: 12 }}>
