@@ -113,11 +113,11 @@ html.theme-ink {
   --toast-bg: #1a212c;
 }
 
-/* สีประจำประเภทงาน */
-.t-CD { --type: #1e40af; --type-tint: #e8edfb; }
-.t-APD { --type: #38bdf8; --type-tint: #e0f4fe; }
-.t-RPD { --type: #7dd3fc; --type-tint: #e5f6fe; }
-.t-PC { --type: #8b5cf6; --type-tint: #f1ebfe; }
-.t-CB { --type: #0e7490; --type-tint: #e4f3f7; }
+/* สีประจำประเภทงาน — ชุด T6 "ปกติ ทั่วไป" (ผู้ใช้เคาะ 1 ก.ย. — ต้องตรงกับ TYPES ใน src/domain/catalog.ts) */
+.t-CD { --type: #2c50ba; --type-tint: #e9edf9; }
+.t-APD { --type: #6c86dd; --type-tint: #edf0fb; }
+.t-RPD { --type: #d97706; --type-tint: #fbf0de; }
+.t-PC { --type: #c2478d; --type-tint: #f9eaf3; }
+.t-CB { --type: #0d9bb8; --type-tint: #e2f5f9; }
 .t-RRM { --type: #64748b; --type-tint: #f1f3f7; }
 .t-RFX { --type: #475569; --type-tint: #eef1f5; }

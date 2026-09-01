@@ -21,13 +21,15 @@ export interface TypeMeta {
 
 /* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) และแต่ละประเภทต้องต่างกัน
    ทั้งเฉดสีและความอ่อน-เข้ม — ฟีดแบควันเดโม 28 ส.ค. */
-/* ชุด "โทนเย็นล้วน" ที่ผู้ใช้เลือก (28 ส.ค.): กรม · ฟ้าอ่อน · ม่วง · ฟ้าหัวเป็ดเข้ม — ไม่มีชมพู */
+/* ชุด T6 "ปกติ ทั่วไป" ที่ผู้ใช้เคาะ 1 ก.ย. (อาจารย์ขอสีใหม่ — ชุดโทนเย็นเดิม 28 ส.ค. สีเย็นกลืนกันเอง
+   และฟ้าอ่อน RPD จมพื้นขาว): น้ำเงิน · อำพัน · ชมพูหม่น · ฟ้าทะเล — ผ่านตัวตรวจตาบอดสี/contrast
+   แบบเช็คทุกคู่ · ไม่ใช้เขียว/แดงเพราะจองให้สถานะ · APD เป็นน้ำเงินอ่อนตระกูลเดียวกับ CD (นับรวมกันในเกณฑ์) */
 export const TYPES: Record<WorkType, TypeMeta> = {
-  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#1E40AF', tint: '#E8EDFB', ink: '#1E40AF' },
-  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#7DD3FC', tint: '#E5F6FE', ink: '#0369A1' },
-  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#8B5CF6', tint: '#F1EBFE', ink: '#7C3AED' },
-  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#0E7490', tint: '#E4F3F7', ink: '#0E7490' },
-  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#38BDF8', tint: '#E0F4FE', ink: '#0284C7' },
+  CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2C50BA', tint: '#E9EDF9', ink: '#2C50BA' },
+  RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#D97706', tint: '#FBF0DE', ink: '#B45309' },
+  PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C2478D', tint: '#F9EAF3', ink: '#A83778' },
+  CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#0D9BB8', tint: '#E2F5F9', ink: '#0B7D94' },
+  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#6C86DD', tint: '#EDF0FB', ink: '#3A55B8' },
   RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7', ink: '#64748B' },
   RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5', ink: '#475569' },
 };
