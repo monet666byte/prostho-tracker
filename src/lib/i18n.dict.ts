@@ -83,7 +83,7 @@ export const DICT: Record<string, string> = {
   'ชั้นปีที่': 'Year',
   'ชั้นปี': 'Year level',
   'กลุ่มคลินิก': 'Clinic groups',
-  'ทุกปี': 'All',
+  'รวมปี': 'All years',
   'ภาพรวมทุกชั้นปี': 'Overview · all years',
   'ภาพรวมชั้นปีที่': 'Overview · year',
   'วิเคราะห์รวมทุกชั้นปี': 'Cohort analytics · all years',
