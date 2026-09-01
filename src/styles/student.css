@@ -692,15 +692,20 @@
 /* โซนหัวการ์ด: คนไข้+caption ซ้าย · วงแหวนรวมทั้งเคสขวา (ผู้ใช้ขอวงแหวนคืน 1 ก.ย.) */
 .herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 .herocase__lead .herocase__patient { margin-top: 0; }
-.heropath { position: relative; margin-top: 9px; display: grid; gap: 6px; }
+.herocase__ringwrap { flex: none; display: grid; justify-items: center; }
+/* ป้ายใต้วงแหวน กัน 5/10 ถูกอ่านเป็นคะแนน */
+.herocase__ringlabel { font: 400 9px var(--font-body); color: var(--text-faint); margin-top: -3px; }
+/* หน้าต่างแคบ 3 แถว "หน้า 1 หลัง 1" — แถวข้างเคียงย่อเล็ก ให้ขั้นปัจจุบันเด่น (ผู้ใช้ขอ 1 ก.ย.) */
+.heropath { position: relative; margin-top: 9px; display: grid; gap: 5px; }
 .heropath::before {
   content: '';
-  position: absolute; left: 16.5px; top: 15px; bottom: 15px;
+  position: absolute; left: 16.5px; top: 12px; bottom: 12px;
   width: 3px; border-radius: 2px; background: var(--accent-ring);
 }
-.heropath__row { position: relative; display: flex; align-items: center; gap: 11px; min-height: 28px; }
+.heropath__row { position: relative; display: flex; align-items: center; gap: 11px; min-height: 24px; }
+.heropath__row--now { min-height: 36px; }
 .heropath__node {
-  flex: none; width: 26px; height: 26px; margin-left: 5px; border-radius: 99px;
+  flex: none; width: 22px; height: 22px; margin-left: 7px; border-radius: 99px;
   display: grid; place-items: center;
   box-shadow: 0 0 0 3px var(--hero-bg, var(--surface));
 }
@@ -712,11 +717,11 @@
   font: 700 15px var(--font-head);
   box-shadow: 0 3px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
 }
-.heropath__name { flex: 1; min-width: 0; font: 500 12px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
+.heropath__name { flex: 1; min-width: 0; font: 500 11.5px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
 /* ขั้นที่เสร็จแล้ว: ติ๊กเขียว + สีจางพอแล้ว — ขีดฆ่าทำให้ลายตา (ผู้ใช้ทักว่ารก) */
 .heropath__name--done { color: var(--text-faint); }
 .heropath__name--now {
-  font: 700 15.5px/1.35 var(--font-head); color: var(--text);
+  font: 700 16px/1.35 var(--font-head); color: var(--text);
   -webkit-tap-highlight-color: transparent;
 }
 .heropath__name--now:active { opacity: 0.55; }
