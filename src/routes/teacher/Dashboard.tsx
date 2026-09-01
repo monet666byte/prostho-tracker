@@ -129,13 +129,15 @@ export default function Dashboard() {
                     )}
                     <div className="groupgrid" style={{ marginTop: yr !== null ? 8 : 13 }}>
                       {list.map((g) => {
-                        const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
+                        // เดิมไล่ 3 สี เขียว/น้ำเงิน/ส้ม โดยไม่มี legend — คนดูเดาความหมายไม่ออก (ผู้ใช้ทัก 1 ก.ย.)
+                        // เหลือ 2 สถานะพอ: ปกติ = สีเดียวกลางๆ · ต่ำกว่า 55% = ส้มตามภาษาสีเตือนของแอป
+                        const lagging = g.percent < 55;
                         return (
                           <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
                             <div className="groupcard__code">{groupShort(g.code)}</div>
-                            <div className="groupcard__pct" style={{ color }}>{g.percent}%</div>
+                            <div className="groupcard__pct" style={{ color: lagging ? 'var(--warning)' : 'var(--text-secondary)' }}>{g.percent}%</div>
                             <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
-                              <i style={{ width: `${g.percent}%`, background: color }} />
+                              <i style={{ width: `${g.percent}%`, background: lagging ? 'var(--warning)' : 'var(--accent)' }} />
                             </span>
                           </button>
                         );
