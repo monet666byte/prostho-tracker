@@ -1,6 +1,6 @@
 import { Archive, BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { TYPES } from '../../domain/catalog';
@@ -9,7 +9,7 @@ import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, isComplete, procLabel } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/data';
-import { useYearView } from '../../hooks/useYearView';
+import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
@@ -36,7 +36,10 @@ export default function Dashboard() {
   const everyCheckIn = useAllCheckIns();
   // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
   const myGroup = useApp((st) => st.myGroup);
-  const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
+  // เข้าทางเมนู "รุ่นที่จบแล้ว" = ล็อกโหมดนี้ไว้ ไม่ปนกับตัวกรองชั้นปีที่จำไว้ในเครื่อง
+  const alumniPage = useLocation().pathname.endsWith('/alumni');
+  const [savedYearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
+  const yearView: YearView = alumniPage ? 'alumni' : savedYearView === 'alumni' ? 'all' : savedYearView;
   // รุ่นที่เลือกดูในโหมด "จบแล้ว" (null = ทุกรุ่นที่จบ) — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกได้
   const [cohortPick, setCohortPick] = useState<number | null>(null);
   // ค้นหานักศึกษาข้ามกลุ่มภายในรุ่นที่กำลังดู
@@ -105,7 +108,7 @@ export default function Dashboard() {
 
 
   return (
-    <TeacherShell active={view}>
+    <TeacherShell active={alumniPage ? 'alumni' : view}>
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
@@ -122,7 +125,7 @@ export default function Dashboard() {
           </div>
           {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
               — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
-          <YearSeg view={yearView} onChange={setYearView} />
+          {!alumniPage && <YearSeg view={yearView} onChange={setYearView} />}
           <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
             {t('ภาคเรียน')} {termLabel(new Date())}
           </span>

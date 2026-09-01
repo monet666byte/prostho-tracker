@@ -1,4 +1,4 @@
-import { ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, FileArrowUp, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, FileArrowUp, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -7,12 +7,13 @@ import { ToastView } from '../ToastView';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
+import { cloudEnabled } from '../../lib/cloud';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
 import { groupShort, groupYear } from '../../domain/group';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import' | 'alumni';
 
 type NavItem = { key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour };
 
@@ -27,6 +28,7 @@ const GROUP_NAV: NavItem[] = [
 const COHORT_NAV: NavItem[] = [
   { key: 'overview', label: t('ภาพรวม'), to: '/teacher?tab=overview', Icon: SquaresFour },
   { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
+  { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
   { key: 'settings', label: t('ตั้งค่าเกณฑ์'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
 ];
 
@@ -98,7 +100,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
 
           <div className="side__section">{t('ทั้งชั้นปี')}</div>
-          {[...COHORT_NAV, ...(cloudUser?.isAdmin ? ADMIN_NAV : [])].map(({ key, label, short, to, Icon }) => (
+          {[...COHORT_NAV, ...(cloudUser?.isAdmin || !cloudEnabled ? ADMIN_NAV : [])].map(({ key, label, short, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               <span className="navlabel">{label}</span>

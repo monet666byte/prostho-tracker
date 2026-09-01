@@ -182,10 +182,10 @@
 .yearseg {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   align-items: stretch;
   height: 38px;
-  min-width: 288px;
+  min-width: 216px;
   padding: 3px;
   border-radius: 12px;
   background: var(--fill);
@@ -208,7 +208,7 @@
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 4);
+  width: calc((100% - 6px) / 3);
   border-radius: 9px;
   background: #fff;
   box-shadow: 0 1px 4px rgba(16, 24, 40, 0.14), 0 0 0 1px rgba(16, 24, 40, 0.04);
@@ -216,7 +216,6 @@
 }
 .yearseg[data-idx='1'] .yearseg__thumb { transform: translateX(100%); }
 .yearseg[data-idx='2'] .yearseg__thumb { transform: translateX(200%); }
-.yearseg[data-idx='3'] .yearseg__thumb { transform: translateX(300%); }
 @media (prefers-reduced-motion: reduce) { .yearseg__thumb { transition: none; } }
 
 /* segmented ขนาดเล็กสำหรับตัวกรองในการ์ด */

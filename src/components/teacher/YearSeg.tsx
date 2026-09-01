@@ -6,7 +6,6 @@ const OPTIONS: Array<[YearView, () => string]> = [
   ['5', () => `${t('ปี')} 5`],
   ['6', () => `${t('ปี')} 6`],
   ['all', () => t('รวมปี')],
-  ['alumni', () => t('จบแล้ว')],
 ];
 
 export function YearSeg({ view, onChange }: { view: YearView; onChange: (v: YearView) => void }) {

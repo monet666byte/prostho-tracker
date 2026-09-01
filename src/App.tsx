@@ -117,6 +117,7 @@ export default function App() {
         <Route path="/teacher" element={<Guard role="teacher"><Dashboard /></Guard>} />
         <Route path="/teacher/review" element={<Guard role="teacher"><Review /></Guard>} />
         <Route path="/teacher/settings" element={<Guard role="teacher"><TeacherSettings /></Guard>} />
+        <Route path="/teacher/alumni" element={<Guard role="teacher"><Dashboard /></Guard>} />
         <Route path="/teacher/roster" element={<Guard role="teacher"><Roster /></Guard>} />
         <Route path="/teacher/import" element={<Guard role="teacher"><ImportSheet /></Guard>} />
         <Route path="/teacher/analytics" element={<Guard role="teacher"><Analytics /></Guard>} />

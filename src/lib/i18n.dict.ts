@@ -17,6 +17,7 @@ export const DICT: Record<string, string> = {
   'รายชื่อ': 'Roster',
   'นำเข้า': 'Import',
   'จบแล้ว': 'Graduated',
+  'รุ่นที่จบแล้ว': 'Graduated cohorts',
   'นำเข้ารายชื่อรุ่นใหม่': 'Import new cohort roster',
   'วางรายชื่อจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม (คั่นด้วยจุลภาคหรือแท็บ)': 'Paste from Excel or CSV — ID, name, group (comma or tab separated)',
   'รุ่น (DTMU)': 'Cohort (DTMU)',
