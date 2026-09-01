@@ -10,6 +10,12 @@ export const DICT: Record<string, string> = {
   'รีเซ็ตข้อมูล': 'Reset data',
   'หน้า login': 'Login page',
   'รีเซ็ตข้อมูลเดโมแล้ว': 'Demo data has been reset',
+  /* ป้ายเมนูฝั่งอาจารย์แบบสั้น — ใช้เฉพาะจอมือถือ (แถบเมนูบนสุด) */
+  'ประเมิน': 'Evaluate',
+  'วิเคราะห์': 'Analytics',
+  'ตั้งค่า': 'Settings',
+  'รายชื่อ': 'Roster',
+  'นำเข้า': 'Import',
   'ธีมสี': 'Color theme',
   'เลือกโทนสีของทั้งแอป — จำไว้เฉพาะเครื่องนี้': 'Pick the colour tone for the whole app — remembered on this device only',
   'น้ำเงิน': 'Blue',

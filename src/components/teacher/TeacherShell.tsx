@@ -14,26 +14,26 @@ import { groupShort, groupYear } from '../../domain/group';
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import';
 
-type NavItem = { key: TeacherNav; label: string; to: string; Icon: typeof SquaresFour };
+type NavItem = { key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour };
 
 /** งานประจำกลุ่ม — เกาะอยู่ใต้ตัวเลือกกลุ่ม */
 const GROUP_NAV: NavItem[] = [
   // ตรวจงานรายคนยุบเป็นหน้าลูกของสรุปกลุ่ม (กดชื่อนักศึกษาในตาราง) — ไม่มีเมนูของตัวเอง
   { key: 'mygroup', label: t('สรุปกลุ่ม'), to: '/teacher/group', Icon: Users },
-  { key: 'evaluate', label: t('ประเมินรายคาบ'), to: '/teacher/evaluate', Icon: Table },
+  { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table },
 ];
 
 /** ระดับชั้นปี */
 const COHORT_NAV: NavItem[] = [
   { key: 'overview', label: t('ภาพรวม'), to: '/teacher?tab=overview', Icon: SquaresFour },
-  { key: 'cohort', label: t('วิเคราะห์รวม'), to: '/teacher/analytics', Icon: ChartLineUp },
-  { key: 'settings', label: t('ตั้งค่าเกณฑ์'), to: '/teacher/settings', Icon: GearSix },
+  { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
+  { key: 'settings', label: t('ตั้งค่าเกณฑ์'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
 ];
 
 /** เมนูเฉพาะหัวหน้าภาค */
 const ADMIN_NAV: NavItem[] = [
-  { key: 'roster', label: t('จัดการรายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
-  { key: 'import', label: t('นำเข้าจากชีต'), to: '/teacher/import', Icon: FileArrowUp },
+  { key: 'roster', label: t('จัดการรายชื่อ'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
+  { key: 'import', label: t('นำเข้าจากชีต'), short: t('นำเข้า'), to: '/teacher/import', Icon: FileArrowUp },
 ];
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
@@ -82,10 +82,11 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </label>
 
           <div className="side__cluster">
-            {GROUP_NAV.map(({ key, label, to, Icon }) => (
+            {GROUP_NAV.map(({ key, label, short, to, Icon }) => (
               <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
-                {label}
+                <span className="navlabel">{label}</span>
+                <span className="navlabel--short">{short ?? label}</span>
                 {key === 'evaluate' && pendingEval > 0 && (
                   <span className="count" title={t('นักศึกษา {n} คนรอประเมิน', { n: pendingEval })}>{pendingEval}</span>
                 )}
@@ -94,10 +95,11 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
 
           <div className="side__section">{t('ทั้งชั้นปี')}</div>
-          {[...COHORT_NAV, ...(cloudUser?.isAdmin ? ADMIN_NAV : [])].map(({ key, label, to, Icon }) => (
+          {[...COHORT_NAV, ...(cloudUser?.isAdmin ? ADMIN_NAV : [])].map(({ key, label, short, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
-              {label}
+              <span className="navlabel">{label}</span>
+              <span className="navlabel--short">{short ?? label}</span>
             </NavLink>
           ))}
 

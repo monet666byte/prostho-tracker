@@ -796,3 +796,27 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   /* ตารางในแผงเลื่อนแนวนอนได้อยู่แล้ว — กันหัวคอลัมน์ไทยถูกบีบตกบรรทัดทีละคำ */
   .tbl th { white-space: nowrap; }
 }
+
+/* ── แถบเมนูฝั่งอาจารย์: เดสก์ท็อปใช้ป้ายเต็ม มือถือใช้ป้ายสั้น ── */
+.navlabel--short { display: none; }
+
+@media (max-width: 780px) {
+  /* ป้ายสั้นแทนป้ายเต็ม — เดิมแถบกว้าง 765px บนจอ 375 ทำให้คำท้ายโดนตัดกลางคัน
+     ดูเหมือนบรรทัดล้น (ผู้ใช้ทัก 1 ก.ย.) */
+  .side .navlabel { display: none; }
+  .side .navlabel--short { display: inline; }
+  /* ไอคอนเมนูซ่อนบนมือถือ — ป้ายสั้นสื่อชัดอยู่แล้ว ประหยัดที่ให้เห็นเมนูครบ */
+  .side a svg, .side button.navitem svg { display: none; }
+  .side a, .side button.navitem { padding: 8px 8px; gap: 4px; }
+  .side { gap: 3px; padding: 9px 10px; }
+  /* ตัวเลือกกลุ่มย่อลง เหลือที่ให้เมนู (กรอบ+พื้นอ่อนตัดออก เหลือ select อย่างเดียว) */
+  .mygroup { padding: 0; border: 0; background: none; gap: 0; }
+  .mygroup select { font-size: 12px; padding: 6px 7px; }
+  /* เงาไล่ที่ขอบขวา บอกว่ายังมีเมนูให้เลื่อนต่อ — แทนคำที่ถูกตัดครึ่ง */
+  .side {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    scroll-snap-type: x proximity;
+  }
+  .side a, .side .mygroup { scroll-snap-align: start; }
+}
