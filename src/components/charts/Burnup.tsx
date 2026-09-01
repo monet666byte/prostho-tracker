@@ -16,8 +16,11 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
   const plotW = width - padL - padR;
   const plotH = height - padT - padB;
 
-  const maxY = Math.max(...points.map((p) => p.target), ...points.map((p) => p.actual ?? 0)) * 1.06;
-  const x = (i: number) => padL + (i / (points.length - 1)) * plotW;
+  /* ⚠️ ทุกค่าเป็น 0 ได้จริง — เช่นดูรุ่นที่เรียนจบไปแล้ว ซึ่งไม่มีเคสจบในปีการศึกษาปัจจุบัน
+     ถ้าไม่กัน maxY จะเป็น 0 แล้ว v/maxY = NaN ทำให้ทุกพิกัดในกราฟพัง (เห็นเป็น error ยาวใน console) */
+  const maxY = Math.max(1, Math.max(...points.map((p) => p.target), ...points.map((p) => p.actual ?? 0)) * 1.06);
+  // จุดเดียวก็หารศูนย์เหมือนกัน
+  const x = (i: number) => padL + (points.length > 1 ? (i / (points.length - 1)) * plotW : plotW / 2);
   const y = (v: number) => padT + plotH - (v / maxY) * plotH;
 
   const actualPts = points.map((p, i) => (p.actual === null ? null : `${x(i)},${y(p.actual)}`)).filter(Boolean);
