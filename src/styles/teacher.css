@@ -758,3 +758,15 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .window .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
 .window .btn--sec { background: var(--fill); box-shadow: none; }
 .window .btn--ghost { background: transparent; box-shadow: none; }
+
+/* ── ฟอร์มประเมิน: เกณฑ์ 8 ข้อเรียง 2 คอลัมน์ การ์ดต่อคนเตี้ยลงครึ่งนึง (ผู้ใช้สั่ง 1 ก.ย.)
+   แถวรวมคะแนน+ปุ่มลงนาม (ลูกตัวสุดท้าย) กินเต็มความกว้างเหมือนเดิม ── */
+.evalcard__scores {
+  width: 470px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+  align-content: start;
+}
+.evalcard__scores > div:last-child { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .evalcard__scores { width: 330px; grid-template-columns: 1fr; } }
