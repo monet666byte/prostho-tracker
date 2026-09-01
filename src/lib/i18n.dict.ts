@@ -17,6 +17,8 @@ export const DICT: Record<string, string> = {
   'รายชื่อ': 'Roster',
   'นำเข้า': 'Import',
   'จบแล้ว': 'Graduated',
+  'การให้สิทธิ์เข้าระบบเป็นของหัวหน้าภาค — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log': 'Granting system access is limited to the department head — data import is open to all instructors and is recorded in the audit log',
+  'นำเข้าจากชีตให้ {name}: {p} ผู้ป่วย · {w} ชิ้นงาน': 'Sheet import for {name}: {p} patients · {w} workpieces',
   'รายชื่อ & นำเข้าข้อมูล': 'Roster & data import',
   'รายชื่อ & นำเข้า': 'Roster & import',
   'งานตั้งต้นข้อมูลต้นปี — รับรายชื่อรุ่นใหม่ ให้สิทธิ์เข้าระบบ และย้ายงานเก่าจากชีต': 'Start-of-year setup — add the new cohort, grant access, and migrate old work from the sheet',

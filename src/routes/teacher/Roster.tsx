@@ -32,8 +32,9 @@ export default function Roster() {
   const { cloudUser, showToast } = useApp();
   const students = useAllStudents();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
-  /* โหมดเดโม (ยังไม่ต่อ cloud) ไม่มีบัญชีหัวหน้าภาคให้ล็อกอิน — เปิดให้เข้าดู/ทดลองนำเข้าได้
-     พอต่อ Supabase จริงแล้ว สิทธิ์กลับไปขึ้นกับ is_admin ตามเดิม */
+  /* หน้านี้อาจารย์ทุกคนเข้าได้ (ผู้ใช้ให้เปิด 1 ก.ย. — ทุกการกระทำมี audit log)
+     แต่ "การให้สิทธิ์เข้าระบบ" ยังเป็นของหัวหน้าภาคเท่านั้น เพราะมันคือการเปิดประตูให้คนใหม่
+     เห็นข้อมูลนักศึกษาทั้งภาค — audit log ตามทีหลังไม่ช่วยถ้าข้อมูลรั่วไปแล้ว */
   const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
 
   const [invites, setInvites] = useState<Invite[] | null>(null);
@@ -218,6 +219,7 @@ export default function Roster() {
           </button>
         </div>
 
+        {isAdmin && (<>
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3><UserPlus size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('เพิ่มคนเข้าระบบ')}</h3>
           <p className="sub">{t('พิมพ์อีเมลที่เขาจะใช้สมัคร แล้วเลือกว่าเขาคือใครในระบบ')}</p>
@@ -310,6 +312,12 @@ export default function Roster() {
             {t('ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที')}
           </p>
         </div>
+        </>)}
+        {!isAdmin && (
+          <p className="sub" style={{ marginTop: 4 }}>
+            {t('การให้สิทธิ์เข้าระบบเป็นของหัวหน้าภาค — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log')}
+          </p>
+        )}
         </>)}
 
         {confirmDel && (

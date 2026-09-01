@@ -7,7 +7,6 @@ import { ToastView } from '../ToastView';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
-import { cloudEnabled } from '../../lib/cloud';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
 import { groupShort, groupYear } from '../../domain/group';
@@ -30,18 +29,16 @@ const COHORT_NAV: NavItem[] = [
   { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
   { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
   { key: 'settings', label: t('ตั้งค่าเกณฑ์'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
-];
-
-/** เมนูเฉพาะหัวหน้าภาค */
-const ADMIN_NAV: NavItem[] = [
-  /* รายชื่อกับนำเข้างานจากชีตเคยเป็นสองเมนู — ผู้ใช้ถามว่าทำไมต้องแยก (1 ก.ย.)
-     ทั้งคู่คืองานตั้งต้นข้อมูลต้นปี รวมเป็นเมนูเดียวแล้วสลับแท็บข้างใน */
+  /* รายชื่อ+นำเข้า: อาจารย์ทุกคนใช้ได้ (ทุกการกระทำมี audit log) — การให้สิทธิ์เข้าระบบข้างในยังเป็นของหัวหน้าภาค */
   { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];
 
+/** เมนูเฉพาะหัวหน้าภาค */
+
+
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup, myGroup, cloudUser } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   const offGroup = !!myGroup && teacherGroup !== myGroup;
   const teacher = useTeacher(session?.teacherId);
@@ -101,7 +98,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
 
           <div className="side__section">{t('ทั้งชั้นปี')}</div>
-          {[...COHORT_NAV, ...(cloudUser?.isAdmin || !cloudEnabled ? ADMIN_NAV : [])].map(({ key, label, short, to, Icon }) => (
+          {COHORT_NAV.map(({ key, label, short, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               <span className="navlabel">{label}</span>

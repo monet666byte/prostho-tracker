@@ -9,9 +9,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../../data/db';
 import { useAllStudents } from '../../hooks/data';
 import { importSheetCsv, type ImportResult } from '../../lib/sheetImport';
+import { logAudit } from '../../data/repo';
 import { t } from '../../lib/i18n';
-import { cloudEnabled } from '../../lib/cloud';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { TYPES } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
@@ -19,7 +19,9 @@ import { groupShort } from '../../domain/group';
 export function ImportSheetBody() {
   const { cloudUser, showToast, touch } = useApp();
   const students = useAllStudents();
-  const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
+  /* เดิมล็อกเฉพาะหัวหน้าภาค — ผู้ใช้ให้เปิดกว้าง (1 ก.ย.) เพราะทุกการนำเข้าถูกบันทึกใน audit log
+     งานนี้แก้ "ข้อมูลงาน" ไม่ใช่ "สิทธิ์เข้าถึง" จึงเปิดให้อาจารย์ทุกคนได้ */
+  void cloudUser;
 
   const [studentId, setStudentId] = useState('');
   const [csv, setCsv] = useState('');
@@ -71,6 +73,16 @@ export function ImportSheetBody() {
         await db.patients.bulkPut(result.patients);
         await db.workpieces.bulkPut(result.workpieces);
       });
+      // ⚠️ เดิมการนำเข้านี้ไม่ทิ้งร่องรอยเลย — พอเปิดให้อาจารย์ทุกคนใช้ ต้องรู้ว่าใครนำเข้าให้ใคร
+      // (การนำเข้าเขียนทับงานเดิมของนักศึกษาได้ จึงต้องตามย้อนได้เสมอ)
+      const who = students.find((st) => st.id === studentId);
+      await logAudit(
+        t('นำเข้าจากชีตให้ {name}: {p} ผู้ป่วย · {w} ชิ้นงาน', {
+          name: t(who?.name ?? ''), p: result.patients.length, w: result.workpieces.length,
+        }),
+        currentActor(),
+        { studentId },
+      );
       touch();
       showToast({
         message: t('นำเข้าแล้ว {p} ผู้ป่วย · {w} ชิ้นงาน', { p: result.patients.length, w: result.workpieces.length }),
@@ -82,14 +94,6 @@ export function ImportSheetBody() {
     } finally {
       setSaving(false);
     }
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="dashed" style={{ padding: '28px 20px', textAlign: 'center', font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
-        {t('หน้านี้สำหรับหัวหน้าภาคเท่านั้น')}
-      </div>
-    );
   }
 
   const rep = result?.report;
