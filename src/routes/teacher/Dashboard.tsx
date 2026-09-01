@@ -44,7 +44,10 @@ export default function Dashboard() {
       // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
       if (yearView === 'alumni') {
         const grads = allStudents.filter((s) => isAlumni(s));
-        return cohortPick === null ? grads : grads.filter((s) => cohortOf(s) === cohortPick);
+        // ดูทีละรุ่นเสมอ — ยังไม่ได้เลือก = รุ่นที่เพิ่งจบล่าสุด (ผู้ใช้สั่ง 1 ก.ย.: ไม่เอา "ทุกรุ่น")
+        const cohorts = [...new Set(grads.map((s) => cohortOf(s)))].sort((a, b) => b - a);
+        const pick = cohortPick ?? cohorts[0];
+        return grads.filter((s) => cohortOf(s) === pick);
       }
       if (yearView === 'all') return allStudents.filter((s) => isActiveStudent(s));
       return allStudents.filter((s) => String(studentYear(s)) === yearView);
@@ -124,12 +127,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {yearView === 'alumni' && alumniCohorts.length > 1 && (
+        {yearView === 'alumni' && alumniCohorts.length > 0 && (
           <div className="cohortpick">
             <span className="cohortpick__label">{t('เลือกรุ่น')}</span>
-            <button data-on={cohortPick === null} onClick={() => setCohortPick(null)}>{t('ทุกรุ่น')}</button>
             {alumniCohorts.map((c) => (
-              <button key={c} data-on={cohortPick === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
+              <button key={c} data-on={(cohortPick ?? alumniCohorts[0]) === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
             ))}
           </div>
         )}
