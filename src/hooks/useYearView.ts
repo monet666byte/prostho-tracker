@@ -10,7 +10,8 @@
  */
 import { useState } from 'react';
 
-export type YearView = '5' | '6' | 'all';
+/** 'alumni' = รุ่นที่เรียนจบไปแล้ว — ดูย้อนหลังได้ แก้ไม่ได้ (ภาคขอเก็บ ~5 ปี) */
+export type YearView = '5' | '6' | 'all' | 'alumni';
 const KEY = 'pt-yearview';
 
 /** @param fallback ค่าเริ่มต้นเมื่อยังไม่เคยเลือก — ปกติส่งปีของกลุ่มที่อาจารย์ดูแล
@@ -19,7 +20,7 @@ export function useYearView(fallback: YearView = 'all'): [YearView, (v: YearView
   const [view, setView] = useState<YearView>(() => {
     try {
       const s = localStorage.getItem(KEY);
-      return s === '5' || s === '6' || s === 'all' ? s : fallback;
+      return s === '5' || s === '6' || s === 'all' || s === 'alumni' ? s : fallback;
     } catch {
       return fallback;
     }

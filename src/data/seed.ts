@@ -30,7 +30,9 @@ const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ
 /* แต่ละชั้นปีมี PT1–12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69) — ปี 5 รูปแบบรหัสเดิม, ปี 6 ติด tag TH6- */
 const GROUPS_Y5 = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
 const GROUPS_Y6 = Array.from({ length: 12 }, (_, i) => `TH6-PT${i + 1}`);
-const GROUPS = [...GROUPS_Y5, ...GROUPS_Y6];
+/** รุ่นที่เรียนจบไปแล้ว — เก็บไว้ให้อาจารย์ย้อนดูได้ (ภาคขอเก็บ ~5 ปี) */
+const GROUPS_ALUMNI = Array.from({ length: 12 }, (_, i) => `TH7-PT${i + 1}`);
+const GROUPS = [...GROUPS_Y5, ...GROUPS_Y6, ...GROUPS_ALUMNI];
 const DEMO_STUDENT_ID = 'st-TH-PT7-1';
 const DEMO_TEACHER_ID = 'tc-TH-PT7-1';
 /** ชื่อของสองบัญชีที่ทีมใช้ล็อกอินทดสอบ/สาธิต — คนอื่นในระบบยังเป็น ก ข ค ตามเดิม */
@@ -264,7 +266,7 @@ function generateFor(student: Student, seed: number) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 30; // 30: ปีละ 12 กลุ่ม PT1–12 ทั้งสองชั้นปี (ปี 6 = TH6-)
+export const SEED_VERSION = 31; // 31: + รุ่นที่จบไปแล้ว (TH7-) ไว้ทดสอบหน้าย้อนหลัง
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -449,18 +451,22 @@ async function seedIfEmptyInner(): Promise<void> {
     const studentIds: string[] = [];
     // ปีละ 96 คน: ปี 5 (gi 0–11) รหัสรุ่น 65 — นศ. เดโมอยู่ TH-PT7 รหัส 6504049 คงเดิม
     // ปี 6 (gi 12–23) รหัสรุ่น 64
-    const y6 = gi >= 12;
+    // gi 0–11 = ปี 5 · 12–23 = ปี 6 · 24–35 = รุ่นที่จบไปแล้ว (ย้อนหลัง 1 ปี)
+    const y6 = gi >= 12 && gi < 24;
+    const alumni = gi >= 24;
+    const yearsBack = alumni ? 2 : y6 ? 1 : 0; // จำนวนปีที่เข้าคลินิกก่อนรุ่นปี 5 ปัจจุบัน
+    const codeBase = alumni ? 6304001 : y6 ? 6404001 : 6504001;
     for (let si = 0; si < 8; si++) {
       const id = `st-${code}-${si + 1}`;
       studentIds.push(id);
       students.push({
         id,
-        code: String((y6 ? 6404001 : 6504001) + (gi % 12) * 8 + si),
+        code: String(codeBase + (gi % 12) * 8 + si),
         name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
         group: code,
-        year: y6 ? 6 : 5,
-        // รุ่น = ปีการศึกษาที่ขึ้นคลินิกปีแรก · ปี 6 เข้าคลินิกก่อนปี 5 หนึ่งปี
-        entryYear: academicYear(new Date()) - (y6 ? 1 : 0),
+        year: alumni ? 6 : y6 ? 6 : 5,
+        // รุ่น = ปีการศึกษาที่ขึ้นคลินิกปีแรก · ยิ่งรุ่นเก่ายิ่งย้อนหลังมากขึ้น
+        entryYear: academicYear(new Date()) - yearsBack,
         advisorIds,
       });
     }

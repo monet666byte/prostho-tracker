@@ -1,4 +1,4 @@
-import { BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
+import { Archive, BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
@@ -15,7 +15,7 @@ import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYear } from '../../domain/group';
-import { studentCohortLabel, studentYear } from '../../domain/cohort';
+import { isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -38,7 +38,12 @@ export default function Dashboard() {
   const myGroup = useApp((st) => st.myGroup);
   const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   const students = useMemo(
-    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(studentYear(s)) === yearView)),
+    () => {
+      // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
+      if (yearView === 'alumni') return allStudents.filter((s) => isAlumni(s));
+      if (yearView === 'all') return allStudents.filter((s) => isActiveStudent(s));
+      return allStudents.filter((s) => String(studentYear(s)) === yearView);
+    },
     [allStudents, yearView],
   );
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
@@ -82,7 +87,9 @@ export default function Dashboard() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>
-              {yearView === 'all' ? t('ภาพรวมทุกชั้นปี') : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
+              {yearView === 'all' ? t('ภาพรวมทุกชั้นปี')
+                : yearView === 'alumni' ? t('ภาพรวมรุ่นที่จบแล้ว')
+                  : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
               {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
               {cohortsShown && <span className="cohortchip">{cohortsShown}</span>}
             </h1>
@@ -97,6 +104,14 @@ export default function Dashboard() {
             {t('ภาคเรียน')} {termLabel(new Date())}
           </span>
         </div>
+
+        {/* ป้ายบอกว่ากำลังดูของเก่า — กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ */}
+        {yearView === 'alumni' && (
+          <div className="archivebar">
+            <Archive size={15} weight="fill" />
+            {t('กำลังดูรุ่นที่เรียนจบไปแล้ว — ดูได้อย่างเดียว แก้ไขไม่ได้')}
+          </div>
+        )}
 
         {view === 'overview' && (
           <>
@@ -169,7 +184,7 @@ export default function Dashboard() {
               <div className="panel">
                 <h3>{t('นักศึกษาในกลุ่ม')} {groupShort(selected?.code)}</h3>
                 <p className="sub">
-                  {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${t('ชั้นปีที่')} ${selected.year} · `}
+                  {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${selected.year > 6 ? t('จบแล้ว') : `${t('ชั้นปีที่')} ${selected.year}`} · `}
                   {t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}
                 </p>
                 <table className="tbl">

@@ -182,10 +182,10 @@
 .yearseg {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: stretch;
   height: 38px;
-  min-width: 216px;
+  min-width: 288px;
   padding: 3px;
   border-radius: 12px;
   background: var(--fill);
@@ -208,7 +208,7 @@
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 3);
+  width: calc((100% - 6px) / 4);
   border-radius: 9px;
   background: #fff;
   box-shadow: 0 1px 4px rgba(16, 24, 40, 0.14), 0 0 0 1px rgba(16, 24, 40, 0.04);
@@ -216,6 +216,7 @@
 }
 .yearseg[data-idx='1'] .yearseg__thumb { transform: translateX(100%); }
 .yearseg[data-idx='2'] .yearseg__thumb { transform: translateX(200%); }
+.yearseg[data-idx='3'] .yearseg__thumb { transform: translateX(300%); }
 @media (prefers-reduced-motion: reduce) { .yearseg__thumb { transition: none; } }
 
 /* segmented ขนาดเล็กสำหรับตัวกรองในการ์ด */
@@ -842,8 +843,24 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   border-radius: 99px;
   background: var(--accent-tint);
   color: var(--accent-hover);
-  font: 700 12px var(--font-mono);
-  letter-spacing: 0.02em;
+  /* ฟอนต์ระบบแบบ Apple (SF Pro บน Mac/iPhone) — mono เดิมดูแข็งเป็นโค้ด (ผู้ใช้ขอ 1 ก.ย.)
+     ตัวเลขในสแตกนี้เป็น proportional อ่านลื่นกว่าเมื่อเป็นป้ายชื่อ ไม่ใช่ตาราง */
+  font: 600 12.5px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: -0.01em;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+/* แถบเตือนว่ากำลังดูข้อมูลรุ่นที่จบไปแล้ว (อ่านอย่างเดียว) */
+.archivebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--warning-tint);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-dark);
+  font: 600 12px var(--font-body);
 }
