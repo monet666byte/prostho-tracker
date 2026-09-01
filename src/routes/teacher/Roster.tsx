@@ -10,7 +10,7 @@ import { CheckCircle, Clock, Plus, Trash, UserPlus, Users, UsersThree } from '@p
 import { useEffect, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { useAllStudents } from '../../hooks/data';
-import { supabase } from '../../lib/cloud';
+import { cloudEnabled, supabase } from '../../lib/cloud';
 import { t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -31,7 +31,9 @@ export default function Roster() {
   const { cloudUser, showToast } = useApp();
   const students = useAllStudents();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
-  const isAdmin = !!cloudUser?.isAdmin;
+  /* โหมดเดโม (ยังไม่ต่อ cloud) ไม่มีบัญชีหัวหน้าภาคให้ล็อกอิน — เปิดให้เข้าดู/ทดลองนำเข้าได้
+     พอต่อ Supabase จริงแล้ว สิทธิ์กลับไปขึ้นกับ is_admin ตามเดิม */
+  const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
 
   const [invites, setInvites] = useState<Invite[] | null>(null);
   const [linked, setLinked] = useState<Set<string>>(new Set());
