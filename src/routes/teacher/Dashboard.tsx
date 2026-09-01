@@ -15,6 +15,7 @@ import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYear } from '../../domain/group';
+import { studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -37,7 +38,7 @@ export default function Dashboard() {
   const myGroup = useApp((st) => st.myGroup);
   const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   const students = useMemo(
-    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
+    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(studentYear(s)) === yearView)),
     [allStudents, yearView],
   );
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
@@ -120,7 +121,7 @@ export default function Dashboard() {
               {/* มุมมองรวมเคยแปะป้ายปีทุกใบ 24 ใบ — รกและซ้ำ (ผู้ใช้ทัก 1 ก.ย.)
                   แบ่งเป็นหมวดละปีแทน: หัวข้อบอกครั้งเดียว การ์ดสะอาดเหมือนมุมมองรายปี */}
               {(yearView === 'all' ? [5, 6] : [null]).map((yr) => {
-                const list = yr === null ? groups : groups.filter((g) => groupYear(g.code) === yr);
+                const list = yr === null ? groups : groups.filter((g) => g.year === yr);
                 if (!list.length) return null;
                 return (
                   <div key={yr ?? 'one'}>

@@ -6,6 +6,7 @@ import {
   percentCompleted, type ReqGroup,
 } from './rules';
 import { academicYear } from '../lib/date';
+import { studentYear } from './cohort';
 import type { Settings, Student, WorkType, Workpiece } from './types';
 
 export interface StudentSummary {
@@ -51,7 +52,22 @@ export interface GroupSummary {
   code: string;
   percent: number;
   stale: number;
+  /**
+   * ชั้นปีของกลุ่ม — มาจากสมาชิกจริง ไม่ใช่ tag ในรหัสกลุ่ม
+   * เพราะภาคอาจให้ นศ. อยู่กลุ่มเดิมตอนขึ้นปี 6 (ผู้ใช้ 1 ก.ย.: "แล้วแต่ปี")
+   * ถ้าเป็นแบบนั้น TH-PT7 จะมีสมาชิกเป็นปี 6 ทั้งกลุ่ม — อ่านจากรหัสจะผิด
+   */
+  year: number;
   students: StudentSummary[];
+}
+
+function modeYear(years: number[]): number {
+  const count = new Map<number, number>();
+  years.forEach((y) => count.set(y, (count.get(y) ?? 0) + 1));
+  let best = years[0] ?? 5;
+  let max = 0;
+  count.forEach((n, y) => { if (n > max) { max = n; best = y; } });
+  return best;
 }
 
 export function summarizeGroups(summaries: StudentSummary[]): GroupSummary[] {
@@ -66,6 +82,8 @@ export function summarizeGroups(summaries: StudentSummary[]): GroupSummary[] {
       code,
       percent: Math.round(list.reduce((a, s) => a + s.percent, 0) / Math.max(1, list.length)),
       stale: list.reduce((a, s) => a + s.stale, 0),
+      // ชั้นปีที่พบมากสุดในกลุ่ม — กลุ่มคละปีได้ แต่ส่วนใหญ่เป็นตัวแทนที่ถูกต้อง
+      year: modeYear(list.map((s) => studentYear(s.student))),
       students: list.sort((a, b) => a.student.id.localeCompare(b.student.id, undefined, { numeric: true })),
     }))
     .sort((a, b) => parseInt(a.code.replace(/\D/g, ''), 10) - parseInt(b.code.replace(/\D/g, ''), 10));

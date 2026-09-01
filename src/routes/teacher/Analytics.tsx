@@ -16,6 +16,7 @@ import { YearSeg } from '../../components/teacher/YearSeg';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYear } from '../../domain/group';
+import { studentYear } from '../../domain/cohort';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
 export default function Analytics() {
@@ -28,7 +29,7 @@ export default function Analytics() {
   const myGroup = useApp((st) => st.myGroup);
   const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   const students = useMemo(
-    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
+    () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(studentYear(s)) === yearView)),
     [allStudents, yearView],
   );
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
