@@ -407,10 +407,8 @@
 .minirow__meta .mono { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
 .minirow__pass {
   flex: none;
-  /* 52px + ไอคอน 17 + เลข 10 ทำให้ปุ่มเป็นก้อนใหญ่คร่อมแถว ดูไม่สมส่วน (ผู้ใช้ทัก 1 ก.ย.)
-     ย่อเหลือ 44px = ขั้นต่ำของขนาดปุ่มที่นิ้วกดสะดวก */
-  width: 44px;
-  border-radius: 12px;
+  width: 52px;
+  border-radius: 13px;
   background: var(--accent-tint);
   color: var(--accent);
   display: grid;
@@ -420,7 +418,7 @@
 }
 .minirow__pass:hover { background: var(--accent-ring); }
 .minirow__pass:active { transform: translateY(1px); }
-.minirow__pass span { font: 600 9px var(--font-mono); margin-top: -2px; }
+.minirow__pass span { font: 600 10px var(--font-mono); margin-top: -3px; }
 
 /* ปุ่มลบในโหมดแก้ไข */
 .delbtn {
