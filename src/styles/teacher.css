@@ -788,6 +788,17 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
    ต้นเหตุร่วม = แถวหัวเรื่องเป็น flex row ที่มีปุ่ม/ชิปอยู่ข้างๆ พอจอแคบข้อความโดนบีบเหลือ ~36px
    ประกาศไว้ท้ายไฟล์เพื่อให้ชนะกฎความกว้างคงที่ที่ประกาศทีหลัง media query เดิม ══ */
 @media (max-width: 780px) {
+  /* ตัวเลือกปีมี 4 ช่องแล้ว (เพิ่ม "จบแล้ว") — min-width 288 + โหมดตัวใหญ่ = กว้างเกินจอ 320
+     บนมือถือให้ยืดเต็มบรรทัดแทน (ผู้ใช้ทัก 1 ก.ย.) */
+  .yearseg { min-width: 0; width: 100%; }
+  .yearseg button { padding: 0 4px; font-size: 11.5px; }
+
+  /* โหมดตัวหนังสือใหญ่สุดบนจอแคบสุด (320px): ตัวเลข KPI + ป้ายยาวทำให้สองคอลัมน์หดไม่ลง
+     จนทั้งหน้าเลื่อนแนวนอนได้ — พับเหลือคอลัมน์เดียวไปเลย */
+  :root[data-zoom='xl'] .kpis { grid-template-columns: 1fr !important; }
+  .kpi, .panel { min-width: 0; }
+  .kpi__value { overflow-wrap: anywhere; }
+
   /* หัวเรื่องหน้า + แถบตัวเลือกปี: ขึ้นบรรทัดใหม่แทนการเบียดกัน */
   /* กล่องหัวเรื่องมี inline style flex:1 อยู่ในโค้ด — บังคับเต็มแถวด้วย min-width
      (inline style ชนะ flex-basis จาก CSS แต่ไม่ได้ตั้ง min-width ไว้) */
