@@ -159,7 +159,8 @@ export default function Dashboard() {
                       <th>{t('นักศึกษา')}</th>
                       <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>
                       <th style={{ width: 56 }}>{t('ชิ้นงาน')}</th>
-                      <th style={{ width: 76 }}>{t('เกณฑ์สะสม 2 ปี')}</th>
+                      {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด (สกรีนช็อตผู้ใช้ 1 ก.ย.) */}
+                      <th style={{ width: 94, whiteSpace: 'nowrap' }}>{t('เกณฑ์สะสม 2 ปี')}</th>
                       <th style={{ width: 46 }}>{t('ค้าง')}</th>
                     </tr>
                   </thead>
