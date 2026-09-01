@@ -342,7 +342,7 @@ export default function CheckInPage() {
                     )}
                   </div>
                   {c.note && (
-                    <div style={{ marginTop: 5, font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{t('โน้ต')}: {c.note}</div>
+                    <div style={{ marginTop: 5, font: '400 11px var(--font-body)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
                   )}
                 </div>
               )}

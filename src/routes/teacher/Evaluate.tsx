@@ -309,7 +309,7 @@ export default function Evaluate() {
                       {patient && <span className="mono" style={{ color: 'var(--text-faint)' }}> · {t(patient.name)} (HN {patient.hn})</span>}
                     </div>
                     {c.note && (
-                      <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>{t('โน้ต')}: {c.note}</div>
+                      <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3, overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
                     )}
 
                     {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น */}

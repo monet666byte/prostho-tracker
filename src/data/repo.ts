@@ -219,17 +219,25 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   const removable = input.type === 'CD' || input.type === 'RPD' || input.type === 'APD';
   const now = new Date().toISOString();
 
-  const patientId = uid('p');
-  await db.patients.add({
-    id: patientId,
-    name: input.patientName.trim() || 'ผู้ป่วยใหม่',
-    // เดิมช่องว่างจะได้ HN ปลอม "DEMO-1234" — ผู้ป่วยจริงที่ไม่มี HN จริง
-    // จับคู่กับแฟ้มของโรงพยาบาลไม่ได้ และคนละคนที่เว้นว่างเหมือนกันจะกลายเป็นคนละ HN
-    // ฟอร์มบังคับกรอกแล้ว ตรงนี้กันไว้อีกชั้นเฉยๆ
-    hn: input.hn.trim(),
-    sexAge: input.sexAge.trim() || 'ไม่ระบุ',
-    ownerStudentId: input.studentId,
-  });
+  // HN เดิมของนักศึกษาคนเดียวกัน = ผู้ป่วยคนเดิม — ห้ามงอกแถวใหม่
+  // (เคสจริง: คนไข้ทำ CD เสร็จแล้วกลับมาทำ Crown/recall — เคยกลายเป็นสองคนในแอป เจอ 1 ก.ย. 69)
+  const hn = input.hn.trim();
+  const existing = hn
+    ? (await db.patients.where('hn').equals(hn).toArray()).find((p) => p.ownerStudentId === input.studentId)
+    : undefined;
+  const patientId = existing?.id ?? uid('p');
+  if (!existing) {
+    await db.patients.add({
+      id: patientId,
+      name: input.patientName.trim() || 'ผู้ป่วยใหม่',
+      // เดิมช่องว่างจะได้ HN ปลอม "DEMO-1234" — ผู้ป่วยจริงที่ไม่มี HN จริง
+      // จับคู่กับแฟ้มของโรงพยาบาลไม่ได้ และคนละคนที่เว้นว่างเหมือนกันจะกลายเป็นคนละ HN
+      // ฟอร์มบังคับกรอกแล้ว ตรงนี้กันไว้อีกชั้นเฉยๆ
+      hn,
+      sexAge: input.sexAge.trim() || 'ไม่ระบุ',
+      ownerStudentId: input.studentId,
+    });
+  }
 
   const base = {
     patientId,
