@@ -27,7 +27,10 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ญ', 'ฎ', 'ฏ'];
-const GROUPS = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
+/* แต่ละชั้นปีมี PT1–12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69) — ปี 5 รูปแบบรหัสเดิม, ปี 6 ติด tag TH6- */
+const GROUPS_Y5 = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
+const GROUPS_Y6 = Array.from({ length: 12 }, (_, i) => `TH6-PT${i + 1}`);
+const GROUPS = [...GROUPS_Y5, ...GROUPS_Y6];
 const DEMO_STUDENT_ID = 'st-TH-PT7-1';
 const DEMO_TEACHER_ID = 'tc-TH-PT7-1';
 /** ชื่อของสองบัญชีที่ทีมใช้ล็อกอินทดสอบ/สาธิต — คนอื่นในระบบยังเป็น ก ข ค ตามเดิม */
@@ -261,7 +264,7 @@ function generateFor(student: Student, seed: number) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 29; // 29: แยกชั้นปี 5/6 ใน seed (ตัวกรองชั้นปีหน้าอาจารย์)
+export const SEED_VERSION = 30; // 30: ปีละ 12 กลุ่ม PT1–12 ทั้งสองชั้นปี (ปี 6 = TH6-)
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -444,16 +447,18 @@ async function seedIfEmptyInner(): Promise<void> {
     );
 
     const studentIds: string[] = [];
+    // ปีละ 96 คน: ปี 5 (gi 0–11) รหัสรุ่น 65 — นศ. เดโมอยู่ TH-PT7 รหัส 6504049 คงเดิม
+    // ปี 6 (gi 12–23) รหัสรุ่น 64
+    const y6 = gi >= 12;
     for (let si = 0; si < 8; si++) {
       const id = `st-${code}-${si + 1}`;
       studentIds.push(id);
       students.push({
         id,
-        // PT1–6 = รุ่นพี่ปี 6 (รหัสรุ่น 64) · PT7–12 = ปี 5 (รหัส 65 — นศ. เดโมอยู่ PT7 รหัส 6504049 คงเดิม)
-        code: String((gi < 6 ? 6404001 : 6504001) + gi * 8 + si),
+        code: String((y6 ? 6404001 : 6504001) + (gi % 12) * 8 + si),
         name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
         group: code,
-        year: gi < 6 ? 6 : 5,
+        year: y6 ? 6 : 5,
         advisorIds,
       });
     }

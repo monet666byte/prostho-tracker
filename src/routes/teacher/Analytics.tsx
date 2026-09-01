@@ -15,6 +15,7 @@ import { useYearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { groupShort } from '../../domain/group';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
 export default function Analytics() {
@@ -253,7 +254,7 @@ export default function Analytics() {
                     <tr key={r.student.id}>
                       <td style={{ font: '600 11.5px var(--font-body)' }}>{t(r.student.name)}</td>
                       <td className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                        {r.student.group.replace('TH-', '')}
+                        {groupShort(r.student.group)}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

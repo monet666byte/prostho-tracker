@@ -18,6 +18,7 @@ import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { FIRSTS } from './Achievements';
+import { groupShort } from '../../domain/group';
 
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
 const SHOW_ACHIEVEMENT_CARD = false;
@@ -328,7 +329,7 @@ export default function Home() {
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. Liv')}</span>
-            <span className="groupchip">{(student?.group ?? '').replace('TH-', '') || '—'}</span>
+            <span className="groupchip">{groupShort((student?.group ?? '')) || '—'}</span>
             <BetaBadge compact />
           </div>
         </div>

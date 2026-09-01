@@ -10,6 +10,7 @@ import {
 } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
+import { groupShort } from './group';
 
 const DAY = 86_400_000;
 
@@ -531,7 +532,7 @@ export function caseDots(
         progression: p,
         type: w.type,
         stale: isStale(w, settings),
-        label: `${student?.name ?? ''} (${student?.group.replace('TH-', '') ?? ''}) · ${w.detail} · step ${p}`,
+        label: `${student?.name ?? ''} (${groupShort(student?.group ?? '')}) · ${w.detail} · step ${p}`,
       };
     })
     .sort((a, b) => a.progression - b.progression);

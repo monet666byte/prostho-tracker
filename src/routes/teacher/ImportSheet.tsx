@@ -14,6 +14,7 @@ import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { TYPES } from '../../domain/catalog';
+import { groupShort } from '../../domain/group';
 
 export default function ImportSheet() {
   const { cloudUser, showToast, touch } = useApp();
@@ -119,7 +120,7 @@ export default function ImportSheet() {
           >
             <option value="">{t('— เลือก —')}</option>
             {sorted.map((s) => (
-              <option key={s.id} value={s.id}>{s.code} · {s.name} · {s.group.replace('TH-', '')}</option>
+              <option key={s.id} value={s.id}>{s.code} · {s.name} · {groupShort(s.group)}</option>
             ))}
           </select>
         </div>

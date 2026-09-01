@@ -11,6 +11,7 @@ import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import type { CheckIn } from '../../domain/types';
 import { currentActor, useApp } from '../../store/app';
+import { groupShort } from '../../domain/group';
 
 /** เส้นคะแนนรายคาบของนักศึกษาหนึ่งคน — ใช้ได้ทั้งคะแนนรวม (0–24) และรายหัวข้อ (0–3) */
 function ScoreTrend({
@@ -240,7 +241,7 @@ export default function Evaluate() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('ประเมินรายคาบ')}</h1>
-            <p>{t('กลุ่ม')} {group.replace('TH-', '')} · {t('คะแนน 3 / 1 / 0')}</p>
+            <p>{t('กลุ่ม')} {groupShort(group)} · {t('คะแนน 3 / 1 / 0')}</p>
           </div>
         </div>
 
@@ -376,7 +377,7 @@ export default function Evaluate() {
         </div>
 
         <div className="panel">
-          <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {group.replace('TH-', '')}</h3>
+          <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {groupShort(group)}</h3>
           <p className="sub">{t('ให้คะแนนผิดแก้ได้ — กดปุ่มแก้ท้ายแถว · ทุกการแก้ถูกบันทึกในประวัติ ลบไม่ได้')}</p>
           <table className="tbl">
             <thead>
@@ -451,7 +452,7 @@ export default function Evaluate() {
                   axes={criterionAvg(selectedRows)}
                   reference={groupProfile}
                   label={t(studentById.get(selectedId ?? '')?.name ?? '')}
-                  referenceLabel={`${t('เฉลี่ยกลุ่ม')} ${group.replace('TH-', '')}`}
+                  referenceLabel={`${t('เฉลี่ยกลุ่ม')} ${groupShort(group)}`}
                   size={250}
                   onAxisClick={(k) => setCritKey(k === critKey ? null : k)}
                   activeKey={critKey}

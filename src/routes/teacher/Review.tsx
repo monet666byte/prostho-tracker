@@ -16,6 +16,7 @@ import { db } from '../../data/db';
 import { thaiShort } from '../../lib/date';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
+import { groupShort } from '../../domain/group';
 
 type Filter = 'all' | 'stale' | 'done';
 
@@ -97,7 +98,7 @@ export default function Review() {
           <div style={{ flex: 1 }}>
             <h1>{t('ตรวจงานรายคน')}</h1>
             <p>
-              {t('กลุ่ม')} {groupCode.replace('TH-', '')} · {t('{n} คน', { n: groupStudents.length })}
+              {t('กลุ่ม')} {groupShort(groupCode)} · {t('{n} คน', { n: groupStudents.length })}
               {advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}
               {' — '}{t('ใช้เป็นครั้งคราว ตอนรับเคสใหม่/เคสจบ (งานประจำคาบอยู่ที่ "ประเมินรายคาบ")')}
             </p>

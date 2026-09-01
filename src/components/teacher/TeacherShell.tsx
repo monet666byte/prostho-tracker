@@ -9,6 +9,7 @@ import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
+import { groupShort, groupYear } from '../../domain/group';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import';
@@ -75,7 +76,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             <span className="mygroup__label">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
               {groupCodes.map((code) => (
-                <option key={code} value={code}>{code.replace('TH-', 'PT').replace('PTPT', 'PT')}</option>
+                <option key={code} value={code}>{`${groupShort(code)} · ${t('ปี')} ${groupYear(code)}`}</option>
               ))}
             </select>
           </label>
@@ -130,7 +131,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <Eye size={15} weight="fill" style={{ flex: 'none' }} />
           <span>
             {t('กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})', {
-              other: teacherGroup.replace('TH-', ''),
+              other:groupShort(teacherGroup),
               mine: myGroup!.replace('TH-', ''),
             })}
             <b>{t(' · การเข้าดูถูกบันทึกไว้')}</b>

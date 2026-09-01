@@ -14,6 +14,7 @@ import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { groupShort, groupYear } from '../../domain/group';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -114,13 +115,18 @@ export default function Dashboard() {
             </div>
 
             <div className="panel" style={{ marginBottom: 16 }}>
-              <h3>{t('กลุ่มคลินิก')} {groups[0]?.code.replace('TH-', '')}–{groups[groups.length - 1]?.code.replace('TH-', '')}</h3>
+              <h3>{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</h3>
               <div className="groupgrid" style={{ marginTop: 13 }}>
                 {groups.map((g) => {
                   const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
                   return (
                     <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
-                      <div className="groupcard__code">{g.code.replace('TH-', '')}</div>
+                      <div className="groupcard__code">
+                        {groupShort(g.code)}
+                        {yearView === 'all' && (
+                          <span className="groupcard__year">{t('ปี')} {groupYear(g.code)}</span>
+                        )}
+                      </div>
                       <div className="groupcard__pct" style={{ color }}>{g.percent}%</div>
                       <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
                         <i style={{ width: `${g.percent}%`, background: color }} />
@@ -134,7 +140,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
-                <h3>{t('นักศึกษาในกลุ่ม')} {selected?.code.replace('TH-', '')}</h3>
+                <h3>{t('นักศึกษาในกลุ่ม')} {groupShort(selected?.code)}</h3>
                 <p className="sub">{t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}</p>
                 <table className="tbl">
                   <thead>
@@ -199,7 +205,7 @@ export default function Dashboard() {
                           <td style={{ font: '600 11.5px var(--font-body)', width: 90 }}>
                             {t(r.student.name)}
                             <span className="mono" style={{ display: 'block', font: '400 9px var(--font-mono)', color: 'var(--text-faint)' }}>
-                              {r.student.group.replace('TH-', '')}
+                              {groupShort(r.student.group)}
                             </span>
                           </td>
                           <td>

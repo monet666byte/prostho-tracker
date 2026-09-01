@@ -178,6 +178,57 @@
 .grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); }
 .grouppick button[data-on='true'] { background: var(--accent); color: #fff; }
 
+/* ป้ายปีเล็กบนการ์ดกลุ่ม — โผล่เฉพาะมุมมองรวม (PT7 มีทั้งสองปี ต้องแยกให้เห็น) */
+.groupcard__year {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font: 600 9.5px var(--font-body);
+  background: var(--fill);
+  color: var(--text-muted);
+  vertical-align: 2px;
+}
+
+/* ── ตัวเลือกชั้นปี — segmented แบบ iOS: รางเทา เม็ดขาวเลื่อนนุ่มๆ ตามตัวที่เลือก ── */
+.yearseg {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
+  height: 38px;
+  min-width: 216px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--fill);
+  border: 1px solid var(--border);
+}
+.yearseg button {
+  position: relative;
+  z-index: 1;
+  border-radius: 9px;
+  font: 600 12px var(--font-body);
+  color: var(--text-muted);
+  transition: color 0.18s;
+  white-space: nowrap;
+  padding: 0 10px;
+}
+.yearseg button:hover { color: var(--text-secondary); }
+.yearseg button[data-on='true'] { color: var(--accent-hover); }
+.yearseg__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.14), 0 0 0 1px rgba(16, 24, 40, 0.04);
+  transition: transform 0.22s cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+.yearseg[data-idx='1'] .yearseg__thumb { transform: translateX(100%); }
+.yearseg[data-idx='2'] .yearseg__thumb { transform: translateX(200%); }
+@media (prefers-reduced-motion: reduce) { .yearseg__thumb { transition: none; } }
+
 /* segmented ขนาดเล็กสำหรับตัวกรองในการ์ด */
 .seg--sm button { padding: 6px 11px; font-size: 11.5px; border-radius: 8px; }
 

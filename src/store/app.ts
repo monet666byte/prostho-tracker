@@ -7,6 +7,7 @@ import { cloudEnabled } from '../lib/cloud';
 import { toISODate } from '../lib/date';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
+import { groupShort } from '../domain/group';
 
 export interface Session {
   role: Role;
@@ -292,7 +293,7 @@ export const useApp = create<AppState>((set, get) => ({
     // (ไม่ได้ห้าม เพราะอาจารย์เวรต้องข้ามกลุ่มได้จริง — แต่ต้องมีร่องรอยว่าใครดูอะไร)
     if (mine && code !== mine) {
       void logAudit(
-        `เปิดดูข้อมูลกลุ่ม ${code.replace('TH-', '')} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`,
+        `เปิดดูข้อมูลกลุ่ม ${groupShort(code)} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`,
         get().actorName,
         { group: code },
       );

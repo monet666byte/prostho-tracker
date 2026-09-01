@@ -11,6 +11,7 @@ import {
 } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { groupShort } from '../../domain/group';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
 export default function MyGroup() {
@@ -56,7 +57,7 @@ export default function MyGroup() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('กลุ่ม')} {group.replace('TH-', '')}</h1>
+            <h1>{t('กลุ่ม')} {groupShort(group)}</h1>
             <p>{t('{n} คน', { n: groupStudents.length })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}</p>
           </div>
         </div>
@@ -265,7 +266,7 @@ export default function MyGroup() {
             <DivergingBars
               axes={groupProfile}
               reference={cohortProfile}
-              label={`${t('กลุ่ม')} ${group.replace('TH-', '')}`}
+              label={`${t('กลุ่ม')} ${groupShort(group)}`}
               referenceLabel={t('ค่าเฉลี่ยทั้งชั้นปี')}
             />
             <div>
