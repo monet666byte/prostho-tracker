@@ -79,6 +79,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'บันทึกคอมเมนต์ชิ้นงาน': 'Saved workpiece comment on',
   'ภาษา': 'Language',
   'แก้ไขคาบ {d}': 'Edit session {d}',
   'บันทึกการแก้ไขแล้ว — คาบนี้ยังรออาจารย์ประเมินตามปกติ': 'Changes saved — this session still awaits evaluation as usual',

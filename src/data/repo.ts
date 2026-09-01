@@ -360,18 +360,25 @@ export async function retryPhoto(photoId: string, offline: boolean): Promise<voi
 // ── ฝั่งอาจารย์ ───────────────────────────────────────────────
 
 export async function setReview(workpieceId: string, status: ReviewStatus, comment: string, by: string): Promise<void> {
-  const existing = (await db.reviews.where('workpieceId').equals(workpieceId).toArray())[0];
-  const review: Review = {
-    id: existing?.id ?? uid('rv'),
-    workpieceId,
-    status,
-    comment,
-    by,
-    at: new Date().toISOString(),
-  };
-  await db.reviews.put(review);
+  // อ่าน-แล้ว-เขียนต้องอยู่ใน transaction เดียว — กดปุ่มรัวสองทีเคยได้สองแถวซ้ำ (เจอ 1 ก.ย. 69)
+  await db.transaction('rw', db.reviews, async () => {
+    const rows = await db.reviews.where('workpieceId').equals(workpieceId).toArray();
+    // เก็บกวาดแถวซ้ำที่อาจหลงมาจากบั๊กเดิม — เหลือแถวเดียวต่อชิ้นงานเสมอ
+    for (const extra of rows.slice(1)) await db.reviews.delete(extra.id);
+    const review: Review = {
+      id: rows[0]?.id ?? uid('rv'),
+      workpieceId,
+      status,
+      comment,
+      by,
+      at: new Date().toISOString(),
+    };
+    await db.reviews.put(review);
+  });
   const w = await db.workpieces.get(workpieceId);
-  await logAudit(`${status === 'approved' ? t('อนุมัติ') : t('ตีกลับให้แก้')} ${w?.detail ?? workpieceId}`, by, { studentId: w?.studentId });
+  // status pending = แค่บันทึกคอมเมนต์ ไม่ใช่ตีกลับ — เคยลง audit ว่า "ตีกลับให้แก้" ทำประวัติน่าตกใจ (เจอ 1 ก.ย. 69)
+  const action = status === 'approved' ? t('อนุมัติ') : status === 'returned' ? t('ตีกลับให้แก้') : t('บันทึกคอมเมนต์ชิ้นงาน');
+  await logAudit(`${action} ${w?.detail ?? workpieceId}`, by, { studentId: w?.studentId });
 }
 
 export async function listReviews(): Promise<Map<string, Review>> {

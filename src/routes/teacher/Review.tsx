@@ -1,5 +1,5 @@
 import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, X } from '@phosphor-icons/react';
-import { useEffect, useMemo, useState } from 'react';
+import {useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -66,6 +66,8 @@ export default function Review() {
   const [filter, setFilter] = useState<Filter>('all');
   const [comments, setComments] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  // กันกดรัวปุ่มบันทึกคอมเมนต์ — useRef เพราะ setState ตามคลิกรัวไม่ทัน
+  const savingComment = useRef(false);
   // แผงสรุปเกณฑ์พับไว้เป็นค่าเริ่มต้น — สรุปย่ออยู่ในหัวการ์ดแล้ว กดดูเต็มเมื่อต้องใช้
   const [showReq, setShowReq] = useState(false);
 
@@ -250,8 +252,14 @@ export default function Review() {
                           className="btn btn--sec"
                           style={{ height: 38, fontSize: 12, width: 'auto', padding: '0 14px' }}
                           onClick={async () => {
-                            await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? currentActor());
-                            showToast({ message: t('บันทึกคอมเมนต์แล้ว'), tone: 'success' });
+                            if (savingComment.current) return;
+                            savingComment.current = true;
+                            try {
+                              await setReview(w.id, review?.status ?? 'pending', comments[w.id] ?? review?.comment ?? '', teacher?.name ?? currentActor());
+                              showToast({ message: t('บันทึกคอมเมนต์แล้ว'), tone: 'success' });
+                            } finally {
+                              savingComment.current = false;
+                            }
                           }}
                         >
                           <ChatCircleText size={15} /> {t('บันทึกคอมเมนต์')}
