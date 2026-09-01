@@ -3,7 +3,10 @@ import { lang } from './i18n';
 const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const asDate = (v: string | Date) => (v instanceof Date ? v : new Date(v));
+/* สตริงวันล้วน 'YYYY-MM-DD' ถ้าโยนเข้า new Date ตรงๆ จะถูกตีความเป็นเที่ยงคืน UTC
+   (ไทย +7 เลยรอดมาตลอด แต่เป็นระเบิดเวลาแบบเดียวกับบั๊ก 1 ก.ย. 69) — เติม T00:00 ให้เป็นเวลาท้องถิ่นเสมอ */
+const asDate = (v: string | Date) =>
+  v instanceof Date ? v : new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00` : v);
 
 /** "25 ส.ค. 69" (พ.ศ.) / โหมดอังกฤษ "25 Aug 26" (ค.ศ.) — รูปแบบที่ใช้ในการ์ดและตาราง */
 export function thaiShort(v: string | Date): string {

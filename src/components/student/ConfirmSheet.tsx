@@ -5,7 +5,7 @@ import { caseCount, nextProc } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
 import { usePhotoAttach } from './usePhotoAttach';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { tapFeedback } from '../../lib/haptic';
 
@@ -105,6 +105,7 @@ export function ConfirmSheet() {
                 className="input mono"
                 type="date"
                 value={sheet.performedAt}
+                max={toISODate(new Date())}
                 onChange={(e) => patchSheet({ performedAt: e.target.value })}
                 style={{ paddingRight: 34 }}
               />

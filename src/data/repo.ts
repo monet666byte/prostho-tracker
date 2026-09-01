@@ -533,7 +533,8 @@ export async function updateCheckIn(
  * - กันวันที่เสีย ไม่งั้นได้ "NaN/NaN" ฝังอยู่ในประวัติที่ลบไม่ได้
  */
 function checkInDateLabel(iso: string): string {
-  const d = new Date(iso);
+  // วันล้วนต้อง parse แบบท้องถิ่น — new Date('YYYY-MM-DD') คือเที่ยงคืน UTC (ดูคอมเมนต์ asDate ใน lib/date)
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso);
   if (Number.isNaN(d.getTime())) return '(ไม่ทราบวันที่)';
   const be = String(d.getFullYear() + 543).slice(-2);
   return `${d.getDate()}/${d.getMonth() + 1}/${be}`;

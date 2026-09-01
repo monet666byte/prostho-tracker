@@ -215,7 +215,7 @@ export default function NewWorkpiece() {
         <div style={{ display: 'flex', gap: 10 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>Accepted date</span>
-            <input className="input mono" type="date" value={acceptedDate} onChange={(e) => setAcceptedDate(e.target.value)} />
+            <input className="input mono" type="date" value={acceptedDate} max={toISODate(new Date())} onChange={(e) => setAcceptedDate(e.target.value)} />
           </label>
           <button
             onClick={() => setMin(!min)}

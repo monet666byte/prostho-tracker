@@ -122,7 +122,7 @@ export default function CheckInPage() {
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>{t('วันที่คาบ')}</span>
-            <input className="input mono" type="date" value={date} disabled={!!editingId} onChange={(e) => setDate(e.target.value)} />
+            <input className="input mono" type="date" value={date} max={today} disabled={!!editingId} onChange={(e) => setDate(e.target.value)} />
           </label>
           <span
             style={{
