@@ -36,8 +36,9 @@ const QUOTES = [
 ];
 
 export function dailyQuote(now = new Date()): string {
-  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / DAY);
-  return QUOTES[dayOfYear % QUOTES.length];
+  // นับจากวันเปิดตัว 1 ก.ย. 69 — วันแรกได้ 'bit by bit' เสมอ (ผู้ใช้ขอ) แล้วค่อยวนตามลำดับ
+  const days = Math.floor((now.getTime() - new Date('2026-09-01T00:00').getTime()) / DAY);
+  return QUOTES[((days % QUOTES.length) + QUOTES.length) % QUOTES.length];
 }
 
 export function cheerLine(

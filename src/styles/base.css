@@ -117,7 +117,12 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .btn--sec:hover { background: var(--fill-2); }
 
 /* form */
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* iOS: input[type=date] มีความกว้างขั้นต่ำในตัว ไม่ยอมหดตาม flex — ทำให้ล้นไปทับปุ่มข้างๆ
+   (เจอจริงบน iPhone 1 ก.ย. 69: ช่องวันที่ทับปุ่มแนบรูปในแผ่นยืนยัน step)
+   min-width:0 + appearance:none บังคับให้หดตามกล่องเสมอ */
+.input { min-width: 0; }
+input[type='date'].input { -webkit-appearance: none; appearance: none; text-align: left; }
 .field > label { font: 600 11.5px var(--font-body); color: var(--text-secondary); }
 .input {
   height: 44px;
