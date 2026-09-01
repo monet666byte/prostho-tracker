@@ -1,5 +1,5 @@
-import { Minus, Plus, ShieldCheck, WarningCircle } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
@@ -8,7 +8,9 @@ import { useAllStudents, useAllWorkpieces, useAudit } from '../../hooks/data';
 import { clock } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
-import { useApp } from '../../store/app';
+import { cohortLabel, KEEP_COHORTS } from '../../domain/cohort';
+import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
+import { currentActor, useApp } from '../../store/app';
 
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['cd', 'CD / Complicated APD', TYPES.CD.color, t('จำนวนเคส CD ที่ต้องทำให้ครบตลอดหลักสูตร')],
@@ -35,13 +37,36 @@ function bumpReq(req: Requirement, key: keyof Requirement, delta: number): Requi
 }
 
 export default function Settings() {
-  const { settings, updateSettings } = useApp();
+  const { settings, updateSettings, showToast } = useApp();
   const students = useAllStudents();
   const works = useAllWorkpieces();
   const audit = useAudit(14);
   const staleCount = staleRows(students, works, settings).length;
   // ธีมอยู่ใน localStorage ไม่ใช่ store — ถือ state ให้ปุ่มที่เลือกอยู่อัปเดตทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
+  // รายงานว่ามีรุ่นไหนเกินกำหนดเก็บบ้าง
+  const [report, setReport] = useState<RetentionReport | null>(null);
+  const [confirmPurge, setConfirmPurge] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const refreshReport = () => { retentionReport().then(setReport).catch(() => setReport(null)); };
+  useEffect(() => { refreshReport(); }, [students.length]);
+
+  async function doPurge() {
+    setPurging(true);
+    try {
+      const res = await purgeExpiredCohorts(currentActor());
+      setConfirmPurge(false);
+      refreshReport();
+      showToast({
+        message: res.students
+          ? t('ลบแล้ว {n} คน จาก {c}', { n: res.students, c: res.cohorts.map((x) => cohortLabel(x)).join(', ') })
+          : t('ไม่มีรุ่นที่ต้องลบ'),
+        tone: 'success',
+      });
+    } finally {
+      setPurging(false);
+    }
+  }
 
   return (
     <TeacherShell active="settings">
@@ -173,6 +198,44 @@ export default function Settings() {
               </div>
             </div>
 
+            {/* เก็บข้อมูลย้อนหลังตามที่ภาคกำหนด แล้วลบรุ่นที่เกิน (อาจารย์ขอ 1 ก.ย. 69) */}
+            <div className="panel">
+              <h3>{t('ข้อมูลย้อนหลัง')}</h3>
+              <p className="sub">{t('เก็บ {n} รุ่นล่าสุด — รุ่นที่เก่ากว่านั้นลบได้เพื่อไม่ให้ข้อมูลบวม', { n: KEEP_COHORTS })}</p>
+              {report && (
+                <>
+                  <p style={{ margin: '11px 0 0', font: '400 11.5px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
+                    {t('รุ่นที่เก็บอยู่')}: <b>{report.keep.map((c) => cohortLabel(c)).join(' · ') || '—'}</b>
+                  </p>
+                  {report.expired.length === 0 ? (
+                    <p style={{ margin: '7px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
+                      {t('ยังไม่มีรุ่นที่เกินกำหนดเก็บ')}
+                    </p>
+                  ) : (
+                    <>
+                      <div style={{ marginTop: 11, display: 'grid', gap: 6 }}>
+                        {report.expired.map((e) => (
+                          <div key={e.cohort} style={{ display: 'flex', alignItems: 'center', gap: 9, font: '400 11.5px var(--font-body)', color: 'var(--warning-dark)' }}>
+                            <b>{cohortLabel(e.cohort)}</b>
+                            <span>{t('{a} คน · {b} ชิ้นงาน · {c} คาบ', { a: e.students, b: e.workpieces, c: e.checkins })}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        className="btn"
+                        style={{ marginTop: 12, height: 42, fontSize: 13 }}
+                        disabled={purging}
+                        onClick={() => setConfirmPurge(true)}
+                      >
+                        <Trash size={15} weight="bold" />
+                        {t('ลบรุ่นที่เกินกำหนด')}
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
             <div className="panel">
               <h3>Audit log</h3>
               <p className="sub">{t('ใครแก้อะไร เมื่อไหร่ — ย้อนดูได้ทุกการเปลี่ยน step และการอนุมัติ')}</p>
@@ -216,6 +279,33 @@ export default function Settings() {
             </div>
           </div>
         </div>
+        {/* ลบจริง กู้ไม่ได้ — ต้องเห็นตัวเลขที่จะหายไปก่อนกดยืนยัน */}
+        {confirmPurge && report && (
+          <div className="confirmwrap" onClick={() => setConfirmPurge(false)}>
+            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
+              <div className="confirmbox__q">{t('ยืนยันลบข้อมูลรุ่นที่เกินกำหนดเก็บ')}</div>
+              <div className="confirmbox__who">{report.expired.map((e) => cohortLabel(e.cohort)).join(' · ')}</div>
+              <div className="confirmbox__meta">
+                {t('{a} คน · {b} ชิ้นงาน · {c} คาบ', {
+                  a: report.expired.reduce((n, e) => n + e.students, 0),
+                  b: report.expired.reduce((n, e) => n + e.workpieces, 0),
+                  c: report.expired.reduce((n, e) => n + e.checkins, 0),
+                })}
+              </div>
+              <p className="confirmbox__note">
+                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+                {t('ลบแล้วกู้คืนไม่ได้ — รวมถึงคะแนนประเมินและรูปงานของรุ่นนั้นทั้งหมด')}
+              </p>
+              <div style={{ display: 'flex', gap: 9, marginTop: 14 }}>
+                <button className="btn btn--sec" onClick={() => setConfirmPurge(false)}>{t('ยกเลิก')}</button>
+                <button className="btn" disabled={purging} onClick={doPurge}>
+                  <Trash size={16} weight="bold" />
+                  {purging ? t('กำลังลบ…') : t('ลบถาวร')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </TeacherShell>
   );

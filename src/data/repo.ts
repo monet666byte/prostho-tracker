@@ -5,7 +5,7 @@
 
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
-import { isAlumni } from '../domain/cohort';
+import { cohortOf, isAlumni, isWithinRetention } from '../domain/cohort';
 import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
@@ -690,4 +690,71 @@ export async function stepsOnDate(studentId: string, date: string): Promise<stri
       const proc = procAt(w, u.procIndex);
       return proc ? [procLabel(w.type, proc)] : [];
     });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   เก็บข้อมูลย้อนหลังเท่าที่ภาคกำหนด (ปัจจุบัน 5 รุ่น) แล้วลบรุ่นที่เกิน
+   อาจารย์ขอ 1 ก.ย. 69: "จัดเก็บข้อมูลไว้ประมาณ 5 ปี"
+   ══════════════════════════════════════════════════════════════════ */
+
+export interface RetentionReport {
+  /** รุ่นที่ยังอยู่ในช่วงเก็บ (ใหม่ → เก่า) */
+  keep: number[];
+  /** รุ่นที่เกินกำหนดเก็บแล้ว พร้อมจำนวนข้อมูลที่จะถูกลบ */
+  expired: Array<{ cohort: number; students: number; workpieces: number; checkins: number }>;
+}
+
+/** สำรวจว่ามีรุ่นไหนเกินกำหนดเก็บบ้าง — ดูอย่างเดียว ยังไม่ลบ */
+export async function retentionReport(asOf: Date = new Date()): Promise<RetentionReport> {
+  const students = await db.students.toArray();
+  const keep = new Set<number>();
+  const expiredIds = new Map<number, string[]>();
+  students.forEach((s) => {
+    const c = cohortOf(s, asOf);
+    if (isWithinRetention(c, asOf)) keep.add(c);
+    else expiredIds.set(c, [...(expiredIds.get(c) ?? []), s.id]);
+  });
+
+  const expired: RetentionReport['expired'] = [];
+  for (const [cohort, ids] of [...expiredIds.entries()].sort((a, b) => b[0] - a[0])) {
+    const idSet = new Set(ids);
+    const works = await db.workpieces.filter((w) => idSet.has(w.studentId)).count();
+    const checks = await db.checkins.filter((c) => idSet.has(c.studentId)).count();
+    expired.push({ cohort, students: ids.length, workpieces: works, checkins: checks });
+  }
+  return { keep: [...keep].sort((a, b) => b - a), expired };
+}
+
+/**
+ * ลบข้อมูลของรุ่นที่เกินกำหนดเก็บ — ลบจริง กู้คืนไม่ได้
+ * ลบทุกตารางที่ผูกกับนักศึกษาคนนั้น ไม่ให้เหลือเศษข้อมูลกำพร้า
+ */
+export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): Promise<{ cohorts: number[]; students: number }> {
+  const students = await db.students.toArray();
+  const doomed = students.filter((s) => !isWithinRetention(cohortOf(s, asOf), asOf));
+  if (!doomed.length) return { cohorts: [], students: 0 };
+
+  const ids = new Set(doomed.map((s) => s.id));
+  const cohorts = [...new Set(doomed.map((s) => cohortOf(s, asOf)))].sort((a, b) => b - a);
+  const patients = await db.patients.filter((p) => ids.has(p.ownerStudentId)).toArray();
+  const patientIds = new Set(patients.map((p) => p.id));
+  const works = await db.workpieces.filter((w) => ids.has(w.studentId)).toArray();
+  const workIds = new Set(works.map((w) => w.id));
+
+  await db.transaction('rw', [db.students, db.patients, db.workpieces, db.checkins, db.updates, db.photos, db.groups], async () => {
+    await db.checkins.filter((c) => ids.has(c.studentId)).delete();
+    await db.updates.filter((u) => workIds.has(u.workpieceId)).delete();
+    await db.photos.filter((ph) => workIds.has(ph.workpieceId)).delete();
+    await db.workpieces.bulkDelete([...workIds]);
+    await db.patients.bulkDelete([...patientIds]);
+    await db.students.bulkDelete([...ids]);
+    // กลุ่มที่ไม่เหลือสมาชิกแล้วก็ลบทิ้ง ไม่งั้นค้างเป็นกลุ่มว่าง
+    const groups = await db.groups.toArray();
+    const remaining = await db.students.toArray();
+    const liveGroups = new Set(remaining.map((s) => s.group));
+    await db.groups.bulkDelete(groups.filter((g) => !liveGroups.has(g.code)).map((g) => g.code));
+  });
+
+  await logAudit(`ลบข้อมูลรุ่นที่เกินกำหนดเก็บ: ${cohorts.map((c) => `DTMU${c - 2514}`).join(', ')} · ${doomed.length} คน`, by);
+  return { cohorts, students: doomed.length };
 }
