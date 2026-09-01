@@ -715,9 +715,9 @@
   /* เดิมวง 36 เลข 15px (42% ของเส้นผ่านศูนย์กลาง) = ตัวเลขอัดเต็มวง ดูไม่สมส่วน
      ผู้ใช้ทัก 1 ก.ย. · รอบแรกลดแค่ 2.5px ซึ่งมองไม่เห็นความต่าง จึงลดจริงจังเป็น
      วง 28 เลข 11px (39%) — ยังใหญ่กว่าจุดขั้นอื่น (22px) ชัดเจนโดยไม่ข่มทั้งแถว */
-  width: 28px; height: 28px; margin-left: 4px;
+  width: 25px; height: 25px; margin-left: 5.5px;
   background: var(--accent); color: #fff;
-  font: 700 11px var(--font-head);
+  font: 700 10.5px var(--font-head);
   box-shadow: 0 2px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
 }
 .heropath__name { flex: 1; min-width: 0; font: 500 11.5px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
