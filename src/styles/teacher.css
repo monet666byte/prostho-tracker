@@ -762,14 +762,26 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* ── ฟอร์มประเมิน: เกณฑ์ 8 ข้อเรียง 2 คอลัมน์ การ์ดต่อคนเตี้ยลงครึ่งนึง (ผู้ใช้สั่ง 1 ก.ย.)
    แถวรวมคะแนน+ปุ่มลงนาม (ลูกตัวสุดท้าย) กินเต็มความกว้างเหมือนเดิม ── */
 .evalcard__scores {
-  width: 470px;
+  /* ห้ามล็อกความกว้างตายตัว — โหมดตัวหนังสือใหญ่ทำให้เนื้อหาในกริดบานจนดันปุ่มลงนาม
+     ทะลุออกนอกการ์ด (ผู้ใช้ทัก 1 ก.ย.) · flex-basis + min-width:0 ให้หดได้ตามที่เหลือจริง */
+  flex: 0 1 470px;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) — 1fr เฉยๆ ไม่ยอมหดต่ำกว่าความกว้างเนื้อหาในคอลัมน์ */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 18px;
   align-content: start;
 }
-.evalcard__scores > div:last-child { grid-column: 1 / -1; }
-@media (max-width: 1100px) { .evalcard__scores { width: 330px; grid-template-columns: 1fr; } }
+.evalcard__scores > div:last-child { grid-column: 1 / -1; min-width: 0; }
+/* จอแคบหรือโหมดตัวใหญ่ที่เกณฑ์สองคอลัมน์เริ่มเบียด — พับเหลือคอลัมน์เดียว */
+@media (max-width: 1240px) {
+  .evalcard__scores { flex-basis: 330px; grid-template-columns: minmax(0, 1fr); }
+}
+:root[data-zoom='lg'] .evalcard__scores,
+:root[data-zoom='xl'] .evalcard__scores { flex-basis: 520px; }
+:root[data-zoom='xl'] .evalcard__scores { grid-template-columns: minmax(0, 1fr); }
 
 /* ══ ฝั่งอาจารย์บนมือถือ: กันบรรทัดล้น/ตัวอักษรถูกบีบจนตกทีละตัว (ผู้ใช้ทัก 1 ก.ย.)
    ต้นเหตุร่วม = แถวหัวเรื่องเป็น flex row ที่มีปุ่ม/ชิปอยู่ข้างๆ พอจอแคบข้อความโดนบีบเหลือ ~36px

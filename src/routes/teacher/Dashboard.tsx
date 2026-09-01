@@ -59,6 +59,12 @@ export default function Dashboard() {
   const typeCounts = useMemo(() => countByType(works), [works]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
 
+  // รุ่นที่กำลังแสดงอยู่ (ตามตัวกรองชั้นปี) — โชว์เป็นป้ายข้างหัวเรื่อง
+  const cohortsShown = useMemo(() => {
+    const labels = [...new Set(students.map((s) => studentCohortLabel(s)))].sort().reverse();
+    return labels.join(' · ');
+  }, [students]);
+
   const activePieces = works.filter((w) => !isComplete(w)).length;
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
   const maxTypeCount = Math.max(1, ...typeCounts.map((x) => x.count));
@@ -75,7 +81,11 @@ export default function Dashboard() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{yearView === 'all' ? t('ภาพรวมทุกชั้นปี') : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}</h1>
+            <h1>
+              {yearView === 'all' ? t('ภาพรวมทุกชั้นปี') : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
+              {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
+              {cohortsShown && <span className="cohortchip">{cohortsShown}</span>}
+            </h1>
             <p>
               {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
             </p>
