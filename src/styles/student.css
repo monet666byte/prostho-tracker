@@ -684,3 +684,37 @@
 }
 .phone .minirow__pass:hover { background: var(--accent); filter: brightness(1.04); }
 .phone .minirow__pass:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
+
+/* ── เส้นทางด่านบนการ์ดเคสเด่น — เลย์เอาต์ F·1 (แทนวงแหวน + กล่องขั้นย่อยแบบพับ) ──
+   โชว์เฉพาะขั้นย่อยของ step ที่กำลังทำ กันรก · รางเส้นเดียวลากหลังทุกแถว
+   จุดตำแหน่งเจาะวงรอบตัวเองด้วยสีพื้นการ์ด (--hero-bg) ให้ดูลอยเหนือราง */
+.herocase__meta { margin-left: auto; font: 500 10px var(--font-mono); color: var(--text-faint); }
+.heropath { position: relative; margin-top: 9px; display: grid; gap: 6px; }
+.heropath::before {
+  content: '';
+  position: absolute; left: 16.5px; top: 15px; bottom: 15px;
+  width: 3px; border-radius: 2px; background: var(--accent-ring);
+}
+.heropath__row { position: relative; display: flex; align-items: center; gap: 11px; min-height: 28px; }
+.heropath__node {
+  flex: none; width: 26px; height: 26px; margin-left: 5px; border-radius: 99px;
+  display: grid; place-items: center;
+  box-shadow: 0 0 0 3px var(--hero-bg, var(--surface));
+}
+.heropath__node--done { background: var(--success); color: #fff; }
+.heropath__node--todo { background: var(--surface); border: 2px solid var(--border-2); box-sizing: border-box; }
+.heropath__node--now {
+  width: 36px; height: 36px; margin-left: 0;
+  background: var(--accent); color: #fff;
+  font: 700 15px var(--font-head);
+  box-shadow: 0 3px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
+}
+.heropath__name { flex: 1; min-width: 0; font: 500 12px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
+.heropath__name--done { color: var(--text-faint); text-decoration: line-through; }
+.heropath__name--now {
+  font: 700 15.5px/1.35 var(--font-head); color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+.heropath__name--now:active { opacity: 0.55; }
+/* ปุ่มอยู่กลางเส้นทาง (ใต้ขั้นปัจจุบัน) — ทึบพอที่รางด้านหลังจะมุดผ่านช่องว่างได้สวยๆ */
+.heropath__btn { margin-top: 4px; margin-bottom: 2px; position: relative; }

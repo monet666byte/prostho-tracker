@@ -1,4 +1,4 @@
-import { Bell, CaretDown, CaretRight, CaretUp, CheckCircle, CheckSquare, Circle, CircleDashed, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
+import { Bell, CaretRight, Check, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
@@ -12,7 +12,7 @@ import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import {
-  caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression, stepGroups,
+  caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procLabel, progression, stepGroups,
 } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
@@ -22,24 +22,6 @@ import { groupShort } from '../../domain/group';
 
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
 const SHOW_ACHIEVEMENT_CARD = false;
-
-/** วงแหวนความคืบหน้า — บนการ์ดเข้ม (แนวเดียวกับ ring ในแอปฟิตเนสที่ผู้ใช้ชอบ) */
-function Ring({ value, max }: { value: number; max: number }) {
-  const R = 30;
-  const C = 2 * Math.PI * R;
-  const f = Math.max(0, Math.min(1, value / max));
-  return (
-    <svg width="78" height="78" viewBox="0 0 78 78" style={{ flex: 'none' }} aria-hidden>
-      <circle cx="39" cy="39" r={R} fill="none" stroke="var(--track)" strokeWidth="7" />
-      <circle
-        cx="39" cy="39" r={R} fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round"
-        strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 39 39)"
-      />
-      <text x="39" y="37" textAnchor="middle" style={{ font: '700 15px var(--font-head)', fill: 'var(--text)' }}>{value}</text>
-      <text x="39" y="51" textAnchor="middle" style={{ font: '400 9.5px var(--font-mono)', fill: 'var(--text-faint)' }}>/ {max}</text>
-    </svg>
-  );
-}
 
 function HeroCard({
   w, pending, stale, onPass,
@@ -53,22 +35,9 @@ function HeroCard({
   const next = nextProc(w);
   const prog = Math.max(progression(w), 0);
   const max = maxProgression(w);
-  // ปุ่มฟ้าเล็ก: กางเฉพาะขั้นย่อยของ step ที่กำลังทำ (กล่องเดียวกับหน้า step เต็ม — ผู้ใช้ขอ 31 ส.ค.)
-  // ส่วนการไปหน้า step เต็ม ใช้กดที่ชื่อ step ตัวใหญ่แทน
-  const [showSteps, setShowSteps] = useState(false);
-  // step หนึ่งมีขั้นย่อยได้หลายอัน — บอกตำแหน่งไว้ จะได้ไม่เข้าใจว่ากดแล้วจบทั้ง step
-  let sibTotal = 0;
-  let subPos = 0;
-  if (next) {
-    for (let i = 0; ; i++) {
-      const pa = procAt(w, i);
-      if (!pa) break;
-      if (pa.progression === next.progression) {
-        sibTotal++;
-        if (pa.index === next.index) subPos = sibTotal;
-      }
-    }
-  }
+  // เส้นทางด่านโชว์เฉพาะขั้นย่อยของ step ที่กำลังทำ (กลุ่ม active) — เท่ากับกล่องพับเดิม แค่กางถาวร
+  // ผู้ใช้เลือกเลย์เอาต์ F·1 จาก mock (1 ก.ย.) พร้อมกำชับ "ระวังรก" เลยไม่โชว์ทุก step ของเคส
+  const procs = next ? (stepGroups(w).find((g) => g.state === 'active')?.procs ?? []) : [];
   return (
     <article className={`herocase t-${w.type}`}>
       <div className="herocase__top">
@@ -76,9 +45,8 @@ function HeroCard({
         <ArchBadge arch={w.arch} />
         {pending && <PendingBadge />}
         {stale && <StaleBadge days={daysSinceUpdate(w)} />}
-        <span style={{ marginLeft: 'auto', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          {relative(w.lastUpdatedAt)}
-        </span>
+        {/* ตัวเลขรวม prog/max ย้ายมาอยู่มุมนี้แทนวงแหวนที่ถูกเส้นทางด่านแทนที่ */}
+        <span className="herocase__meta">{prog}/{max} · {relative(w.lastUpdatedAt)}</span>
       </div>
 
       {/* ตัดวงเล็บอธิบายท้ายชื่อเคส (เช่น "ไม่เหลือฟันแม้แต่ซี่เดียว") — คนใช้รู้อยู่แล้วว่า CD คืออะไร */}
@@ -86,69 +54,47 @@ function HeroCard({
         {t(w.patient.name)} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
       </Link>
 
-      {/* step ถัดไปคือพระเอกของการ์ด — ชื่อใหญ่ อ่านปราดเดียวรู้ว่าวันนี้ต้องทำอะไร */}
-      <div className="herocase__main">
-        <Ring value={prog} max={max} />
-        <div style={{ minWidth: 0 }}>
-          {next ? (
-            <>
-              <div className="herocase__caption">
-                {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}{sibTotal > 1 ? ` · ${t('ขั้นย่อย')} ${subPos}/${sibTotal}` : ''}
-              </div>
-              {/* กดที่ชื่อ step ใหญ่เพื่อเปิดหน้าขั้นตอนเต็มได้เลย — แทนลิงก์ฟ้าเล็กที่เคยอยู่ใต้ปุ่ม (ผู้ใช้ขอ 31 ส.ค. ลดความรก) */}
-              <Link to={`/app/work/${w.id}`} className="herocase__step herocase__step--link">
-                {next.name} <CaretRight size={13} weight="bold" className="herocase__steparrow" />
-              </Link>
-              {/* หลาย step มีขั้นย่อย 2 อัน — โชว์แค่ชื่อขั้นที่เพิ่งเสร็จ ไม่ใส่เลข step จะได้ไม่ชนกับข้างบน */}
-              {cur && <div className="herocase__done">✓ {t('เสร็จก่อนหน้า')}: {cur.name}</div>}
-            </>
-          ) : (
-            <>
-              <div className="herocase__caption">{t('สถานะ')}</div>
-              <div className="herocase__step">{cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}</div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {next && (
-        <button className="herocase__btn" onClick={onPass}>
-          <CheckCircle size={19} weight="fill" />
-          {t('ทำขั้นนี้เสร็จแล้ว')}
-        </button>
-      )}
-      {next && (
-        <button
-          className="herocase__more"
-          onClick={() => { tapFeedback(); setShowSteps((v) => !v); }}
-        >
-          {showSteps ? t('ซ่อนขั้นย่อย') : t('ดูขั้นย่อยของขั้นนี้')}
-          {showSteps ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
-        </button>
-      )}
-      {next && showSteps && (
-        <div className="tl__panel" style={{ marginTop: 8 }}>
-          {(stepGroups(w).find((g) => g.state === 'active')?.procs ?? []).map((p) => {
-            const passed = w.procIndex >= p.index;
-            const isNext = w.procIndex + 1 === p.index;
-            return (
-              <div className="tl__proc" key={p.index}>
-                <span style={{ flex: 'none', marginTop: 1, display: 'grid' }}>
-                  {passed ? (
-                    <CheckCircle size={15} weight="fill" color="var(--success)" />
-                  ) : isNext ? (
-                    <CircleDashed size={15} color="var(--accent)" />
-                  ) : (
-                    <Circle size={15} color="var(--text-disabled)" />
-                  )}
-                </span>
-                <span style={{ flex: 1, color: passed ? 'var(--text-faint)' : 'var(--text-secondary)' }}>
-                  {p.name}
-                </span>
-                {p.selfPerformed && <SelfBadge compact />}
-              </div>
-            );
-          })}
+      {next ? (
+        <>
+          <div className="herocase__caption" style={{ marginTop: 12 }}>
+            {t('ขั้นตอนที่กำลังทำ')} · Step {next.progression}
+          </div>
+          <div className="heropath">
+            {procs.flatMap((p) => {
+              const passed = w.procIndex >= p.index;
+              const isNow = w.procIndex + 1 === p.index;
+              if (isNow) {
+                // ปุ่มเสียบใต้ขั้นปัจจุบันเลย (ตาม mock ที่ผู้ใช้เลือก) — ขั้นที่ยังไม่ถึงต่อท้ายปุ่ม
+                return [
+                  <div className="heropath__row" key={p.index}>
+                    <span className="heropath__node heropath__node--now">{p.progression}</span>
+                    {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม (แทนลิงก์ฟ้าเล็กเดิม — ธรรมเนียมตั้งแต่ 31 ส.ค.) */}
+                    <Link to={`/app/work/${w.id}`} className="heropath__name heropath__name--now">
+                      {p.name} <CaretRight size={13} weight="bold" className="herocase__steparrow" />
+                    </Link>
+                  </div>,
+                  <button className="herocase__btn heropath__btn" onClick={onPass} key="pass">
+                    <CheckCircle size={19} weight="fill" />
+                    {t('ทำขั้นนี้เสร็จแล้ว')}
+                  </button>,
+                ];
+              }
+              return [
+                <div className="heropath__row" key={p.index}>
+                  <span className={`heropath__node ${passed ? 'heropath__node--done' : 'heropath__node--todo'}`}>
+                    {passed && <Check size={13} weight="bold" />}
+                  </span>
+                  <span className={`heropath__name${passed ? ' heropath__name--done' : ''}`}>{p.name}</span>
+                  {p.selfPerformed && <SelfBadge compact />}
+                </div>,
+              ];
+            })}
+          </div>
+        </>
+      ) : (
+        <div style={{ marginTop: 12 }}>
+          <div className="herocase__caption">{t('สถานะ')}</div>
+          <div className="herocase__step">{cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}</div>
         </div>
       )}
       {next?.selfPerformed && (
