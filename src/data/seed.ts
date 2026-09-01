@@ -9,6 +9,7 @@
 import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
 import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
+import { isAlumni } from '../domain/cohort';
 import type {
   CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Settings, Student, Teacher, WorkType, Workpiece,
 } from '../domain/types';
@@ -30,8 +31,10 @@ const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ
 /* แต่ละชั้นปีมี PT1–12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69) — ปี 5 รูปแบบรหัสเดิม, ปี 6 ติด tag TH6- */
 const GROUPS_Y5 = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
 const GROUPS_Y6 = Array.from({ length: 12 }, (_, i) => `TH6-PT${i + 1}`);
-/** รุ่นที่เรียนจบไปแล้ว — เก็บไว้ให้อาจารย์ย้อนดูได้ (ภาคขอเก็บ ~5 ปี) */
-const GROUPS_ALUMNI = Array.from({ length: 12 }, (_, i) => `TH7-PT${i + 1}`);
+/** รุ่นที่เรียนจบไปแล้ว 3 รุ่น — รวมกับปี 5/ปี 6 เป็น 5 รุ่นพอดีตามที่ภาคขอเก็บ (~5 ปี)
+    TH7 = จบใหม่สุด · TH8, TH9 = เก่าลงไปตามลำดับ */
+const ALUMNI_PREFIXES = ['TH7', 'TH8', 'TH9'];
+const GROUPS_ALUMNI = ALUMNI_PREFIXES.flatMap((pre) => Array.from({ length: 12 }, (_, i) => `${pre}-PT${i + 1}`));
 const GROUPS = [...GROUPS_Y5, ...GROUPS_Y6, ...GROUPS_ALUMNI];
 const DEMO_STUDENT_ID = 'st-TH-PT7-1';
 const DEMO_TEACHER_ID = 'tc-TH-PT7-1';
@@ -147,7 +150,11 @@ function buildDemoWorkpieces(): Workpiece[] {
 const TOOTH_POOL = ['11', '13', '15', '16', '21', '24', '25', '26', '34', '35', '36', '37', '44', '45', '46', '47'];
 const BRIDGE_POOL = ['14–16', '34–36', '24–26', '44–46'];
 
-function generateFor(student: Student, seed: number) {
+/**
+ * @param graduated นักศึกษาที่เรียนจบหลักสูตรไปแล้ว — งานทุกชิ้นต้องปิดครบ 100%
+ *   (ผู้ใช้ทัก 1 ก.ย.: "รุ่นที่จบแล้วก็ควรเป็น 100% หมด") ไม่มีเคสค้างในมือคนที่จบไปแล้ว
+ */
+function generateFor(student: Student, seed: number, graduated = false) {
   const rand = rng(seed);
   const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   // pace = จังหวะการทำงานของนักศึกษาคนนี้ ใช้ร่วมกันทุกประเภทงาน
@@ -190,11 +197,14 @@ function generateFor(student: Student, seed: number) {
     const durationDays = Math.round((typicalWeeks + (rand() - 0.5) * 9) * 7);
     // รับเคสได้ตั้งแต่กลางพฤษภา (ตรงกับ Accepted date ในชีตจริง) จนถึงวันนี้
     // ชิ้นที่ตั้งใจให้จบแล้ว = เคสที่รับช่วงต้นปี ถึงจะมีเวลาพอทำจบจริง
-    const acceptedDaysAgo = wantComplete ? 55 + Math.floor(rand() * 45) : 4 + Math.floor(rand() * 96);
+    // รุ่นที่จบแล้ว: เคสรับไว้ตั้งแต่ปีการศึกษาก่อนๆ จึงมีเวลาทำจบครบทุกชิ้น
+    const acceptedDaysAgo = graduated
+      ? 420 + Math.floor(rand() * 240)
+      : wantComplete ? 55 + Math.floor(rand() * 45) : 4 + Math.floor(rand() * 96);
     const elapsed = acceptedDaysAgo;
 
     const canFinish = elapsed - durationDays >= 3;
-    const complete = wantComplete && canFinish;
+    const complete = graduated ? true : wantComplete && canFinish;
     // ชิ้นที่จะกลายเป็นงานค้างในมือ ต้องไม่เกินเพดาน — เกินแล้วไม่รับเคสนั้นตั้งแต่แรก
     if (!complete) {
       if (actives >= MAX_ACTIVE) return;
@@ -208,7 +218,7 @@ function generateFor(student: Student, seed: number) {
       ? max
       : indexAtProgression(shape, Math.max(0, Math.min(9, Math.round(ratio * 10))));
 
-    const stale = !complete && rand() < 0.07;
+    const stale = !complete && !graduated && rand() < 0.07;
     const arch = removable ? (n % 2 === 0 ? 'upper' : 'lower') : undefined;
     const dentureClass = removable ? pick(DENTURE_CLASSES_FOR[type] ?? []) : undefined;
     const tooth = removable ? undefined : type === 'CB' && rand() < 0.25 ? pick(BRIDGE_POOL) : pick(TOOTH_POOL);
@@ -249,6 +259,11 @@ function generateFor(student: Student, seed: number) {
   // ~3.5 เดือนแรกของปี: ส่วนใหญ่จบไปแล้ว 1 ชิ้น (งานสั้นอย่าง Crown/Post-core) บางคน 2 บางคนยัง
   // RPD 17 สัปดาห์ยังไม่มีใครจบ — ให้ตัวเลขทั้งชั้นปีออกมาสมเหตุผลเอง
   const local = (bias = 0) => pace + bias + (rand() - 0.5) * 0.44;
+  if (graduated) {
+    // จบหลักสูตรแล้ว = ทำครบเกณฑ์ทุกประเภทหลัก ไม่เหลือค้าง
+    (['CD', 'RPD', 'CB'] as WorkType[]).forEach((ty) => push(ty, true));
+    return { patients, works };
+  }
   const finishTarget = (() => { const l = local(); return l > 0.86 ? 2 : l > 0.32 ? 1 : 0; })();
   const finishTypes: WorkType[] = ['CB', 'CB', 'PC', 'CD'];
   for (let i = 0; i < finishTarget; i++) push(pick(finishTypes), true);
@@ -266,7 +281,7 @@ function generateFor(student: Student, seed: number) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 31; // 31: + รุ่นที่จบไปแล้ว (TH7-) ไว้ทดสอบหน้าย้อนหลัง
+export const SEED_VERSION = 32; // 32: 5 รุ่น (ปี5/ปี6 + จบแล้ว 3 รุ่น) · รุ่นจบทำครบ 100%
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -451,11 +466,12 @@ async function seedIfEmptyInner(): Promise<void> {
     const studentIds: string[] = [];
     // ปีละ 96 คน: ปี 5 (gi 0–11) รหัสรุ่น 65 — นศ. เดโมอยู่ TH-PT7 รหัส 6504049 คงเดิม
     // ปี 6 (gi 12–23) รหัสรุ่น 64
-    // gi 0–11 = ปี 5 · 12–23 = ปี 6 · 24–35 = รุ่นที่จบไปแล้ว (ย้อนหลัง 1 ปี)
-    const y6 = gi >= 12 && gi < 24;
-    const alumni = gi >= 24;
-    const yearsBack = alumni ? 2 : y6 ? 1 : 0; // จำนวนปีที่เข้าคลินิกก่อนรุ่นปี 5 ปัจจุบัน
-    const codeBase = alumni ? 6304001 : y6 ? 6404001 : 6504001;
+    // 12 กลุ่มต่อรุ่น: gi 0–11 = ปี 5 · 12–23 = ปี 6 · 24+ = รุ่นที่จบไปแล้ว (เก่าลงทีละปี)
+    const cohortIdx = Math.floor(gi / 12); // 0 = ปี 5, 1 = ปี 6, 2+ = จบแล้ว
+    const y6 = cohortIdx === 1;
+    const alumni = cohortIdx >= 2;
+    const yearsBack = cohortIdx; // จำนวนปีที่เข้าคลินิกก่อนรุ่นปี 5 ปัจจุบัน
+    const codeBase = 6504001 - cohortIdx * 100000;
     for (let si = 0; si < 8; si++) {
       const id = `st-${code}-${si + 1}`;
       studentIds.push(id);
@@ -479,7 +495,7 @@ async function seedIfEmptyInner(): Promise<void> {
       workpieces.push(...buildDemoWorkpieces());
     } else {
       const seed = hashString(student.id);
-      const gen = generateFor(student, seed);
+      const gen = generateFor(student, seed, isAlumni(student));
       patients.push(...gen.patients);
       workpieces.push(...gen.works);
     }

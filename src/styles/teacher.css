@@ -875,3 +875,29 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   color: var(--warning-dark);
   font: 600 12px var(--font-body);
 }
+
+/* แถวเลือกรุ่นที่จบแล้ว — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกดูทีละรุ่นได้ (ผู้ใช้ขอ 1 ก.ย.) */
+.cohortpick {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.cohortpick__label { font: 600 11.5px var(--font-body); color: var(--text-muted); margin-right: 2px; }
+.cohortpick button {
+  padding: 7px 13px;
+  border-radius: 99px;
+  border: 2px solid var(--border-2);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: 600 12px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.cohortpick button:hover { border-color: var(--text-disabled); }
+.cohortpick button[data-on='true'] {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}

@@ -15,7 +15,7 @@ import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYear } from '../../domain/group';
-import { isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
+import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -37,14 +37,19 @@ export default function Dashboard() {
   // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
   const myGroup = useApp((st) => st.myGroup);
   const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
+  // รุ่นที่เลือกดูในโหมด "จบแล้ว" (null = ทุกรุ่นที่จบ) — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกได้
+  const [cohortPick, setCohortPick] = useState<number | null>(null);
   const students = useMemo(
     () => {
       // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
-      if (yearView === 'alumni') return allStudents.filter((s) => isAlumni(s));
+      if (yearView === 'alumni') {
+        const grads = allStudents.filter((s) => isAlumni(s));
+        return cohortPick === null ? grads : grads.filter((s) => cohortOf(s) === cohortPick);
+      }
       if (yearView === 'all') return allStudents.filter((s) => isActiveStudent(s));
       return allStudents.filter((s) => String(studentYear(s)) === yearView);
     },
-    [allStudents, yearView],
+    [allStudents, yearView, cohortPick],
   );
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
   const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
@@ -63,6 +68,12 @@ export default function Dashboard() {
   const stale = useMemo(() => staleRows(students, works, settings), [students, works, settings]);
   const typeCounts = useMemo(() => countByType(works), [works]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
+
+  // รุ่นที่จบแล้วทั้งหมดในระบบ เรียงใหม่→เก่า ใช้ทำปุ่มเลือกรุ่น
+  const alumniCohorts = useMemo(
+    () => [...new Set(allStudents.filter((s) => isAlumni(s)).map((s) => cohortOf(s)))].sort((a, b) => b - a),
+    [allStudents],
+  );
 
   // รุ่นที่กำลังแสดงอยู่ (ตามตัวกรองชั้นปี) — โชว์เป็นป้ายข้างหัวเรื่อง
   const cohortsShown = useMemo(() => {
@@ -110,6 +121,16 @@ export default function Dashboard() {
           <div className="archivebar">
             <Archive size={15} weight="fill" />
             {t('กำลังดูรุ่นที่เรียนจบไปแล้ว — ดูได้อย่างเดียว แก้ไขไม่ได้')}
+          </div>
+        )}
+
+        {yearView === 'alumni' && alumniCohorts.length > 1 && (
+          <div className="cohortpick">
+            <span className="cohortpick__label">{t('เลือกรุ่น')}</span>
+            <button data-on={cohortPick === null} onClick={() => setCohortPick(null)}>{t('ทุกรุ่น')}</button>
+            {alumniCohorts.map((c) => (
+              <button key={c} data-on={cohortPick === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
+            ))}
           </div>
         )}
 
