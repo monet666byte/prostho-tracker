@@ -13,13 +13,15 @@ import { useState } from 'react';
 export type YearView = '5' | '6' | 'all';
 const KEY = 'pt-yearview';
 
-export function useYearView(): [YearView, (v: YearView) => void] {
+/** @param fallback ค่าเริ่มต้นเมื่อยังไม่เคยเลือก — ปกติส่งปีของกลุ่มที่อาจารย์ดูแล
+ *  (อาจารย์ที่ปรึกษาเปิดมาเจอปีตัวเองพอดี · "ทุกปี" เก็บไว้ให้หัวหน้าภาคกดเอง) */
+export function useYearView(fallback: YearView = 'all'): [YearView, (v: YearView) => void] {
   const [view, setView] = useState<YearView>(() => {
     try {
       const s = localStorage.getItem(KEY);
-      return s === '5' || s === '6' || s === 'all' ? s : 'all';
+      return s === '5' || s === '6' || s === 'all' ? s : fallback;
     } catch {
-      return 'all';
+      return fallback;
     }
   });
   return [view, (v) => {

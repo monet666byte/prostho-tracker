@@ -34,7 +34,8 @@ export default function Dashboard() {
   const allWorks = useAllWorkpieces();
   const everyCheckIn = useAllCheckIns();
   // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
-  const [yearView, setYearView] = useYearView();
+  const myGroup = useApp((st) => st.myGroup);
+  const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   const students = useMemo(
     () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
     [allStudents, yearView],
@@ -116,25 +117,33 @@ export default function Dashboard() {
 
             <div className="panel" style={{ marginBottom: 16 }}>
               <h3>{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</h3>
-              <div className="groupgrid" style={{ marginTop: 13 }}>
-                {groups.map((g) => {
-                  const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
-                  return (
-                    <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
-                      <div className="groupcard__code">
-                        {groupShort(g.code)}
-                        {yearView === 'all' && (
-                          <span className="groupcard__year">{t('ปี')} {groupYear(g.code)}</span>
-                        )}
-                      </div>
-                      <div className="groupcard__pct" style={{ color }}>{g.percent}%</div>
-                      <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
-                        <i style={{ width: `${g.percent}%`, background: color }} />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {/* มุมมองรวมเคยแปะป้ายปีทุกใบ 24 ใบ — รกและซ้ำ (ผู้ใช้ทัก 1 ก.ย.)
+                  แบ่งเป็นหมวดละปีแทน: หัวข้อบอกครั้งเดียว การ์ดสะอาดเหมือนมุมมองรายปี */}
+              {(yearView === 'all' ? [5, 6] : [null]).map((yr) => {
+                const list = yr === null ? groups : groups.filter((g) => groupYear(g.code) === yr);
+                if (!list.length) return null;
+                return (
+                  <div key={yr ?? 'one'}>
+                    {yr !== null && (
+                      <p className="sub" style={{ margin: '13px 0 0' }}>{t('ชั้นปีที่')} {yr} · {list.length} {t('กลุ่ม')}</p>
+                    )}
+                    <div className="groupgrid" style={{ marginTop: yr !== null ? 8 : 13 }}>
+                      {list.map((g) => {
+                        const color = g.percent >= 70 ? 'var(--success)' : g.percent >= 55 ? 'var(--accent)' : 'var(--warning)';
+                        return (
+                          <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
+                            <div className="groupcard__code">{groupShort(g.code)}</div>
+                            <div className="groupcard__pct" style={{ color }}>{g.percent}%</div>
+                            <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
+                              <i style={{ width: `${g.percent}%`, background: color }} />
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16 }}>

@@ -15,7 +15,7 @@ import { useYearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-import { groupShort } from '../../domain/group';
+import { groupShort, groupYear } from '../../domain/group';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
 export default function Analytics() {
@@ -25,7 +25,8 @@ export default function Analytics() {
   const everyCheckIn = useAllCheckIns();
   const updatesAll = useAllProgressUpdates();
   // ตัวกรองชั้นปีเดียวกับหน้าสรุปกลุ่ม (จำค่าร่วมกัน) — กรองต้นทาง ทุกกราฟได้ผลตาม
-  const [yearView, setYearView] = useYearView();
+  const myGroup = useApp((st) => st.myGroup);
+  const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
   const students = useMemo(
     () => (yearView === 'all' ? allStudents : allStudents.filter((s) => String(s.year) === yearView)),
     [allStudents, yearView],

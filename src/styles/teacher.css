@@ -178,17 +178,6 @@
 .grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); }
 .grouppick button[data-on='true'] { background: var(--accent); color: #fff; }
 
-/* ป้ายปีเล็กบนการ์ดกลุ่ม — โผล่เฉพาะมุมมองรวม (PT7 มีทั้งสองปี ต้องแยกให้เห็น) */
-.groupcard__year {
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 99px;
-  font: 600 9.5px var(--font-body);
-  background: var(--fill);
-  color: var(--text-muted);
-  vertical-align: 2px;
-}
-
 /* ── ตัวเลือกชั้นปี — segmented แบบ iOS: รางเทา เม็ดขาวเลื่อนนุ่มๆ ตามตัวที่เลือก ── */
 .yearseg {
   position: relative;

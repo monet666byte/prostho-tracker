@@ -80,6 +80,7 @@ export const DICT: Record<string, string> = {
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
   'ปี': 'Year',
+  'ชั้นปีที่': 'Year',
   'ชั้นปี': 'Year level',
   'กลุ่มคลินิก': 'Clinic groups',
   'ทุกปี': 'All',
