@@ -738,3 +738,23 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .offgroup { bottom: calc(16px + env(safe-area-inset-bottom)); }
   .toast--desk { bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
+
+/* ══ สกิน Duolingo ฝั่งอาจารย์ — เข้าชุดกับฝั่ง นศ. (ผู้ใช้สั่ง 1 ก.ย.)
+   ภาษาเดียวกับท้าย student.css: ขอบ 2px + ขอบล่าง 4px แทนเงา · ปุ่มเงาแข็งกดยุบ ══ */
+.kpi, .panel {
+  border: 2px solid var(--border-2);
+  border-bottom-width: 4px;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.groupcard { border: 2px solid var(--border-2); border-bottom-width: 4px; }
+.groupcard:hover { border-color: var(--text-disabled); }
+.groupcard.on { border-color: var(--accent); box-shadow: none; }
+.evalcard { border: 2px solid var(--border-2); border-bottom-width: 4px; border-radius: 16px; }
+.window .btn { background: var(--accent); box-shadow: 0 4px 0 var(--accent-hover); }
+.window .btn:hover { background: var(--accent); filter: brightness(1.04); }
+.window .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
+.window .btn:disabled { background: var(--text-disabled); box-shadow: none; }
+.window .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
+.window .btn--sec { background: var(--fill); box-shadow: none; }
+.window .btn--ghost { background: transparent; box-shadow: none; }
