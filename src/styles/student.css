@@ -407,8 +407,11 @@
 .minirow__meta .mono { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
 .minirow__pass {
   flex: none;
-  width: 52px;
-  border-radius: 13px;
+  /* วงกลมลอยกึ่งกลางแถว ไม่ยืดเต็มความสูงเหมือนเดิม — 44px คือขนาดที่นิ้วกดสะดวก */
+  width: 44px;
+  height: 44px;
+  align-self: center;
+  border-radius: 99px;
   background: var(--accent-tint);
   color: var(--accent);
   display: grid;
@@ -418,7 +421,6 @@
 }
 .minirow__pass:hover { background: var(--accent-ring); }
 .minirow__pass:active { transform: translateY(1px); }
-.minirow__pass span { font: 600 10px var(--font-mono); margin-top: -3px; }
 
 /* ปุ่มลบในโหมดแก้ไข */
 .delbtn {

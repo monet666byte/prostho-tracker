@@ -391,10 +391,11 @@ export default function Home() {
                 <span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
               </span>
             </Link>
+            {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก (ผู้ใช้ทัก 1 ก.ย.)
+                เลข step ตัดออกเพราะซ้ำกับ 9/10 ที่อยู่ข้างๆ อยู่แล้ว — เหลือเครื่องหมายถูกอย่างเดียว */}
             {next && (
               <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
-                <CheckCircle size={17} weight="fill" />
-                <span>{next.progression}</span>
+                <Check size={19} weight="bold" />
               </button>
             )}
           </div>
