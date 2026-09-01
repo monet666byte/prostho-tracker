@@ -133,7 +133,7 @@ export default function Analytics() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16, marginTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
             {/* 2. เส้นสะสมเทียบเป้า */}
             <div className="panel">
               <h3>{t('ชิ้นงานเสร็จสะสม เทียบเป้าหมาย')}</h3>
@@ -163,7 +163,7 @@ export default function Analytics() {
             </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
             <div className="panel">
               <h3>{t('ความคืบหน้าตามเกณฑ์ขั้นต่ำ (ทั้งชั้นปี)')}</h3>
               <p className="sub">{t('เกณฑ์สะสมครอบปี 5–6')}</p>

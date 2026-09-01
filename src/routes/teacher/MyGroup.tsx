@@ -262,7 +262,7 @@ export default function MyGroup() {
 
         <div className="panel" style={{ marginTop: 16 }}>
           <h3>{t('เปรียบเทียบกลุ่มกับค่าเฉลี่ยชั้นปี')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 26, alignItems: 'start', marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(290px, 100%), 1fr))', gap: 26, alignItems: 'start', marginTop: 8 }}>
             <DivergingBars
               axes={groupProfile}
               reference={cohortProfile}

@@ -148,7 +148,7 @@ export default function Dashboard() {
               })}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 <h3>{t('นักศึกษาในกลุ่ม')} {groupShort(selected?.code)}</h3>
