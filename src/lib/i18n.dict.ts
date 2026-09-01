@@ -11,6 +11,7 @@ export const DICT: Record<string, string> = {
   'หน้า login': 'Login page',
   'รีเซ็ตข้อมูลเดโมแล้ว': 'Demo data has been reset',
   'ธีมสี': 'Color theme',
+  'เลือกโทนสีของทั้งแอป — จำไว้เฉพาะเครื่องนี้': 'Pick the colour tone for the whole app — remembered on this device only',
   'น้ำเงิน': 'Blue',
   'ม่วง': 'Purple',
   'เทา': 'Grey',

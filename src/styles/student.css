@@ -733,3 +733,21 @@
 .tl__title--todo { color: var(--text-faint); font-weight: 500; }
 .tl__count { font: 400 10px var(--font-mono); color: var(--text-disabled); margin-left: 5px; }
 .tl__date { font: 400 10.5px var(--font-body); color: var(--text-faint); flex: none; }
+
+/* ── ปุ่มเลือกธีมสี (หน้ากระดิ่ง) — ทรงเดียวกับปุ่มภาษา แต่มีจุดสีจริงนำหน้า
+   จุดต้องระบุสีตรงๆ เพราะ token ของธีมประกาศที่ html.theme-* (ไม่ตกมาถึง span คลาสเดียวกัน)
+   ค่าตรงกับ --accent ของแต่ละธีมใน tokens.css — แก้ที่นั่นแล้วต้องแก้ที่นี่ด้วย ── */
+.themebtn {
+  flex: 1; height: 42px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font: 600 12.5px var(--font-head); color: var(--text-secondary);
+  background: var(--fill); border: 2px solid var(--border-2);
+}
+.themebtn--on { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-hover); }
+.themebtn__dot {
+  width: 14px; height: 14px; border-radius: 99px; flex: none;
+  background: #2b5ce6;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.08);
+}
+.themebtn__dot.theme-plum { background: #6d3fd4; }
+.themebtn__dot.theme-ink { background: #46536e; }

@@ -1,7 +1,8 @@
 import {
   ArrowLeft, ArrowsClockwise, ArrowsLeftRight, CloudArrowUp, CloudCheck, CloudSlash, EnvelopeSimple,
-  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate,
+  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate, Palette,
 } from '@phosphor-icons/react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
@@ -10,12 +11,15 @@ import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
+import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { currentActor, useApp } from '../../store/app';
 
 export default function Sync() {
   const navigate = useNavigate();
   const { offline, setOffline, showToast, touch, switchRole, resetDemo, signOut } = useApp();
   const queue = useQueue();
+  // ธีมเก็บใน localStorage (ไม่ใช่ store) — ถือ state ไว้ให้ปุ่มที่เลือกอยู่รีเฟรชทันทีที่กด
+  const [theme, setTheme] = useState(currentTheme());
 
   return (
     <PlainShell>
@@ -123,6 +127,27 @@ export default function Sync() {
             >
               English
             </button>
+          </div>
+        </div>
+
+        {/* ธีมสี — เหตุผลเดียวกับปุ่มภาษา: เดิมอยู่แค่แถบเดโมบนคอม คนเปิดลิงก์แชร์จากมือถือเลือกไม่ได้
+            (ผู้ใช้ขอ 1 ก.ย.) · ปุ่มโชว์สีจริงของแต่ละธีม เลือกแล้วเปลี่ยนทันทีและจำไว้ในเครื่อง */}
+        <div className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Palette size={17} color="var(--text-muted)" />
+            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)' }}>{t('ธีมสี')}</h4>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            {THEMES.map((th) => (
+              <button
+                key={th.cls || 'default'}
+                className={`themebtn${theme === th.cls ? ' themebtn--on' : ''}`}
+                onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}
+              >
+                <span className={`themebtn__dot ${th.cls}`} />
+                {t(th.label)}
+              </button>
+            ))}
           </div>
         </div>
 

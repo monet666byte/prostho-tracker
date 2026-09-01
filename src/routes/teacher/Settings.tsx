@@ -1,4 +1,5 @@
 import { Minus, Plus, ShieldCheck, WarningCircle } from '@phosphor-icons/react';
+import { useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
@@ -6,6 +7,7 @@ import type { Requirement } from '../../domain/types';
 import { useAllStudents, useAllWorkpieces, useAudit } from '../../hooks/data';
 import { clock } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
+import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { useApp } from '../../store/app';
 
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
@@ -38,6 +40,8 @@ export default function Settings() {
   const works = useAllWorkpieces();
   const audit = useAudit(14);
   const staleCount = staleRows(students, works, settings).length;
+  // ธีมอยู่ใน localStorage ไม่ใช่ store — ถือ state ให้ปุ่มที่เลือกอยู่อัปเดตทันทีที่กด
+  const [theme, setTheme] = useState(currentTheme());
 
   return (
     <TeacherShell active="settings">
@@ -148,6 +152,25 @@ export default function Settings() {
                 {t('ตอนนี้เข้าเงื่อนไข')} <b>{staleCount}</b> {t('ชิ้นงาน จากทั้งหมด {n} ชิ้นในชั้นปี', { n: works.length })}
               </p>
 
+            </div>
+
+            {/* ธีมสี — เดิมเลือกได้แค่จากแถบเดโมบนคอม อาจารย์ที่เปิดลิงก์แชร์จากแท็บเล็ต/มือถือ
+                จะไม่เห็นแถบนั้น (ผู้ใช้ขอ 1 ก.ย.) · ตรงกับการ์ดธีมฝั่ง นศ. ในหน้ากระดิ่ง */}
+            <div className="panel">
+              <h3>{t('ธีมสี')}</h3>
+              <p className="sub">{t('เลือกโทนสีของทั้งแอป — จำไว้เฉพาะเครื่องนี้')}</p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
+                {THEMES.map((th) => (
+                  <button
+                    key={th.cls || 'default'}
+                    className={`themebtn${theme === th.cls ? ' themebtn--on' : ''}`}
+                    onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}
+                  >
+                    <span className={`themebtn__dot ${th.cls}`} />
+                    {t(th.label)}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="panel">
