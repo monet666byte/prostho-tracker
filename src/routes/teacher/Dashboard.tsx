@@ -15,7 +15,7 @@ import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYear } from '../../domain/group';
-import { studentYear } from '../../domain/cohort';
+import { studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
 function termLabel(d: Date): string {
@@ -125,8 +125,13 @@ export default function Dashboard() {
                 if (!list.length) return null;
                 return (
                   <div key={yr ?? 'one'}>
+                    {/* บอกเลขรุ่นคู่ชั้นปี — ภาคเรียกกันด้วยเลขรุ่น (ผู้ใช้ 1 ก.ย.: DTMU55 = ปี 5) */}
                     {yr !== null && (
-                      <p className="sub" style={{ margin: '13px 0 0' }}>{t('ชั้นปีที่')} {yr} · {list.length} {t('กลุ่ม')}</p>
+                      <p className="sub" style={{ margin: '13px 0 0' }}>
+                        {t('ชั้นปีที่')} {yr}
+                        {list[0]?.students[0] && ` · ${studentCohortLabel(list[0].students[0].student)}`}
+                        {' · '}{list.length} {t('กลุ่ม')}
+                      </p>
                     )}
                     <div className="groupgrid" style={{ marginTop: yr !== null ? 8 : 13 }}>
                       {list.map((g) => {
@@ -153,7 +158,10 @@ export default function Dashboard() {
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 <h3>{t('นักศึกษาในกลุ่ม')} {groupShort(selected?.code)}</h3>
-                <p className="sub">{t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}</p>
+                <p className="sub">
+                  {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${t('ชั้นปีที่')} ${selected.year} · `}
+                  {t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}
+                </p>
                 <table className="tbl">
                   <thead>
                     <tr>

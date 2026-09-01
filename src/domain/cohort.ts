@@ -46,9 +46,33 @@ export function isWithinRetention(cohort: number, asOf: Date = new Date()): bool
   return academicYear(asOf) - cohort < KEEP_COHORTS;
 }
 
-/** ป้ายรุ่นสำหรับ UI เช่น "รุ่น 2569" */
-export function cohortLabel(cohort: number): string {
-  return `${cohort}`;
+/**
+ * เลขรุ่น DTMU — ภาษาที่ภาควิชาใช้เรียกกันจริง (ผู้ใช้ยืนยัน 1 ก.ย. 69:
+ * "ตอนนี้ DTMU55 อยู่ปี 5, DTMU54 อยู่ปี 6")
+ *
+ * ยึดสองหมุดนั้น: รุ่น 55 ขึ้นคลินิกปีการศึกษา 2569 · รุ่น 54 ขึ้นปี 2568
+ * ตรงกับรหัสนักศึกษาที่ใช้อยู่ (65xxxxx = รุ่น 55 · 64xxxxx = รุ่น 54)
+ */
+const DTMU_OFFSET = 2514;
+
+/** entryYear → เลขรุ่น เช่น 2569 → 55 */
+export function dtmuOf(entryYear: number): number {
+  return entryYear - DTMU_OFFSET;
+}
+
+/** เลขรุ่น → entryYear เช่น 55 → 2569 (ใช้ตอนรับรุ่นใหม่เข้าระบบ) */
+export function entryYearFromDtmu(dtmu: number): number {
+  return dtmu + DTMU_OFFSET;
+}
+
+/** ป้ายรุ่นสำหรับ UI — "DTMU55" ตามที่ภาคเรียกกัน */
+export function cohortLabel(entryYear: number): string {
+  return `DTMU${dtmuOf(entryYear)}`;
+}
+
+/** ป้ายรุ่นของนักศึกษาโดยตรง */
+export function studentCohortLabel(s: Pick<Student, 'year' | 'entryYear'>, asOf: Date = new Date()): string {
+  return cohortLabel(cohortOf(s, asOf));
 }
 
 /** แปลงชั้นปีที่บันทึกไว้เป็นรุ่น — ใช้ตอน migrate ข้อมูลเดิมหรือรับ roster ที่ให้มาแค่ชั้นปี */
