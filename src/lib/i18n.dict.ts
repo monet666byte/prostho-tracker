@@ -79,6 +79,8 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'ภาคเรียน': 'Semester',
+  'จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ': 'Noted to remind {n} — real notifications are not live yet, please tell them in person for now',
   'คลังรูปงาน': 'Photo library',
   'บันทึกคอมเมนต์ชิ้นงาน': 'Saved workpiece comment on',
   'ภาษา': 'Language',

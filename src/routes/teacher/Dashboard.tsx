@@ -1,4 +1,4 @@
-import { BellRinging, Export, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
+import { BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
@@ -16,6 +16,14 @@ import { useApp } from '../../store/app';
 const TITLES: Record<string, { title: string; sub: string }> = {
   overview: { title: t('ภาพรวมชั้นปีที่ 5'), sub: '' },
 };
+
+/** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
+function termLabel(d: Date): string {
+  const m = d.getMonth(); // 0 = ม.ค.
+  const term = m >= 5 && m <= 9 ? 1 : m >= 10 || m <= 2 ? 2 : 3;
+  const be = d.getFullYear() + 543 - (m < 5 ? 1 : 0); // ก่อน มิ.ย. ยังเป็นปีการศึกษาก่อนหน้า
+  return `${be}/${term}`;
+}
 
 export default function Dashboard() {
   const { settings, showToast } = useApp();
@@ -63,10 +71,11 @@ export default function Dashboard() {
               {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
             </p>
           </div>
-          <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px' }}>{t('ภาคเรียน 2569/1')}</button>
-          <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px' }}>
-            <Export size={16} /> {t('ส่งออก CSV')}
-          </button>
+          {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
+              — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
+          <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
+            {t('ภาคเรียน')} {termLabel(new Date())}
+          </span>
         </div>
 
         {view === 'overview' && (
@@ -204,8 +213,10 @@ export default function Dashboard() {
                                 color: pinged[key] ? 'var(--success-dark)' : undefined,
                               }}
                               onClick={() => {
+                                // ยังไม่มีช่องทางแจ้งเตือนจริง (push/LINE รอ phase 2) — toast ต้องไม่โกหก
+                                // ว่าส่งแล้ว ไม่งั้นอาจารย์เข้าใจผิดว่าเด็กได้รับ (ตระกูลเดียวกับปุ่มส่งรายงานปลอมที่ตัดไป)
                                 setPinged({ ...pinged, [key]: true });
-                                showToast({ message: t('เตือน {n} แล้ว', { n: t(r.student.name) }), tone: 'success' });
+                                showToast({ message: t('จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ', { n: t(r.student.name) }), tone: 'warning' });
                               }}
                             >
                               {pinged[key] ? t('เตือนแล้ว') : <><BellRinging size={13} /> {t('เตือน')}</>}
