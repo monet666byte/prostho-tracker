@@ -725,3 +725,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 .heropath__name--now:active { opacity: 0.55; }
+
+/* ── หน้ารายละเอียดเคส V1 "เก็บกวาด" (ผู้ใช้เลือก 1 ก.ย.) — แถวไทม์ไลน์บรรทัดเดียว
+   สถานะอ่านจากสีจุด + น้ำหนักตัวอักษร: กำลังทำเด่นสุด ผ่านแล้วหม่น รอคิวจาง ── */
+.tl__title--active { font: 700 14px/1.4 var(--font-head); color: var(--text); }
+.tl__title--done { color: var(--text-muted); font-weight: 500; }
+.tl__title--todo { color: var(--text-faint); font-weight: 500; }
+.tl__count { font: 400 10px var(--font-mono); color: var(--text-disabled); margin-left: 5px; }
+.tl__date { font: 400 10.5px var(--font-body); color: var(--text-faint); flex: none; }

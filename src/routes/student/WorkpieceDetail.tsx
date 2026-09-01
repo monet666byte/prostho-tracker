@@ -9,11 +9,11 @@ import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { TYPES } from '../../domain/catalog';
 import {
-  currentProc, isComplete, maxProgression, nextProc, percentCompleted, progression, stepGroups,
+  maxProgression, nextProc, progression, stepGroups,
 } from '../../domain/rules';
 import { usePending, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
-import { t, tText } from '../../lib/i18n';
+import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 export default function WorkpieceDetail() {
@@ -35,8 +35,6 @@ export default function WorkpieceDetail() {
   const prog = progression(w);
   const max = maxProgression(w);
   const next = nextProc(w);
-  const cur = currentProc(w);
-  const done = isComplete(w);
 
   const footer = (
     <div className="footer">
@@ -116,19 +114,14 @@ export default function WorkpieceDetail() {
           {pending.has(w.id) && <PendingBadge />}
         </div>
 
-        <h2 className="h2" style={{ marginTop: 10 }}>{meta.full}</h2>
-        <div style={{ font: '400 11px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>{tText(w.detail)}</div>
+        {/* V1 เก็บกวาด (ผู้ใช้เลือก 1 ก.ย.): ชิปบอกประเภทอยู่แล้ว — หัวย่อลง ตัดบรรทัด detail
+            และตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ 5/10 ชวนงง) เหลือ bar + x/y ที่เดียว */}
+        <h2 className="h2" style={{ marginTop: 10, font: '600 17.5px/1.3 var(--font-head)' }}>{meta.full}</h2>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={8} />
           <span style={{ font: '600 12px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
             {Math.max(prog, 0)}/{max}
-          </span>
-          <span
-            className="chip"
-            style={{ background: done ? 'var(--success-tint)' : 'var(--accent-tint)', color: done ? 'var(--success-dark)' : 'var(--accent)' }}
-          >
-            {percentCompleted(w)}% completed
           </span>
         </div>
       </header>
@@ -150,28 +143,25 @@ export default function WorkpieceDetail() {
               </div>
 
               <div className="tl__body">
+                {/* V1: แถวเดียวจบ — สถานะบอกด้วยสีจุด+น้ำหนักตัวอักษรแทนบรรทัดคำอธิบาย
+                    (คำว่า "ผ่านแล้ว/รอดำเนินการ" ซ้ำกับสีจุด — ผู้ใช้บอกรก 1 ก.ย.)
+                    เหลือวันที่เฉพาะขั้นที่ผ่านล่าสุด · จำนวนขั้นย่อยย่อเป็น ×N */}
                 <button
                   onClick={() => setOpenStep(openStep === g.progression ? null : g.progression)}
                   style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', width: '100%', textAlign: 'left' }}
                 >
-                  <span className="tl__title">
+                  <span className={`tl__title tl__title--${g.state}`}>
                     {first.name}
-                    {extra > 0 && <span className="faint" style={{ fontWeight: 400 }}> · +{extra} {t('ขั้นตอนย่อย')}</span>}
+                    {extra > 0 && <span className="tl__count">×{extra + 1}</span>}
                   </span>
                   {g.hasSelf && <SelfBadge compact />}
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-disabled)', display: 'grid' }}>
-                    {expanded ? <CaretUp size={13} weight="bold" /> : <CaretDown size={13} weight="bold" />}
+                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {passedDate && <span className="tl__date">{passedDate}</span>}
+                    <span style={{ color: 'var(--text-disabled)', display: 'grid' }}>
+                      {expanded ? <CaretUp size={13} weight="bold" /> : <CaretDown size={13} weight="bold" />}
+                    </span>
                   </span>
                 </button>
-                <div className="tl__meta">
-                  {g.state === 'done'
-                    ? passedDate ? `${t('ผ่านแล้ว')} · ${passedDate}` : t('ผ่านแล้ว')
-                    : g.state === 'active'
-                      ? cur && cur.progression === g.progression
-                        ? t('กำลังทำ · ผ่านบางขั้นตอนย่อยแล้ว')
-                        : t('กำลังทำ · ยังไม่บันทึก')
-                      : t('รอดำเนินการ')}
-                </div>
 
                 {expanded && (
                   <div className="tl__panel">
