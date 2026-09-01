@@ -6,20 +6,20 @@
  */
 import { CheckCircle, FileArrowUp, UploadSimple, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { db } from '../../data/db';
 import { useAllStudents } from '../../hooks/data';
 import { importSheetCsv, type ImportResult } from '../../lib/sheetImport';
 import { t } from '../../lib/i18n';
+import { cloudEnabled } from '../../lib/cloud';
 import { useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { TYPES } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
 
-export default function ImportSheet() {
+export function ImportSheetBody() {
   const { cloudUser, showToast, touch } = useApp();
   const students = useAllStudents();
-  const isAdmin = !!cloudUser?.isAdmin;
+  const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
 
   const [studentId, setStudentId] = useState('');
   const [csv, setCsv] = useState('');
@@ -86,28 +86,19 @@ export default function ImportSheet() {
 
   if (!isAdmin) {
     return (
-      <TeacherShell active="import">
-        <main className="main">
-          <div className="main__head"><div style={{ flex: 1 }}><h1>{t('นำเข้าจากชีต')}</h1></div></div>
-          <div className="dashed" style={{ padding: '28px 20px', textAlign: 'center', font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
-            {t('หน้านี้สำหรับหัวหน้าภาคเท่านั้น')}
-          </div>
-        </main>
-      </TeacherShell>
+      <div className="dashed" style={{ padding: '28px 20px', textAlign: 'center', font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
+        {t('หน้านี้สำหรับหัวหน้าภาคเท่านั้น')}
+      </div>
     );
   }
 
   const rep = result?.report;
 
   return (
-    <TeacherShell active="import">
-      <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('นำเข้าจากชีต')}</h1>
-            <p>{t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ — ทีละคน ดูรายงานก่อนยืนยันทุกครั้ง')}</p>
-          </div>
-        </div>
+    <>
+      <p className="sub" style={{ margin: '0 0 14px' }}>
+        {t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ — ทีละคน ดูรายงานก่อนยืนยันทุกครั้ง')}
+      </p>
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3>{t('① เลือกนักศึกษาเจ้าของงาน')}</h3>
@@ -268,7 +259,6 @@ export default function ImportSheet() {
             </div>
           </>
         )}
-      </main>
-    </TeacherShell>
+    </>
   );
 }

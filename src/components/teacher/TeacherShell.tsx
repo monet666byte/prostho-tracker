@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, FileArrowUp, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -34,8 +34,9 @@ const COHORT_NAV: NavItem[] = [
 
 /** เมนูเฉพาะหัวหน้าภาค */
 const ADMIN_NAV: NavItem[] = [
-  { key: 'roster', label: t('จัดการรายชื่อ'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
-  { key: 'import', label: t('นำเข้าจากชีต'), short: t('นำเข้า'), to: '/teacher/import', Icon: FileArrowUp },
+  /* รายชื่อกับนำเข้างานจากชีตเคยเป็นสองเมนู — ผู้ใช้ถามว่าทำไมต้องแยก (1 ก.ย.)
+     ทั้งคู่คืองานตั้งต้นข้อมูลต้นปี รวมเป็นเมนูเดียวแล้วสลับแท็บข้างใน */
+  { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {

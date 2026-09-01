@@ -16,6 +16,7 @@ import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { importRoster, parseRoster } from '../../data/repo';
+import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu } from '../../domain/cohort';
 import { academicYear } from '../../lib/date';
 
@@ -43,6 +44,7 @@ export default function Roster() {
   // ฟอร์มเพิ่มคน
   const [email, setEmail] = useState('');
   // นำเข้ารายชื่อรุ่นใหม่
+  const [tab, setTab] = useState<'people' | 'sheet'>('people');
   const [dtmu, setDtmu] = useState('');
   const [rosterText, setRosterText] = useState('');
   const [importing, setImporting] = useState(false);
@@ -140,18 +142,28 @@ export default function Roster() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('จัดการรายชื่อ')}</h1>
-            <p>{t('ใครมีสิทธิ์เข้าระบบ และเข้าในฐานะใคร — คนที่ไม่อยู่ในรายชื่อนี้ สมัครแล้วก็ใช้งานไม่ได้')}</p>
+            <h1>{t('รายชื่อ & นำเข้าข้อมูล')}</h1>
+            <p>{t('งานตั้งต้นข้อมูลต้นปี — รับรายชื่อรุ่นใหม่ ให้สิทธิ์เข้าระบบ และย้ายงานเก่าจากชีต')}</p>
           </div>
         </div>
 
-        {error && (
+        {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก (1 ก.ย.)
+            ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}
+        <div className="tabs" style={{ marginBottom: 16 }}>
+          <button data-on={tab === 'people'} onClick={() => setTab('people')}>{t('รายชื่อนักศึกษา')}</button>
+          <button data-on={tab === 'sheet'} onClick={() => setTab('sheet')}>{t('งานเก่าจากชีต')}</button>
+        </div>
+
+        {tab === 'sheet' && <ImportSheetBody />}
+
+        {tab === 'people' && error && (
           <div style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, font: '500 12px var(--font-body)' }}>
             {error}
           </div>
         )}
 
         {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
+        {tab === 'people' && (<>
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3><UsersThree size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
           <p className="sub">{t('วางรายชื่อจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม (คั่นด้วยจุลภาคหรือแท็บ)')}</p>
@@ -298,6 +310,7 @@ export default function Roster() {
             {t('ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที')}
           </p>
         </div>
+        </>)}
 
         {confirmDel && (
           <div className="confirmwrap" onClick={() => setConfirmDel(null)}>
