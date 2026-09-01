@@ -17,6 +17,8 @@ export const DICT: Record<string, string> = {
   'รายชื่อ': 'Roster',
   'นำเข้า': 'Import',
   'จบแล้ว': 'Graduated',
+  'รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้': 'This cohort has graduated — read-only',
+  'รุ่นนี้จบแล้ว': 'Cohort graduated',
   'ภาพรวมรุ่นที่จบแล้ว': 'Graduated cohorts overview',
   'กำลังดูรุ่นที่เรียนจบไปแล้ว — ดูได้อย่างเดียว แก้ไขไม่ได้': 'Viewing graduated cohorts — read-only',
   'ธีมสี': 'Color theme',

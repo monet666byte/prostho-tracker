@@ -6,6 +6,7 @@ import { Radar } from '../../components/charts/Radar';
 import type { ProfileAxis } from '../../domain/analytics';
 import { evaluateCheckIn, reviseCheckIn } from '../../data/repo';
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, totalScore } from '../../domain/checkin';
+import { isAlumni } from '../../domain/cohort';
 import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTeacher } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -191,6 +192,8 @@ export default function Evaluate() {
       } else if (res.reason === 'already') {
         // ชั้นที่ 4 — อาจารย์อีกท่านลงคะแนนคาบนี้ไปแล้ว ระบบไม่เขียนทับให้
         showToast({ message: t('คาบนี้ {who} ประเมินไปแล้ว — ระบบไม่บันทึกทับ', { who: res.by || t('อาจารย์ท่านอื่น') }), tone: 'warning' });
+      } else if (res.reason === 'graduated') {
+        showToast({ message: t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้'), tone: 'warning' });
       } else {
         showToast({ message: t('ไม่พบคาบนี้แล้ว (อาจถูกลบไป)'), tone: 'warning' });
       }
@@ -227,6 +230,9 @@ export default function Evaluate() {
         });
       } else if (res.reason === 'nochange') {
         closeRevise();
+      } else if (res.reason === 'graduated') {
+        closeRevise();
+        showToast({ message: t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้'), tone: 'warning' });
       } else {
         showToast({ message: t('แก้ไม่สำเร็จ — คาบนี้อาจถูกลบหรือเปลี่ยนสถานะไปแล้ว'), tone: 'warning' });
       }
@@ -281,6 +287,8 @@ export default function Evaluate() {
               const patient = c.patientId ? patientById.get(c.patientId) : undefined;
               const draft = draftFor(c.id);
               const total = totalScore(draft) ?? 0;
+              // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง (ผู้ใช้ขอ 1 ก.ย.)
+              const locked = student ? isAlumni(student) : false;
               return (
                 <div key={c.id} className="evalcard">
                   <div className="evalcard__info">
@@ -352,6 +360,7 @@ export default function Evaluate() {
                             <button
                               key={n}
                               data-on={draft[cr.key] === n}
+                              disabled={locked}
                               onClick={() => setDrafts({ ...drafts, [c.id]: { ...draft, [cr.key]: n } })}
                             >
                               {n}
@@ -364,9 +373,15 @@ export default function Evaluate() {
                       <span className="mono" style={{ font: '700 14px var(--font-mono)', color: total >= MAX_TOTAL * 0.7 ? 'var(--success)' : 'var(--text-secondary)' }}>
                         {total}/{MAX_TOTAL}
                       </span>
-                      <button className="btn" style={{ flex: 1, height: 40, fontSize: 13 }} onClick={() => setConfirmId(c.id)}>
+                      <button
+                        className="btn"
+                        style={{ flex: 1, height: 40, fontSize: 13 }}
+                        disabled={locked}
+                        title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
+                        onClick={() => setConfirmId(c.id)}
+                      >
                         <Signature size={16} weight="bold" />
-                        {t('บันทึกผล · ลงนาม')}
+                        {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
                       </button>
                     </div>
                   </div>
@@ -394,9 +409,12 @@ export default function Evaluate() {
               {evaluated.length === 0 && (
                 <tr><td colSpan={6} className="faint" style={{ padding: 16 }}>{t('ยังไม่มีคาบที่ประเมินแล้ว')}</td></tr>
               )}
-              {evaluated.map((c) => (
+              {evaluated.map((c) => {
+                const st = studentById.get(c.studentId);
+                const locked = st ? isAlumni(st) : false;
+                return (
                 <tr key={c.id}>
-                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(studentById.get(c.studentId)?.name ?? '')}</td>
+                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(st?.name ?? '')}</td>
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
                   <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}</td>
                   <td>
@@ -406,13 +424,19 @@ export default function Evaluate() {
                   </td>
                   <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>{t(c.evaluatedBy ?? '')}</td>
                   <td>
-                    <button className="revisebtn" title={t('แก้คะแนนคาบนี้')} onClick={() => openRevise(c)}>
+                    <button
+                      className="revisebtn"
+                      disabled={locked}
+                      title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : t('แก้คะแนนคาบนี้')}
+                      onClick={() => openRevise(c)}
+                    >
                       <PencilSimple size={14} />
                       {t('แก้')}
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {evaluatedAll.length > 5 && (

@@ -5,6 +5,7 @@
 
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
+import { isAlumni } from '../domain/cohort';
 import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel } from '../domain/rules';
 import type {
@@ -566,9 +567,20 @@ export async function listAllCheckIns(): Promise<CheckIn[]> {
 }
 
 /** อาจารย์ให้คะแนน = ลงนามแทนการเซ็นสมุด */
+/**
+ * ด่านสุดท้ายของ "อ่านอย่างเดียว" สำหรับรุ่นที่เรียนจบแล้ว — เช็คที่ชั้นข้อมูล
+ * ไม่ใช่แค่ปิดปุ่มบนหน้าจอ เพราะปุ่มอาจถูกลืมปิดหรือเข้ามาทางลิงก์ตรง
+ */
+async function isGraduatedStudent(studentId: string): Promise<boolean> {
+  const st = await db.students.get(studentId);
+  return st ? isAlumni(st) : false;
+}
+
 export type EvaluateResult =
   | { ok: true }
   | { ok: false; reason: 'missing' }
+  /** นักศึกษาเรียนจบไปแล้ว — ข้อมูลรุ่นเก่าเป็นประวัติที่ปิดจบ ห้ามเขียนทับ */
+  | { ok: false; reason: 'graduated' }
   /** มีอาจารย์อีกท่านลงคะแนนคาบนี้ไปแล้ว — ไม่เขียนทับ ให้ UI เตือนก่อน */
   | { ok: false; reason: 'already'; by: string };
 
@@ -581,6 +593,7 @@ export async function evaluateCheckIn(
   if (!row) return { ok: false, reason: 'missing' };
   // กันสองอาจารย์ลงคะแนนคาบเดียวกันพร้อมกัน (last-write-wins จะทำให้คะแนนของคนแรกหายเงียบ)
   if (row.status === 'evaluated') return { ok: false, reason: 'already', by: row.evaluatedBy ?? '' };
+  if (await isGraduatedStudent(row.studentId)) return { ok: false, reason: 'graduated' };
 
   await db.checkins.put({
     ...row,
@@ -613,6 +626,8 @@ export type ReviseResult =
   | { ok: false; reason: 'missing' }
   /** คาบนี้ยังไม่เคยประเมิน — ต้องใช้ evaluateCheckIn ไม่ใช่ตัวนี้ */
   | { ok: false; reason: 'not-evaluated' }
+  /** นักศึกษาเรียนจบไปแล้ว — แก้คะแนนย้อนหลังไม่ได้ */
+  | { ok: false; reason: 'graduated' }
   | { ok: false; reason: 'nochange' };
 
 export async function reviseCheckIn(
@@ -623,6 +638,7 @@ export async function reviseCheckIn(
   const row = await db.checkins.get(id);
   if (!row) return { ok: false, reason: 'missing' };
   if (row.status !== 'evaluated') return { ok: false, reason: 'not-evaluated' };
+  if (await isGraduatedStudent(row.studentId)) return { ok: false, reason: 'graduated' };
 
   const before = row.scores ?? {};
   const diffs = CRITERIA
