@@ -10,7 +10,6 @@ import type {
   AuditEntry, ClinicGroup, Patient, Photo, ProgressUpdate, QueueItem,
   CheckIn, ReportIssue, ReportSubmission, Review, Student, Teacher, Workpiece,
 } from '../domain/types';
-import { entryYearFromClassYear } from '../domain/cohort';
 
 export interface KV {
   key: string;
@@ -62,9 +61,13 @@ export class ProsthoDB extends Dexie {
     this.version(3).stores({
       students: 'id, group, code, entryYear',
     }).upgrade(async (tx) => {
+      /* คำนวณในที่ ไม่เรียกข้ามโมดูล — Dexie รัน upgrade ตอนเปิด DB ซึ่งเร็วกว่าที่
+         โมดูลอื่นจะพร้อม เคยทำให้ล้มด้วย "entryYearFromClassYear is not defined" */
       const now = new Date();
+      const be = now.getFullYear() + 543;
+      const curAcademicYear = now.getMonth() >= 5 ? be : be - 1;
       await tx.table('students').toCollection().modify((s: { year?: number; entryYear?: number }) => {
-        if (!s.entryYear) s.entryYear = entryYearFromClassYear(s.year ?? 5, now);
+        if (!s.entryYear) s.entryYear = curAcademicYear - ((s.year ?? 5) - 5);
       });
     });
   }
