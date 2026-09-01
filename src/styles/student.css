@@ -390,19 +390,26 @@
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 13px;
-  padding: 10px 12px;
+  border-radius: 14px;
+  /* เดิม 10/12 แถวเตี้ยจนดูเป็นของแถมข้างการ์ดเคสเด่น — ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) */
+  padding: 12px 14px;
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 .minirow__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .minirow__name {
-  font: 600 12.5px var(--font-head);
+  font: 600 13.5px var(--font-head);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .minirow__arch { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
+/* ขั้นถัดไปของเคสนั้น — พระเอกของแถว อ่านได้โดยไม่ต้องกดเข้าไป */
+.minirow__step {
+  font: 700 14px/1.35 var(--font-head);
+  color: var(--text);
+  overflow-wrap: break-word;
+}
 .minirow__meta { display: flex; align-items: center; gap: 8px; }
 .minirow__meta .mono { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
 .minirow__pass {

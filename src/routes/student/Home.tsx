@@ -386,6 +386,9 @@ export default function Home() {
                 {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
                 {pending.has(w.id) && <PendingBadge />}
               </span>
+              {/* ชื่อขั้นถัดไป — เดิมแถวย่อบอกแค่ตัวเลข ต้องกดเข้าไปถึงจะรู้ว่าต้องทำอะไร
+                  ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
+              {next && <span className="minirow__step">{next.name}</span>}
               <span className="minirow__meta">
                 <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={5} />
                 <span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
