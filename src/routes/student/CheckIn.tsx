@@ -233,11 +233,16 @@ export default function CheckInPage() {
           const total = totalScore(c.scores);
           const open = expanded === c.id;
           return (
-            <button
+            /* div ไม่ใช่ button: ข้างในมีปุ่มแก้/ลบ และ HTML ห้าม button ซ้อน button
+               (React เตือน hydration error — เจอจากคอนโซล 1 ก.ย.) */
+            <div
               key={c.id}
+              role="button"
+              tabIndex={0}
               className="card"
-              style={{ padding: '12px 14px', textAlign: 'left' }}
+              style={{ padding: '12px 14px', textAlign: 'left', cursor: 'pointer' }}
               onClick={() => { setExpanded(open ? null : c.id); setConfirmDelete(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(open ? null : c.id); setConfirmDelete(null); } }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span
@@ -341,7 +346,7 @@ export default function CheckInPage() {
                   )}
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
 

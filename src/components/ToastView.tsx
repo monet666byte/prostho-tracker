@@ -6,12 +6,15 @@
  * ซึ่งเป็นชั้นกันประเมินซ้ำที่ตั้งใจให้อาจารย์เห็น (ตัวตรรกะทำงาน แต่ไม่มีอะไรขึ้นจอ)
  */
 import { ArrowUUpLeft, CheckCircle } from '@phosphor-icons/react';
+import { useRef } from 'react';
 import { undoStep } from '../data/repo';
 import { t } from '../lib/i18n';
 import { currentActor, useApp } from '../store/app';
 
 export function ToastView({ variant = 'phone' }: { variant?: 'phone' | 'desk' }) {
   const { toast, hideToast, touch } = useApp();
+  // กันกดรัว: เลิกทำ 2 ทีติดจะย้อนถอยหลัง 2 ขั้น — useRef เพราะ setState ตามคลิกรัวไม่ทัน (บทเรียนเดิม)
+  const undoing = useRef(false);
   if (!toast) return null;
   return (
     <div className={`toast${variant === 'desk' ? ' toast--desk' : ''}`} role="status">
@@ -20,9 +23,15 @@ export function ToastView({ variant = 'phone' }: { variant?: 'phone' | 'desk' })
       {toast.undoWorkpieceId && (
         <button
           onClick={async () => {
-            await undoStep(toast.undoWorkpieceId!, currentActor());
-            hideToast();
-            touch();
+            if (undoing.current) return;
+            undoing.current = true;
+            try {
+              await undoStep(toast.undoWorkpieceId!, currentActor());
+              hideToast();
+              touch();
+            } finally {
+              undoing.current = false;
+            }
           }}
         >
           <ArrowUUpLeft size={14} weight="bold" style={{ verticalAlign: -2, marginRight: 3 }} />
