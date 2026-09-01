@@ -639,3 +639,48 @@
 }
 .actgrid button:hover { background: var(--fill-2); }
 .actgrid button[data-on='true'] { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* ══ สกิน Duolingo — ผู้ใช้เลือกจาก mock รอบ 3–4 (1 ก.ย. 69) ══
+   ภาษา: ขอบหนา 2px + ขอบล่าง 4px แทนเงานุ่ม · ปุ่มเงาแข็งกดแล้วยุบ
+   ขอบเขต: เฉพาะฝั่ง นศ. (ทุกอย่างอยู่ใต้ .phone) — หน้าอาจารย์คงสกินเดิม รอเคาะทีหลัง
+   สีอิง token ล้วน เพื่อให้ธีม plum/ink ยังใช้ได้ */
+.phone .card {
+  border: 2px solid var(--border-2);
+  border-bottom-width: 4px;
+  box-shadow: none;
+}
+.phone .minirow__body {
+  border: 2px solid var(--border-2);
+  border-bottom-width: 4px;
+}
+.phone .herocase {
+  /* เก็บสีพื้นไว้ในตัวแปร ให้จุดบนเส้นทางด่านเจาะวงรอบตัวเองด้วยสีเดียวกันได้ */
+  --hero-bg: var(--accent-tint);
+  --hero-bg: color-mix(in srgb, var(--accent-tint) 55%, var(--surface));
+  background: var(--hero-bg);
+  border: 2px solid var(--accent-ring);
+  border-bottom-width: 4px;
+  box-shadow: none;
+}
+.phone .btn {
+  background: var(--accent);
+  box-shadow: 0 4px 0 var(--accent-hover);
+}
+.phone .btn:hover { background: var(--accent); filter: brightness(1.04); }
+.phone .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
+.phone .btn:disabled { background: var(--text-disabled); box-shadow: none; }
+.phone .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
+.phone .btn--light { background: #fff; box-shadow: 0 4px 0 var(--border-2); }
+.phone .btn--ghost, .phone .btn--sec { background: var(--fill); box-shadow: none; transform: none; }
+.phone .btn--ghost { background: transparent; }
+.phone .herocase__btn {
+  box-shadow: 0 4px 0 var(--accent-hover);
+}
+.phone .herocase__btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); background: var(--accent); }
+.phone .minirow__pass {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--accent-hover);
+}
+.phone .minirow__pass:hover { background: var(--accent); filter: brightness(1.04); }
+.phone .minirow__pass:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
