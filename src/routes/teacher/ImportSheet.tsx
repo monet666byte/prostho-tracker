@@ -13,7 +13,7 @@ import { logAudit } from '../../data/repo';
 import { t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
-import { importGroupCsv, parseStudentList, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
+import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
 import { replaceWithRoster } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
@@ -282,6 +282,38 @@ function WholeCohortImport() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // ดึงจากลิงก์ชีตโดยตรง — ข้อมูลจริงวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้เท่านั้น
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [pulling, setPulling] = useState<string | null>(null);
+  const [pullError, setPullError] = useState<string | null>(null);
+
+  async function pullFromSheet() {
+    const id = sheetIdFromUrl(sheetUrl);
+    setPullError(null);
+    setDone(null);
+    if (!id) { setPullError(t('ลิงก์ไม่ถูกต้อง — วางลิงก์ Google Sheet ทั้งอัน')); return; }
+    setPulling(t('กำลังดึง…'));
+    try {
+      const res = await fetchCohortTabs(id, (d, total) => setPulling(t('กำลังดึง {d}/{t} แท็บ…', { d, t: total })));
+      if (!res.groups.length) {
+        setPullError(t('ดึงไม่ได้ — ชีตต้องเปิดสิทธิ์ให้ “ผู้ที่มีลิงก์” อ่านได้ และมีแท็บ PT1–PT12'));
+        return;
+      }
+      let entries: RosterEntry[] = [];
+      if (res.roster) {
+        const r = parseStudentList(res.roster);
+        entries = r.entries;
+        setRoster({ entries, issues: r.issues.length });
+      } else {
+        setRoster(null);
+        setPullError(t('ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้'));
+      }
+      const byCode = new Map(entries.map((e) => [e.code, `st-r55-${e.code}`]));
+      setGroups(res.groups.map((g) => ({ name: g.tab, res: importGroupCsv(g.csv, (code) => byCode.get(code) ?? null) })));
+    } finally {
+      setPulling(null);
+    }
+  }
 
   async function onFiles(list: FileList | null) {
     if (!list?.length) return;
@@ -363,9 +395,33 @@ function WholeCohortImport() {
     <div className="panel" style={{ marginBottom: 16, border: '1.5px solid var(--accent)' }}>
       <h3>{t('นำเข้าทั้งรุ่นจากชีตจริง (ทีเดียวทุกกลุ่ม)')}</h3>
       <p className="sub" style={{ margin: '4px 0 10px' }}>
-        {t('เลือกไฟล์ CSV ทีเดียวหลายไฟล์: Student list + PT1–PT12 · ระบบแยกชนิดไฟล์เองจากเนื้อใน')}<br />
+        {t('วางลิงก์ชีตแล้วกดดึง — หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12)')}<br />
+        <b>{t('🔒 ข้อมูลวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้โดยตรง ไม่ถูกอัปขึ้นเว็บและไม่ออกจากเครื่อง')}</b><br />
         {t('⚠️ การยืนยันจะล้างข้อมูลเดโมทั้งหมดแล้วแทนด้วยรุ่นจริง — ใช้กับเครื่องทดลอง local เท่านั้น')}
       </p>
+      {/* ทางที่ง่ายที่สุด: วางลิงก์ชีต — ไม่ต้อง export ไฟล์เอง */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+        <input
+          className="input"
+          style={{ flex: '1 1 320px', height: 40, fontSize: 12.5 }}
+          placeholder={t('วางลิงก์ Google Sheet ของภาคที่นี่')}
+          value={sheetUrl}
+          onChange={(e) => setSheetUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void pullFromSheet(); }}
+        />
+        <button
+          className="btn"
+          style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 12.5, flex: 'none' }}
+          disabled={!!pulling || !sheetUrl.trim()}
+          onClick={() => void pullFromSheet()}
+        >
+          {pulling ?? t('ดึงข้อมูลจากชีต')}
+        </button>
+      </div>
+      {pullError && (
+        <p style={{ margin: '0 0 10px', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>{pullError}</p>
+      )}
+      <p className="sub" style={{ margin: '0 0 8px' }}>{t('หรือเลือกไฟล์ CSV ที่ export ไว้แล้ว')}</p>
       <input
         ref={fileRef}
         type="file"

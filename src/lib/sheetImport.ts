@@ -452,3 +452,70 @@ export function parseStudentList(csvText: string): { entries: RosterEntry[]; iss
   });
   return { entries, issues };
 }
+
+/* ── ดึงข้อมูลจากลิงก์ Google Sheet โดยตรง (ฝั่งเบราว์เซอร์) ──────────────
+   ทำไมสำคัญ: อาจารย์เปิดเว็บสาธารณะแล้ววางลิงก์ชีตของภาค ข้อมูลจริงไหลเข้า
+   เครื่องอาจารย์เท่านั้น — ไม่มีข้อมูลผู้ป่วยถูกอัปขึ้นเว็บหรือเข้า repo แม้แต่แถวเดียว
+   สิทธิ์เข้าถึงยังเป็นของชีตเอง (ใครเปิดชีตไม่ได้ก็ดึงไม่ได้) */
+
+/** ดึง sheet id จากลิงก์เต็ม หรือรับ id ตรงๆ ก็ได้ */
+export function sheetIdFromUrl(input: string): string | null {
+  const v = input.trim();
+  const m = v.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{20,}$/.test(v) ? v : null;
+}
+
+const gvizUrl = (id: string, tab: string) =>
+  `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
+
+export interface FetchedTab {
+  tab: string;
+  csv: string;
+}
+
+/**
+ * ดึงทุกแท็บที่ต้องใช้: รายชื่อ + กลุ่ม PT1–PT12
+ * แท็บไหนไม่มีก็ข้าม (ชีตบางปีอาจมีไม่ครบ) — คืนเฉพาะที่ดึงได้จริง
+ */
+export async function fetchCohortTabs(
+  sheetId: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ roster: string | null; groups: FetchedTab[]; failed: string[] }> {
+  const rosterNames = ['Student list', 'Student List', 'รายชื่อ'];
+  const groupNames = Array.from({ length: 12 }, (_, i) => `PT${i + 1}`);
+  const total = 1 + groupNames.length;
+  let done = 0;
+
+  const grab = async (tab: string): Promise<string | null> => {
+    try {
+      const res = await fetch(gvizUrl(sheetId, tab));
+      if (!res.ok) return null;
+      const text = await res.text();
+      // ชีตที่เข้าไม่ได้จะคืนหน้า HTML ไม่ใช่ CSV
+      if (/^\s*</.test(text)) return null;
+      return text;
+    } catch {
+      return null;
+    }
+  };
+
+  let roster: string | null = null;
+  for (const name of rosterNames) {
+    roster = await grab(name);
+    if (roster) break;
+  }
+  done++;
+  onProgress?.(done, total);
+
+  const groups: FetchedTab[] = [];
+  const failed: string[] = [];
+  for (const tab of groupNames) {
+    const csv = await grab(tab);
+    if (csv && /(^|,)"?HN"?(,|$)/im.test(csv.split('\n').slice(0, 6).join('\n'))) groups.push({ tab, csv });
+    else failed.push(tab);
+    done++;
+    onProgress?.(done, total);
+  }
+  return { roster, groups, failed };
+}
