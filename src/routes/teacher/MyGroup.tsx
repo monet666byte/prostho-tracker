@@ -11,6 +11,8 @@ import {
 } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../data/db';
 import { groupShort, splitPersonName } from '../../domain/group';
 import { RiskLegend } from '../../components/teacher/RiskLegend';
 
@@ -45,6 +47,13 @@ export default function MyGroup() {
   const pendingEval = pendingList.length;
   const pendingPeople = new Set(pendingList.map((c) => c.studentId)).size;
 
+  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
+  const advisors = useMemo(() => {
+    const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
+    const ids = students.find((st) => st.group === group)?.advisorIds ?? [];
+    return [...new Set(ids)].map((id) => t(byId.get(id) ?? '')).filter(Boolean).join(' / ');
+  }, [teachersAll, students, group]);
+
   const groupStudents = useMemo(
     () => students.filter((st) => st.group === group).sort((a, b) => a.code.localeCompare(b.code)),
     [students, group],
@@ -59,7 +68,12 @@ export default function MyGroup() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('กลุ่ม')} {groupShort(group)}</h1>
-            <p>{t('{n} คน', { n: groupStudents.length })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}</p>
+            <p>
+              {t('{n} คน', { n: groupStudents.length })}
+              {/* ชื่อที่ปรึกษาเคยมีแค่หน้าตรวจงานรายคน — อาจารย์หาไม่เจอ (ผู้ใช้ถาม 2 ก.ย.) */}
+              {advisors && <> · {t('อาจารย์ที่ปรึกษา')} <b>{advisors}</b></>}
+              {' · '}<b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
+            </p>
           </div>
         </div>
 

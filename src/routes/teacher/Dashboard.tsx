@@ -14,6 +14,8 @@ import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../data/db';
 import { groupShort, groupYear, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
@@ -96,6 +98,16 @@ export default function Dashboard() {
     const labels = [...new Set(students.map((s) => studentCohortLabel(s)))].sort().reverse();
     return labels.join(' · ');
   }, [students]);
+
+  /* ชื่อที่ปรึกษาต่อกลุ่ม — อ่านจาก advisorIds ของนักศึกษาในกลุ่มนั้น */
+  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
+  const advisorsOf = useMemo(() => {
+    const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
+    return (code: string) => {
+      const ids = allStudents.find((st) => st.group === code)?.advisorIds ?? [];
+      return [...new Set(ids)].map((id) => t(byId.get(id) ?? '')).filter(Boolean).join(' / ');
+    };
+  }, [teachersAll, allStudents]);
 
   const activePieces = works.filter((w) => !isComplete(w)).length;
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
@@ -200,7 +212,12 @@ export default function Dashboard() {
                         // เหลือ 2 สถานะพอ: ปกติ = สีเดียวกลางๆ · ต่ำกว่า 55% = ส้มตามภาษาสีเตือนของแอป
                         const lagging = g.percent < 55;
                         return (
-                          <button key={g.code} className={`groupcard${g.code === group ? ' on' : ''}`} onClick={() => setGroup(g.code)}>
+                          <button
+                            key={g.code}
+                            className={`groupcard${g.code === group ? ' on' : ''}`}
+                            title={advisorsOf(g.code) ? `${t('อาจารย์ที่ปรึกษา')} ${advisorsOf(g.code)}` : undefined}
+                            onClick={() => setGroup(g.code)}
+                          >
                             <div className="groupcard__code">{groupShort(g.code)}</div>
                             <div className="groupcard__pct" style={{ color: lagging ? 'var(--warning)' : 'var(--text-secondary)' }}>{g.percent}%</div>
                             <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
@@ -245,7 +262,9 @@ export default function Dashboard() {
                     ? t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })
                     : <>
                         {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${selected.year > 6 ? t('จบแล้ว') : `${t('ชั้นปีที่')} ${selected.year}`} · `}
-                        {t('{n} คน', { n: selected?.students.length ?? 0 })} · {t('เรียงตามรหัส')}
+                        {t('{n} คน', { n: selected?.students.length ?? 0 })}
+                        {advisorsOf(selected?.code ?? '') && <> · {t('อาจารย์ที่ปรึกษา')} <b>{advisorsOf(selected?.code ?? '')}</b></>}
+                        {' · '}{t('เรียงตามรหัส')}
                       </>}
                 </p>
                 <table className="tbl">
