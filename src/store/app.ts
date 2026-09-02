@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db, kvGet, kvSet } from '../data/db';
-import { getSettings, logAudit, saveSettings } from '../data/repo';
+import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/repo';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
@@ -146,6 +146,7 @@ export const useApp = create<AppState>((set, get) => ({
 
     try {
       await seedIfEmpty();
+      await migrateSettings(); // ปรับค่าเริ่มต้นที่แก้ทีหลัง (เช่น เกณฑ์ CD 1→2) ให้เครื่องเก่าด้วย
       const settings = await getSettings();
 
       if (cloudEnabled) {

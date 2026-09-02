@@ -15,10 +15,14 @@ import type {
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 
+/** ขยับเลขนี้เมื่อแก้ค่าเริ่มต้นที่ต้องมีผลกับเครื่องที่ตั้งค่าไว้แล้ว (ดู migrateSettings) */
+export const SETTINGS_VERSION = 2;
+
 export const DEFAULT_SETTINGS: Settings = {
-  // เกณฑ์สะสม 2 ปี — CD 1 · RPD 2 · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
+  // เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
   // และทุกปีต้องจบอย่างน้อย 3 ชิ้นงาน
-  req: { cd: 1, rpd: 2, crown: 2, postCoreMin: 1, perYear: 3, years: 2 },
+  // CD = 2 เพราะนับต่อ arch (บน+ล่าง) — ผู้ใช้ยืนยัน 2 ก.ย. ว่าขั้นต่ำคือ 2 ไม่ใช่ 1
+  req: { cd: 2, rpd: 2, crown: 2, postCoreMin: 1, perYear: 3, years: 2 },
   periodsPerWeek: 2, // สมมติฐานตั้งต้น — อาจารย์ปรับได้ในหน้าตั้งค่าเกณฑ์
   // ค่าเริ่มต้นนับรายแถวตามชีตจริง (tab "Case CD" คอลัมน์ Count CDA ให้ 1–2 ต่อผู้ป่วย) — รอภาควิชายืนยัน
   pairCountsAsOne: false,

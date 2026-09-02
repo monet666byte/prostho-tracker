@@ -13,7 +13,7 @@ import type {
   CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
-import { DEFAULT_SETTINGS, DEMO } from './seed';
+import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/image';
 
@@ -36,6 +36,21 @@ export async function getWorkpiece(id: string): Promise<WorkpieceView | null> {
   if (!w) return null;
   const patient = await db.patients.get(w.patientId);
   return patient ? { ...w, patient } : null;
+}
+
+/**
+ * ปรับค่าเริ่มต้นที่แก้ทีหลังให้มีผลกับเครื่องที่ตั้งค่าไว้แล้ว — รันครั้งเดียวตอนเปิดแอป
+ * v2: เกณฑ์ CD 1 → 2 (นับต่อ arch · ผู้ใช้ยืนยัน 2 ก.ย.) — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
+ * ถ้าอาจารย์ตั้งเลขอื่นไว้เอง จะไม่ถูกเขียนทับ
+ */
+export async function migrateSettings(): Promise<void> {
+  const ver = (await kvGet<number>('settingsVersion', 1)) ?? 1;
+  if (ver >= SETTINGS_VERSION) return;
+  const cur = await getSettings();
+  if (cur.req.cd === 1) {
+    await saveSettings({ req: { ...cur.req, cd: 2 } });
+  }
+  await kvSet('settingsVersion', SETTINGS_VERSION);
 }
 
 export async function getSettings(): Promise<Settings> {
