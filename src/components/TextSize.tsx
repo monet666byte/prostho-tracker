@@ -15,10 +15,14 @@ function apply(zoom: Zoom) {
 }
 
 export function initTextSize() {
+  // ค่าเริ่มต้น = เล็กสุด (md) ทุกเครื่องรวมถึง iPad · ตั้ง attribute ให้ชัดเจนเสมอ
+  // เพื่อให้ CSS คาดเดาได้ · ที่ทำให้ iPad ตัวโตกว่าที่ตั้งไว้คือ text auto-sizing ของ iOS
+  // ซึ่งล็อกไว้แล้วใน base.css (-webkit-text-size-adjust: 100%)
+  let zoom: Zoom = 'md';
   try {
-    const saved = localStorage.getItem('uiZoom') as Zoom | null;
-    if (saved) document.documentElement.setAttribute('data-zoom', saved);
+    zoom = (localStorage.getItem('uiZoom') as Zoom | null) ?? 'md';
   } catch { /* private mode */ }
+  document.documentElement.setAttribute('data-zoom', zoom);
 }
 
 /** ปุ่มปรับขนาดตัวหนังสือ ก ก ก — สำหรับอาจารย์ที่ต้องการตัวใหญ่ */

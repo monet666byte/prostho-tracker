@@ -1,5 +1,10 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+/* iOS/iPadOS ขยายขนาดตัวอักษรให้เอง (text auto-sizing) เมื่อเจอคอลัมน์กว้างๆ
+   → ชื่อในตารางฝั่งอาจารย์ตัดบรรทัดบน iPad ทั้งที่ตั้งขนาดเล็กสุดแล้ว (ผู้ใช้เจอ 2 ก.ย.)
+   ล็อกไว้ 100% ให้ขนาดเป็นไปตามที่ออกแบบ — ผู้ใช้ยังปรับเองได้ที่ปุ่ม ก ก ก */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
 body {
   margin: 0;
   font-family: var(--font-body);
