@@ -137,7 +137,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <span>
             {t('กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})', {
               other:groupShort(teacherGroup),
-              mine: myGroup!.replace('TH-', ''),
+              mine: groupShort(myGroup!),
             })}
             <b>{t(' · การเข้าดูถูกบันทึกไว้')}</b>
           </span>
