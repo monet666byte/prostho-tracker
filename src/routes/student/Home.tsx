@@ -7,6 +7,7 @@ import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { relative, toISODate, weekMonday } from '../../lib/date';
+import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
@@ -314,7 +315,11 @@ export default function Home() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-            <span style={{ font: '700 19px var(--font-head)' }}>{t(student?.name ?? 'นศ. Liv')}</span>
+            {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>" (ผู้ใช้ขอ 2 ก.ย.)
+                ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
+            <span style={{ font: '700 19px var(--font-head)' }}>
+              {t('นศ.')} {firstNameOnly(t(student?.name ?? 'นศ. Liv'))}
+            </span>
             <span className="groupchip">{groupShort((student?.group ?? '')) || '—'}</span>
             <BetaBadge compact />
           </div>

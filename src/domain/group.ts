@@ -33,3 +33,11 @@ export function splitPersonName(name: string): [string, string] {
   if (i < 0 || /^(นศ|อ|ผู้ป่วย)\.?$/.test(v.slice(0, i))) return [v, ''];
   return [v.slice(0, i), v.slice(i + 1)];
 }
+
+/** ชื่อต้นแบบไม่มีคำนำหน้า — "นางสาวนิสรีน เจะกา" → "นิสรีน" · "นศ. Liv" → "Liv"
+ *  ใช้ทักทายบนหน้านักศึกษา (ชื่อเต็มยาวจนขึ้นบรรทัดที่สอง — ผู้ใช้ขอ 2 ก.ย.) */
+export function firstNameOnly(name: string): string {
+  const [first] = splitPersonName(name);
+  const stripped = first.replace(/^(นางสาว|น\.ส\.|นส\.|นาย|นาง|นศ\.|อ\.)\s*/, '').trim();
+  return stripped || first;
+}

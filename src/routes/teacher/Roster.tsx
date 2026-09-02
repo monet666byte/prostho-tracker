@@ -87,7 +87,17 @@ export default function Roster() {
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [isAdmin]);
 
-  const people = role === 'student' ? students : teachers;
+  /* อาจารย์: ซ่อนบัญชีเดโมที่ค้างอยู่ (id ขึ้นต้น tc-TH…) เมื่อมีอาจารย์จริงในระบบแล้ว
+     (ผู้ใช้เจอ 2 ก.ย.: dropdown ยาวเป็นร้อยชื่อ "อ. ช." ซ้ำกัน)
+     ⚠️ ห้ามกรองด้วย "มีนักศึกษาผูกอยู่ไหม" — อาจารย์ที่เพิ่งเพิ่ม (เช่น ที่ปรึกษาปี 6
+     ที่ยังไม่ได้ผูกกลุ่ม) จะหายไปจากรายการทันที เลือกให้สิทธิ์เข้าระบบไม่ได้ */
+  const activeTeachers = useMemo(() => {
+    const isDemoSeeded = (id: string) => /^tc-TH\d*-/.test(id);
+    const real = teachers.filter((tc) => !isDemoSeeded(tc.id));
+    return real.length ? real : teachers;
+  }, [teachers]);
+
+  const people = role === 'student' ? students : activeTeachers;
   const sortedPeople = useMemo(
     () => [...people].sort((a, b) => a.name.localeCompare(b.name, 'th')),
     [people],

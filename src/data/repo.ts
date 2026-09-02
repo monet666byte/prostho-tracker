@@ -13,7 +13,7 @@ import type {
   CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
-import { DEFAULT_SETTINGS } from './seed';
+import { DEFAULT_SETTINGS, DEMO } from './seed';
 import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/image';
 
@@ -917,6 +917,12 @@ export async function replaceWithRoster(
       d.updates.clear(), d.photos.clear(), d.checkins.clear(), d.reviews.clear(),
       d.submissions.clear(), d.issues.clear(), d.queue.clear(),
     ]);
+    /* ล้างอาจารย์เดโมที่ไม่มีใครอ้างถึงแล้ว — ไม่งั้นค้างเป็นร้อยรายการไปกอง dropdown
+       "เพิ่มคนเข้าระบบ" (ผู้ใช้เจอ 2 ก.ย.: 138 คนในระบบ ใช้จริง 18)
+       เก็บบัญชีที่กำลังล็อกอินไว้ ไม่งั้น session อาจารย์หลุดกลางทาง */
+    const keepIds = new Set([...teachers.keys(), DEMO.teacherId]);
+    const stale = (await d.teachers.toArray()).filter((tc) => !keepIds.has(tc.id));
+    if (stale.length) await d.teachers.bulkDelete(stale.map((tc) => tc.id));
     await d.teachers.bulkPut([...teachers.values()]);
     await d.students.bulkAdd(students);
     await d.groups.bulkAdd([...groupsMap.values()]);

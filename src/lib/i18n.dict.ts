@@ -130,6 +130,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'นศ.': 'Student',
   'เป้าเริ่มไต่หลังเดือนที่ 3 — เคสแรกใช้เวลา 2–4 เดือน จบไม่ได้เร็วกว่านั้น': 'The target only starts climbing after month 3 \u2014 a first case takes 2\u20134 months, it cannot finish sooner',
   'รุ่นก่อน': 'Prev cohort',
   'รุ่นก่อน ณ เดือนเดียวกัน': 'Previous cohort, same month',
