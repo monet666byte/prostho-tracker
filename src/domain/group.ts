@@ -24,7 +24,7 @@ export function groupLabel(code: string | undefined): string {
   return y === 5 ? groupShort(code) : `${groupShort(code)}·${y}`;
 }
 
-/** แยก "นายธนาเดช สินส่งเสริม" → ["นายธนาเดช", "สินส่งเสริม"] (ตัดที่ช่องว่างแรก)
+/** แยก "นายสมชาย ใจดี" → ["นายสมชาย", "ใจดี"] (ตัดที่ช่องว่างแรก)
  *  ชื่อเดโมสั้นๆ ("นศ. ก") หรือไม่มีช่องว่าง → นามสกุลเป็นค่าว่าง ผู้เรียกไม่ต้องเช็คเอง */
 export function splitPersonName(name: string): [string, string] {
   const v = name.replace(/\s+/g, ' ').trim();
@@ -34,7 +34,7 @@ export function splitPersonName(name: string): [string, string] {
   return [v.slice(0, i), v.slice(i + 1)];
 }
 
-/** ชื่อต้นแบบไม่มีคำนำหน้า — "นางสาวนิสรีน เจะกา" → "นิสรีน" · "นศ. Liv" → "Liv"
+/** ชื่อต้นแบบไม่มีคำนำหน้า — "นางสาวสมหญิง ใจดี" → "สมหญิง" · "นศ. Liv" → "Liv"
  *  ใช้ทักทายบนหน้านักศึกษา (ชื่อเต็มยาวจนขึ้นบรรทัดที่สอง — ผู้ใช้ขอ 2 ก.ย.) */
 export function firstNameOnly(name: string): string {
   const [first] = splitPersonName(name);
