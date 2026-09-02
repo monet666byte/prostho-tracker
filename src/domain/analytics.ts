@@ -32,11 +32,10 @@ function byStudent(works: Workpiece[]): Map<string, Workpiece[]> {
 export type RiskLevel = 'high' | 'medium' | 'ok';
 
 /**
- * สมมติฐานจังหวะงาน (แก้ได้เมื่อภาควิชามีตัวเลขจริง):
- * - คลินิกราว 2 คาบ/สัปดาห์ (สมุด logbook จริงมีหลายรายการต่อสัปดาห์)
- * - หนึ่ง step ไม่ได้ผ่านในคาบเดียวเสมอ — เผื่อเฉลี่ย ~1.5 คาบ/step
+ * สมมติฐานจังหวะงาน:
+ * - คาบ/สัปดาห์ อ่านจาก settings.periodsPerWeek (อาจารย์ปรับได้ — ตารางจริงภาคเป็นคนรู้)
+ * - หนึ่ง step ไม่ได้ผ่านในคาบเดียวเสมอ — เผื่อเฉลี่ย ~1.5 คาบ/step (ยังเป็นสมมติฐาน)
  */
-const PERIODS_PER_WEEK = 2;
 const PERIODS_PER_STEP = 1.5;
 
 export interface RiskRow {
@@ -99,7 +98,7 @@ export function riskRows(
   const map = byStudent(works);
   const year = academicYear(now);
   const left = monthsRemaining(now);
-  const periodsLeft = Math.round(left * 4.33 * PERIODS_PER_WEEK);
+  const periodsLeft = Math.round(left * 4.33 * (settings.periodsPerWeek || 2));
 
   const checkinsByStudent = new Map<string, CheckIn[]>();
   checkins.forEach((c) => checkinsByStudent.set(c.studentId, [...(checkinsByStudent.get(c.studentId) ?? []), c]));

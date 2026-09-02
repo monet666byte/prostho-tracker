@@ -164,6 +164,18 @@ export default function Settings() {
 
           <div style={{ display: 'grid', gap: 16 }}>
             <div className="panel">
+              <h3>{t('คาบคลินิกต่อสัปดาห์')}</h3>
+              <p className="sub">{t('ใช้คำนวณสีเสี่ยง "ทันเกณฑ์ปีนี้ไหม" — ตัวเลขจริงขึ้นกับตารางของภาค ปรับให้ตรงได้ที่นี่')}</p>
+              <div className="seg" style={{ marginTop: 11 }}>
+                {[1, 2, 3, 4].map((n) => (
+                  <button key={n} data-on={settings.periodsPerWeek === n} onClick={() => updateSettings({ periodsPerWeek: n })}>
+                    {n} {t('คาบ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel">
               <h3>{t('นิยาม “เคสค้าง”')}</h3>
               <p className="sub">{t('ชิ้นงานที่ไม่มีการอัปเดตนานเกินกำหนด จะถูก flag ทั้งฝั่งนักศึกษาและ dashboard')}</p>
               <div className="seg" style={{ marginTop: 11 }}>

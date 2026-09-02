@@ -221,6 +221,8 @@ export interface Settings {
   /** เกณฑ์รายปีนับทุกประเภท หรือเฉพาะ 4 ประเภทหลัก — รอภาควิชายืนยัน */
   perYearCountsAllTypes: boolean;
   stale: number; // วัน
+  /** คาบคลินิกต่อสัปดาห์ (ใช้คำนวณสีเสี่ยง "ทันเกณฑ์ไหม") — ตารางจริงภาคเป็นคนรู้ ให้ปรับเองได้ */
+  periodsPerWeek: number;
   photoRequired: boolean;
   remindDays: number; // เตือนล่วงหน้ากี่วัน
 }
