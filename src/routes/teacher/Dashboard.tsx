@@ -261,11 +261,11 @@ export default function Dashboard() {
                   {query
                     ? t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })
                     : <>
-                        {/* เน้นเฉพาะชื่อที่ปรึกษา — ส่วนรุ่น/ชั้นปี/จำนวนคนเป็นข้อความปกติ (ผู้ใช้ขอ 2 ก.ย.) */}
-                        {selected?.students[0] && `${studentCohortLabel(selected.students[0].student)} · ${studentYear(selected.students[0].student) > 6 ? t('จบแล้ว') : `${t('ชั้นปีที่')} ${studentYear(selected.students[0].student)}`} · `}
-                        {t('{n} คน', { n: selected?.students.length ?? 0 })}
-                        {advisorsOf(selected?.code ?? '') && <> · {t('อาจารย์ที่ปรึกษา')} <b>{advisorsOf(selected?.code ?? '')}</b></>}
-                        {' · '}{t('เรียงตามรหัส')}
+                        {/* เหลือแค่ที่ปรึกษา — รุ่น/ชั้นปี/จำนวนคน ซ้ำกับหัวเรื่องและ dropdown อยู่แล้ว
+                            (ผู้ใช้ขอตัดออก 2 ก.ย.) */}
+                        {advisorsOf(selected?.code ?? '')
+                          ? <>{t('อาจารย์ที่ปรึกษา')} <b>{advisorsOf(selected?.code ?? '')}</b></>
+                          : t('{n} คน', { n: selected?.students.length ?? 0 })}
                       </>}
                 </p>
                 <table className="tbl">

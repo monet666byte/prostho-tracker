@@ -943,8 +943,11 @@ export async function replaceWithRoster(
   const students = entries.map((e) => {
     const names = e.advisor.split('/').map((x) => x.trim()).filter(Boolean);
     const adv: string[] = names.slice(0, 2).map((n) => {
-      const id = `tc-r${dtmu}-${n}`;
-      if (!teachers.has(id)) teachers.set(id, { id, name: `อ.${n}`, title: 'อาจารย์ที่ปรึกษากลุ่ม' });
+      // ชีตบางรุ่นใส่คำนำหน้า "อ." มาให้แล้ว (รุ่น 54) บางรุ่นไม่ใส่ (รุ่น 55)
+      // ถ้าเติมทื่อๆ จะได้ "อ.อ.สมศักดิ์" — ตัดของเดิมออกก่อนเสมอ
+      const bare = n.replace(/^(อ\.|อ|ผศ\.|รศ\.|ศ\.|ดร\.)\s*/g, '').trim() || n;
+      const id = `tc-r${dtmu}-${bare}`;
+      if (!teachers.has(id)) teachers.set(id, { id, name: `อ.${bare}`, title: 'อาจารย์ที่ปรึกษากลุ่ม' });
       return id;
     });
     while (adv.length < 2) adv.push(adv[0] ?? `tc-r${dtmu}-unknown`);
