@@ -130,6 +130,8 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'ผ่านแล้ว {p} จาก 10 ขั้น': '{p} of 10 steps done',
+  'กำลังทำขั้น {n}': 'doing step {n}',
   'หมายเหตุ/สถานะผู้ป่วยจากชีต': 'Patient note from sheet',
   'อัปเดตล่าสุด': 'Last updated',
   'ชำระเงิน': 'Payment',

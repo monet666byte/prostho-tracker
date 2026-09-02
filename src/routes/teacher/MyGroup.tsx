@@ -187,14 +187,17 @@ export default function MyGroup() {
                       <td>
                         {main ? (
                           <div className="worknow">
-                            <span className="bar" style={{ height: 6, width: 90, flex: 'none' }}>
+                            {/* เลขเดียวพอ: แถบ = ผ่านแล้วกี่ขั้น (มี tooltip) · ข้อความ = กำลังทำขั้นไหน
+                               เดิมมี "3/10" คู่กับ "CD-4" คนอ่านเห็นเลขชนกัน (ผู้ใช้งง 2 ก.ย.) */}
+                            <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: main.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
                               <i style={{ width: `${(main.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                             </span>
-                            <span className="mono faint" style={{ fontSize: 10, flex: 'none' }}>{main.progression}/10</span>
                             <span className="badge" style={{ background: TYPES[main.type].tint, color: TYPES[main.type].ink, flex: 'none' }}>
-                              {main.code}
+                              {TYPES[main.type].prefix}
                             </span>
-                            <span className="worknow__name">{main.name}</span>
+                            <span className="worknow__name">
+                              {t('กำลังทำขั้น {n}', { n: Math.min(10, main.progression + 1) })} · {main.name}
+                            </span>
                             {r.stuckPeriods >= 2 ? (
                               <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)', flex: 'none' }}>
                                 {t('ติดมา {n} คาบ', { n: r.stuckPeriods })}
@@ -229,14 +232,15 @@ export default function MyGroup() {
                           <td /><td /><td />
                           <td>
                             <div className="worknow">
-                              <span className="bar" style={{ height: 6, width: 90, flex: 'none' }}>
+                              <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: pc.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
                                 <i style={{ width: `${(pc.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                               </span>
-                              <span className="mono faint" style={{ fontSize: 10, flex: 'none' }}>{pc.progression}/10</span>
                               <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
-                                {pc.code}
+                                {TYPES[pc.type].prefix}
                               </span>
-                              <span className="worknow__name" style={{ fontWeight: 400 }}>{pc.name}</span>
+                              <span className="worknow__name" style={{ fontWeight: 400 }}>
+                                {t('กำลังทำขั้น {n}', { n: Math.min(10, pc.progression + 1) })} · {pc.name}
+                              </span>
                               <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
                           </td>
@@ -251,7 +255,6 @@ export default function MyGroup() {
                               <span className="bar" style={{ height: 6, width: 90, flex: 'none' }}>
                                 <i style={{ width: '100%', background: 'var(--success)' }} />
                               </span>
-                              <span className="mono" style={{ fontSize: 10, flex: 'none', color: 'var(--success)' }}>10/10</span>
                               <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
                                 {TYPES[pc.type].prefix}
                               </span>
