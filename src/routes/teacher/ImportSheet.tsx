@@ -274,6 +274,12 @@ export function ImportSheetBody() {
 /* ── นำเข้าทั้งรุ่นจากชีตจริง (Google Sheet → CSV รายแท็บ) ─────────────────
    เลือกไฟล์ทีเดียวหลายไฟล์: Student list + PT1–PT12 — ระบบแยกเองจากเนื้อไฟล์
    ใช้กับ local เท่านั้นตอนนี้ (โหมดเดโมไม่มีการเชื่อมเซิร์ฟเวอร์อยู่แล้ว) */
+/** id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง ไม่งั้นงานจะจับคู่คนไม่เจอ */
+function sidOf(code: string, group: string): string {
+  const dtmu = 2500 + Number(code.slice(0, 2)) + 4 - 2514;
+  return `st-TH${dtmu}-${group.replace(/^TH\d*-/, '')}-${code}`;
+}
+
 function WholeCohortImport() {
   const { showToast, touch, session, signOut } = useApp();
   const [roster, setRoster] = useState<{ entries: RosterEntry[]; issues: number } | null>(null);
@@ -312,7 +318,7 @@ function WholeCohortImport() {
         setRoster(null);
         setPullError(t('ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้'));
       }
-      const byCode = new Map(entries.map((e) => [e.code, `st-r55-${e.code}`]));
+      const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
       setGroups(res.groups.map((g) => ({ name: g.tab, res: importGroupCsv(g.csv, (code) => byCode.get(code) ?? null) })));
     } finally {
       setPulling(null);
@@ -333,7 +339,7 @@ function WholeCohortImport() {
     } else {
       setRoster(null);
     }
-    const byCode = new Map(entries.map((e) => [e.code, `st-r55-${e.code}`]));
+    const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
     const gs = texts
       .filter((f) => f !== rosterFile && /(^|,)"?HN"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')))
       .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null) }));
@@ -378,12 +384,12 @@ function WholeCohortImport() {
         }
       }
       await logAudit(
-        t('นำเข้าทั้งรุ่นจากชีต: {s} คน · {g} กลุ่ม · {p} ผู้ป่วย · {w} ชิ้นงาน', { s: r.students, g: r.groups, p: pats, w: wks }),
+        t('นำเข้าทั้งรุ่นจากชีต DTMU{d}: {s} คน · {g} กลุ่ม · {p} ผู้ป่วย · {w} ชิ้นงาน', { d: r.dtmu, s: r.students, g: r.groups, p: pats, w: wks }),
         currentActor(),
         {},
       );
       touch();
-      setDone(t('นำเข้าเสร็จ: {s} คน · {p} ผู้ป่วย · {w} ชิ้นงาน — ข้อมูลเดโมถูกแทนที่แล้ว', { s: r.students, p: pats, w: wks }));
+      setDone(t('นำเข้ารุ่น DTMU{d} เสร็จ: {s} คน · {p} ผู้ป่วย · {w} ชิ้นงาน', { d: r.dtmu, s: r.students, p: pats, w: wks }));
       showToast({ message: t('นำเข้าทั้งรุ่นเรียบร้อย'), tone: 'success' });
       setGroups([]);
       setRoster(null);
@@ -401,7 +407,7 @@ function WholeCohortImport() {
       <p className="sub" style={{ margin: '4px 0 10px' }}>
         {t('วางลิงก์ชีตแล้วกดดึง — หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12)')}<br />
         <b>{t('🔒 ข้อมูลวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้โดยตรง ไม่ถูกอัปขึ้นเว็บและไม่ออกจากเครื่อง')}</b><br />
-        {t('⚠️ การยืนยันจะล้างข้อมูลเดโมทั้งหมดแล้วแทนด้วยรุ่นจริง — ใช้กับเครื่องทดลอง local เท่านั้น')}
+        {t('⚠️ การยืนยันจะแทนที่ข้อมูลของรุ่นนี้ (รุ่นอื่นที่นำเข้าไว้ไม่ถูกแตะ) — ใช้กับเครื่องทดลอง local เท่านั้น')}
       </p>
       {/* ทางที่ง่ายที่สุด: วางลิงก์ชีต — ไม่ต้อง export ไฟล์เอง */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>

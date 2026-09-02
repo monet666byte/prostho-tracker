@@ -110,7 +110,8 @@ export function detectType(label: string): WorkType | null {
   if (/\bcom\.?\s*a(pd)?\b/.test(v)) return 'CD';
   if (/\bpcc\b/.test(v)) return 'PC';
   if (/post\s*-?\s*core|postcore/.test(v)) return 'PC';
-  if (/crown|bridge|cr\s*,?\s*br|\bpfm\b/.test(v)) return 'CB';
+  // FMC = full metal crown · "Cr 14" = crown ซี่ 14 (เจอในชีตรุ่น 54 — ผู้ใช้ส่งมา 2 ก.ย.)
+  if (/crown|bridge|cr\s*,?\s*br|\bpfm\b|\bfmc\b|\bcr\b/.test(v)) return 'CB';
   if (/rpd|co-?cr/.test(v)) return 'RPD';
   if (/complicated\s*apd/.test(v)) return 'CD';
   if (/apd/.test(v)) return 'APD';
@@ -242,17 +243,21 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
 
     const hn = get(cHn);
     const rawName = get(cName).replace(/\s+/g, ' ').trim();
-    const name = rawName || `ผู้ป่วย HN ${hn || '?'}`;
+    const name = rawName || (hn ? `ผู้ป่วย HN ${hn}` : '(ไม่ระบุชื่อในชีต)');
+    /* ⚠️ แถวที่มีงานจริง (ติ๊กครบ ระบุ Completion) แต่ไม่กรอกทั้ง HN และชื่อ — เจอในชีตรุ่น 54
+       เป็นเคส Recall ที่ต่อจากผู้ป่วยแถวก่อน เดิมถูกทิ้งเงียบๆ (ผู้ใช้ขอ 2 ก.ย.: ห้ามมีอะไรหาย)
+       ตอนนี้นำเข้าโดยตั้งผู้ป่วยชั่วคราวแยกรายแถว แล้วติดธงให้กลับไปเติมในชีต */
     if (!hn && !rawName) {
-      issues.push({ row: rowNo, column: 'HN', value: '(ว่าง)', problem: 'ไม่มีทั้ง HN และชื่อผู้ป่วย — ใช้แยกผู้ป่วยไม่ได้' });
-      skipped++;
-      return;
+      issues.push({
+        row: rowNo, column: 'HN', value: workLabel.slice(0, 26),
+        problem: 'ไม่มีทั้ง HN และชื่อผู้ป่วย — นำเข้าโดยตั้งผู้ป่วยชั่วคราว โปรดเติมในชีตแล้วนำเข้าซ้ำ',
+      });
     }
     if (!hn) {
       // ชีตจริงมีเคสคืบหน้าแล้วแต่ยังไม่กรอก HN เยอะ — ทิ้งไม่ได้ ใช้ชื่อจัดกลุ่มแทนไปก่อน
       issues.push({ row: rowNo, column: 'HN', value: rawName.slice(0, 30), problem: 'ไม่มี HN — จัดกลุ่มผู้ป่วยตามชื่อแทน โปรดเติม HN ในชีตแล้วนำเข้าซ้ำ' });
     }
-    const pkey = hn || `ชื่อ:${rawName}`;
+    const pkey = hn || (rawName ? `ชื่อ:${rawName}` : `แถว:${rowNo}`);
 
     const accepted = parseSheetDate(get(cAccepted));
     if (get(cAccepted) && !accepted) {

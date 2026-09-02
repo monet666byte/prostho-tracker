@@ -903,52 +903,101 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
 /* ── นำเข้าทั้งรุ่นจากชีตจริง (local เท่านั้น) ─────────────────────────────
    ล้างข้อมูลเดโมออกก่อน (คงตาราง teachers/settings/audit ไว้ — session อาจารย์ไม่หลุด)
    แล้วลงรายชื่อนักศึกษา+กลุ่มจากแท็บ Student list ของชีต */
+/** รุ่นจากรหัสนักศึกษา: "6504001" → เข้ามหาลัย 2565 → ขึ้นคลินิกปี 5 ปี 2569 = DTMU55 */
+export function dtmuFromCode(code: string): number {
+  return 2500 + Number(code.slice(0, 2)) + 4 - 2514;
+}
+
+/**
+ * รุ่นของ "ชีตทั้งแผ่น" — ใช้เสียงข้างมากของรหัส ไม่ใช่รายคน
+ *
+ * ⚠️ ชีตชั้นปีหนึ่งมีนักศึกษาตกค้าง/ซ้ำชั้นจากรุ่นก่อนปนอยู่ได้ (ชีตปี 6 จริงมีรหัส 63 อยู่ 3 คน
+ * ในกลุ่ม 64 จำนวน 84 คน — ผู้ใช้ส่งมา 2 ก.ย.) ถ้าคิดรุ่นรายคน คนเหล่านั้นจะถูกคำนวณเป็น
+ * "ปี 7" แล้วหลุดไปกองรุ่นที่จบแล้วทันที ทั้งที่กำลังเรียนปี 6 อยู่จริง
+ * จึงยึดว่า "ชีต = ชั้นเรียน" — ทุกคนในชีตอยู่ชั้นปีเดียวกัน
+ */
+export function cohortOfRoster(entries: ReadonlyArray<{ code: string }>): { dtmu: number; odd: string[] } {
+  const votes = new Map<number, number>();
+  entries.forEach((e) => {
+    const d = dtmuFromCode(e.code);
+    votes.set(d, (votes.get(d) ?? 0) + 1);
+  });
+  const dtmu = [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 55;
+  const odd = entries.filter((e) => dtmuFromCode(e.code) !== dtmu).map((e) => e.code);
+  return { dtmu, odd };
+}
+
 export async function replaceWithRoster(
   entries: Array<{ code: string; name: string; group: string; advisor: string }>,
   actor: string,
-): Promise<{ students: number; groups: number }> {
+  forceDtmu?: number,
+): Promise<{ students: number; groups: number; dtmu: number; replaced: number; odd: string[] }> {
   const { db: d } = await import('./db');
+
+  const detected = cohortOfRoster(entries);
+  const dtmu = forceDtmu ?? detected.dtmu;
+  const entryYear = dtmu + 2514;
+
   const groupsMap = new Map<string, { code: string; advisorIds: [string, string]; studentIds: string[] }>();
   const teachers = new Map<string, { id: string; name: string; title: string }>();
   const students = entries.map((e) => {
     const names = e.advisor.split('/').map((x) => x.trim()).filter(Boolean);
     const adv: string[] = names.slice(0, 2).map((n) => {
-      const id = `tc-r55-${n}`;
+      const id = `tc-r${dtmu}-${n}`;
       if (!teachers.has(id)) teachers.set(id, { id, name: `อ.${n}`, title: 'อาจารย์ที่ปรึกษากลุ่ม' });
       return id;
     });
-    while (adv.length < 2) adv.push(adv[0] ?? 'tc-r55-unknown');
-    const g = groupsMap.get(e.group) ?? { code: e.group, advisorIds: [adv[0], adv[1]] as [string, string], studentIds: [] };
-    const sid = `st-r55-${e.code}`;
+    while (adv.length < 2) adv.push(adv[0] ?? `tc-r${dtmu}-unknown`);
+    // รหัสกลุ่มติด tag รุ่น — PT1 ของคนละรุ่นจะได้ไม่ชนกัน (รูปแบบเดียวกับหน้านำเข้ารายชื่อ)
+    const groupCode = `TH${dtmu}-${e.group.replace(/^TH\d*-/, '')}`;
+    const g = groupsMap.get(groupCode) ?? { code: groupCode, advisorIds: [adv[0], adv[1]] as [string, string], studentIds: [] };
+    const sid = `st-${groupCode}-${e.code}`;
     g.studentIds.push(sid);
-    groupsMap.set(e.group, g);
-    return { id: sid, code: e.code, name: e.name, group: e.group, year: 5, advisorIds: [adv[0], adv[1]] as [string, string] };
+    groupsMap.set(groupCode, g);
+    return {
+      id: sid, code: e.code, name: e.name, group: groupCode,
+      year: 5, entryYear, advisorIds: [adv[0], adv[1]] as [string, string],
+    };
   });
 
+  let replaced = 0;
   await d.transaction('rw', [d.students, d.groups, d.patients, d.workpieces, d.updates, d.photos, d.checkins, d.reviews, d.submissions, d.issues, d.queue, d.teachers, d.audit], async () => {
-    // ล้างเฉพาะข้อมูลงาน — teachers เดิมคงไว้ (บัญชีเดโมของอาจารย์ยังล็อกอินได้)
-    await Promise.all([
-      d.students.clear(), d.groups.clear(), d.patients.clear(), d.workpieces.clear(),
-      d.updates.clear(), d.photos.clear(), d.checkins.clear(), d.reviews.clear(),
-      d.submissions.clear(), d.issues.clear(), d.queue.clear(),
-    ]);
-    /* ล้างอาจารย์เดโมที่ไม่มีใครอ้างถึงแล้ว — ไม่งั้นค้างเป็นร้อยรายการไปกอง dropdown
-       "เพิ่มคนเข้าระบบ" (ผู้ใช้เจอ 2 ก.ย.: 138 คนในระบบ ใช้จริง 18)
-       เก็บบัญชีที่กำลังล็อกอินไว้ ไม่งั้น session อาจารย์หลุดกลางทาง */
-    const keepIds = new Set([...teachers.keys(), DEMO.teacherId]);
+    /* ⚠️ ล้างเฉพาะ "รุ่นนี้" — รุ่นอื่นที่นำเข้าไว้ก่อนต้องไม่หาย (ผู้ใช้ถาม 2 ก.ย.)
+       เดิมล้างทุกตาราง ทำให้นำเข้าชีตปี 6 ทับข้อมูลปี 5 ทั้งชุด */
+    const old = (await d.students.toArray()).filter((st) => st.group.startsWith(`TH${dtmu}-`) || students.some((n) => n.code === st.code));
+    const oldIds = new Set(old.map((st) => st.id));
+    replaced = old.length;
+    if (oldIds.size) {
+      const oldWorks = (await d.workpieces.toArray()).filter((w) => oldIds.has(w.studentId));
+      const workIds = new Set(oldWorks.map((w) => w.id));
+      await d.workpieces.bulkDelete([...workIds]);
+      await d.patients.bulkDelete((await d.patients.toArray()).filter((p) => oldIds.has(p.ownerStudentId)).map((p) => p.id));
+      await d.updates.bulkDelete((await d.updates.toArray()).filter((u) => workIds.has(u.workpieceId)).map((u) => u.id));
+      await d.photos.bulkDelete((await d.photos.toArray()).filter((ph) => workIds.has(ph.workpieceId)).map((ph) => ph.id));
+      await d.checkins.bulkDelete((await d.checkins.toArray()).filter((c) => oldIds.has(c.studentId)).map((c) => c.id));
+      await d.reviews.bulkDelete((await d.reviews.toArray()).filter((r) => workIds.has(r.workpieceId)).map((r) => r.id));
+      await d.students.bulkDelete([...oldIds]);
+      await d.groups.bulkDelete((await d.groups.toArray()).filter((g) => g.code.startsWith(`TH${dtmu}-`)).map((g) => g.code));
+    }
+    // ล้างอาจารย์เดโมที่ไม่มีใครอ้างถึงแล้ว (เก็บบัญชีที่กำลังล็อกอิน)
+    const stillUsed = new Set((await d.students.toArray()).flatMap((st) => st.advisorIds ?? []));
+    const keepIds = new Set([...teachers.keys(), ...stillUsed, DEMO.teacherId]);
     const stale = (await d.teachers.toArray()).filter((tc) => !keepIds.has(tc.id));
     if (stale.length) await d.teachers.bulkDelete(stale.map((tc) => tc.id));
+
     await d.teachers.bulkPut([...teachers.values()]);
-    await d.students.bulkAdd(students);
-    await d.groups.bulkAdd([...groupsMap.values()]);
+    await d.students.bulkPut(students);
+    await d.groups.bulkPut([...groupsMap.values()]);
     await d.audit.add({
       id: uid('a'),
-      text: `นำเข้ารายชื่อทั้งรุ่นจากชีตจริง: ${students.length} คน · ${groupsMap.size} กลุ่ม (ล้างข้อมูลเดโมแล้ว)`,
+      text: `นำเข้ารายชื่อรุ่น DTMU${dtmu} จากชีต: ${students.length} คน · ${groupsMap.size} กลุ่ม`
+        + (replaced ? ` (แทนที่ของเดิม ${replaced} คน)` : '')
+        + (detected.odd.length ? ` · รหัสต่างรุ่น ${detected.odd.length} คน จัดเข้าชั้นเดียวกับชีต` : ''),
       who: actor,
       at: new Date().toISOString(),
     } as never);
   });
-  return { students: students.length, groups: groupsMap.size };
+  return { students: students.length, groups: groupsMap.size, dtmu, replaced, odd: detected.odd };
 }
 
 
