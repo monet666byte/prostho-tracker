@@ -130,6 +130,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'บันทึก': 'Save',
   'กำลังบันทึกลงเครื่อง…': 'Saving to this device\u2026',
   '🔒 ข้อมูลวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้โดยตรง ไม่ถูกอัปขึ้นเว็บและไม่ออกจากเครื่อง': '\ud83d\udd12 Data flows straight from the sheet into this browser \u2014 nothing is uploaded to the web or leaves this device',
   'วางลิงก์ชีตแล้วกดดึง — หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12)': 'Paste the sheet link and pull \u2014 or choose exported CSV files (Student list + PT1\u2013PT12)',
