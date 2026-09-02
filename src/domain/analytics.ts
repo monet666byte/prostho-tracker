@@ -6,8 +6,7 @@
 import { lang } from '../lib/i18n';
 import { ORDER, REQ_TYPES, TYPES } from './catalog';
 import {
-  caseCount, completedInYear, isComplete, isStale, maxProgression, procAt, procList, progression,
-} from './rules';
+  caseCount, completedInYear, isComplete, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { groupShort } from './group';
@@ -125,7 +124,7 @@ export function riskRows(
       const completedThisYear = completedInYear(mine, year, settings).length;
       const yearGap = Math.max(0, settings.req.perYear - completedThisYear);
 
-      const active = mine.filter((w) => !isComplete(w)).sort((a, b) => progression(b) - progression(a));
+      const active = mine.filter(isActiveWork).sort((a, b) => progression(b) - progression(a));
       const counted = active.slice(0, yearGap);
       const shortPieces = yearGap - counted.length;
       // เคสที่ยังไม่ได้รับ นับเป็นงานอนาคต ~10 step/เคส — รวมในตัวเลขเดียว ไม่แยกป้ายเตือน
@@ -300,7 +299,7 @@ export interface StepBucket {
 }
 
 export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: WorkType): StepBucket[] {
-  const scope = works.filter((w) => !isComplete(w) && (!type || w.type === type));
+  const scope = works.filter((w) => isActiveWork(w) && (!type || w.type === type));
   const buckets: StepBucket[] = Array.from({ length: 11 }, (_, i) => ({
     progression: i,
     count: 0,
@@ -345,7 +344,7 @@ export function funnelByType(works: Workpiece[], settings: Settings): FunnelRow[
       type,
       total: mine.length,
       notStarted: mine.filter((w) => w.procIndex < 0).length,
-      inProgress: mine.filter((w) => w.procIndex >= 0 && !isComplete(w)).length,
+      inProgress: mine.filter((w) => w.procIndex >= 0 && isActiveWork(w)).length,
       completed,
       stale: mine.filter((w) => isStale(w, settings)).length,
       completionRate: mine.length ? Math.round((completed / mine.length) * 100) : 0,
@@ -447,7 +446,7 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
   // งานที่ยังไม่จบซึ่งจะนับเข้าด้านนั้นเมื่อเสร็จ — เก็บสัดส่วน step ไว้เติมช่องแบบไม่เต็ม
   const partialsFor = (pred: (w: Workpiece) => boolean, capacity: number) =>
     works
-      .filter((w) => !isComplete(w) && pred(w))
+      .filter((w) => isActiveWork(w) && pred(w))
       .map((w) => Math.max(0, progression(w)) / (maxProgression(w) || 10))
       .filter((f) => f > 0)
       .sort((a, b) => b - a)
@@ -527,7 +526,7 @@ export function caseDots(
 ): CaseDot[] {
   const nameById = new Map(students.map((s) => [s.id, s]));
   return works
-    .filter((w) => !isComplete(w) && (!type || w.type === type))
+    .filter((w) => isActiveWork(w) && (!type || w.type === type))
     .map((w) => {
       const student = nameById.get(w.studentId);
       const p = Math.max(0, progression(w));

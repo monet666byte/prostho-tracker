@@ -766,3 +766,28 @@
 }
 .themebtn__dot.theme-plum { background: #6d3fd4; }
 .themebtn__dot.theme-ink { background: #46536e; }
+
+/* ── เคสที่คืนไปแล้ว — เก็บแถวไว้ให้เห็น แต่ขีดฆ่าด้วยเส้นแดง (ผู้ใช้ขอ 2 ก.ย.) ──
+   ใช้เส้นทับกลางแถวจริงๆ (ไม่ใช่ text-decoration) จะได้พาดตลอดแนวรวมแถบและตัวเลข */
+.returned { position: relative; opacity: 0.62; }
+.returned::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 1.5px;
+  background: var(--danger);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.returned .returnedtag {
+  font: 600 9.5px var(--font-body);
+  color: var(--danger-dark);
+  background: var(--danger-tint);
+  border-radius: 99px;
+  padding: 2px 7px;
+  flex: none;
+  position: relative;
+  z-index: 1;
+}

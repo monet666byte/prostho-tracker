@@ -54,6 +54,16 @@ export function percentCompleted(w: Workpiece): number {
   return Math.round(((prog + 1) / (maxProgression(w) + 1)) * 100);
 }
 
+/** คืนเคสแล้ว — ไม่ใช่งานที่ทำอยู่ และไม่นับเข้าเกณฑ์ แต่ยังแสดงในรายการ (ขีดฆ่า) */
+export function isReturned(w: Pick<Workpiece, 'returned'>): boolean {
+  return !!w.returned;
+}
+
+/** งานที่ "กำลังทำอยู่จริง" — ยังไม่จบ และไม่ได้คืนเคส (ใช้แทน !isComplete ทุกที่ที่นับภาระงาน) */
+export function isActiveWork(w: Workpiece): boolean {
+  return !isComplete(w) && !isReturned(w);
+}
+
 export function isComplete(w: Workpiece): boolean {
   return progression(w) >= maxProgression(w);
 }

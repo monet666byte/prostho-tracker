@@ -963,3 +963,14 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 @media (prefers-reduced-motion: reduce) {
   .pullbar__track i, .pullbar__spin { animation: none; }
 }
+
+/* เคสที่คืนไปแล้ว — ขีดฆ่าเส้นแดงพาดกลางการ์ด (ใช้ร่วมกับฝั่งนักศึกษา) */
+.reviewcard.returned { position: relative; opacity: 0.66; }
+.reviewcard.returned::after {
+  content: ''; position: absolute; left: 12px; right: 12px; top: 50%;
+  height: 1.5px; background: var(--danger); opacity: 0.8; pointer-events: none;
+}
+.reviewcard.returned .returnedtag {
+  font: 600 10px var(--font-body); color: var(--danger-dark); background: var(--danger-tint);
+  border-radius: 99px; padding: 2px 8px; position: relative; z-index: 1;
+}

@@ -302,6 +302,10 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     };
     patients.set(pkey, patient);
 
+    /* คืนเคส/ยกเลิก — ชีตเขียนไว้ในคอลัมน์หมายเหตุ (รุ่น 54 มี 89 แถว, รุ่น 55 มี 19)
+       ถ้าไม่แยกออก งานที่คืนไปแล้วจะถูกนับเป็นภาระค้างของนักศึกษาตลอดไป */
+    const rowNote = get(cNote);
+    const returned = /คืนเคส|คืนงาน|ยกเลิก(การรักษา)?|ไม่ได้ทำต่อ/.test(rowNote);
     const now = new Date().toISOString();
     // แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง
     const wkey = `${pkey}|${workLabel}|${accepted ?? ''}`;
@@ -325,6 +329,8 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       procIndex: progressionToProcIndex(type, maxTick),
       lastUpdatedAt: now,
       completedAt: maxTick >= 10 ? now : undefined,
+      returned: returned || undefined,
+      returnNote: returned ? rowNote : undefined,
       catalogVersion: 'DTPT502-2569',
     });
     imported++;

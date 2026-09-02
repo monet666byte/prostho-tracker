@@ -6,7 +6,7 @@ import { StepInfo } from '../../components/StepInfo';
 import { TYPES, typesPresent, typeChipLabel } from '../../domain/catalog';
 import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep } from '../../domain/analytics';
-import { currentProc, isComplete, procLabel } from '../../domain/rules';
+import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { useYearView, type YearView } from '../../hooks/useYearView';
@@ -109,7 +109,7 @@ export default function Dashboard() {
     };
   }, [teachersAll, allStudents]);
 
-  const activePieces = works.filter((w) => !isComplete(w)).length;
+  const activePieces = works.filter(isActiveWork).length;
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
   const maxTypeCount = Math.max(1, ...typeCounts.map((x) => x.count));
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);

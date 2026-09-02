@@ -12,9 +12,7 @@ import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
 import { TYPES } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
-import {
-  caseCountTotals, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, nextProc, procAt, procLabel, progression,
-} from '../../domain/rules';
+import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
@@ -145,7 +143,7 @@ export default function Home() {
   const pending = usePending();
   const navigate = useNavigate();
 
-  const active = works.filter((w) => !isComplete(w));
+  const active = works.filter(isActiveWork);
   const recent = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt));
   // การ์ดเต็มเฉพาะเคสที่แตะล่าสุด — ที่เหลือเป็นแถวย่อ กดชื่อเข้าไปดูเต็ม กดปุ่มขวาเพื่อผ่าน step ได้เลย
   const hero = recent[0];

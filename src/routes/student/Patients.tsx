@@ -6,7 +6,7 @@ import { Shell } from '../../components/student/Shell';
 import { usePending, useWorkpieces } from '../../hooks/data';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
-import { currentProc, daysSinceUpdate, isStale, maxProgression, progression } from '../../domain/rules';
+import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -39,8 +39,9 @@ function MiniRow({
           </span>
         </span>
       </span>
-      {pending && <PendingBadge />}
-      {stale && <StaleBadge days={daysSinceUpdate(w)} />}
+      {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
+      {pending && !isReturned(w) && <PendingBadge />}
+      {stale && !isReturned(w) && <StaleBadge days={daysSinceUpdate(w)} />}
       {editing && (
         <button
           className="delbtn"
@@ -249,7 +250,7 @@ export default function Patients() {
               })}
 
               {singles.map((w) => (
-                <Link key={w.id} to={`/app/work/${w.id}`} className="singlerow">
+                <Link key={w.id} to={`/app/work/${w.id}`} className={`singlerow${isReturned(w) ? ' returned' : ''}`} title={w.returnNote ?? undefined}>
                   <TypeBadge type={w.type} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span
@@ -271,8 +272,9 @@ export default function Patients() {
                       </span>
                     </span>
                   </span>
-                  {pending.has(w.id) && <PendingBadge />}
-                  {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
+                  {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
+                  {pending.has(w.id) && !isReturned(w) && <PendingBadge />}
+                  {isStale(w, settings) && !isReturned(w) && <StaleBadge days={daysSinceUpdate(w)} />}
                   {editing && (
                     <button
                       className="delbtn"

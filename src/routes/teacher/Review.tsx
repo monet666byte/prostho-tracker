@@ -7,7 +7,7 @@ import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
-  progression, sortWorkpieces, yearlyRows, nextProc } from '../../domain/rules';
+  progression, sortWorkpieces, yearlyRows, nextProc, isReturned } from '../../domain/rules';
 import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
@@ -169,7 +169,7 @@ export default function Review() {
             const review = reviews.get(w.id);
             const opened = expanded === w.id;
             return (
-              <article key={w.id} className="reviewcard" style={{ display: 'block' }}>
+              <article key={w.id} className={`reviewcard${isReturned(w) ? ' returned' : ''}`} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
                 {/* หัวแถว = ปุ่มเปิด/ปิดทั้งแถบ กดง่ายสำหรับผู้ใช้สูงอายุ */}
                 <button
                   onClick={() => setExpanded(opened ? null : w.id)}
@@ -178,7 +178,8 @@ export default function Review() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                     <TypeBadge type={w.type} />
                     <span style={{ font: '600 13.5px var(--font-head)' }}>{tText(w.detail)}</span>
-                    {w.minimumRequirement && (
+                    {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
+                    {w.minimumRequirement && !isReturned(w) && (
                       <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>{t('นับเกณฑ์')}</span>
                     )}
                     {isStale(w, settings) && (

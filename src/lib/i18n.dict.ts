@@ -130,6 +130,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'คืนเคส': 'Returned',
   'นำเข้าทั้งรุ่นจากชีต DTMU{d}: {s} คน · {g} กลุ่ม · {p} ผู้ป่วย · {w} ชิ้นงาน': 'Imported cohort DTMU{d} from sheet: {s} students \u00b7 {g} groups \u00b7 {p} patients \u00b7 {w} workpieces',
   'นำเข้ารุ่น DTMU{d} เสร็จ: {s} คน · {p} ผู้ป่วย · {w} ชิ้นงาน': 'Imported DTMU{d}: {s} students \u00b7 {p} patients \u00b7 {w} workpieces',
   '⚠️ การยืนยันจะแทนที่ข้อมูลของรุ่นนี้ (รุ่นอื่นที่นำเข้าไว้ไม่ถูกแตะ) — ใช้กับเครื่องทดลอง local เท่านั้น': '\u26a0\ufe0f Confirming replaces this cohort only (other imported cohorts are untouched) \u2014 local experiments only',

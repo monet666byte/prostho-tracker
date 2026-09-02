@@ -1,10 +1,7 @@
 /** สรุปข้อมูลระดับกลุ่ม / ชั้นปี สำหรับ dashboard อาจารย์ */
 
 import { ORDER } from './catalog';
-import {
-  caseCount, completedInYear, daysSinceUpdate, isComplete, isStale, meetsAllRequirements, overallPercent,
-  percentCompleted, type ReqGroup,
-} from './rules';
+import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork } from './rules';
 import { academicYear } from '../lib/date';
 import { studentYear } from './cohort';
 import type { Settings, Student, WorkType, Workpiece } from './types';
@@ -29,7 +26,7 @@ export function summarizeStudent(student: Student, works: Workpiece[], settings:
     student,
     percent: overallPercent(works),
     pieces: works.length,
-    active: works.filter((w) => !isComplete(w)).length,
+    active: works.filter(isActiveWork).length,
     reqDone: rows.reduce((s, r) => s + Math.min(r.done, r.required), 0),
     reqTotal: rows.reduce((s, r) => s + r.required, 0),
     allComplete: meetsAllRequirements(works, settings),
