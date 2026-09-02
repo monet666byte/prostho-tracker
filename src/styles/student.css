@@ -521,8 +521,11 @@
 .herocase__patient {
   display: block;
   margin-top: 10px;
-  font: 400 10.5px var(--font-mono);
-  color: var(--text-faint);
+  /* พอเอาบรรทัด "ขั้นตอนที่กำลังทำ" ออก (2 ก.ย.) ฝั่งซ้ายเหลือบรรทัดเดียว
+     ตัวเล็กจางเลยดูโหวงเทียบวงแหวน 64px — ขยายและเพิ่มความเข้มให้สมดุลกัน
+     (ชื่อคนไข้กับ HN เป็นข้อมูลที่ต้องอ่านออกอยู่แล้ว ไม่ควรจางขนาดนั้น) */
+  font: 500 12px/1.5 var(--font-mono);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -714,7 +717,7 @@
 .heropath__row { position: relative; display: flex; align-items: center; gap: 11px; min-height: 24px; }
 .heropath__row--now { min-height: 36px; }
 .heropath__node {
-  flex: none; width: 22px; height: 22px; margin-left: 7px; border-radius: 99px;
+  flex: none; width: 24px; height: 24px; margin-left: 6px; border-radius: 99px;
   display: grid; place-items: center;
   box-shadow: 0 0 0 3px var(--hero-bg, var(--surface));
 }
@@ -729,7 +732,7 @@
   font: 700 10.5px var(--font-head);
   box-shadow: 0 2px 0 var(--accent-hover), 0 0 0 3px var(--hero-bg, var(--surface));
 }
-.heropath__name { flex: 1; min-width: 0; font: 500 11.5px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
+.heropath__name { flex: 1; min-width: 0; font: 500 13px/1.45 var(--font-body); color: var(--text-secondary); overflow-wrap: break-word; }
 /* ขั้นที่เสร็จแล้ว: ติ๊กเขียว + สีจางพอแล้ว — ขีดฆ่าทำให้ลายตา (ผู้ใช้ทักว่ารก) */
 .heropath__name--done { color: var(--text-faint); }
 .heropath__name--now {

@@ -70,9 +70,10 @@ function HeroCard({
       {/* โซนหัว: ชื่อคนไข้+caption ชิดซ้าย วงแหวนรวมทั้งเคสชิดขวา — เส้นทางด่านล่างได้เต็มความกว้าง */}
       <div className="herocase__lead">
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* ตัดวงเล็บอธิบายท้ายชื่อเคส (เช่น "ไม่เหลือฟันแม้แต่ซี่เดียว") — คนใช้รู้อยู่แล้วว่า CD คืออะไร */}
+          {/* เหลือชื่อคนไข้กับ HN พอ — ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว
+              เดิมพ่วง w.detail มาด้วยจนบรรทัดยาวเกินและถูกตัดท้าย (2 ก.ย.) */}
           <Link to={`/app/work/${w.id}`} className="herocase__patient">
-            {t(w.patient.name)} · HN {w.patient.hn} · {w.detail.replace(/\s*\(.*\)\s*$/, '')}
+            {t(w.patient.name)} · HN {w.patient.hn}
           </Link>
         </div>
         {next && (
