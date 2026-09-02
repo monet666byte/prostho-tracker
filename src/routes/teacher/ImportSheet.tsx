@@ -285,6 +285,7 @@ function WholeCohortImport() {
   // ดึงจากลิงก์ชีตโดยตรง — ข้อมูลจริงวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้เท่านั้น
   const [sheetUrl, setSheetUrl] = useState('');
   const [pulling, setPulling] = useState<string | null>(null);
+  const [pullPct, setPullPct] = useState(0);
   const [pullError, setPullError] = useState<string | null>(null);
 
   async function pullFromSheet() {
@@ -293,8 +294,12 @@ function WholeCohortImport() {
     setDone(null);
     if (!id) { setPullError(t('ลิงก์ไม่ถูกต้อง — วางลิงก์ Google Sheet ทั้งอัน')); return; }
     setPulling(t('กำลังดึง…'));
+    setPullPct(0);
     try {
-      const res = await fetchCohortTabs(id, (d, total) => setPulling(t('กำลังดึง {d}/{t} แท็บ…', { d, t: total })));
+      const res = await fetchCohortTabs(id, (d, total) => {
+        setPulling(t('กำลังดึง {d}/{t} แท็บ…', { d, t: total }));
+        setPullPct(Math.round((d / total) * 100));
+      });
       if (!res.groups.length) {
         setPullError(t('ดึงไม่ได้ — ชีตต้องเปิดสิทธิ์ให้ “ผู้ที่มีลิงก์” อ่านได้ และมีแท็บ PT1–PT12'));
         return;
@@ -418,6 +423,17 @@ function WholeCohortImport() {
           {pulling ?? t('ดึงข้อมูลจากชีต')}
         </button>
       </div>
+      {/* แอนิเมชันระหว่างดึง — ดึง 13 แท็บใช้เวลาหลายวินาที ถ้านิ่งสนิทคนจะคิดว่าค้าง */}
+      {pulling && (
+        <div className="pullbar" role="status" aria-live="polite">
+          <div className="pullbar__track"><i style={{ width: `${pullPct}%` }} /></div>
+          <div className="pullbar__row">
+            <span className="pullbar__spin" aria-hidden />
+            <span>{pulling}</span>
+            <span className="mono" style={{ marginLeft: 'auto' }}>{pullPct}%</span>
+          </div>
+        </div>
+      )}
       {pullError && (
         <p style={{ margin: '0 0 10px', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>{pullError}</p>
       )}
@@ -457,7 +473,8 @@ function WholeCohortImport() {
             disabled={busy || !roster?.entries.length}
             onClick={confirmAll}
           >
-            {busy ? t('กำลังนำเข้า…') : t('ยืนยัน — ล้างเดโมแล้วนำเข้ารุ่นจริงทั้งหมด')}
+            {busy && <span className="pullbar__spin pullbar__spin--onbtn" aria-hidden />}
+            {busy ? t('กำลังบันทึกลงเครื่อง…') : t('ยืนยัน — ล้างเดโมแล้วนำเข้ารุ่นจริงทั้งหมด')}
           </button>
           {!roster?.entries.length && (
             <p className="sub" style={{ marginTop: 6 }}>{t('ต้องมีไฟล์ Student list ด้วย — ใช้จับคู่รหัสนักศึกษา')}</p>

@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, ChalkboardTeacher, ChartLineUp, Eye, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, ChartLineUp, Eye, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -61,14 +61,14 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
       <div className="window">
         <aside className="side">
           <div className="side__logo">
-            <span
-              style={{
-                width: 30, height: 30, borderRadius: 9, background: 'var(--accent)', color: '#fff',
-                display: 'grid', placeItems: 'center',
-              }}
-            >
-              <ChalkboardTeacher size={17} weight="fill" />
-            </span>
+            {/* ใช้ไอคอนแอปตัวจริง (อันเดียวกับที่ขึ้นหน้าจอโฮมมือถือ) — เดิมเป็นไอคอนกระดานดำคนละตัว */}
+            <img
+              src={`${import.meta.env.BASE_URL}icon.svg`}
+              alt=""
+              width={30}
+              height={30}
+              style={{ borderRadius: 9, flex: 'none', boxShadow: '0 0 0 1px var(--border)' }}
+            />
             <b>Prostho Tracker</b>
           </div>
 

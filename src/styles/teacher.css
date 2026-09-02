@@ -926,3 +926,30 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   color: var(--text-secondary);
 }
 .tblhead__search:focus { outline: none; border-color: var(--accent); }
+
+/* ── แถบความคืบหน้าตอนดึงข้อมูลจากชีต ─────────────────────────────────
+   ดึง 13 แท็บใช้เวลาหลายวินาที — ถ้าหน้าจอนิ่งสนิทคนจะคิดว่าแอปค้างแล้วกดซ้ำ */
+.pullbar { margin: 0 0 12px; padding: 11px 13px; border-radius: 12px; background: var(--accent-tint); }
+.pullbar__track { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.65); overflow: hidden; }
+.pullbar__track i {
+  display: block; height: 100%; border-radius: 99px; background: var(--accent);
+  transition: width 0.35s cubic-bezier(0.3, 0.9, 0.4, 1);
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
+  background-size: 60px 100%;
+  animation: pullshine 1.1s linear infinite;
+}
+.pullbar__row {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  font: 500 11.5px var(--font-body); color: var(--accent-hover);
+}
+.pullbar__spin {
+  width: 13px; height: 13px; border-radius: 99px; flex: none;
+  border: 2px solid var(--accent); border-top-color: transparent;
+  animation: pullspin 0.7s linear infinite;
+}
+.pullbar__spin--onbtn { border-color: #fff; border-top-color: transparent; margin-right: 7px; }
+@keyframes pullspin { to { transform: rotate(360deg); } }
+@keyframes pullshine { to { background-position: 120px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .pullbar__track i, .pullbar__spin { animation: none; }
+}
