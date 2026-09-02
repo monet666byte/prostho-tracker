@@ -4,7 +4,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
-import { TYPES, typesPresent } from '../../domain/catalog';
+import { TYPES, typeChipLabel, typesPresent } from '../../domain/catalog';
 import {
   bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows,
 } from '../../domain/analytics';
@@ -109,7 +109,7 @@ export default function Analytics() {
                   {ty !== 'all' && (
                     <i style={{ width: 9, height: 9, borderRadius: 99, background: TYPES[ty].color, flex: 'none' }} />
                   )}
-                  {ty === 'all' ? t('ทุกประเภท') : TYPES[ty].short}
+                  {ty === 'all' ? t('ทุกประเภท') : typeChipLabel(ty)}
                   <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{dotCount(ty)}</span>
                 </button>
               );
@@ -155,7 +155,7 @@ export default function Analytics() {
               <div style={{ marginTop: 10 }}>
                 {durations.map((d) => (
                   <div className="hbar" key={d.type}>
-                    <span className="hbar__label">{TYPES[d.type].short}</span>
+                    <span className="hbar__label">{typeChipLabel(d.type)}</span>
                     <span className="hbar__track">
                       <i style={{ width: `${(d.medianWeeks / maxDuration) * 100}%`, background: TYPES[d.type].color }} />
                     </span>
@@ -164,7 +164,7 @@ export default function Analytics() {
                 ))}
               </div>
               <p style={{ margin: '10px 0 0', font: '400 10px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-                {t('ช่วงที่พบ')}: {durations.map((d) => `${TYPES[d.type].short} ${d.minWeeks}–${d.maxWeeks} wk. (${d.samples} ${t('เคส')})`).join(' · ')}
+                {t('ช่วงที่พบ')}: {durations.map((d) => `${typeChipLabel(d.type)} ${d.minWeeks}–${d.maxWeeks} wk. (${d.samples} ${t('เคส')})`).join(' · ')}
               </p>
             </div>
         </div>
@@ -221,7 +221,7 @@ export default function Analytics() {
               <tbody>
                 {funnel.map((f) => (
                   <tr key={f.type}>
-                    <td style={{ font: '600 11.5px var(--font-body)' }}>{TYPES[f.type].short}</td>
+                    <td style={{ font: '600 11.5px var(--font-body)' }}>{typeChipLabel(f.type)}</td>
                     <td className="mono">{f.total}</td>
                     <td className="mono faint">{f.notStarted}</td>
                     <td className="mono">{f.inProgress}</td>

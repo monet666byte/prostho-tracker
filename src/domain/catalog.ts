@@ -161,3 +161,9 @@ export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType
     .filter((t) => seen.has(t))
     .sort((a, b) => ORDER[a] - ORDER[b]);
 }
+
+/** ป้ายสำหรับปุ่มกรอง/legend — "APD" เฉยๆ ชนกับปุ่ม "CD/APD" (= CD/Complicated APD)
+ *  จนคนอ่านนึกว่าซ้ำกัน (ผู้ใช้งง 2 ก.ย.) จึงเขียนให้ชัดว่าเป็น Simple APD */
+export function typeChipLabel(ty: WorkType): string {
+  return ty === 'APD' ? 'Simple APD' : TYPES[ty].short;
+}

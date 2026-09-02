@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ORDER, TYPES, typesPresent } from '../../domain/catalog';
+import { ORDER, TYPES, typesPresent, typeChipLabel } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
 import { t, tText } from '../../lib/i18n';
 
@@ -83,7 +83,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
 
       <div className="chartlegend">
         {showTypeLegend && typesPresent(dots).map((t) => (
-          <span key={t}><i style={{ background: TYPES[t].color, borderRadius: 99 }} /> {TYPES[t].short}</span>
+          <span key={t}><i style={{ background: TYPES[t].color, borderRadius: 99 }} /> {typeChipLabel(t)}</span>
         ))}
         <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>

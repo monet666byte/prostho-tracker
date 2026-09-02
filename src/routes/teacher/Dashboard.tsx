@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
-import { TYPES, typesPresent } from '../../domain/catalog';
+import { TYPES, typesPresent, typeChipLabel } from '../../domain/catalog';
 import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, isComplete, procLabel } from '../../domain/rules';
@@ -413,7 +413,7 @@ export default function Dashboard() {
                     <div className="seg seg--sm">
                       {typesPresent(works).map((ty) => (
                         <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
-                          {TYPES[ty].short}
+                          {typeChipLabel(ty)}
                         </button>
                       ))}
                     </div>
