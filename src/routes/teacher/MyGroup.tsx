@@ -13,10 +13,14 @@ import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
+import type { Teacher } from '../../domain/types';
 import { groupShort, splitPersonName } from '../../domain/group';
 import { RiskLegend } from '../../components/teacher/RiskLegend';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
+/* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
+const EMPTY_TEACHERS: Teacher[] = [];
+
 export default function MyGroup() {
   const { settings } = useApp();
   const group = useApp((st) => st.teacherGroup);
@@ -47,7 +51,7 @@ export default function MyGroup() {
   const pendingEval = pendingList.length;
   const pendingPeople = new Set(pendingList.map((c) => c.studentId)).size;
 
-  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
+  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const advisors = useMemo(() => {
     const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
     const ids = students.find((st) => st.group === group)?.advisorIds ?? [];

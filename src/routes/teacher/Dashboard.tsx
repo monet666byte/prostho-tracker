@@ -16,6 +16,7 @@ import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
+import type { Teacher } from '../../domain/types';
 import { groupShort, groupYear, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
@@ -26,6 +27,9 @@ function termLabel(d: Date): string {
   const be = d.getFullYear() + 543 - (m < 5 ? 1 : 0); // ก่อน มิ.ย. ยังเป็นปีการศึกษาก่อนหน้า
   return `${be}/${term}`;
 }
+
+/* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
+const EMPTY_TEACHERS: Teacher[] = [];
 
 export default function Dashboard() {
   const { settings, showToast } = useApp();
@@ -100,7 +104,7 @@ export default function Dashboard() {
   }, [students]);
 
   /* ชื่อที่ปรึกษาต่อกลุ่ม — อ่านจาก advisorIds ของนักศึกษาในกลุ่มนั้น */
-  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
+  const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const advisorsOf = useMemo(() => {
     const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
     return (code: string) => {
