@@ -96,8 +96,9 @@ function parseSheetDate(s: string): string | null {
 /** ช่องติ๊ก: ✓ / 1 / x / yes ฯลฯ = ติ๊ก · ช่องที่มีข้อความอื่น = "ติ๊กแบบมีเงื่อนไข" ให้รายงาน */
 function parseTick(s: string): 'yes' | 'no' | 'odd' {
   const v = s.trim().toLowerCase();
-  if (v === '') return 'no';
-  if (['✓', '✔', 'x', '/', '1', 'y', 'yes', 'ใช่'].includes(v)) return 'yes';
+  // ชีตบางปีใช้ช่อง checkbox ของ Google Sheets → ค่าออกมาเป็น TRUE/FALSE (เจอในชีตรุ่น 54)
+  if (v === '' || v === 'false' || v === '0') return 'no';
+  if (['✓', '✔', 'x', '/', '1', 'y', 'yes', 'ใช่', 'true'].includes(v)) return 'yes';
   return 'odd';
 }
 
@@ -208,8 +209,22 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
   const cMin = col(/min/i);
   const cPayment = col(/payment/i);
   const cNote = col(/หมายเหตุ|สถานะ/i);
-  const cTick0 = header.findIndex((h) => h === '0'); // ช่อง 0–10 เรียงติดกัน
   const cStep = col(/step.*ผ่าน|ผ่านแล้ว/i); // คอลัมน์ droplist เช่น "CD-3 Final impression"
+  /* ช่องติ๊ก 0–10 เรียงติดกัน — ปกติหัวคอลัมน์เขียนเลข 0..10 ไว้
+     แต่ชีตบางปีปล่อยหัวว่างแล้วใช้ checkbox แทน (รุ่น 54 — ผู้ใช้เจอ 2 ก.ย. ทำให้ทุกคน 0%)
+     จึงหาโดยดูข้อมูลจริง: 11 คอลัมน์ถัดจาก Step ที่มีค่าแบบติ๊ก */
+  const looksTick = (v: string) => ['/', '✓', '✔', 'x', '1', 'true', 'false', ''].includes(v.trim().toLowerCase());
+  let cTick0 = header.findIndex((h) => h === '0');
+  if (cTick0 < 0 && cStep >= 0) {
+    const cand = cStep + 1;
+    const sample = rows.slice(headerIdx + 1, headerIdx + 40);
+    const filled = sample.filter((r) => Array.from({ length: 11 }, (_, k) => (r[cand + k] ?? '')).some((v) => ['/', '✓', '✔', 'true', 'x'].includes(v.trim().toLowerCase())));
+    const allTickish = sample.every((r) => Array.from({ length: 11 }, (_, k) => (r[cand + k] ?? '')).every(looksTick));
+    if (filled.length > 0 && allTickish) cTick0 = cand;
+  }
+  if (cTick0 < 0) {
+    issues.push({ row: 0, column: 'ช่อง 0–10', value: '-', problem: 'หาช่องติ๊กขั้นตอนไม่เจอ — ความคืบหน้าจะเป็น 0 ทุกแถว โปรดตรวจหัวตารางในชีต' });
+  }
 
   const dataRows = rows.slice(headerIdx + 1);
   let imported = 0;

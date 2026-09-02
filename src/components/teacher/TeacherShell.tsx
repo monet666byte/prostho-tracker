@@ -9,7 +9,8 @@ import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
-import { groupShort, groupYear } from '../../domain/group';
+import { groupShort } from '../../domain/group';
+import { studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'settings' | 'roster' | 'import' | 'alumni';
@@ -51,6 +52,16 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
       .filter((c) => c.status === 'pending' && groupById.get(c.studentId) === teacherGroup)
       .map((c) => c.studentId),
   ).size;
+  /* ปีของกลุ่ม = ชั้นปีของนักศึกษาในกลุ่มนั้น (คำนวณจากรุ่น) — ห้ามอ่านจากเลขในรหัสกลุ่ม
+     เพราะรหัสใหม่คือ TH54-PT1 ที่ 54 = เลขรุ่น เดิมแปลเป็น "ปี 54" แล้วโชว์ "จบแล้ว" ทุกกลุ่ม
+     (ผู้ใช้เจอ 2 ก.ย. หลังนำเข้าชีตรุ่น 54) */
+  const yearOfGroup = (code: string): string => {
+    const st = students.find((s) => s.group === code);
+    if (!st) return '—';
+    const y = studentYear(st);
+    return y > 6 ? t('จบแล้ว') : `${t('ปี')} ${y}`;
+  };
+
   const groupCodes = [...new Set(students.map((s) => s.group))].sort(
     (a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10),
   );
@@ -79,7 +90,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               {groupCodes.map((code) => (
                 /* ชั้นปีเกิน 6 = รุ่นที่เรียนจบไปแล้ว — เขียน "จบแล้ว" ไม่ใช่ "ปี 7" ซึ่งไม่มีจริง */
                 <option key={code} value={code}>
-                  {`${groupShort(code)} · ${groupYear(code) > 6 ? t('จบแล้ว') : `${t('ปี')} ${groupYear(code)}`}`}
+                  {`${groupShort(code)} · ${yearOfGroup(code)}`}
                 </option>
               ))}
             </select>
