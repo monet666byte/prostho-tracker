@@ -23,3 +23,13 @@ export function groupLabel(code: string | undefined): string {
   const y = groupYear(code);
   return y === 5 ? groupShort(code) : `${groupShort(code)}·${y}`;
 }
+
+/** แยก "นายธนาเดช สินส่งเสริม" → ["นายธนาเดช", "สินส่งเสริม"] (ตัดที่ช่องว่างแรก)
+ *  ชื่อเดโมสั้นๆ ("นศ. ก") หรือไม่มีช่องว่าง → นามสกุลเป็นค่าว่าง ผู้เรียกไม่ต้องเช็คเอง */
+export function splitPersonName(name: string): [string, string] {
+  const v = name.replace(/\s+/g, ' ').trim();
+  const i = v.indexOf(' ');
+  // "นศ. ก" / "อ. ข." — จุดหลังคำนำหน้าแปลว่าเป็นชื่อเดโมแบบสั้น ไม่ต้องแยก
+  if (i < 0 || /^(นศ|อ|ผู้ป่วย)\.?$/.test(v.slice(0, i))) return [v, ''];
+  return [v.slice(0, i), v.slice(i + 1)];
+}

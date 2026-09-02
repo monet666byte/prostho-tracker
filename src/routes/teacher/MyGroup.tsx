@@ -11,7 +11,7 @@ import {
 } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-import { groupShort } from '../../domain/group';
+import { groupShort, splitPersonName } from '../../domain/group';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
 export default function MyGroup() {
@@ -163,7 +163,15 @@ export default function MyGroup() {
                           title={t('ดูงานรายคน + คอมเมนต์')}
                           style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
                         >
-                          <div style={{ font: '600 12px var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>{t(r.student.name)}</div>
+                          {(() => {
+                            const [fn, ln] = splitPersonName(t(r.student.name));
+                            return (
+                              <div style={{ font: '600 12px/1.35 var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                                {fn}
+                                {ln && <div style={{ fontWeight: 500 }}>{ln}</div>}
+                              </div>
+                            );
+                          })()}
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>{r.student.code}</div>
                         </button>
                       </td>

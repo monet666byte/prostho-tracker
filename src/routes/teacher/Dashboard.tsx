@@ -14,7 +14,7 @@ import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-import { groupShort, groupYear } from '../../domain/group';
+import { groupShort, groupYear, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
@@ -262,7 +262,16 @@ export default function Dashboard() {
                     {shownStudents.map((s) => (
                       <tr key={s.student.id}>
                         <td>
-                          <div style={{ font: '600 12px var(--font-body)' }}>{t(s.student.name)}</div>
+                          {/* ชื่อบรรทัดบน นามสกุลบรรทัดล่าง — ชื่อจริงยาวเคยห่อกลางคำ (ผู้ใช้ขอ 2 ก.ย.) */}
+                          {(() => {
+                            const [fn, ln] = splitPersonName(t(s.student.name));
+                            return (
+                              <div style={{ font: '600 12px/1.35 var(--font-body)' }}>
+                                {fn}
+                                {ln && <div style={{ fontWeight: 500 }}>{ln}</div>}
+                              </div>
+                            );
+                          })()}
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
                             {s.student.code}
                             {/* ผลค้นหามาจากหลายกลุ่ม — ต้องบอกว่าใครอยู่กลุ่มไหน ไม่งั้นกดต่อไม่ถูก */}
