@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
-import { TYPES } from '../../domain/catalog';
+import { TYPES, typesPresent } from '../../domain/catalog';
 import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, isComplete, procLabel } from '../../domain/rules';
@@ -409,10 +409,9 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <h3>{t('ชิ้นงานคงค้าง จำแนกตามขั้นงาน')}</h3>
-                      <p className="sub">{t('เปิดรายละเอียด step ที่กองมากสุดไว้ให้ · กดแท่งอื่นเพื่อสลับ')}</p>
                     </div>
                     <div className="seg seg--sm">
-                      {(['CD', 'RPD', 'PC', 'CB'] as WorkType[]).map((ty) => (
+                      {typesPresent(works).map((ty) => (
                         <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
                           {TYPES[ty].short}
                         </button>

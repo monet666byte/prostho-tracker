@@ -110,7 +110,6 @@ export function ImportSheetBody() {
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3>{t('① เลือกนักศึกษาเจ้าของงาน')}</h3>
-          <p className="sub">{t('ชีตหนึ่งแท็บ = นักศึกษาหนึ่งคน — เลือกให้ตรงก่อนวางไฟล์')}</p>
           <select
             className="input"
             style={{ maxWidth: 380, marginTop: 10 }}

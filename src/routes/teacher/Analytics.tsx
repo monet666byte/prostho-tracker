@@ -4,7 +4,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
-import { TYPES } from '../../domain/catalog';
+import { TYPES, typesPresent } from '../../domain/catalog';
 import {
   bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows,
 } from '../../domain/analytics';
@@ -92,7 +92,7 @@ export default function Analytics() {
 
           {/* ปุ่มประเภท = ตัวกรอง + legend สี + จำนวนชิ้น ในตัวเดียว (แทน legend ใต้กราฟที่ซ้ำ) */}
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', margin: '10px 0 4px' }}>
-            {(['all', 'CD', 'RPD', 'PC', 'CB'] as Array<WorkType | 'all'>).map((ty) => {
+            {(['all', ...typesPresent(works)] as Array<WorkType | 'all'>).map((ty) => {
               const on = stepType === ty;
               return (
                 <button
@@ -207,7 +207,6 @@ export default function Analytics() {
           {/* 5. funnel */}
           <div className="panel">
             <h3>{t('สถานะชิ้นงาน จำแนกตามประเภท')}</h3>
-            <p className="sub">{t('สัดส่วนต่อประเภท')}</p>
             <table className="tbl">
               <thead>
                 <tr>

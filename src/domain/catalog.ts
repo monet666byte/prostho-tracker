@@ -151,3 +151,13 @@ export function dentureLabel(dc: DentureClass, arch: 'upper' | 'lower'): string 
   const prefix = arch === 'upper' ? `${meta.label}/-` : `-/${meta.label}`;
   return `${prefix} (${side} ${meta.teeth})`;
 }
+
+/** ประเภทงานที่มีอยู่จริงในชุดข้อมูล เรียงตาม ORDER — ใช้ทำปุ่มกรอง/legend
+ *  เดิมฮาร์ดโค้ดไว้ 4 ประเภทหลัก ทำให้ Simple APD (และ Recall) โผล่ในกราฟ "ทุกประเภท"
+ *  แต่ไม่มีปุ่มให้กดดู และสีก็ไม่มีคำอธิบาย (ผู้ใช้เจอบน iPad 2 ก.ย.) */
+export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType[] {
+  const seen = new Set(items.map((w) => w.type));
+  return (Object.keys(TYPES) as WorkType[])
+    .filter((t) => seen.has(t))
+    .sort((a, b) => ORDER[a] - ORDER[b]);
+}

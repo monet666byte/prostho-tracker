@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ORDER, TYPES } from '../../domain/catalog';
+import { ORDER, TYPES, typesPresent } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
-import type { WorkType } from '../../domain/types';
 import { t, tText } from '../../lib/i18n';
 
 /**
@@ -83,7 +82,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
       </div>
 
       <div className="chartlegend">
-        {showTypeLegend && (['CD', 'RPD', 'PC', 'CB'] as WorkType[]).map((t) => (
+        {showTypeLegend && typesPresent(dots).map((t) => (
           <span key={t}><i style={{ background: TYPES[t].color, borderRadius: 99 }} /> {TYPES[t].short}</span>
         ))}
         <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>
