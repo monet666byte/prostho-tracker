@@ -391,24 +391,23 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  /* 1 ก.ย. ขยายให้เด่นขึ้น → 2 ก.ย. ผู้ใช้บอกว่ารก เพราะไปแข่งความเด่นกับการ์ดเคสหลัก
-     คืนความกระชับ แต่ยังคงชื่อขั้นถัดไปไว้ (ข้อมูลที่เพิ่มมาแล้วมีประโยชน์) */
-  padding: 10px 13px;
+  /* เดิม 10/12 แถวเตี้ยจนดูเป็นของแถมข้างการ์ดเคสเด่น — ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) */
+  padding: 12px 14px;
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 .minirow__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .minirow__name {
-  font: 600 12.5px var(--font-head);
+  font: 600 13.5px var(--font-head);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .minirow__arch { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
-/* ขั้นถัดไปของเคสนั้น — บอกให้รู้ว่าต้องทำอะไร แต่ไม่ตะโกนแข่งการ์ดเคสหลัก */
+/* ขั้นถัดไปของเคสนั้น — พระเอกของแถว อ่านได้โดยไม่ต้องกดเข้าไป */
 .minirow__step {
-  font: 500 12px/1.4 var(--font-body);
-  color: var(--text-secondary);
+  font: 700 14px/1.35 var(--font-head);
+  color: var(--text);
   overflow-wrap: break-word;
 }
 .minirow__meta { display: flex; align-items: center; gap: 8px; }
