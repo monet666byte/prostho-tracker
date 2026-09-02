@@ -883,3 +883,49 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
   await logAudit(`นำเข้ารายชื่อ DTMU${dtmu}: เพิ่ม ${added} คน · อัปเดต ${updated} คน`, by);
   return { added, updated, cohort: entryYearFromDtmu(dtmu) };
 }
+
+
+/* ── นำเข้าทั้งรุ่นจากชีตจริง (local เท่านั้น) ─────────────────────────────
+   ล้างข้อมูลเดโมออกก่อน (คงตาราง teachers/settings/audit ไว้ — session อาจารย์ไม่หลุด)
+   แล้วลงรายชื่อนักศึกษา+กลุ่มจากแท็บ Student list ของชีต */
+export async function replaceWithRoster(
+  entries: Array<{ code: string; name: string; group: string; advisor: string }>,
+  actor: string,
+): Promise<{ students: number; groups: number }> {
+  const { db: d } = await import('./db');
+  const groupsMap = new Map<string, { code: string; advisorIds: [string, string]; studentIds: string[] }>();
+  const teachers = new Map<string, { id: string; name: string; title: string }>();
+  const students = entries.map((e) => {
+    const names = e.advisor.split('/').map((x) => x.trim()).filter(Boolean);
+    const adv: string[] = names.slice(0, 2).map((n) => {
+      const id = `tc-r55-${n}`;
+      if (!teachers.has(id)) teachers.set(id, { id, name: `อ.${n}`, title: 'อาจารย์ที่ปรึกษากลุ่ม' });
+      return id;
+    });
+    while (adv.length < 2) adv.push(adv[0] ?? 'tc-r55-unknown');
+    const g = groupsMap.get(e.group) ?? { code: e.group, advisorIds: [adv[0], adv[1]] as [string, string], studentIds: [] };
+    const sid = `st-r55-${e.code}`;
+    g.studentIds.push(sid);
+    groupsMap.set(e.group, g);
+    return { id: sid, code: e.code, name: e.name, group: e.group, year: 5, advisorIds: [adv[0], adv[1]] as [string, string] };
+  });
+
+  await d.transaction('rw', [d.students, d.groups, d.patients, d.workpieces, d.updates, d.photos, d.checkins, d.reviews, d.submissions, d.issues, d.queue, d.teachers, d.audit], async () => {
+    // ล้างเฉพาะข้อมูลงาน — teachers เดิมคงไว้ (บัญชีเดโมของอาจารย์ยังล็อกอินได้)
+    await Promise.all([
+      d.students.clear(), d.groups.clear(), d.patients.clear(), d.workpieces.clear(),
+      d.updates.clear(), d.photos.clear(), d.checkins.clear(), d.reviews.clear(),
+      d.submissions.clear(), d.issues.clear(), d.queue.clear(),
+    ]);
+    await d.teachers.bulkPut([...teachers.values()]);
+    await d.students.bulkAdd(students);
+    await d.groups.bulkAdd([...groupsMap.values()]);
+    await d.audit.add({
+      id: uid('a'),
+      text: `นำเข้ารายชื่อทั้งรุ่นจากชีตจริง: ${students.length} คน · ${groupsMap.size} กลุ่ม (ล้างข้อมูลเดโมแล้ว)`,
+      who: actor,
+      at: new Date().toISOString(),
+    } as never);
+  });
+  return { students: students.length, groups: groupsMap.size };
+}

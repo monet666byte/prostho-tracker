@@ -13,6 +13,8 @@ import { logAudit } from '../../data/repo';
 import { t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
+import { importGroupCsv, parseStudentList, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
+import { replaceWithRoster } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
 
@@ -103,6 +105,8 @@ export function ImportSheetBody() {
       <p className="sub" style={{ margin: '0 0 14px' }}>
         {t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ — ทีละคน ดูรายงานก่อนยืนยันทุกครั้ง')}
       </p>
+
+      <WholeCohortImport />
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <h3>{t('① เลือกนักศึกษาเจ้าของงาน')}</h3>
@@ -264,5 +268,147 @@ export function ImportSheetBody() {
           </>
         )}
     </>
+  );
+}
+
+
+/* ── นำเข้าทั้งรุ่นจากชีตจริง (Google Sheet → CSV รายแท็บ) ─────────────────
+   เลือกไฟล์ทีเดียวหลายไฟล์: Student list + PT1–PT12 — ระบบแยกเองจากเนื้อไฟล์
+   ใช้กับ local เท่านั้นตอนนี้ (โหมดเดโมไม่มีการเชื่อมเซิร์ฟเวอร์อยู่แล้ว) */
+function WholeCohortImport() {
+  const { showToast, touch, session, signOut } = useApp();
+  const [roster, setRoster] = useState<{ entries: RosterEntry[]; issues: number } | null>(null);
+  const [groups, setGroups] = useState<Array<{ name: string; res: GroupImportResult }>>([]);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFiles(list: FileList | null) {
+    if (!list?.length) return;
+    setDone(null);
+    // อ่านทุกไฟล์ แล้วแยกชนิดจากเนื้อใน: มีหัว Group = รายชื่อ · มีหัว HN = แท็บกลุ่ม
+    const texts = await Promise.all([...list].map(async (f) => ({ name: f.name, text: await f.text() })));
+    const rosterFile = texts.find((f) => /(^|,)"?Group"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')));
+    let entries: RosterEntry[] = [];
+    if (rosterFile) {
+      const r = parseStudentList(rosterFile.text);
+      entries = r.entries;
+      setRoster({ entries, issues: r.issues.length });
+    } else {
+      setRoster(null);
+    }
+    const byCode = new Map(entries.map((e) => [e.code, `st-r55-${e.code}`]));
+    const gs = texts
+      .filter((f) => f !== rosterFile && /(^|,)"?HN"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')))
+      .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null) }));
+    setGroups(gs);
+  }
+
+  const totals = groups.reduce(
+    (a, g) => {
+      g.res.blocks.forEach((b) => {
+        a.students += b.studentId ? 1 : 0;
+        a.unmatched += b.studentId ? 0 : 1;
+        a.patients += b.result.patients.length;
+        a.works += b.result.workpieces.length;
+        a.issues += b.result.report.issues.length;
+      });
+      a.issues += g.res.fileIssues.length;
+      return a;
+    },
+    { students: 0, unmatched: 0, patients: 0, works: 0, issues: 0 },
+  );
+  const allIssues = groups.flatMap((g) =>
+    [...g.res.fileIssues.map((i) => ({ g: g.name, code: '-', i })),
+     ...g.res.blocks.flatMap((b) => b.result.report.issues.map((i) => ({ g: g.name, code: b.studentCode, i })))],
+  );
+
+  async function confirmAll() {
+    if (!roster?.entries.length || !groups.length || busy) return;
+    setBusy(true);
+    try {
+      const r = await replaceWithRoster(roster.entries, currentActor());
+      let pats = 0;
+      let wks = 0;
+      for (const g of groups) {
+        for (const b of g.res.blocks) {
+          if (!b.studentId) continue;
+          await db.transaction('rw', [db.patients, db.workpieces], async () => {
+            await db.patients.bulkPut(b.result.patients);
+            await db.workpieces.bulkPut(b.result.workpieces);
+          });
+          pats += b.result.patients.length;
+          wks += b.result.workpieces.length;
+        }
+      }
+      await logAudit(
+        t('นำเข้าทั้งรุ่นจากชีต: {s} คน · {g} กลุ่ม · {p} ผู้ป่วย · {w} ชิ้นงาน', { s: r.students, g: r.groups, p: pats, w: wks }),
+        currentActor(),
+        {},
+      );
+      touch();
+      setDone(t('นำเข้าเสร็จ: {s} คน · {p} ผู้ป่วย · {w} ชิ้นงาน — ข้อมูลเดโมถูกแทนที่แล้ว', { s: r.students, p: pats, w: wks }));
+      showToast({ message: t('นำเข้าทั้งรุ่นเรียบร้อย'), tone: 'success' });
+      setGroups([]);
+      setRoster(null);
+      if (fileRef.current) fileRef.current.value = '';
+      // ล้างข้อมูลแล้ว นักศึกษาเดโมหายไป — ถ้า session ฝั่งนักศึกษาค้างอยู่ให้ออกจากระบบกันหน้าเปล่า
+      if (session?.role === 'student') await signOut();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel" style={{ marginBottom: 16, border: '1.5px solid var(--accent)' }}>
+      <h3>{t('นำเข้าทั้งรุ่นจากชีตจริง (ทีเดียวทุกกลุ่ม)')}</h3>
+      <p className="sub" style={{ margin: '4px 0 10px' }}>
+        {t('เลือกไฟล์ CSV ทีเดียวหลายไฟล์: Student list + PT1–PT12 · ระบบแยกชนิดไฟล์เองจากเนื้อใน')}<br />
+        {t('⚠️ การยืนยันจะล้างข้อมูลเดโมทั้งหมดแล้วแทนด้วยรุ่นจริง — ใช้กับเครื่องทดลอง local เท่านั้น')}
+      </p>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,text/csv"
+        multiple
+        onChange={(e) => void onFiles(e.target.files)}
+      />
+      {roster && (
+        <p style={{ margin: '10px 0 0', font: '500 12px var(--font-body)' }}>
+          📋 {t('รายชื่อ')}: {roster.entries.length} {t('คน')}{roster.issues ? ` · ${t('ปัญหา')} ${roster.issues}` : ''}
+        </p>
+      )}
+      {groups.length > 0 && (
+        <>
+          <p style={{ margin: '4px 0 0', font: '500 12px var(--font-body)' }}>
+            🗂 {groups.length} {t('กลุ่ม')} · {totals.students} {t('คน')} · {totals.patients} {t('ผู้ป่วย')} · {totals.works} {t('ชิ้นงาน')}
+            {totals.unmatched ? ` · ⚠️ ${t('จับคู่ไม่ได้')} ${totals.unmatched}` : ''}
+            {totals.issues ? ` · ${t('ติดธงให้ตรวจ')} ${totals.issues}` : ''}
+          </p>
+          {allIssues.length > 0 && (
+            <div style={{ marginTop: 8, maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
+              {allIssues.slice(0, 60).map((x, i) => (
+                <div key={i} style={{ font: '400 10.5px/1.6 var(--font-mono)', color: 'var(--text-muted)' }}>
+                  [{x.g} · {x.code}] {t('แถว')}{x.i.row} {x.i.column}: {x.i.value.slice(0, 28)} → {x.i.problem}
+                </div>
+              ))}
+              {allIssues.length > 60 && <div className="sub">… {allIssues.length - 60} {t('รายการ')}</div>}
+            </div>
+          )}
+          <button
+            className="btn"
+            style={{ marginTop: 12, height: 46, width: 'auto', padding: '0 18px' }}
+            disabled={busy || !roster?.entries.length}
+            onClick={confirmAll}
+          >
+            {busy ? t('กำลังนำเข้า…') : t('ยืนยัน — ล้างเดโมแล้วนำเข้ารุ่นจริงทั้งหมด')}
+          </button>
+          {!roster?.entries.length && (
+            <p className="sub" style={{ marginTop: 6 }}>{t('ต้องมีไฟล์ Student list ด้วย — ใช้จับคู่รหัสนักศึกษา')}</p>
+          )}
+        </>
+      )}
+      {done && <p style={{ margin: '10px 0 0', font: '600 12px var(--font-body)', color: 'var(--success-dark)' }}>✓ {done}</p>}
+    </div>
   );
 }

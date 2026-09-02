@@ -6,7 +6,7 @@
  *
  * v1 รองรับคอลัมน์ตามรูปแบบ CSV_COLUMNS (ตรงกับ tab PTn) — เจอชีตจริงแล้วค่อยเติมกติกา
  */
-import { PROCS } from '../domain/catalog';
+import { PROCS, RECALL } from '../domain/catalog';
 import type { Patient, Payment, Workpiece, WorkType } from '../domain/types';
 
 export interface ImportIssue {
@@ -106,6 +106,9 @@ export function detectType(label: string): WorkType | null {
   const v = label.toLowerCase();
   if (/recall.*(fix|crown|bridge)/.test(v)) return 'RFX';
   if (/recall/.test(v)) return 'RRM';
+  // ตัวย่อที่เจอในชีตจริงรุ่น 55: ComA = Complicated APD (นับ CD) · PCC = Post-core crown
+  if (/\bcom\.?\s*a(pd)?\b/.test(v)) return 'CD';
+  if (/\bpcc\b/.test(v)) return 'PC';
   if (/post\s*-?\s*core|postcore/.test(v)) return 'PC';
   if (/crown|bridge|cr\s*,?\s*br|\bpfm\b/.test(v)) return 'CB';
   if (/rpd|co-?cr/.test(v)) return 'RPD';
@@ -119,6 +122,14 @@ function detectArch(label: string): 'upper' | 'lower' | undefined {
   const v = label.toLowerCase();
   if (/upper|บน/.test(v)) return 'upper';
   if (/lower|ล่าง/.test(v)) return 'lower';
+  // สัญกรณ์ของชีตจริง: ตำแหน่งรอบเครื่องหมาย / คือ บน/ล่าง — "CD/-" = CD บน · "-/RPD" = RPD ล่าง
+  const m = label.match(/^\s*([^/]*)\/([^/]*)\s*$/);
+  if (m) {
+    const upper = m[1].trim() && m[1].trim() !== '-';
+    const lower = m[2].trim() && m[2].trim() !== '-';
+    if (upper && !lower) return 'upper';
+    if (lower && !upper) return 'lower';
+  }
   return undefined;
 }
 
@@ -136,7 +147,8 @@ function parsePayment(s: string): Payment {
 
 /** progression สูงสุดที่ติ๊ก → procIndex (ชีตติ๊กเป็นราย step ไม่มีขั้นย่อย = ถือว่าจบ step นั้นทั้งก้อน) */
 function progressionToProcIndex(type: WorkType, maxProgression: number): number {
-  const list = PROCS[type] ?? [];
+  // Recall ใช้ลิสต์ 4 ขั้นของตัวเอง — เดิมไปเปิด PROCS แล้วได้ลิสต์ว่าง procIndex ค้าง -1 เสมอ
+  const list = type === 'RRM' || type === 'RFX' ? RECALL : PROCS[type === 'APD' ? 'CD' : type] ?? [];
   let idx = -1;
   list.forEach((p, i) => {
     if (p[0] <= maxProgression) idx = i;
@@ -186,7 +198,9 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
   const header = rows[headerIdx].map((c) => c.trim());
   const col = (name: RegExp): number => header.findIndex((h) => name.test(h));
 
-  const cName = col(/name|ชื่อ/i);
+  // ชีตจริงมีสองคอลัมน์ที่มีคำว่า name — ของนักศึกษา (คอลัมน์แรก) กับของผู้ป่วย ต้องเจาะจงผู้ป่วยก่อน
+  const cPatientName = col(/patient/i);
+  const cName = cPatientName >= 0 ? cPatientName : col(/name|ชื่อ/i);
   const cHn = col(/^HN$/i);
   const cWork = col(/prosthodontic|work/i);
   const cAccepted = col(/accepted/i);
@@ -209,7 +223,16 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       return; // แถวว่าง/แถวสรุป — ข้ามเงียบๆ
     }
 
-    const type = detectType(workLabel);
+    let type = detectType(workLabel);
+    if (!type) {
+      // typo ที่เดาได้อย่างปลอดภัย (ตัวอักษรสลับ/เกิน) — นำเข้าให้ แต่ติดธงให้คนตรวจเสมอ
+      const typo: Array<[RegExp, WorkType]> = [[/\bprd\b/i, 'RPD'], [/\brdp\b/i, 'RPD']];
+      const hit = typo.find(([re]) => re.test(workLabel));
+      if (hit) {
+        type = hit[1];
+        issues.push({ row: rowNo, column: 'Prosthodontic work', value: workLabel, problem: `สะกดไม่ตรงแบบ — สันนิษฐานว่าเป็น ${hit[1]} โปรดตรวจ` });
+      }
+    }
     if (!type) {
       issues.push({ row: rowNo, column: 'Prosthodontic work', value: workLabel, problem: 'เดาประเภทงานไม่ได้ (CD/RPD/APD/Post-core/Crown/Recall)' });
       skipped++;
@@ -217,12 +240,18 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     }
 
     const hn = get(cHn);
-    const name = get(cName) || `ผู้ป่วย HN ${hn || '?'}`;
-    if (!hn) {
-      issues.push({ row: rowNo, column: 'HN', value: '(ว่าง)', problem: 'ไม่มี HN — ใช้แยกผู้ป่วยไม่ได้' });
+    const rawName = get(cName).replace(/\s+/g, ' ').trim();
+    const name = rawName || `ผู้ป่วย HN ${hn || '?'}`;
+    if (!hn && !rawName) {
+      issues.push({ row: rowNo, column: 'HN', value: '(ว่าง)', problem: 'ไม่มีทั้ง HN และชื่อผู้ป่วย — ใช้แยกผู้ป่วยไม่ได้' });
       skipped++;
       return;
     }
+    if (!hn) {
+      // ชีตจริงมีเคสคืบหน้าแล้วแต่ยังไม่กรอก HN เยอะ — ทิ้งไม่ได้ ใช้ชื่อจัดกลุ่มแทนไปก่อน
+      issues.push({ row: rowNo, column: 'HN', value: rawName.slice(0, 30), problem: 'ไม่มี HN — จัดกลุ่มผู้ป่วยตามชื่อแทน โปรดเติม HN ในชีตแล้วนำเข้าซ้ำ' });
+    }
+    const pkey = hn || `ชื่อ:${rawName}`;
 
     const accepted = parseSheetDate(get(cAccepted));
     if (get(cAccepted) && !accepted) {
@@ -248,23 +277,23 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       }
     }
 
-    const patient: Patient = patients.get(hn) ?? {
-      id: patientId(studentId, hn),
+    const patient: Patient = patients.get(pkey) ?? {
+      id: patientId(studentId, pkey),
       name,
       hn,
       sexAge: '',
       note: get(cNote) || undefined,
       ownerStudentId: studentId,
     };
-    patients.set(hn, patient);
+    patients.set(pkey, patient);
 
     const now = new Date().toISOString();
     // แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง
-    const wkey = `${hn}|${workLabel}|${accepted ?? ''}`;
+    const wkey = `${pkey}|${workLabel}|${accepted ?? ''}`;
     const nth = (seenRow.get(wkey) ?? 0);
     seenRow.set(wkey, nth + 1);
     workpieces.push({
-      id: workpieceId(studentId, hn, workLabel, accepted ?? '', nth),
+      id: workpieceId(studentId, pkey, workLabel, accepted ?? '', nth),
       patientId: patient.id,
       studentId,
       type,
@@ -272,7 +301,8 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       tooth: detectTooth(workLabel),
       detail: workLabel,
       acceptedDate: accepted ?? now.slice(0, 10),
-      minimumRequirement: !/no|ไม่/i.test(get(cMin)),
+      // ชีตจริง: ติ๊ก Yes เฉพาะชิ้นที่นับเกณฑ์ ช่องว่าง = ไม่นับ (เดิมตีความกลับข้าง — ว่างกลายเป็นนับ)
+      minimumRequirement: /yes|ใช่|✓|✔|y\b/i.test(get(cMin)),
       pendingQualification: false,
       payment: parsePayment(get(cPayment)),
       sect2Removable: type === 'CD' || type === 'RPD' || type === 'APD',
@@ -290,4 +320,125 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     workpieces,
     report: { totalRows: dataRows.length, imported, skipped, issues },
   };
+}
+
+
+/* ── นำเข้าทั้ง tab กลุ่ม (PT1–PT12 ของชีตจริง — 1 tab มีนักศึกษาหลายคน) ──
+   คอลัมน์แรกของแถวแรกในบล็อกแต่ละคน = "6504001\nชื่อ\nนามสกุล" แถวถัดๆ ไปว่าง
+   จึงไล่จับบล็อกจากรหัส 7 หลักในคอลัมน์แรก แล้วส่งแถวของแต่ละคนเข้าตัวนำเข้าเดิม */
+
+export interface GroupBlock {
+  studentCode: string;
+  studentName: string;
+  studentId: string | null; // จับคู่กับ roster ไม่ได้ = null (ลงรายงาน ไม่นำเข้า)
+  result: ImportResult;
+}
+
+export interface GroupImportResult {
+  blocks: GroupBlock[];
+  fileIssues: ImportIssue[];
+}
+
+export function importGroupCsv(
+  csvText: string,
+  resolveStudent: (code: string, name: string) => string | null,
+): GroupImportResult {
+  const rows = parseCsv(csvText);
+  const fileIssues: ImportIssue[] = [];
+  const headerIdx = rows.findIndex((r) => r.some((c) => c.trim().toUpperCase() === 'HN'));
+  if (headerIdx === -1) {
+    fileIssues.push({ row: 0, column: '-', value: '-', problem: 'หาแถวหัวตารางไม่เจอ (ต้องมีคอลัมน์ชื่อ HN)' });
+    return { blocks: [], fileIssues };
+  }
+  const header = rows[headerIdx];
+
+  // แบ่งบล็อกรายคนจากคอลัมน์แรก
+  const dataRows = rows.slice(headerIdx + 1);
+  type Block = { code: string; name: string; rows: string[][]; startRow: number };
+  const blocks: Block[] = [];
+  let cur: Block | null = null;
+  dataRows.forEach((r, i) => {
+    const first = (r[0] ?? '').trim();
+    const m = first.match(/(\d{7})/);
+    if (m) {
+      cur = { code: m[1], name: first.replace(m[1], '').replace(/\s+/g, ' ').trim(), rows: [], startRow: i + 1 };
+      blocks.push(cur);
+    }
+    if (cur) cur.rows.push(r);
+  });
+  if (!blocks.length) {
+    fileIssues.push({ row: 0, column: 'คอลัมน์แรก', value: '-', problem: 'ไม่พบรหัสนักศึกษา 7 หลักในคอลัมน์แรก — แบ่งบล็อกรายคนไม่ได้' });
+    return { blocks: [], fileIssues };
+  }
+
+  const out: GroupBlock[] = blocks.map((b) => {
+    const sid = resolveStudent(b.code, b.name);
+    if (!sid) {
+      return {
+        studentCode: b.code,
+        studentName: b.name,
+        studentId: null,
+        result: {
+          patients: [], workpieces: [],
+          report: {
+            totalRows: b.rows.length, imported: 0, skipped: b.rows.length,
+            issues: [{ row: b.startRow, column: 'คอลัมน์แรก', value: `${b.code} ${b.name}`, problem: 'ไม่พบนักศึกษารหัสนี้ในระบบ — นำเข้ารายชื่อ (Student list) ก่อน' }],
+          },
+        },
+      };
+    }
+    // ประกอบ CSV ย่อยของคนนี้ = หัวตารางเดิม + แถวในบล็อก แล้วส่งเข้าตัวนำเข้าเดิม
+    const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+    const mini = [header, ...b.rows].map((r) => r.map(esc).join(',')).join('\n');
+    return { studentCode: b.code, studentName: b.name, studentId: sid, result: importSheetCsv(mini, sid) };
+  });
+  return { blocks: out, fileIssues };
+}
+
+/* ── รายชื่อรุ่นจาก tab "Student list" — ใช้สร้างนักศึกษา+กลุ่มจริงก่อนนำเข้างาน ── */
+
+export interface RosterEntry {
+  code: string; // 6504001
+  name: string; // ชื่อ นามสกุล (คำนำหน้าตามชีต)
+  group: string; // TH-PT1
+  advisor: string; // "สมชาย/พจมาน"
+}
+
+export function parseStudentList(csvText: string): { entries: RosterEntry[]; issues: ImportIssue[] } {
+  const rows = parseCsv(csvText);
+  const issues: ImportIssue[] = [];
+  const headerIdx = rows.findIndex((r) => r.some((c) => /^group$/i.test(c.trim())));
+  if (headerIdx === -1) {
+    issues.push({ row: 0, column: '-', value: '-', problem: 'หาแถวหัวตารางไม่เจอ (ต้องมีคอลัมน์ Group)' });
+    return { entries: [], issues };
+  }
+  const header = rows[headerIdx].map((c) => c.trim());
+  const col = (re: RegExp) => header.findIndex((h) => re.test(h));
+  const cGroup = col(/^group$/i);
+  const cAdvisor = col(/advisor/i);
+  const cId = col(/^id$/i);
+  const cFirst = col(/first/i);
+  const cLast = col(/last/i);
+  const entries: RosterEntry[] = [];
+  rows.slice(headerIdx + 1).forEach((r, i) => {
+    const get = (idx: number) => (idx >= 0 && idx < r.length ? r[idx].trim() : '');
+    const idRaw = get(cId);
+    const code = (idRaw.match(/(\d{7})/) ?? [])[1];
+    if (!code) {
+      if (r.some((c) => c.trim())) issues.push({ row: i + 1, column: 'ID', value: idRaw || '(ว่าง)', problem: 'อ่านรหัสนักศึกษา 7 หลักไม่ได้ — ข้ามแถวนี้' });
+      return;
+    }
+    const group = get(cGroup);
+    if (!/^TH-?/i.test(group)) {
+      issues.push({ row: i + 1, column: 'Group', value: group || '(ว่าง)', problem: 'รูปแบบกลุ่มไม่ตรง TH-PTn — ข้ามแถวนี้' });
+      return;
+    }
+    entries.push({
+      code,
+      name: `${get(cFirst)} ${get(cLast)}`.trim() || `นศ. ${code}`,
+      group,
+      advisor: get(cAdvisor),
+    });
+  });
+  return { entries, issues };
 }
