@@ -130,6 +130,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'สีคิดจากเคสที่ใกล้จบสุดเท่าที่ต้องใช้ปิดเกณฑ์ปีนี้เท่านั้น — เคสที่รับเผื่อไว้ปีหน้าไม่ถูกนับรวม': 'Colors count only the nearest-to-done cases needed for this year\'s requirement — extra cases held for next year are not included',
   'บันทึกสถานะผู้ป่วยแล้ว': 'Patient status saved',
   'สถานะผู้ป่วย เช่น รอ preprosth · รอถอนฟัน · F/U 2 wks': 'Patient status e.g. awaiting preprosth / extraction / F-U 2 wks',
   'เพิ่มสถานะ (เช่น รอ preprosth · รอถอนฟัน)': 'Add status (e.g. awaiting preprosth / extraction)',
