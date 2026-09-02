@@ -1,5 +1,5 @@
 import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, X } from '@phosphor-icons/react';
-import {useEffect, useMemo, useState, useRef } from 'react';
+import { Fragment,useEffect, useMemo, useState, useRef  } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -72,10 +72,15 @@ export default function Review() {
 
   const list = useMemo(() => {
     const sorted = sortWorkpieces(works);
-    if (filter === 'stale') return sorted.filter((w) => isStale(w, settings));
-    if (filter === 'done') return sorted.filter((w) => isComplete(w));
-    return sorted;
+    const scoped = filter === 'stale' ? sorted.filter((w) => isStale(w, settings))
+      : filter === 'done' ? sorted.filter((w) => isComplete(w))
+        : sorted;
+    // เคสที่คืนไปแล้วลงไปกองท้ายสุดเสมอ — ไม่ใช่งานที่ต้องตามแล้ว (ผู้ใช้ขอ 2 ก.ย.)
+    return [...scoped.filter((w) => !isReturned(w)), ...scoped.filter(isReturned)];
   }, [works, filter, settings]);
+
+  const returnedCount = useMemo(() => list.filter(isReturned).length, [list]);
+  const firstReturnedId = useMemo(() => list.find(isReturned)?.id, [list]);
 
   const staleCount = works.filter((w) => isStale(w, settings)).length;
   const doneCount = works.filter((w) => isComplete(w)).length;
@@ -164,12 +169,20 @@ export default function Review() {
             </div>
           )}
           {list.map((w) => {
+            const startsReturnedBlock = w.id === firstReturnedId;
             const meta = TYPES[w.type];
             const cur = currentProc(w);
             const review = reviews.get(w.id);
             const opened = expanded === w.id;
             return (
-              <article key={w.id} className={`reviewcard${isReturned(w) ? ' returned' : ''}`} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
+              <Fragment key={w.id}>
+              {startsReturnedBlock && (
+                <div className="returnedhead">
+                  {t('คืนเคสแล้ว')} · {returnedCount} {t('ชิ้น')}
+                  <span>{t('ไม่นับเป็นงานที่กำลังทำ')}</span>
+                </div>
+              )}
+              <article className={`reviewcard${isReturned(w) ? ' returned' : ''}`} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
                 {/* หัวแถว = ปุ่มเปิด/ปิดทั้งแถบ กดง่ายสำหรับผู้ใช้สูงอายุ */}
                 <button
                   onClick={() => setExpanded(opened ? null : w.id)}
@@ -211,6 +224,7 @@ export default function Review() {
                     )}
                   </div>
 
+                  {!isReturned(w) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
                     <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={8} />
                     <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
@@ -221,6 +235,7 @@ export default function Review() {
                       {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
                     </span>
                   </div>
+                  )}
                 </button>
 
                 {opened && (
@@ -306,6 +321,7 @@ export default function Review() {
                   </div>
                 )}
               </article>
+              </Fragment>
             );
           })}
           </div>

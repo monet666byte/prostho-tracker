@@ -974,3 +974,14 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   font: 600 10px var(--font-body); color: var(--danger-dark); background: var(--danger-tint);
   border-radius: 99px; padding: 2px 8px; position: relative; z-index: 1;
 }
+
+/* หัวคั่นก่อนกองเคสที่คืนไปแล้ว */
+.returnedhead {
+  display: flex; align-items: baseline; gap: 8px; margin: 18px 2px 2px;
+  font: 700 12px var(--font-head); color: var(--text-muted);
+}
+.returnedhead span { font: 400 10.5px var(--font-body); color: var(--text-faint); }
+
+/* การ์ดเคสคืน — ย่อให้เล็กลง ไม่ต้องเด่นเท่างานที่ยังทำอยู่ */
+.reviewcard.returned { padding: 9px 12px; opacity: 0.62; }
+.reviewcard.returned .badge { transform: scale(0.94); }
