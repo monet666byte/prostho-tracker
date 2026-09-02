@@ -6,14 +6,12 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
-import {
-  caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
-  progression, sortWorkpieces, yearlyRows,
-} from '../../domain/rules';
+import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
+  progression, sortWorkpieces, yearlyRows, nextProc } from '../../domain/rules';
 import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, relative } from '../../lib/date';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
@@ -117,8 +115,8 @@ export default function Review() {
 
         <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ font: '600 15px var(--font-head)' }}>{t(active?.name ?? '')}</div>
-            <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
+            {/* ไม่ใส่ชื่อซ้ำ — กดชื่อเข้ามาแล้ว และแถวเลือกคนข้างบนไฮไลต์อยู่ (ผู้ใช้ทักว่ารก 2 ก.ย.) */}
+            <div style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>
               {t('{n} ชิ้นงาน', { n: works.length })} · {t('เกณฑ์สะสม')}{' '}
               {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
               {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
@@ -219,7 +217,36 @@ export default function Review() {
                 </button>
 
                 {opened && (
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+                    {/* รายละเอียดเคส — ผู้ใช้ขอ 2 ก.ย.: กดเข้ามาแล้วอยากเห็นมากกว่ารูป+คอมเมนต์ */}
+                    {(() => {
+                      const nx = nextProc(w);
+                      const rows: Array<[string, string]> = [
+                        [t('ขั้นถัดไป'), nx ? procLabel(w.type, nx) : t('จบเคสแล้ว')],
+                        ...(w.tooth ? [[t('ซี่'), w.tooth] as [string, string]] : []),
+                        ...(w.kennedy ? [[t('Kennedy'), w.kennedy] as [string, string]] : []),
+                        ...(w.dentureClass ? [[t('ลักษณะเคส'), tText(w.dentureClass)] as [string, string]] : []),
+                        [t('ชำระเงิน'), t(w.payment)],
+                        [t('อัปเดตล่าสุด'), relative(w.lastUpdatedAt)],
+                      ];
+                      return (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 22px' }}>
+                            {rows.map(([k, v]) => (
+                              <span key={k} style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>
+                                {k}: <b style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{v}</b>
+                              </span>
+                            ))}
+                          </div>
+                          {w.patient.note && (
+                            <div style={{ marginTop: 7, padding: '7px 10px', borderRadius: 9, background: 'var(--warning-tint)', font: '400 11px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+                              {t('หมายเหตุ/สถานะผู้ป่วยจากชีต')}: {w.patient.note}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
                     {(() => {
                       const shots = (photoByWork.get(w.id) ?? []) as { id: string; dataUrl?: string; stepLabel: string }[];
                       return (
@@ -267,6 +294,7 @@ export default function Review() {
                         </button>
 
                       </div>
+                    </div>
                     </div>
                   </div>
                 )}

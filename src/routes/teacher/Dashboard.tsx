@@ -1,6 +1,6 @@
 import { Archive, BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { TYPES } from '../../domain/catalog';
@@ -28,6 +28,7 @@ function termLabel(d: Date): string {
 export default function Dashboard() {
   const { settings, showToast } = useApp();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const raw = params.get('tab') ?? 'overview';
   const view = 'overview' as TeacherNav; void raw;
 
@@ -262,14 +263,20 @@ export default function Dashboard() {
                     {shownStudents.map((s) => (
                       <tr key={s.student.id}>
                         <td>
-                          {/* ชื่อบรรทัดบน นามสกุลบรรทัดล่าง — ชื่อจริงยาวเคยห่อกลางคำ (ผู้ใช้ขอ 2 ก.ย.) */}
+                          {/* ชื่อบรรทัดบน นามสกุลล่าง + กดแล้วไปหน้าตรวจงานรายคน (ผู้ใช้ขอ 2 ก.ย.) */}
                           {(() => {
                             const [fn, ln] = splitPersonName(t(s.student.name));
                             return (
-                              <div style={{ font: '600 12px/1.35 var(--font-body)' }}>
-                                {fn}
-                                {ln && <div style={{ fontWeight: 500 }}>{ln}</div>}
-                              </div>
+                              <button
+                                onClick={() => { setGroup(s.student.group); navigate(`/teacher/review?student=${s.student.id}`); }}
+                                title={t('ดูงานรายคน + คอมเมนต์')}
+                                style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                              >
+                                <div style={{ font: '600 12px/1.35 var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                                  {fn}
+                                  {ln && <div style={{ fontWeight: 500 }}>{ln}</div>}
+                                </div>
+                              </button>
                             );
                           })()}
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
