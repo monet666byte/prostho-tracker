@@ -202,6 +202,12 @@ export default function Review() {
 
                   <div className="mono" style={{ font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 6 }}>
                     {t(w.patient.name)} · HN {w.patient.hn} · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
+                    {/* สถานะผู้ป่วย (รอ preprosth ฯลฯ) ต้องเห็นตั้งแต่แถว ไม่ต้องกาง — ผู้ใช้ขอ 2 ก.ย. */}
+                    {w.patient.note && (
+                      <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>
+                        {' '}· 📝 {t(w.patient.note)}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>

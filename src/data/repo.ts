@@ -929,3 +929,19 @@ export async function replaceWithRoster(
   });
   return { students: students.length, groups: groupsMap.size };
 }
+
+
+/** แก้หมายเหตุ/สถานะผู้ป่วย (เช่น "รอ preprosth" "รอถอนฟัน") — นักศึกษาแก้เองได้
+ *  ค่าเดิมมาจากคอลัมน์หมายเหตุของชีตตอนนำเข้า · ทุกการแก้ลง audit เพื่อให้อาจารย์ย้อนดูได้ */
+export async function updatePatientNote(patientId: string, note: string, actor: string): Promise<void> {
+  const before = await db.patients.get(patientId);
+  if (!before) return;
+  const clean = note.trim();
+  if ((before.note ?? '') === clean) return;
+  await db.patients.update(patientId, { note: clean || undefined });
+  await logAudit(
+    `แก้สถานะผู้ป่วย ${before.name}${before.hn ? ` (HN ${before.hn})` : ''}: ${clean || '(ล้างออก)'}`,
+    actor,
+    { studentId: before.ownerStudentId },
+  );
+}

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
 import { usePending, useWorkpieces } from '../../hooks/data';
-import { deleteWorkpiece } from '../../data/repo';
+import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { currentProc, daysSinceUpdate, isStale, maxProgression, progression } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
@@ -111,7 +111,9 @@ function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | 
 }
 
 export default function Patients() {
-  const { session, settings, showToast } = useApp();
+  const { session, settings, showToast, touch } = useApp();
+  // แก้สถานะผู้ป่วย (รอ preprosth / รอถอนฟัน ฯลฯ) — id ที่กำลังแก้ + ข้อความร่าง
+  const [noteEdit, setNoteEdit] = useState<{ id: string; text: string } | null>(null);
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
   const [editing, setEditing] = useState(false);
@@ -175,14 +177,54 @@ export default function Patients() {
                   <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>
                     HN {patient.hn} · {tSexAge(patient.sexAge)}
                   </span>
-                  {patient.note && (
-                    <span style={{ display: 'block', font: '500 10.5px var(--font-body)', color: 'var(--warning)', marginTop: 3 }}>
-                      {t(patient.note)}
-                    </span>
+                  {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย (ผู้ใช้ขอ 2 ก.ย.) */}
+                  {noteEdit?.id !== patient.id && (
+                    <button
+                      onClick={() => setNoteEdit({ id: patient.id, text: patient.note ?? '' })}
+                      style={{ display: 'block', textAlign: 'left', padding: 0, marginTop: 3, background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      {patient.note ? (
+                        <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>
+                          📝 {t(patient.note)} <PencilSimpleLine size={11} style={{ verticalAlign: -1.5 }} />
+                        </span>
+                      ) : (
+                        <span style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)' }}>
+                          + {t('เพิ่มสถานะ (เช่น รอ preprosth · รอถอนฟัน)')}
+                        </span>
+                      )}
+                    </button>
                   )}
                 </span>
                 <CaretRight size={16} color="var(--text-disabled)" />
               </div>
+              {noteEdit?.id === patient.id && (
+                <div style={{ display: 'flex', gap: 7, margin: '8px 0 2px' }}>
+                  <input
+                    className="input"
+                    style={{ height: 38, fontSize: 12 }}
+                    autoFocus
+                    placeholder={t('สถานะผู้ป่วย เช่น รอ preprosth · รอถอนฟัน · F/U 2 wks')}
+                    value={noteEdit.text}
+                    onChange={(e) => setNoteEdit({ id: patient.id, text: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setNoteEdit(null); }}
+                  />
+                  <button
+                    className="btn"
+                    style={{ width: 'auto', height: 38, padding: '0 14px', fontSize: 12, flex: 'none' }}
+                    onClick={async () => {
+                      await updatePatientNote(patient.id, noteEdit.text, currentActor());
+                      setNoteEdit(null);
+                      touch();
+                      showToast({ message: t('บันทึกสถานะผู้ป่วยแล้ว'), tone: 'success' });
+                    }}
+                  >
+                    {t('บันทึก')}
+                  </button>
+                  <button className="btn btn--sec" style={{ width: 'auto', height: 38, padding: '0 12px', fontSize: 12, flex: 'none' }} onClick={() => setNoteEdit(null)}>
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
 
               {[...pairs.values()].map((pair) => {
                 const first = pair[0];
