@@ -87,6 +87,11 @@ function monthsRemaining(now: Date): number {
   return Math.max(0, (final.getTime() - now.getTime()) / (DAY * 30.4));
 }
 
+/** คาบคลินิกที่เหลือถึงปลายปีการศึกษา (ตัวเลขเดียวกับที่สีเสี่ยงใช้) — ให้ UI อธิบายที่มาได้ */
+export function periodsLeftNow(settings: Settings, now = new Date()): number {
+  return Math.round(monthsRemaining(now) * 4.33 * (settings.periodsPerWeek || 2));
+}
+
 export function riskRows(
   students: Student[],
   works: Workpiece[],

@@ -12,6 +12,7 @@ import {
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, splitPersonName } from '../../domain/group';
+import { RiskLegend } from '../../components/teacher/RiskLegend';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
 export default function MyGroup() {
@@ -114,11 +115,9 @@ export default function MyGroup() {
 
         <div className="panel" style={{ marginTop: 18 }}>
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
-          <p className="sub">
-            {t('🔴 = ควรเข้าไปตาม · เรียงคนที่น่าห่วงไว้บน · กดชื่อเพื่อดูงานรายคน')}<br />
-            {/* กันเข้าใจผิด (ผู้ใช้ถาม 2 ก.ย.): เคสที่รับเผื่อปีหน้าไม่ทำให้สีแดงขึ้น */}
-            {t('สีคิดจากเคสที่ใกล้จบสุดเท่าที่ต้องใช้ปิดเกณฑ์ปีนี้เท่านั้น — เคสที่รับเผื่อไว้ปีหน้าไม่ถูกนับรวม')}
-          </p>
+          {/* คำอธิบายสีย้ายไปอยู่หลังปุ่ม ⓘ — เขียนเต็มตรงนี้จะรก แต่ไม่เขียนคนก็งง (ผู้ใช้ถามซ้ำ 2 ก.ย.) */}
+          <p className="sub">{t('เรียงคนที่น่าห่วงไว้บน · กดชื่อเพื่อดูงานรายคน')}</p>
+          <RiskLegend />
           <table className="tbl">
             <thead>
               <tr>
