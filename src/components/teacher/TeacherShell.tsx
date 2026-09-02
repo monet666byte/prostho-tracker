@@ -69,7 +69,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               height={30}
               style={{ borderRadius: 9, flex: 'none', boxShadow: '0 0 0 1px var(--border)' }}
             />
-            <b>Prostho Tracker</b>
+            {/* ชื่อฝั่งอาจารย์ตามที่ผู้ใช้เคาะ 2 ก.ย. (แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยนภายหลัง) */}
+            <b>Prosth MU</b>
           </div>
 
           <label className="mygroup">
