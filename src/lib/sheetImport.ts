@@ -208,6 +208,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
   const cPayment = col(/payment/i);
   const cNote = col(/หมายเหตุ|สถานะ/i);
   const cTick0 = header.findIndex((h) => h === '0'); // ช่อง 0–10 เรียงติดกัน
+  const cStep = col(/step.*ผ่าน|ผ่านแล้ว/i); // คอลัมน์ droplist เช่น "CD-3 Final impression"
 
   const dataRows = rows.slice(headerIdx + 1);
   let imported = 0;
@@ -274,6 +275,15 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       }
       if (gap) {
         issues.push({ row: rowNo, column: 'ช่อง 0–10', value: '-', problem: 'ติ๊กแบบข้ามช่อง (มีรูโหว่กลางทาง) — ใช้ช่องสูงสุดที่ติ๊ก โปรดตรวจ' });
+      }
+      // ชีตจริงมีขัดกันเองบ่อย: droplist บอกขั้นหนึ่ง ช่องติ๊กบอกอีกขั้น — เชื่อช่องติ๊ก แต่ต้องบอกให้คนตรวจ
+      const stepLabel = get(cStep);
+      const dm = stepLabel.match(/-(\d{1,2})\s/);
+      if (dm && maxTick >= 0 && Number(dm[1]) !== maxTick) {
+        issues.push({
+          row: rowNo, column: 'Step งานที่ผ่านแล้ว', value: stepLabel.slice(0, 30),
+          problem: `droplist บอกขั้น ${dm[1]} แต่ช่องติ๊กถึงขั้น ${maxTick} — ใช้ช่องติ๊ก โปรดตรวจในชีต`,
+        });
       }
     }
 

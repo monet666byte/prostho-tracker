@@ -9,6 +9,16 @@ import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type App
 import type { Role, Settings } from '../domain/types';
 import { groupShort } from '../domain/group';
 
+/** studentId สำหรับโหมดเดโม/local — ปกติคือนักศึกษาเดโม แต่ถ้าถูกแทนด้วยรุ่นจริง
+ *  (นำเข้าทั้งรุ่นจากชีต) ให้ใช้คนแรกของรุ่นตามรหัส — กันหน้า นศ. เปิดมาว่างเปล่า */
+async function liveStudentId(): Promise<string> {
+  const demo = await db.students.get(DEMO.studentId);
+  if (demo) return DEMO.studentId;
+  const all = await db.students.toArray();
+  const first = all.sort((a, b) => a.code.localeCompare(b.code))[0];
+  return first?.id ?? DEMO.studentId;
+}
+
 export interface Session {
   role: Role;
   studentId: string;
@@ -209,7 +219,7 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async signIn(role) {
-    const session: Session = { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
+    const session: Session = { role, studentId: await liveStudentId(), teacherId: DEMO.teacherId };
     await kvSet('session', session);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
     set({ session, actorName: await actorNameFor(session) });
@@ -233,7 +243,7 @@ export const useApp = create<AppState>((set, get) => ({
     if (cloudEnabled && user && !(user.studentId && user.teacherId)) return cur?.role ?? 'student';
     const session: Session = cloudEnabled && user
       ? { role, studentId: user.studentId ?? DEMO.studentId, teacherId: user.teacherId ?? DEMO.teacherId }
-      : { role, studentId: DEMO.studentId, teacherId: DEMO.teacherId };
+      : { role, studentId: await liveStudentId(), teacherId: DEMO.teacherId };
     await kvSet('session', session);
     set({ session, sheet: null, toast: null, actorName: await actorNameFor(session) });
     return role;
