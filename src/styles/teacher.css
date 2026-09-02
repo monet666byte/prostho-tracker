@@ -13,6 +13,9 @@
   max-width: 100%;
   /* สูงเท่าจอเสมอ เพื่อให้มีสกอลล์บาร์เดียว (อยู่ใน .main) ไม่ใช่สกอลล์ซ้อนสกอลล์ */
   height: calc(100vh - 94px);
+  /* iOS: 100vh = ความสูงตอน 'ไม่มี' แถบเบราว์เซอร์ → สูงเกินจริงจนขอบบน-ล่างโดนตัด
+     dvh หดตามแถบที่โผล่จริง (เบราว์เซอร์เก่าไม่รู้จักก็ตกกลับไปใช้บรรทัดบน) */
+  height: calc(100dvh - 94px);
   min-height: 620px;
   background: var(--surface);
   border-radius: 16px;
@@ -22,7 +25,7 @@
 }
 @media (max-width: 1480px) {
   .deskwrap { padding: 12px 0 0; gap: 10px; }
-  .window { border-radius: 0; box-shadow: none; height: calc(100vh - 62px); min-height: 0; }
+  .window { border-radius: 0; box-shadow: none; height: calc(100vh - 62px); height: calc(100dvh - 62px); min-height: 0; }
 }
 
 .side {
@@ -462,19 +465,26 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 @media (min-width: 781px) {
   :root[data-zoom='lg'] .window { zoom: 1.18; }
   :root[data-zoom='xl'] .window { zoom: 1.38; }
-  :root[data-zoom='lg'] .window { height: calc((100vh - 94px) / 1.18); }
-  :root[data-zoom='xl'] .window { height: calc((100vh - 94px) / 1.38); }
+  :root[data-zoom='lg'] .window { height: calc((100dvh - 94px) / 1.18); }
+  :root[data-zoom='xl'] .window { height: calc((100dvh - 94px) / 1.38); }
 }
 /* มือถือ/แท็บเล็ตจริง: เฟรมเต็มจอ ไม่มี transform ชน — zoom ทั้งหน้าได้ปกติ
    ⚠️ ต้องมี .window ด้วย — ฝั่งอาจารย์ไม่มี .phone (นั่นคือกรอบมือถือของฝั่งนักศึกษา)
    เดิมใส่แต่ .phone ปุ่มขยายตัวอักษรจึงไม่ทำงานเลยบน iPad
    ซึ่งเป็นเครื่องที่อาจารย์อาวุโสใช้จริงและเป็นเหตุผลที่ทำปุ่มนี้ขึ้นมาตั้งแต่แรก */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  /* ⚠️ iPad: หน้าอาจารย์ขอบบน-ล่างโดนตัด (ผู้ใช้เจอ 2 ก.ย.)
+     เหตุ 2 ชั้นซ้อนกัน — (1) .window สูง 100vh ซึ่งบน iOS คือความสูงตอนไม่มีแถบเบราว์เซอร์
+     (2) สถาปัตยกรรมมือถือล็อก body ไม่ให้เลื่อน (html,body{overflow:hidden} ใน student.css)
+     ส่วนที่ล้นจึงไม่มีทางเลื่อนไปดู · แก้: ใช้ dvh + ไม่ต้องเผื่อแถบเดโมที่ซ่อนอยู่แล้ว */
+  /* .deskwrap มี padding บน 12px — ถ้า .window สูงเต็ม 100dvh จะล้นออกไป 12px แล้วโดนตัด
+     (body เลื่อนไม่ได้) จึงตัด padding ทิ้งบนแท็บเล็ต ให้หน้าต่างพอดีจอเป๊ะ */
+  .deskwrap { padding: 0; gap: 0; }
+  .window { height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; }
+  :root[data-zoom='lg'] .window { height: calc(100dvh / 1.18); }
+  :root[data-zoom='xl'] .window { height: calc(100dvh / 1.38); }
   :root[data-zoom='lg'] .phone, :root[data-zoom='lg'] .window { zoom: 1.18; }
   :root[data-zoom='xl'] .phone, :root[data-zoom='xl'] .window { zoom: 1.38; }
-  /* .window สูงเท่าจอ — ต้องหารกลับ ไม่งั้นล้นออกนอกจอตอน zoom */
-  :root[data-zoom='lg'] .window { height: calc((100vh - 94px) / 1.18); }
-  :root[data-zoom='xl'] .window { height: calc((100vh - 94px) / 1.38); }
 }
 
 /* iPad แนวตั้ง (~768px): ฝั่งอาจารย์บีบ sidebar และระยะขอบลง ให้เนื้อหามีที่หายใจ */
