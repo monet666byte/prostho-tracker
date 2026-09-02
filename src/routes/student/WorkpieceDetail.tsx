@@ -1,5 +1,5 @@
 import { ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArchBadge, Bar, PendingBadge, PhotoSlot, SelfBadge, TypeBadge,
@@ -9,26 +9,51 @@ import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { TYPES } from '../../domain/catalog';
 import {
-  maxProgression, nextProc, progression, stepGroups,
-} from '../../domain/rules';
+  maxProgression, nextProc, progression, stepGroups, isReturned } from '../../domain/rules';
 import { usePending, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
+import { setWorkpieceReturned } from '../../data/repo';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 
 export default function WorkpieceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const w = useWorkpiece(id);
   const pending = usePending();
-  const { openSheet } = useApp();
+  const { openSheet, showToast, touch } = useApp();
   // step ที่ผู้ใช้กดกางดูเอง (นอกเหนือจาก step ที่กำลังทำซึ่งกางอยู่แล้ว)
   const [openStep, setOpenStep] = useState<number | null>(null);
   // ต้องเรียกก่อน early return ด้านล่าง — กฎของ hook
   const attach = usePhotoAttach(id);
   const shots = useWorkpiecePhotos(id);
 
+  /* คืนเคส — เคสที่คนไข้ไม่มาต่อ/ยกเลิก นักศึกษากดเองได้ (ผู้ใช้ถาม 2 ก.ย.)
+     ⚠️ hook ต้องอยู่เหนือ early return ด้านล่าง (กฎของ hook — เคยพลาดตรงนี้จนหน้าเปล่า) */
+  const [askReturn, setAskReturn] = useState(false);
+  const [returnNote, setReturnNote] = useState('');
+  const savingReturn = useRef(false);
+
   if (!w) return <PlainShell><div style={{ padding: 24 }}>{t('ไม่พบชิ้นงานนี้')}</div></PlainShell>;
+
+  async function confirmReturn(flag: boolean) {
+    if (!w || savingReturn.current) return;
+    savingReturn.current = true;
+    try {
+      await setWorkpieceReturned(w.id, flag, returnNote, currentActor());
+      setAskReturn(false);
+      setReturnNote('');
+      touch();
+      showToast({
+        message: flag ? t('คืนเคสแล้ว — ไม่นับเป็นงานที่กำลังทำ') : t('เอาเคสกลับมาทำต่อแล้ว'),
+        tone: flag ? 'warning' : 'success',
+      });
+    } finally {
+      savingReturn.current = false;
+    }
+  }
+
+
 
   const meta = TYPES[w.type];
   const groups = stepGroups(w);
@@ -75,11 +100,48 @@ export default function WorkpieceDetail() {
           <Images size={16} /> {t('คลังรูปงาน')}
         </button>
       </div>
+      <button
+        className="btn btn--ghost"
+        style={{ marginTop: 6, height: 40, fontSize: 12, color: isReturned(w) ? 'var(--success-dark)' : 'var(--danger)' }}
+        onClick={() => (isReturned(w) ? void confirmReturn(false) : setAskReturn(true))}
+      >
+        {isReturned(w) ? t('เอาเคสกลับมาทำต่อ') : t('คืนเคสนี้')}
+      </button>
     </div>
   );
 
   return (
-    <PlainShell footer={footer} overlay={<ConfirmSheet />}>
+    <PlainShell
+      footer={footer}
+      overlay={<>
+        <ConfirmSheet />
+        {askReturn && (
+          <div className="backdrop" onClick={() => setAskReturn(false)}>
+            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="grabber" />
+              <h3 className="h3">{t('คืนเคสนี้?')}</h3>
+              <p style={{ margin: '4px 0 12px', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+                {t('ใช้เมื่อผู้ป่วยไม่มาต่อ / ยกเลิกการรักษา — เคสจะยังอยู่ในรายการแบบขีดฆ่า และไม่ถูกนับเป็นงานที่กำลังทำ · กดกลับมาทำต่อได้ทีหลัง')}
+              </p>
+              <label className="field">
+                <span style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)' }}>{t('เหตุผล (ไม่บังคับ)')}</span>
+                <input
+                  className="input"
+                  autoFocus
+                  placeholder={t('เช่น ผู้ป่วยไม่สะดวกมาต่อ · ต้องรักษารากเพิ่ม')}
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                />
+              </label>
+              <button className="btn" style={{ height: 50, marginTop: 14, background: 'var(--danger)' }} onClick={() => void confirmReturn(true)}>
+                {t('ยืนยันคืนเคส')}
+              </button>
+              <button className="btn btn--sec" style={{ height: 44, marginTop: 8 }} onClick={() => setAskReturn(false)}>{t('ยกเลิก')}</button>
+            </div>
+          </div>
+        )}
+      </>}
+    >
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>

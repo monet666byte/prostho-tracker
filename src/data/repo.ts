@@ -1018,3 +1018,29 @@ export async function updatePatientNote(patientId: string, note: string, actor: 
     { studentId: before.ownerStudentId },
   );
 }
+
+/** คืนเคส / ยกคืนสถานะ — นักศึกษาทำเองได้จากหน้าเคส
+ *  เคสที่คืนแล้วไม่นับเป็นงานที่กำลังทำ แต่ยังอยู่ในรายการ (ขีดฆ่า) และย้อนกลับได้
+ *  ทุกครั้งลง audit — อาจารย์ต้องเห็นว่าใครคืนเคสไหนเมื่อไหร่ เพราะกระทบตัวเลขเกณฑ์ */
+export async function setWorkpieceReturned(
+  workpieceId: string,
+  returned: boolean,
+  note: string,
+  actor: string,
+): Promise<void> {
+  const w = await db.workpieces.get(workpieceId);
+  if (!w) return;
+  const clean = note.trim();
+  await db.workpieces.update(workpieceId, {
+    returned: returned || undefined,
+    returnNote: returned ? (clean || undefined) : undefined,
+    lastUpdatedAt: new Date().toISOString(),
+  });
+  await logAudit(
+    returned
+      ? `คืนเคส ${w.detail} (${w.patientId})${clean ? ` · ${clean}` : ''}`
+      : `ยกเลิกการคืนเคส ${w.detail} — กลับมาเป็นงานที่ทำอยู่`,
+    actor,
+    { studentId: w.studentId },
+  );
+}
