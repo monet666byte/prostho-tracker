@@ -518,17 +518,26 @@
   animation: fadeIn 0.18s ease;
 }
 .herocase__top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.herocase__patient {
+/* ชื่อคนไข้ = ตัวบอกว่าการ์ดนี้คือเคสไหน จึงควรเป็นหัวเรื่องของการ์ด
+   ของเดิมเป็น mono 12px สีจาง เลยเบากว่าชื่อ step (700 16px) ทั้งที่สำคัญกว่า (ผู้ใช้ทัก 2 ก.ย.) */
+.herocase__name {
   display: block;
-  margin-top: 10px;
-  /* พอเอาบรรทัด "ขั้นตอนที่กำลังทำ" ออก (2 ก.ย.) ฝั่งซ้ายเหลือบรรทัดเดียว
-     ตัวเล็กจางเลยดูโหวงเทียบวงแหวน 64px — ขยายและเพิ่มความเข้มให้สมดุลกัน
-     (ชื่อคนไข้กับ HN เป็นข้อมูลที่ต้องอ่านออกอยู่แล้ว ไม่ควรจางขนาดนั้น) */
-  font: 500 12px/1.5 var(--font-mono);
-  color: var(--text-muted);
+  font: 700 17px/1.3 var(--font-head);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
+}
+.herocase__name:active { opacity: 0.55; }
+/* บรรทัดนี้เป็นตัวกำกับว่าเลขในวงแหวนคือ "ขั้นที่ n จาก m" — ห้ามถูกตัดท้ายทิ้ง
+   จึงปล่อยให้ตกบรรทัดแทน (โหมดตัวใหญ่ xl ตัดท้ายจนความหมายหายไปเลย) */
+.herocase__sub {
+  display: block;
+  margin-top: 4px;
+  font: 500 11px/1.4 var(--font-mono);
+  color: var(--text-faint);
+  overflow-wrap: break-word;
 }
 .herocase__main { display: flex; align-items: center; gap: 15px; margin-top: 12px; }
 .herocase__caption {
@@ -701,14 +710,13 @@
    โชว์เฉพาะขั้นย่อยของ step ที่กำลังทำ กันรก · รางเส้นเดียวลากหลังทุกแถว
    จุดตำแหน่งเจาะวงรอบตัวเองด้วยสีพื้นการ์ด (--hero-bg) ให้ดูลอยเหนือราง */
 .herocase__meta { margin-left: auto; font: 500 10px var(--font-mono); color: var(--text-faint); }
-/* โซนหัวการ์ด: คนไข้+caption ซ้าย · วงแหวนรวมทั้งเคสขวา (ผู้ใช้ขอวงแหวนคืน 1 ก.ย.) */
-.herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
-.herocase__lead .herocase__patient { margin-top: 0; }
-.herocase__ringwrap { flex: none; display: grid; justify-items: center; }
-/* ป้ายใต้วงแหวน กัน 5/10 ถูกอ่านเป็นคะแนน — โมโนตัวจิ๋วให้เข้าชุดกับ "/ 10" ในวง */
-.herocase__ringlabel { font: 500 8.5px var(--font-mono); color: var(--text-faint); margin-top: -3px; letter-spacing: 0.04em; }
+/* โซนหัวการ์ด: ชื่อคนไข้+HN ซ้าย · วงแหวนรวมทั้งเคสขวา (ผู้ใช้ขอวงแหวนคืน 1 ก.ย.)
+   สองบรรทัดซ้ายสูงใกล้เคียงวงแหวน 56px แล้ว จึงไม่มีช่องโหวงข้างวงแหวนเหมือนเดิม */
+.herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 11px; }
+/* เส้นคั่นเต็มความกว้างการ์ด (ทะลุ padding 16px ซ้ายขวา) แบ่ง "เคสไหน" ออกจาก "ต้องทำอะไรต่อ" */
+.herocase__rule { height: 1px; background: var(--accent-ring); margin: 13px -16px; }
 /* หน้าต่างแคบ 3 แถว "หน้า 1 หลัง 1" — แถวข้างเคียงย่อเล็ก ให้ขั้นปัจจุบันเด่น (ผู้ใช้ขอ 1 ก.ย.) */
-.heropath { position: relative; margin-top: 9px; display: grid; gap: 5px; }
+.heropath { position: relative; display: grid; gap: 5px; }
 .heropath::before {
   content: '';
   position: absolute; left: 16.5px; top: 12px; bottom: 12px;

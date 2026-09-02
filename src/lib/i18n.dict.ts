@@ -259,6 +259,7 @@ export const DICT: Record<string, string> = {
   'ทำเอง': 'Self',
   'ทำเอง (self-performed)': 'Self-performed',
   'ค้าง {d} วัน': 'Stalled {d} d',
+  'ขั้นที่ {n} จาก {m}': 'Step {n} of {m}',
   'รอ sync': 'Pending sync',
   'บันทึกในเครื่อง · รอ sync เมื่อมีสัญญาณ': 'Saved locally · will sync when online',
   'จบเคสแล้ว': 'Case completed',

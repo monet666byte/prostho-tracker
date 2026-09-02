@@ -24,18 +24,18 @@ const SHOW_ACHIEVEMENT_CARD = false;
 
 /** วงแหวนความคืบหน้ารวมของเคส — ผู้ใช้ขอคืนมาคู่กับเส้นทางด่าน (1 ก.ย.) เลยย่อไซซ์ลงไปอยู่มุมหัวการ์ด */
 function Ring({ value, max }: { value: number; max: number }) {
-  const R = 25;
+  const R = 22;
   const C = 2 * Math.PI * R;
   const f = Math.max(0, Math.min(1, value / max));
   return (
-    <svg width="64" height="64" viewBox="0 0 64 64" style={{ flex: 'none' }} aria-hidden>
-      <circle cx="32" cy="32" r={R} fill="none" stroke="var(--accent-ring)" strokeWidth="6.5" />
+    <svg width="56" height="56" viewBox="0 0 56 56" style={{ flex: 'none' }} aria-hidden>
+      <circle cx="28" cy="28" r={R} fill="none" stroke="var(--accent-ring)" strokeWidth="6" />
       <circle
-        cx="32" cy="32" r={R} fill="none" stroke="var(--accent)" strokeWidth="6.5" strokeLinecap="round"
-        strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 32 32)"
+        cx="28" cy="28" r={R} fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 28 28)"
       />
-      <text x="32" y="31" textAnchor="middle" style={{ font: '700 14px var(--font-head)', fill: 'var(--text)' }}>{value}</text>
-      <text x="32" y="43" textAnchor="middle" style={{ font: '400 9px var(--font-mono)', fill: 'var(--text-faint)' }}>/ {max}</text>
+      <text x="28" y="27" textAnchor="middle" style={{ font: '700 15px var(--font-head)', fill: 'var(--text)' }}>{value}</text>
+      <text x="28" y="38.5" textAnchor="middle" style={{ font: '400 9px var(--font-mono)', fill: 'var(--text-faint)' }}>/ {max}</text>
     </svg>
   );
 }
@@ -65,26 +65,26 @@ function HeroCard({
         <span className="herocase__meta">{relative(w.lastUpdatedAt)}</span>
       </div>
 
-      {/* โซนหัว: ชื่อคนไข้+caption ชิดซ้าย วงแหวนรวมทั้งเคสชิดขวา — เส้นทางด่านล่างได้เต็มความกว้าง */}
+      {/* โซนหัว "เคสไหน": ชื่อคนไข้เป็นหัวเรื่อง + บรรทัดรอง ชิดซ้าย · วงแหวนรวมทั้งเคสชิดขวา
+          เดิมซ้ายมีบรรทัด mono จางบรรทัดเดียว สูงไม่ถึงครึ่งวงแหวน เลยเหลือช่องโหวงข้างวงแหวน (ผู้ใช้ทัก 2 ก.ย.)
+          บรรทัดรองทำสองหน้าที่: บอก HN และกำกับว่าเลขในวงแหวนคือ "ขั้นที่ n จาก m" ไม่ใช่คะแนน
+          (จึงไม่ต้องมีป้าย steps ใต้วงแหวนอีก) */}
       <div className="herocase__lead">
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* เหลือชื่อคนไข้กับ HN พอ — ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว
-              เดิมพ่วง w.detail มาด้วยจนบรรทัดยาวเกินและถูกตัดท้าย (2 ก.ย.) */}
-          <Link to={`/app/work/${w.id}`} className="herocase__patient">
-            {t(w.patient.name)} · HN {w.patient.hn}
-          </Link>
+          {/* ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว ไม่ต้องซ้ำในบรรทัดนี้ */}
+          <Link to={`/app/work/${w.id}`} className="herocase__name">{t(w.patient.name)}</Link>
+          <span className="herocase__sub">
+            HN {w.patient.hn}
+            {next && ` · ${t('ขั้นที่ {n} จาก {m}', { n: prog, m: max })}`}
+          </span>
         </div>
-        {next && (
-          <div className="herocase__ringwrap">
-            <Ring value={prog} max={max} />
-            {/* กันอ่านเป็น "คะแนน 5/10" — คำเดียวพอ และเป็นอังกฤษทั้งสองภาษาแบบหัวข้อ radar (ผู้ใช้เลือก 1 ก.ย.) */}
-            <span className="herocase__ringlabel">steps</span>
-          </div>
-        )}
+        {next && <Ring value={prog} max={max} />}
       </div>
 
       {next ? (
         <>
+          {/* เส้นคั่นแบ่งโซน "เคสไหน" ออกจากโซน "ต้องทำอะไรต่อ" — ไม่งั้นทุกแถวลอยกองรวมกัน */}
+          <div className="herocase__rule" />
           {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด (ผู้ใช้ทักว่าปุ่มกลางทางรก, 1 ก.ย.) */}
           <div className="heropath">
             {cur && (
