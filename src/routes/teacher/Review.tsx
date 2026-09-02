@@ -103,19 +103,19 @@ export default function Review() {
           </div>
         </div>
 
-        {/* เลือกนักศึกษา — อยู่ในเนื้อหา ไม่ไปแทนที่เมนูซ้าย */}
-        <div className="pickrow">
-          {groupStudents.map((s) => (
-            <button key={s.id} data-on={s.id === activeId} onClick={() => setStudentId(s.id)}>
-              {t(s.name)}
-              <span className="mono">{s.code}</span>
-            </button>
-          ))}
-        </div>
-
         <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px' }}>
+          {/* สลับคนผ่าน dropdown เล็กๆ แทนแถวปุ่มทั้งกลุ่ม (ผู้ใช้ 2 ก.ย.: ปุ่มชื่อคนอื่นทั้งกลุ่มไม่จำเป็น) */}
+          <select
+            className="input"
+            style={{ width: 'auto', maxWidth: 250, height: 38, font: '600 12.5px var(--font-body)' }}
+            value={activeId ?? ''}
+            onChange={(e) => setStudentId(e.target.value)}
+          >
+            {groupStudents.map((st) => (
+              <option key={st.id} value={st.id}>{t(st.name)} · {st.code}</option>
+            ))}
+          </select>
           <div style={{ flex: 1 }}>
-            {/* ไม่ใส่ชื่อซ้ำ — กดชื่อเข้ามาแล้ว และแถวเลือกคนข้างบนไฮไลต์อยู่ (ผู้ใช้ทักว่ารก 2 ก.ย.) */}
             <div style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>
               {t('{n} ชิ้นงาน', { n: works.length })} · {t('เกณฑ์สะสม')}{' '}
               {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
