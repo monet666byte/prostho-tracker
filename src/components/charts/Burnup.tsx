@@ -18,13 +18,19 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
 
   /* ⚠️ ทุกค่าเป็น 0 ได้จริง — เช่นดูรุ่นที่เรียนจบไปแล้ว ซึ่งไม่มีเคสจบในปีการศึกษาปัจจุบัน
      ถ้าไม่กัน maxY จะเป็น 0 แล้ว v/maxY = NaN ทำให้ทุกพิกัดในกราฟพัง (เห็นเป็น error ยาวใน console) */
-  const maxY = Math.max(1, Math.max(...points.map((p) => p.target), ...points.map((p) => p.actual ?? 0)) * 1.06);
+  const maxY = Math.max(
+    1,
+    Math.max(...points.map((p) => p.target), ...points.map((p) => p.actual ?? 0), ...points.map((p) => p.lastYear ?? 0)) * 1.06,
+  );
   // จุดเดียวก็หารศูนย์เหมือนกัน
   const x = (i: number) => padL + (points.length > 1 ? (i / (points.length - 1)) * plotW : plotW / 2);
   const y = (v: number) => padT + plotH - (v / maxY) * plotH;
 
   const actualPts = points.map((p, i) => (p.actual === null ? null : `${x(i)},${y(p.actual)}`)).filter(Boolean);
   const targetPts = points.map((p, i) => `${x(i)},${y(p.target)}`);
+  // เส้นปีที่แล้ว — มีเฉพาะเมื่อมีข้อมูลรุ่นก่อนในระบบ
+  const hasLastYear = points.some((p) => p.lastYear !== null);
+  const lastYearPts = hasLastYear ? points.map((p, i) => `${x(i)},${y(p.lastYear ?? 0)}`) : [];
   const lastActualIndex = points.reduce((acc, p, i) => (p.actual !== null ? i : acc), 0);
   const last = points[lastActualIndex];
   const behind = (last.target ?? 0) - (last.actual ?? 0);
@@ -51,6 +57,11 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
 
         {/* เส้นเป้า — เส้นประ (เพราะเป็น projection ไม่ใช่ข้อมูลจริง) */}
         <polyline points={targetPts.join(' ')} fill="none" stroke="var(--text-disabled)" strokeWidth={1.5} strokeDasharray="5 4" />
+
+        {/* เส้นปีที่แล้ว — เทียบจังหวะกับรุ่นก่อน (ปรับสเกลตามจำนวนคนแล้ว) */}
+        {hasLastYear && (
+          <polyline points={lastYearPts.join(' ')} fill="none" stroke="var(--self)" strokeWidth={1.5} strokeDasharray="2 3" opacity={0.75} />
+        )}
 
         {/* เส้นจริง */}
         <polyline points={actualPts.join(' ')} fill="none" stroke="var(--accent)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
@@ -93,9 +104,14 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
         <span>
           <i style={{ background: 'transparent', borderTop: '2px dashed var(--text-disabled)', height: 0, width: 16 }} /> {t('เป้าถ้าจะผ่านเกณฑ์รายปีทั้งชั้น')}
         </span>
+        {hasLastYear && (
+          <span>
+            <i style={{ background: 'transparent', borderTop: '2px dotted var(--self)', height: 0, width: 16 }} /> {t('รุ่นก่อน ณ เดือนเดียวกัน')}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>
           {hover !== null
-            ? `${points[hover].label} · ${t('จบจริง')} ${points[hover].actual ?? '—'} · ${t('เป้า')} ${points[hover].target}`
+            ? `${points[hover].label} · ${t('จบจริง')} ${points[hover].actual ?? '—'} · ${t('เป้า')} ${points[hover].target}${points[hover].lastYear !== null ? ` · ${t('รุ่นก่อน')} ${points[hover].lastYear}` : ''}`
             : behind > 0
               ? t('ตอนนี้ตามหลังเป้าอยู่ {n} ชิ้น', { n: behind })
               : t('ตอนนี้นำหน้าเป้าอยู่')}

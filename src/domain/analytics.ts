@@ -550,7 +550,13 @@ export interface BurnupPoint {
   actual: number | null;
   /** เส้นเป้า: ถ้าจะให้ทั้งชั้นปีผ่านเกณฑ์รายปี ควรจบสะสมเท่าไหร่ ณ เดือนนั้น */
   target: number;
+  /** ปีที่แล้ว ณ เดือนเดียวกัน (ปรับสเกลตามจำนวน นศ. ปีนี้) — null = ไม่มีข้อมูลปีก่อน */
+  lastYear: number | null;
 }
+
+/** เดือนแรกๆ ยังไม่มีเคสจบได้จริง — เคสสั้นสุดก็ราว 3 เดือนนับจากรับเคส
+ *  เส้นเป้าจึงเริ่มไต่หลังเดือนที่ 3 (ผู้ใช้ทัก 2 ก.ย.: เส้นตรงจากศูนย์ทำให้ต้นปีดูแดงเกินจริง) */
+const BURNUP_LEAD_MONTHS = 3;
 
 /**
  * แกนเดียว หน่วยเดียวกันทั้งสองเส้น (จำนวนชิ้นงานสะสม) — เทียบกันได้ตรงๆ
@@ -562,18 +568,36 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
   const months = 10; // มิ.ย. → มี.ค.
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
+  const counts = (w: Workpiece) => settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
   const completions = works
-    .filter((w) => w.completedAt && (settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type)))
+    .filter((w) => w.completedAt && counts(w))
     .map((w) => new Date(w.completedAt!).getTime());
+
+  /* ปีที่แล้ว: เคสที่จบในหน้าต่าง มิ.ย.(ปีก่อน) → พ.ค. — ปรับสเกลด้วยจำนวนนักศึกษา
+     เพราะรุ่นก่อนอาจมีคนไม่เท่ากัน เทียบดิบๆ จะไม่แฟร์ */
+  const prevStart = new Date(startYear - 1, 5, 1).getTime();
+  const prevEnd = new Date(startYear, 5, 1).getTime();
+  const prevRows = works.filter(
+    (w) => w.completedAt && counts(w) && new Date(w.completedAt).getTime() >= prevStart && new Date(w.completedAt).getTime() < prevEnd,
+  );
+  const prevStudents = new Set(prevRows.map((w) => w.studentId)).size;
+  const prevScale = prevStudents > 0 ? students.length / prevStudents : 0;
+  const prevTimes = prevRows.map((w) => new Date(w.completedAt!).getTime());
 
   return Array.from({ length: months }, (_, i) => {
     const monthStart = new Date(startYear, 5 + i, 1);
     const monthEnd = new Date(startYear, 6 + i, 1).getTime();
     const past = monthStart.getTime() <= thisMonth;
+    // เป้าไต่หลังช่วง lead — ก่อนหน้านั้นเป้าคือ 0 (จบไม่ได้จริง)
+    const ramp = Math.max(0, i + 1 - BURNUP_LEAD_MONTHS);
+    const rampMonths = months - BURNUP_LEAD_MONTHS;
     return {
       label: TH_MONTHS[monthStart.getMonth()],
       actual: past ? completions.filter((t) => t < monthEnd).length : null,
-      target: Math.round((goal * (i + 1)) / months),
+      target: Math.round((goal * ramp) / rampMonths),
+      lastYear: prevStudents
+        ? Math.round(prevTimes.filter((t) => t < new Date(startYear - 1, 6 + i, 1).getTime()).length * prevScale)
+        : null,
     };
   });
 }

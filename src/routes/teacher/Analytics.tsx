@@ -143,7 +143,7 @@ export default function Analytics() {
             {/* 2. เส้นสะสมเทียบเป้า */}
             <div className="panel">
               <h3>{t('ชิ้นงานเสร็จสะสม เทียบเป้าหมาย')}</h3>
-              <p className="sub">{t('ต้นปีต่ำกว่าเป้าเป็นปกติ — เคสแรกใช้เวลา 2–4 เดือน')}</p>
+              <p className="sub">{t('เป้าเริ่มไต่หลังเดือนที่ 3 — เคสแรกใช้เวลา 2–4 เดือน จบไม่ได้เร็วกว่านั้น')}</p>
               <div style={{ marginTop: 8 }}>
                 <Burnup points={burn} />
               </div>
