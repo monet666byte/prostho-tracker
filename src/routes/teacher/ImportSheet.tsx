@@ -319,8 +319,22 @@ function WholeCohortImport() {
         setPullError(t('ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้'));
       }
       const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
-      // ปีที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลงคอลัมน์ "for PT502/PT602" เป็นปีจริง
-      const entryYear = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
+      /* ปีที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลงคอลัมน์ "for PT502/PT602" เป็นปีจริง
+         แท็บ INTRO เขียนไว้ตรงๆ ("ชั้นปีที่ 6 · ปีการศึกษา 2569") จึงเชื่อก่อนรหัสนักศึกษา */
+      const fromRoster = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
+      const fromIntro =
+        res.intro?.academicYear && res.intro.studentYear
+          ? res.intro.academicYear - (res.intro.studentYear - 5)
+          : undefined;
+      const entryYear = fromIntro ?? fromRoster;
+      if (fromIntro && fromRoster && fromIntro !== fromRoster) {
+        setPullError(
+          t('แท็บ INTRO บอกว่าเป็น {c} ปีการศึกษา {y} แต่รหัสนักศึกษาส่วนใหญ่บอกอีกรุ่น — ยึดตาม INTRO ถ้าไม่ถูกโปรดแก้ที่ชีต', {
+            c: res.intro?.course ?? '-',
+            y: String(res.intro?.academicYear ?? '-'),
+          }),
+        );
+      }
       setGroups(res.groups.map((g) => ({ name: g.tab, res: importGroupCsv(g.csv, (code) => byCode.get(code) ?? null, entryYear) })));
     } finally {
       setPulling(null);

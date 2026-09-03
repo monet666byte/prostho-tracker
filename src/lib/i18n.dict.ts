@@ -153,6 +153,8 @@ export const DICT: Record<string, string> = {
   'วางลิงก์ชีตแล้วกดดึง — หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12)': 'Paste the sheet link and pull \u2014 or choose exported CSV files (Student list + PT1\u2013PT12)',
   'หรือเลือกไฟล์ CSV ที่ export ไว้แล้ว': 'Or choose CSV files you exported earlier',
   'ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้': 'No Student list tab found \u2014 work can be imported but students cannot be matched',
+  'แท็บ INTRO บอกว่าเป็น {c} ปีการศึกษา {y} แต่รหัสนักศึกษาส่วนใหญ่บอกอีกรุ่น — ยึดตาม INTRO ถ้าไม่ถูกโปรดแก้ที่ชีต':
+    'The INTRO tab says {c}, academic year {y}, but most student IDs suggest a different cohort \u2014 using INTRO. Fix the sheet if this is wrong',
   'ดึงไม่ได้ — ชีตต้องเปิดสิทธิ์ให้ “ผู้ที่มีลิงก์” อ่านได้ และมีแท็บ PT1–PT12': 'Could not pull \u2014 the sheet must be viewable by anyone with the link and contain tabs PT1\u2013PT12',
   'ลิงก์ไม่ถูกต้อง — วางลิงก์ Google Sheet ทั้งอัน': 'Invalid link \u2014 paste the whole Google Sheet URL',
   'กำลังดึง {d}/{t} แท็บ…': 'Pulling {d}/{t} tabs\u2026',

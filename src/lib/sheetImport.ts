@@ -550,10 +550,34 @@ export interface FetchedTab {
  * ดึงทุกแท็บที่ต้องใช้: รายชื่อ + กลุ่ม PT1–PT12
  * แท็บไหนไม่มีก็ข้าม (ชีตบางปีอาจมีไม่ครบ) — คืนเฉพาะที่ดึงได้จริง
  */
+/**
+ * แท็บ INTRO เขียนไว้ตรงๆ ว่า "นศ.ทพ.ชั้นปีที่ 6 · ปีการศึกษา 2569 · DTPT 602"
+ * ใช้ยืนยันรุ่นของชีตแทนการเดาจากรหัสนักศึกษา (ซึ่ง นศ. ตกรุ่นทำให้เพี้ยนได้)
+ */
+export function parseIntro(csvText: string): { studentYear?: number; academicYear?: number; course?: string } {
+  const flat = parseCsv(csvText).map((r) => r.map((c) => c.trim()));
+  const out: { studentYear?: number; academicYear?: number; course?: string } = {};
+  flat.forEach((row) => {
+    row.forEach((cell, j) => {
+      const next = row.slice(j + 1).find((c) => c !== '') ?? '';
+      if (/ชั้นปีที่/.test(cell)) {
+        const n = Number(next.replace(/\.0$/, ''));
+        if (n >= 1 && n <= 6) out.studentYear = n;
+      }
+      if (/ปีการศึกษา/.test(cell)) {
+        const n = Number(next.replace(/\.0$/, ''));
+        if (n >= 2500 && n <= 2700) out.academicYear = n;
+      }
+      if (/^DTPT\s?\d{3}$/i.test(cell)) out.course = cell.replace(/\s+/g, ' ');
+    });
+  });
+  return out;
+}
+
 export async function fetchCohortTabs(
   sheetId: string,
   onProgress?: (done: number, total: number) => void,
-): Promise<{ roster: string | null; groups: FetchedTab[]; failed: string[] }> {
+): Promise<{ roster: string | null; groups: FetchedTab[]; failed: string[]; intro: ReturnType<typeof parseIntro> | null }> {
   const rosterNames = ['Student list', 'Student List', 'รายชื่อ'];
   const groupNames = Array.from({ length: 12 }, (_, i) => `PT${i + 1}`);
   const total = 1 + groupNames.length;
@@ -589,5 +613,6 @@ export async function fetchCohortTabs(
     done++;
     onProgress?.(done, total);
   }
-  return { roster, groups, failed };
+  const introCsv = await grab('INTRO');
+  return { roster, groups, failed, intro: introCsv ? parseIntro(introCsv) : null };
 }
