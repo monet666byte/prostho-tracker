@@ -304,6 +304,22 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       // ชีตจริงมีขัดกันเองบ่อย: droplist บอกขั้นหนึ่ง ช่องติ๊กบอกอีกขั้น — เชื่อช่องติ๊ก แต่ต้องบอกให้คนตรวจ
       const stepLabel = get(cStep);
       const dm = stepLabel.match(/-(\d{1,2})\s/);
+      /* ⚠️ ไม่ได้ติ๊กช่องเลยสักช่อง แต่ droplist กรอกไว้ — เจอในชีตรุ่น 54: งาน recall 28 แถว
+         เขียน "Completion of case" แต่ช่องติ๊กว่างหมด ระบบเลยอ่านเป็น "ยังไม่เริ่ม"
+         ทั้งที่ในหน้ารายคนขึ้นว่าจบแล้ว (ผู้ใช้ทัก 3 ก.ย. ว่าขัดกันเอง)
+         → ถ้าไม่มีติ๊กเลย ให้ใช้ค่าจาก droplist เป็นหลักฐานแทน แล้วติดธงให้กลับไปติ๊กในชีต */
+      if (maxTick < 0 && stepLabel) {
+        const isRecall = type === 'RRM' || type === 'RFX';
+        const topStep = isRecall ? 3 : 10;
+        if (dm) maxTick = Math.min(Number(dm[1]), topStep);
+        else if (/completion|ปิดเคส|complete/i.test(stepLabel)) maxTick = topStep;
+        if (maxTick >= 0) {
+          issues.push({
+            row: rowNo, column: 'ช่อง 0–10', value: stepLabel.slice(0, 30),
+            problem: `ไม่ได้ติ๊กช่องขั้นตอนเลย — ใช้ค่าจาก droplist แทน (ขั้น ${maxTick}) โปรดติ๊กในชีตให้ตรง`,
+          });
+        }
+      }
       if (dm && maxTick >= 0 && Number(dm[1]) !== maxTick) {
         issues.push({
           row: rowNo, column: 'Step งานที่ผ่านแล้ว', value: stepLabel.slice(0, 30),
