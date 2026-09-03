@@ -564,22 +564,32 @@ const BURNUP_LEAD_MONTHS = 3;
  * แกนเดียว หน่วยเดียวกันทั้งสองเส้น (จำนวนชิ้นงานสะสม) — เทียบกันได้ตรงๆ
  * เส้นเป้าลากตรงจาก 0 ถึง (จำนวนนักศึกษา × เกณฑ์รายปี) ที่เดือนสุดท้ายของปีการศึกษา
  */
+const countsForBurnup = (w: Workpiece, settings: Settings) =>
+  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
+
+/**
+ * "ยอดยกมา" ของกราฟ burn-up: งานที่จบมาก่อนใช้ระบบ (นำเข้าจากชีต) ไม่มีวันที่จบจริง —
+ * ตอนนำเข้าจึงประทับเป็นวันนำเข้า ถ้านับตามนั้น เส้นสะสมจะพุ่งตั้งฉากในเดือนที่นำเข้า
+ * (ผู้ใช้เห็นเป็น 287 ในเดือนเดียว 3 ก.ย.) จึงแยกเป็นยอดคงที่ทุกเดือน
+ * ชีตบอกเองว่าชิ้นไหนนับเข้าปีไหน (คอลัมน์ for PT502/PT602) — งานที่นับเข้าปีก่อน
+ * ต้องไม่มากองในยอดยกมาของปีนี้ · export ให้คำอธิบายใต้กราฟใช้เลขเดียวกัน (เคยโชว์ 375 ทั้งที่กราฟเริ่มที่ 3)
+ */
+export function carriedOverCount(works: Workpiece[], settings: Settings, now = new Date()): number {
+  const beYear = academicYear(now);
+  return works.filter(
+    (w) => w.fromSheet && w.completedAt && countsForBurnup(w, settings) && (w.countsForYear ?? beYear) === beYear,
+  ).length;
+}
+
 export function burnup(students: Student[], works: Workpiece[], settings: Settings, now = new Date()): BurnupPoint[] {
   const startYear = academicYear(now) - 543;
   const goal = students.length * settings.req.perYear;
   const months = 10; // มิ.ย. → มี.ค.
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-  const counts = (w: Workpiece) => settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
-  /* งานที่จบมาก่อนใช้ระบบ (นำเข้าจากชีต) ไม่มีวันที่จบจริง — ตอนนำเข้าจึงประทับเป็นวันนำเข้า
-     ถ้านับตามนั้น เส้นสะสมจะพุ่งตั้งฉากในเดือนที่นำเข้า (ผู้ใช้เห็นเป็น 287 ในเดือนเดียว 3 ก.ย.)
-     จึงแยกเป็น "ยอดยกมา" คงที่ทุกเดือน แล้วให้เส้นโตจากงานที่จบในระบบจริงๆ เท่านั้น */
+  const counts = (w: Workpiece) => countsForBurnup(w, settings);
   const beYear = startYear + 543;
-  /* ชีตบอกเองว่าชิ้นไหนนับเข้าปีไหน (คอลัมน์ for PT502/PT602) — งานที่นับเข้าปีก่อน
-     ต้องไม่มากองในยอดยกมาของปีนี้ ไม่งั้นเส้นสะสมสูงเกินจริงตั้งแต่เดือนแรก */
-  const carriedOver = works.filter(
-    (w) => w.fromSheet && w.completedAt && counts(w) && (w.countsForYear ?? beYear) === beYear,
-  ).length;
+  const carriedOver = carriedOverCount(works, settings, now);
   const completions = works
     .filter((w) => !w.fromSheet && w.completedAt && counts(w))
     .map((w) => new Date(w.completedAt!).getTime());

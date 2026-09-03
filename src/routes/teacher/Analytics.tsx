@@ -6,8 +6,7 @@ import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
 import { TYPES, typeChipLabel, typesPresent } from '../../domain/catalog';
 import {
-  bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows,
-} from '../../domain/analytics';
+  bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount } from '../../domain/analytics';
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
@@ -68,7 +67,7 @@ export default function Analytics() {
 
   const maxDuration = Math.max(1, ...durations.map((d) => d.maxWeeks));
   /* งานที่นำเข้าจากชีตไม่มีวันที่จบจริง — บอกให้ชัดว่าเส้นเริ่มจากยอดยกมาเท่าไหร่ */
-  const carried = works.filter((w) => w.fromSheet && w.completedAt).length;
+  const carried = carriedOverCount(works, settings);
   const carriedOverNote = carried > 0
     ? <> · {t('เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)', { n: carried })}</>
     : null;
