@@ -300,7 +300,10 @@ export interface StepBucket {
 
 export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: WorkType): StepBucket[] {
   const scope = works.filter((w) => isActiveWork(w) && (!type || w.type === type));
-  const buckets: StepBucket[] = Array.from({ length: 11 }, (_, i) => ({
+  /* จำนวนช่องบนแกน = ขั้นสูงสุดของงานประเภทนั้น +1 — งาน Recall มี 4 ขั้น (0–3)
+     เดิมวาดยาว 0–10 เสมอ เหลือช่องว่าง 7 ช่องที่ไม่มีทางมีใครไปถึง (ผู้ใช้ทัก 3 ก.ย.) */
+  const span = type ? maxProgression({ type }) + 1 : 11;
+  const buckets: StepBucket[] = Array.from({ length: span }, (_, i) => ({
     progression: i,
     count: 0,
     stale: 0,
@@ -309,7 +312,7 @@ export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: 
 
   scope.forEach((w) => {
     const p = Math.max(0, progression(w));
-    if (p > 10) return;
+    if (p >= buckets.length) return;
     buckets[p].count++;
     if (isStale(w, settings)) buckets[p].stale++;
   });
@@ -568,8 +571,12 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   const counts = (w: Workpiece) => settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
+  /* งานที่จบมาก่อนใช้ระบบ (นำเข้าจากชีต) ไม่มีวันที่จบจริง — ตอนนำเข้าจึงประทับเป็นวันนำเข้า
+     ถ้านับตามนั้น เส้นสะสมจะพุ่งตั้งฉากในเดือนที่นำเข้า (ผู้ใช้เห็นเป็น 287 ในเดือนเดียว 3 ก.ย.)
+     จึงแยกเป็น "ยอดยกมา" คงที่ทุกเดือน แล้วให้เส้นโตจากงานที่จบในระบบจริงๆ เท่านั้น */
+  const carriedOver = works.filter((w) => w.fromSheet && w.completedAt && counts(w)).length;
   const completions = works
-    .filter((w) => w.completedAt && counts(w))
+    .filter((w) => !w.fromSheet && w.completedAt && counts(w))
     .map((w) => new Date(w.completedAt!).getTime());
 
   /* ปีที่แล้ว: เคสที่จบในหน้าต่าง มิ.ย.(ปีก่อน) → พ.ค. — ปรับสเกลด้วยจำนวนนักศึกษา
@@ -592,7 +599,7 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
     const rampMonths = months - BURNUP_LEAD_MONTHS;
     return {
       label: TH_MONTHS[monthStart.getMonth()],
-      actual: past ? completions.filter((t) => t < monthEnd).length : null,
+      actual: past ? carriedOver + completions.filter((t) => t < monthEnd).length : null,
       target: Math.round((goal * ramp) / rampMonths),
       lastYear: prevStudents
         ? Math.round(prevTimes.filter((t) => t < new Date(startYear - 1, 6 + i, 1).getTime()).length * prevScale)

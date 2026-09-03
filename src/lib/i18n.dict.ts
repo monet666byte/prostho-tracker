@@ -130,6 +130,7 @@ export const DICT: Record<string, string> = {
   'ซ่อนขั้นย่อย': 'Hide sub-steps',
   'ความสำเร็จ': 'Achievements',
   'ล่าสุด': 'Latest',
+  'เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)': 'starts from {n} carried-over items imported from the sheet (the sheet has no completion date)',
   'เอาเคสกลับมาทำต่อแล้ว': 'Case resumed',
   'คืนเคสแล้ว — ไม่นับเป็นงานที่กำลังทำ': 'Case returned \u2014 no longer counted as active work',
   'ยืนยันคืนเคส': 'Confirm return',

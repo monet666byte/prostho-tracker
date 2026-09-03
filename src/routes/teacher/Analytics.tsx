@@ -67,6 +67,11 @@ export default function Analytics() {
   );
 
   const maxDuration = Math.max(1, ...durations.map((d) => d.maxWeeks));
+  /* งานที่นำเข้าจากชีตไม่มีวันที่จบจริง — บอกให้ชัดว่าเส้นเริ่มจากยอดยกมาเท่าไหร่ */
+  const carried = works.filter((w) => w.fromSheet && w.completedAt).length;
+  const carriedOverNote = carried > 0
+    ? <> · {t('เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)', { n: carried })}</>
+    : null;
   return (
     <TeacherShell active="cohort">
       <main className="main">
@@ -143,7 +148,7 @@ export default function Analytics() {
             {/* 2. เส้นสะสมเทียบเป้า */}
             <div className="panel">
               <h3>{t('ชิ้นงานเสร็จสะสม เทียบเป้าหมาย')}</h3>
-              <p className="sub">{t('เป้าเริ่มไต่หลังเดือนที่ 3 — เคสแรกใช้เวลา 2–4 เดือน จบไม่ได้เร็วกว่านั้น')}</p>
+              <p className="sub">{t('เป้าเริ่มไต่หลังเดือนที่ 3 — เคสแรกใช้เวลา 2–4 เดือน จบไม่ได้เร็วกว่านั้น')}{carriedOverNote}</p>
               <div style={{ marginTop: 8 }}>
                 <Burnup points={burn} />
               </div>

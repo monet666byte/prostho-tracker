@@ -207,6 +207,11 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
   const cWork = col(/prosthodontic|work/i);
   const cAccepted = col(/accepted/i);
   const cMin = col(/min/i);
+  /* ชีตรุ่น 54 ไม่มีคอลัมน์ "Minimum Req" แต่ใช้คอลัมน์ "การนับชิ้นงาน PT602 = Yr6 · PT502 = Yr5"
+     แทน โดยเขียน "for PT602" / "for PT502" = ชิ้นนี้นับเข้าเกณฑ์ของปีนั้น และ "คืนเคส" = คืนไปแล้ว
+     ถ้าไม่อ่านคอลัมน์นี้ ทุกชิ้นจะไม่นับเข้าเกณฑ์เลย (ผู้ใช้เจอ 3 ก.ย.: แถบเกณฑ์แดงทั้งแถว
+     ทั้งที่จบเคสไปหลายร้อยชิ้น) */
+  const cCount = col(/การนับชิ้นงาน|PT\s?60|PT\s?50/i);
   const cPayment = col(/payment/i);
   const cNote = col(/หมายเหตุ|สถานะ/i);
   const cStep = col(/step.*ผ่าน|ผ่านแล้ว/i); // คอลัมน์ droplist เช่น "CD-3 Final impression"
@@ -320,7 +325,13 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     /* คืนเคส/ยกเลิก — ชีตเขียนไว้ในคอลัมน์หมายเหตุ (รุ่น 54 มี 89 แถว, รุ่น 55 มี 19)
        ถ้าไม่แยกออก งานที่คืนไปแล้วจะถูกนับเป็นภาระค้างของนักศึกษาตลอดไป */
     const rowNote = get(cNote);
-    const returned = /คืนเคส|คืนงาน|ยกเลิก(การรักษา)?|ไม่ได้ทำต่อ/.test(rowNote);
+    const countCell = get(cCount);
+    // "คืนเคส" เขียนได้ทั้งช่องหมายเหตุ และช่องการนับชิ้นงาน (รุ่น 54 ใช้ช่องหลัง 123 แถว)
+    const returned = /คืนเคส|คืนงาน|ยกเลิก(การรักษา)?|ไม่ได้ทำต่อ/.test(rowNote)
+      || /คืนเคส|คืนงาน/.test(countCell);
+    /* นับเข้าเกณฑ์ไหม — รองรับสองแบบที่ภาคใช้จริง:
+       รุ่น 55: คอลัมน์ Minimum Req เขียน Yes/No · รุ่น 54: คอลัมน์การนับชิ้นงานเขียน "for PT602/PT502" */
+    const countsToward = /yes|ใช่|✓|✔|y\b/i.test(get(cMin)) || /for\s*PT\s?\d{3}/i.test(countCell);
     const now = new Date().toISOString();
     // แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง
     const wkey = `${pkey}|${workLabel}|${accepted ?? ''}`;
@@ -335,8 +346,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       tooth: detectTooth(workLabel),
       detail: workLabel,
       acceptedDate: accepted ?? now.slice(0, 10),
-      // ชีตจริง: ติ๊ก Yes เฉพาะชิ้นที่นับเกณฑ์ ช่องว่าง = ไม่นับ (เดิมตีความกลับข้าง — ว่างกลายเป็นนับ)
-      minimumRequirement: /yes|ใช่|✓|✔|y\b/i.test(get(cMin)),
+      minimumRequirement: countsToward,
       pendingQualification: false,
       payment: parsePayment(get(cPayment)),
       sect2Removable: type === 'CD' || type === 'RPD' || type === 'APD',
@@ -344,6 +354,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       procIndex: progressionToProcIndex(type, maxTick),
       lastUpdatedAt: now,
       completedAt: maxTick >= 10 ? now : undefined,
+      fromSheet: true,
       returned: returned || undefined,
       returnNote: returned ? rowNote : undefined,
       catalogVersion: 'DTPT502-2569',
