@@ -236,6 +236,10 @@ export function completedInYear(list: Workpiece[], year: number, settings: Setti
   return list.filter((w) => {
     if (!isComplete(w) || !w.completedAt) return false;
     if (!settings.perYearCountsAllTypes && !(REQ_TYPES as readonly string[]).includes(w.type)) return false;
+    /* ชีตระบุปีที่ชิ้นงานนับเข้าไว้เอง (คอลัมน์ for PT502/PT602) — เชื่อชีตก่อน
+       เพราะงานที่นำเข้ามีวันจบ = วันนำเข้า ถ้าดูจากวันจบอย่างเดียว งานของปี 5
+       จะไหลมากองรวมในปีปัจจุบันหมด (ผู้ใช้ทัก 3 ก.ย.) */
+    if (w.countsForYear) return w.countsForYear === year;
     return academicYear(w.completedAt) === year;
   });
 }

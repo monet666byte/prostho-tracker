@@ -180,7 +180,7 @@ const workpieceId = (studentId: string, hn: string, label: string, accepted: str
 
 /* ── ตัวนำเข้าหลัก ── */
 
-export function importSheetCsv(csvText: string, studentId: string): ImportResult {
+export function importSheetCsv(csvText: string, studentId: string, entryYear?: number): ImportResult {
   const rows = parseCsv(csvText);
   const issues: ImportIssue[] = [];
   const patients = new Map<string, Patient>(); // key = HN
@@ -348,6 +348,12 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
     /* นับเข้าเกณฑ์ไหม — รองรับสองแบบที่ภาคใช้จริง:
        รุ่น 55: คอลัมน์ Minimum Req เขียน Yes/No · รุ่น 54: คอลัมน์การนับชิ้นงานเขียน "for PT602/PT502" */
     const countsToward = /yes|ใช่|✓|✔|y\b/i.test(get(cMin)) || /for\s*PT\s?\d{3}/i.test(countCell);
+    /* "for PT502" = นับเข้าปี 5 · "for PT602" = นับเข้าปี 6 (ผู้ใช้ชี้ 3 ก.ย.)
+       entryYear = ปีการศึกษาที่รุ่นนี้ขึ้นคลินิกปี 5 → ปี 6 คือปีถัดไป */
+    const courseYear = countCell.match(/PT\s?(\d)0\d/)?.[1];
+    const countsForYear = entryYear && courseYear
+      ? entryYear + (Number(courseYear) - 5)
+      : undefined;
     const now = new Date().toISOString();
     // แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง
     const wkey = `${pkey}|${workLabel}|${accepted ?? ''}`;
@@ -371,6 +377,7 @@ export function importSheetCsv(csvText: string, studentId: string): ImportResult
       lastUpdatedAt: now,
       completedAt: maxTick >= 10 ? now : undefined,
       fromSheet: true,
+      countsForYear,
       returned: returned || undefined,
       returnNote: returned ? rowNote : undefined,
       catalogVersion: 'DTPT502-2569',
@@ -405,6 +412,9 @@ export interface GroupImportResult {
 export function importGroupCsv(
   csvText: string,
   resolveStudent: (code: string, name: string) => string | null,
+  /** ปีการศึกษาที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลง "for PT502/PT602" เป็นปีจริง
+   *  ต้องส่งมาจากรุ่นของทั้งชีต ไม่คิดจากรหัสรายคน เพราะ นศ. ตกรุ่นจะเพี้ยน */
+  cohortEntryYear?: number,
 ): GroupImportResult {
   const rows = parseCsv(csvText);
   const fileIssues: ImportIssue[] = [];
@@ -453,7 +463,8 @@ export function importGroupCsv(
     // ประกอบ CSV ย่อยของคนนี้ = หัวตารางเดิม + แถวในบล็อก แล้วส่งเข้าตัวนำเข้าเดิม
     const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
     const mini = [header, ...b.rows].map((r) => r.map(esc).join(',')).join('\n');
-    return { studentCode: b.code, studentName: b.name, studentId: sid, result: importSheetCsv(mini, sid) };
+    const entryYear = cohortEntryYear;
+    return { studentCode: b.code, studentName: b.name, studentId: sid, result: importSheetCsv(mini, sid, entryYear) };
   });
   return { blocks: out, fileIssues };
 }

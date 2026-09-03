@@ -85,6 +85,9 @@ export interface Workpiece {
   procIndex: number; // index ของ procedure ล่าสุดที่ผ่าน (-1 = ยังไม่เริ่ม)
   lastUpdatedAt: string; // ISO datetime
   completedAt?: string; // ISO datetime ที่ผ่าน Completion of case — ใช้นับเกณฑ์รายปี
+  /** ปีการศึกษา (พ.ศ.) ที่ชิ้นนี้นับเข้าเกณฑ์ — ชีตระบุด้วยคอลัมน์ "for PT502 / for PT602"
+   *  (PT502 = ปี 5 · PT602 = ปี 6) ถ้าไม่ระบุ ใช้ปีที่จบเคสตามปกติ */
+  countsForYear?: number;
   /** มาจากการนำเข้าชีต — ไม่รู้วันที่จบจริง (ชีตไม่มีคอลัมน์นั้น) จึงนับเป็น "ยอดยกมา" ในกราฟสะสม */
   fromSheet?: boolean;
   /** คืนเคส/ยกเลิกไปแล้ว (อ่านจากคอลัมน์หมายเหตุของชีต) — เก็บแถวไว้ให้เห็น แต่ไม่นับเป็นงานที่ทำอยู่ */

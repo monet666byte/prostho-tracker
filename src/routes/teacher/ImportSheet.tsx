@@ -14,7 +14,7 @@ import { t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
-import { replaceWithRoster } from '../../data/repo';
+import { cohortOfRoster, replaceWithRoster } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
 
@@ -319,7 +319,9 @@ function WholeCohortImport() {
         setPullError(t('ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้'));
       }
       const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
-      setGroups(res.groups.map((g) => ({ name: g.tab, res: importGroupCsv(g.csv, (code) => byCode.get(code) ?? null) })));
+      // ปีที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลงคอลัมน์ "for PT502/PT602" เป็นปีจริง
+      const entryYear = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
+      setGroups(res.groups.map((g) => ({ name: g.tab, res: importGroupCsv(g.csv, (code) => byCode.get(code) ?? null, entryYear) })));
     } finally {
       setPulling(null);
     }
@@ -340,9 +342,10 @@ function WholeCohortImport() {
       setRoster(null);
     }
     const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
+    const entryYear = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
     const gs = texts
       .filter((f) => f !== rosterFile && /(^|,)"?HN"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')))
-      .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null) }));
+      .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null, entryYear) }));
     setGroups(gs);
   }
 

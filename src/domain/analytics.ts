@@ -574,7 +574,12 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
   /* งานที่จบมาก่อนใช้ระบบ (นำเข้าจากชีต) ไม่มีวันที่จบจริง — ตอนนำเข้าจึงประทับเป็นวันนำเข้า
      ถ้านับตามนั้น เส้นสะสมจะพุ่งตั้งฉากในเดือนที่นำเข้า (ผู้ใช้เห็นเป็น 287 ในเดือนเดียว 3 ก.ย.)
      จึงแยกเป็น "ยอดยกมา" คงที่ทุกเดือน แล้วให้เส้นโตจากงานที่จบในระบบจริงๆ เท่านั้น */
-  const carriedOver = works.filter((w) => w.fromSheet && w.completedAt && counts(w)).length;
+  const beYear = startYear + 543;
+  /* ชีตบอกเองว่าชิ้นไหนนับเข้าปีไหน (คอลัมน์ for PT502/PT602) — งานที่นับเข้าปีก่อน
+     ต้องไม่มากองในยอดยกมาของปีนี้ ไม่งั้นเส้นสะสมสูงเกินจริงตั้งแต่เดือนแรก */
+  const carriedOver = works.filter(
+    (w) => w.fromSheet && w.completedAt && counts(w) && (w.countsForYear ?? beYear) === beYear,
+  ).length;
   const completions = works
     .filter((w) => !w.fromSheet && w.completedAt && counts(w))
     .map((w) => new Date(w.completedAt!).getTime());
@@ -583,12 +588,19 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
      เพราะรุ่นก่อนอาจมีคนไม่เท่ากัน เทียบดิบๆ จะไม่แฟร์ */
   const prevStart = new Date(startYear - 1, 5, 1).getTime();
   const prevEnd = new Date(startYear, 5, 1).getTime();
-  const prevRows = works.filter(
-    (w) => w.completedAt && counts(w) && new Date(w.completedAt).getTime() >= prevStart && new Date(w.completedAt).getTime() < prevEnd,
-  );
+  const prevRows = works.filter((w) => {
+    if (!w.completedAt || !counts(w)) return false;
+    // ชีตระบุปีมา ก็เชื่อชีต (งานนำเข้าไม่มีวันจบจริง เทียบวันที่ไม่ได้)
+    if (w.countsForYear) return w.countsForYear === beYear - 1;
+    const ts = new Date(w.completedAt).getTime();
+    return ts >= prevStart && ts < prevEnd;
+  });
   const prevStudents = new Set(prevRows.map((w) => w.studentId)).size;
   const prevScale = prevStudents > 0 ? students.length / prevStudents : 0;
-  const prevTimes = prevRows.map((w) => new Date(w.completedAt!).getTime());
+  /* งานปีก่อนที่มาจากชีตไม่มีวันจบจริง — กระจายให้เต็มเส้นแทนการกองเดือนเดียว
+     (แสดงเป็นเส้นเทียบระดับ ไม่ใช่จังหวะรายเดือนที่แม่นยำ) */
+  const prevFromSheet = prevRows.filter((w) => w.fromSheet).length;
+  const prevTimes = prevRows.filter((w) => !w.fromSheet).map((w) => new Date(w.completedAt!).getTime());
 
   return Array.from({ length: months }, (_, i) => {
     const monthStart = new Date(startYear, 5 + i, 1);
@@ -602,7 +614,11 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
       actual: past ? carriedOver + completions.filter((t) => t < monthEnd).length : null,
       target: Math.round((goal * ramp) / rampMonths),
       lastYear: prevStudents
-        ? Math.round(prevTimes.filter((t) => t < new Date(startYear - 1, 6 + i, 1).getTime()).length * prevScale)
+        ? Math.round(
+            (prevTimes.filter((t) => t < new Date(startYear - 1, 6 + i, 1).getTime()).length +
+              (prevFromSheet * (i + 1)) / months) *
+              prevScale,
+          )
         : null,
     };
   });
