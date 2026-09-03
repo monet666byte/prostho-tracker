@@ -377,6 +377,12 @@ function WholeCohortImport() {
     },
     { students: 0, unmatched: 0, patients: 0, works: 0, issues: 0 },
   );
+  /* ชีตปี 5 ปีนี้ยังไม่ได้กรอกช่อง Minimum Req เลยสักแถว (431 แถว — ตรวจ 3 ก.ย.)
+     ถ้าไม่เตือน อาจารย์จะเห็นแถบเกณฑ์ 0 ทั้งรุ่นแล้วนึกว่าแอปพัง */
+  const countingWorks = groups.reduce(
+    (n, g) => n + g.res.blocks.reduce((m, b) => m + b.result.workpieces.filter((w) => w.minimumRequirement).length, 0),
+    0,
+  );
   const allIssues = groups.flatMap((g) =>
     [...g.res.fileIssues.map((i) => ({ g: g.name, code: '-', i })),
      ...g.res.blocks.flatMap((b) => b.result.report.issues.map((i) => ({ g: g.name, code: b.studentCode, i })))],
@@ -479,6 +485,11 @@ function WholeCohortImport() {
             {totals.unmatched ? ` · ⚠️ ${t('จับคู่ไม่ได้')} ${totals.unmatched}` : ''}
             {totals.issues ? ` · ${t('ติดธงให้ตรวจ')} ${totals.issues}` : ''}
           </p>
+          {totals.works > 0 && countingWorks === 0 && (
+            <p style={{ margin: '6px 0 0', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+              {t('⚠️ ชีตนี้ยังไม่ได้กรอกช่อง “Minimum Req / การนับชิ้นงาน” เลยสักแถว — แถบเกณฑ์ขั้นต่ำจะขึ้น 0 ทั้งรุ่น จนกว่าจะกรอกในชีต')}
+            </p>
+          )}
           {allIssues.length > 0 && (
             <div style={{ marginTop: 8, maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
               {allIssues.slice(0, 60).map((x, i) => (

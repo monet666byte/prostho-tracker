@@ -155,6 +155,8 @@ export const DICT: Record<string, string> = {
   'ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้': 'No Student list tab found \u2014 work can be imported but students cannot be matched',
   'แท็บ INTRO บอกว่าเป็น {c} ปีการศึกษา {y} แต่รหัสนักศึกษาส่วนใหญ่บอกอีกรุ่น — ยึดตาม INTRO ถ้าไม่ถูกโปรดแก้ที่ชีต':
     'The INTRO tab says {c}, academic year {y}, but most student IDs suggest a different cohort \u2014 using INTRO. Fix the sheet if this is wrong',
+  '⚠️ ชีตนี้ยังไม่ได้กรอกช่อง “Minimum Req / การนับชิ้นงาน” เลยสักแถว — แถบเกณฑ์ขั้นต่ำจะขึ้น 0 ทั้งรุ่น จนกว่าจะกรอกในชีต':
+    '\u26a0\ufe0f No row in this sheet fills in \u201cMinimum Req / work counting\u201d \u2014 every requirement bar will read 0 for the whole cohort until the sheet is filled in',
   'ดึงไม่ได้ — ชีตต้องเปิดสิทธิ์ให้ “ผู้ที่มีลิงก์” อ่านได้ และมีแท็บ PT1–PT12': 'Could not pull \u2014 the sheet must be viewable by anyone with the link and contain tabs PT1\u2013PT12',
   'ลิงก์ไม่ถูกต้อง — วางลิงก์ Google Sheet ทั้งอัน': 'Invalid link \u2014 paste the whole Google Sheet URL',
   'กำลังดึง {d}/{t} แท็บ…': 'Pulling {d}/{t} tabs\u2026',
