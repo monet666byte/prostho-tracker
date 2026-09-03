@@ -72,13 +72,14 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
       <div className="window">
         <aside className="side">
           <div className="side__logo">
-            {/* ใช้ไอคอนแอปตัวจริง (อันเดียวกับที่ขึ้นหน้าจอโฮมมือถือ) — เดิมเป็นไอคอนกระดานดำคนละตัว */}
+            {/* logo-mark = ไอคอนแอปเวอร์ชันสำหรับขนาดเล็ก (พื้นน้ำเงิน เส้นขาวหนา)
+                ตัวเต็ม icon.svg เส้นบางบนพื้นขาว พอย่อเหลือ 30px แทบมองไม่เห็น (ผู้ใช้แจ้ง 2 ก.ย.) */}
             <img
-              src={`${import.meta.env.BASE_URL}icon.svg`}
+              src={`${import.meta.env.BASE_URL}logo-mark.svg`}
               alt=""
               width={30}
               height={30}
-              style={{ borderRadius: 9, flex: 'none', boxShadow: '0 0 0 1px var(--border)' }}
+              style={{ borderRadius: 9, flex: 'none' }}
             />
             {/* ชื่อฝั่งอาจารย์ตามที่ผู้ใช้เคาะ 2 ก.ย. (แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยนภายหลัง) */}
             <b>Prosth MU</b>
