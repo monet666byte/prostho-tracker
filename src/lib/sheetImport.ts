@@ -215,6 +215,10 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
   const cPayment = col(/payment/i);
   const cNote = col(/หมายเหตุ|สถานะ/i);
   const cStep = col(/step.*ผ่าน|ผ่านแล้ว/i); // คอลัมน์ droplist เช่น "CD-3 Final impression"
+  /* "วันที่บันทึกข้อมูล" = ครั้งสุดท้ายที่มีคนแตะแถวนี้ในชีต (กรอกไว้ 66% ในชีตรุ่น 54)
+     ถ้าไม่อ่าน ทุกชิ้นที่นำเข้าจะถูกประทับว่าเพิ่งอัปเดตวันนี้ → ตัวนับ "เคสค้างเกิน N วัน"
+     ขึ้น 0 ตลอด ทั้งที่บางเคสไม่ขยับมาเป็นเดือน */
+  const cUpdated = col(/วันที่บันทึก/);
   /* ช่องติ๊ก 0–10 เรียงติดกัน — ปกติหัวคอลัมน์เขียนเลข 0..10 ไว้
      แต่ชีตบางปีปล่อยหัวว่างแล้วใช้ checkbox แทน (รุ่น 54 — ผู้ใช้เจอ 2 ก.ย. ทำให้ทุกคน 0%)
      จึงหาโดยดูข้อมูลจริง: 11 คอลัมน์ถัดจาก Step ที่มีค่าแบบติ๊ก */
@@ -280,6 +284,10 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
     const pkey = hn || (rawName ? `ชื่อ:${rawName}` : `แถว:${rowNo}`);
 
     const accepted = parseSheetDate(get(cAccepted));
+    const sheetUpdated = parseSheetDate(get(cUpdated));
+    if (get(cUpdated) && !sheetUpdated) {
+      issues.push({ row: rowNo, column: 'วันที่บันทึกข้อมูล', value: get(cUpdated), problem: 'อ่านรูปแบบวันที่ไม่ออก — ใช้วันที่นำเข้าแทน' });
+    }
     if (get(cAccepted) && !accepted) {
       issues.push({ row: rowNo, column: 'Accepted date', value: get(cAccepted), problem: 'อ่านรูปแบบวันที่ไม่ออก (รองรับ d/m/yy พ.ศ. · d/m/yyyy · ISO)' });
     }
@@ -374,7 +382,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
       sect2Removable: type === 'CD' || type === 'RPD' || type === 'APD',
       sect2Fixed: !(type === 'CD' || type === 'RPD' || type === 'APD'),
       procIndex: progressionToProcIndex(type, maxTick),
-      lastUpdatedAt: now,
+      lastUpdatedAt: sheetUpdated ? `${sheetUpdated}T00:00:00.000Z` : now,
       completedAt: maxTick >= 10 ? now : undefined,
       fromSheet: true,
       countsForYear,
