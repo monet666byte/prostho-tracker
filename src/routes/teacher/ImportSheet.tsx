@@ -275,8 +275,12 @@ export function ImportSheetBody() {
    เลือกไฟล์ทีเดียวหลายไฟล์: Student list + PT1–PT12 — ระบบแยกเองจากเนื้อไฟล์
    ใช้กับ local เท่านั้นตอนนี้ (โหมดเดโมไม่มีการเชื่อมเซิร์ฟเวอร์อยู่แล้ว) */
 /** id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง ไม่งั้นงานจะจับคู่คนไม่เจอ */
-function sidOf(code: string, group: string): string {
-  const dtmu = 2500 + Number(code.slice(0, 2)) + 4 - 2514;
+/**
+ * id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง — รุ่น (dtmu) คิดจาก "ทั้งชีต" ไม่ใช่รหัสรายคน
+ * เดิมคิดจากรหัส: นศ. ตกรุ่น 3 คน (รหัส 63 ในชีตรุ่น 54) ได้ st-TH53-… ส่วนตัวนักศึกษาอยู่ที่ st-TH54-…
+ * งานทั้งหมดของ 3 คนนี้จึงลอยไร้เจ้าของ ในแอปเห็นเป็น 0 ชิ้น (เจอ 3 ก.ย. ตอนทดสอบ gate)
+ */
+function sidOf(code: string, group: string, dtmu: number): string {
   return `st-TH${dtmu}-${group.replace(/^TH\d*-/, '')}-${code}`;
 }
 
@@ -318,10 +322,11 @@ function WholeCohortImport() {
         setRoster(null);
         setPullError(t('ไม่พบแท็บรายชื่อ (Student list) — นำเข้างานได้แต่จับคู่นักศึกษาไม่ได้'));
       }
-      const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
+      const dtmu = cohortOfRoster(entries).dtmu;
+      const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group, dtmu)]));
       /* ปีที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลงคอลัมน์ "for PT502/PT602" เป็นปีจริง
          แท็บ INTRO เขียนไว้ตรงๆ ("ชั้นปีที่ 6 · ปีการศึกษา 2569") จึงเชื่อก่อนรหัสนักศึกษา */
-      const fromRoster = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
+      const fromRoster = entries.length ? dtmu + 2514 : undefined;
       const fromIntro =
         res.intro?.academicYear && res.intro.studentYear
           ? res.intro.academicYear - (res.intro.studentYear - 5)
@@ -355,8 +360,9 @@ function WholeCohortImport() {
     } else {
       setRoster(null);
     }
-    const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group)]));
-    const entryYear = entries.length ? cohortOfRoster(entries).dtmu + 2514 : undefined;
+    const dtmu = cohortOfRoster(entries).dtmu;
+    const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group, dtmu)]));
+    const entryYear = entries.length ? dtmu + 2514 : undefined;
     const gs = texts
       .filter((f) => f !== rosterFile && /(^|,)"?HN"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')))
       .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null, entryYear) }));
@@ -398,9 +404,11 @@ function WholeCohortImport() {
       for (const g of groups) {
         for (const b of g.res.blocks) {
           if (!b.studentId) continue;
-          await db.transaction('rw', [db.patients, db.workpieces], async () => {
+          await db.transaction('rw', [db.patients, db.workpieces, db.students], async () => {
             await db.patients.bulkPut(b.result.patients);
             await db.workpieces.bulkPut(b.result.workpieces);
+            // ข้อกำหนด Sect II / Design RPD จากคอลัมน์รายคนในชีต
+            if (b.gates) await db.students.update(b.studentId!, { gates: b.gates });
           });
           pats += b.result.patients.length;
           wks += b.result.workpieces.length;

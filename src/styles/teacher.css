@@ -340,6 +340,10 @@
   font-weight: 600;
 }
 .slots__box[data-state='empty'] { background: var(--fill); border: 1px dashed var(--border-2); }
+/* ข้อกำหนด Sect II / Design RPD: "ยังไม่ผ่าน" ต่างจาก "ยังไม่มีข้อมูล" — ชีตเขียน No ไว้ชัดๆ */
+.slots__box[data-state='no'] { background: var(--warning-tint, #fff4e5); border: 1px solid var(--warning, #e8a33d); color: var(--warning-dark, #9a5b00); }
+.slots__box--btn { cursor: pointer; font-family: inherit; padding: 2px 3px; flex-direction: column; gap: 2px; height: 38px; }
+.slots__box--btn:hover { filter: brightness(0.96); }
 
 /* ── แผนที่เคส (หนึ่งจุด = หนึ่งชิ้นงาน) ── */
 .casemap {

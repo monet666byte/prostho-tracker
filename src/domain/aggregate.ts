@@ -1,7 +1,7 @@
 /** สรุปข้อมูลระดับกลุ่ม / ชั้นปี สำหรับ dashboard อาจารย์ */
 
 import { ORDER } from './catalog';
-import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork } from './rules';
+import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork, gatesDone, GATE_KEYS } from './rules';
 import { academicYear } from '../lib/date';
 import { studentYear } from './cohort';
 import type { Settings, Student, WorkType, Workpiece } from './types';
@@ -18,6 +18,9 @@ export interface StudentSummary {
   /** จบกี่ชิ้นในปีการศึกษาปัจจุบัน (เกณฑ์รายปี) */
   thisYearDone: number;
   stale: number;
+  /** ข้อกำหนด Sect II / Design RPD ผ่านกี่ข้อจาก 3 · null = ยังไม่มีข้อมูลเลย */
+  gatesDone: number | null;
+  gatesTotal: number;
 }
 
 export function summarizeStudent(student: Student, works: Workpiece[], settings: Settings): StudentSummary {
@@ -29,9 +32,11 @@ export function summarizeStudent(student: Student, works: Workpiece[], settings:
     active: works.filter(isActiveWork).length,
     reqDone: rows.reduce((s, r) => s + Math.min(r.done, r.required), 0),
     reqTotal: rows.reduce((s, r) => s + r.required, 0),
-    allComplete: meetsAllRequirements(works, settings),
+    allComplete: meetsAllRequirements(works, settings, new Date(), student.gates),
     thisYearDone: completedInYear(works, academicYear(new Date()), settings).length,
     stale: works.filter((w) => isStale(w, settings)).length,
+    gatesDone: student.gates && Object.keys(student.gates).length ? gatesDone(student.gates) : null,
+    gatesTotal: GATE_KEYS.length,
   };
 }
 

@@ -7,11 +7,10 @@ import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
 import { toISODate } from '../lib/date';
-import { isComplete, procAt, procLabel } from '../domain/rules';
+import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView,
-} from '../domain/types';
+  CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 import { t } from '../lib/i18n';
@@ -991,6 +990,17 @@ export async function replaceWithRoster(
     await d.teachers.bulkPut([...teachers.values()]);
     await d.students.bulkPut(students);
     await d.groups.bulkPut([...groupsMap.values()]);
+    /* กวาดข้อมูลไร้เจ้าของ: งาน/ผู้ป่วยที่ studentId ไม่ตรงกับนักศึกษาคนไหนเลย
+       เกิดจากรูปแบบ id เปลี่ยนข้ามเวอร์ชัน (เช่น st-TH-PT1-… → st-TH55-PT1-…) และบั๊ก นศ. ตกรุ่น
+       (st-TH53-… ทั้งที่ตัวคนอยู่ st-TH54-…) — ไม่มีหน้าไหนเปิดถึง แต่ไปโป่งอยู่ในยอดรวมของ dashboard
+       (เครื่องทดสอบ 3 ก.ย.: ผู้ป่วยไร้เจ้าของ 1,235 ราย · งาน 22 ชิ้น) */
+    const liveIds = new Set((await d.students.toArray()).map((st) => st.id));
+    const orphanWorks = (await d.workpieces.toArray()).filter((w) => !liveIds.has(w.studentId));
+    if (orphanWorks.length) await d.workpieces.bulkDelete(orphanWorks.map((w) => w.id));
+    const orphanPatients = (await d.patients.toArray()).filter((p) => !liveIds.has(p.ownerStudentId));
+    if (orphanPatients.length) await d.patients.bulkDelete(orphanPatients.map((p) => p.id));
+    const orphanCheckins = (await d.checkins.toArray()).filter((c) => !liveIds.has(c.studentId));
+    if (orphanCheckins.length) await d.checkins.bulkDelete(orphanCheckins.map((c) => c.id));
     await d.audit.add({
       id: uid('a'),
       text: `นำเข้ารายชื่อรุ่น DTMU${dtmu} จากชีต: ${students.length} คน · ${groupsMap.size} กลุ่ม`
@@ -1003,6 +1013,16 @@ export async function replaceWithRoster(
   return { students: students.length, groups: groupsMap.size, dtmu, replaced, odd: detected.odd };
 }
 
+
+/** อาจารย์ที่ปรึกษาติ๊กข้อกำหนด Sect II / Design RPD ให้นักศึกษา (ค่าตั้งต้นมาจากชีต)
+ *  ทุกครั้งลง audit — เป็นเงื่อนไขจบ ต้องย้อนดูได้ว่าใครติ๊กเมื่อไหร่ */
+export async function setStudentGate(studentId: string, key: GateKey, value: boolean, actor: string): Promise<void> {
+  const st = await db.students.get(studentId);
+  if (!st) return;
+  const gates = { ...(st.gates ?? {}), [key]: value };
+  await db.students.update(studentId, { gates });
+  await logAudit(`${value ? 'ติ๊กผ่าน' : 'ติ๊กยังไม่ผ่าน'} ${GATE_LABELS[key]} ให้ ${st.name}`, actor, { studentId, group: st.group });
+}
 
 /** แก้หมายเหตุ/สถานะผู้ป่วย (เช่น "รอ preprosth" "รอถอนฟัน") — นักศึกษาแก้เองได้
  *  ค่าเดิมมาจากคอลัมน์หมายเหตุของชีตตอนนำเข้า · ทุกการแก้ลง audit เพื่อให้อาจารย์ย้อนดูได้ */

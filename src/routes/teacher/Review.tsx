@@ -4,10 +4,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
-import { setReview } from '../../data/repo';
+import { setReview, setStudentGate } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
-  progression, sortWorkpieces, yearlyRows, nextProc, isReturned } from '../../domain/rules';
+  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
 import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
@@ -126,6 +126,9 @@ export default function Review() {
               {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
               {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
               {' · '}{t('รายปี')} {thisYear.done}/{thisYear.required}
+              {active?.gates && Object.keys(active.gates).length > 0 && (
+                <> · {t('ข้อกำหนด')} {gatesDone(active.gates)}/{GATE_KEYS.length}</>
+              )}
             </div>
           </div>
           <button
@@ -336,7 +339,16 @@ export default function Review() {
             </div>
             <p className="sub">{t('ทึบ = จบแล้ว · มีเลข = กำลังทำ (step ที่ผ่าน) · ประ = ยังไม่มีเคส')}</p>
             <div style={{ marginTop: 6 }}>
-              <RequirementSlots works={works} settings={settings} />
+              <RequirementSlots
+                works={works}
+                settings={settings}
+                student={active}
+                onToggleGate={async (key, value) => {
+                  if (!active) return;
+                  await setStudentGate(active.id, key, value, currentActor());
+                  showToast({ message: value ? t('ติ๊กผ่านแล้ว') : t('ติ๊กยังไม่ผ่าน'), tone: 'success' });
+                }}
+              />
             </div>
           </div>
           )}

@@ -2,7 +2,7 @@
 
 import { DENTURE_CLASSES, ORDER, PROCS, RECALL, REQ_TYPES, TYPES, type Proc } from './catalog';
 import { academicYear } from '../lib/date';
-import type { Settings, WorkType, Workpiece } from './types';
+import type { Settings, WorkType, Workpiece, StudentGates, GateKey } from './types';
 
 /** ลิสต์ procedure ของชิ้นงาน — Recall ใช้ลิสต์สั้น, APD ใช้ลิสต์เดียวกับ CD, PC แยกตาม variant */
 export function procList(w: Pick<Workpiece, 'type' | 'variant'>): Proc[] {
@@ -278,8 +278,34 @@ export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date
 }
 
 /** ครบเกณฑ์จริงต้องผ่านทั้งเกณฑ์สะสมและเกณฑ์รายปีทุกปี */
-export function meetsAllRequirements(list: Workpiece[], settings: Settings, now = new Date()): boolean {
-  return caseCountTotals(list, settings).allComplete && yearlyRows(list, settings, now).every((r) => r.complete);
+export const GATE_KEYS: GateKey[] = ['sect2Removable', 'sect2Fixed', 'designRpd'];
+/** ชื่อตามหัวคอลัมน์ในชีต — คงเป็นอังกฤษทั้งสองภาษาเหมือนหัวข้อ radar */
+export const GATE_LABELS: Record<GateKey, string> = {
+  sect2Removable: 'Sect II Tx. plan · Removable',
+  sect2Fixed: 'Sect II Tx. plan · Fixed',
+  designRpd: 'Design RPD',
+};
+
+export interface GateRow {
+  key: GateKey;
+  label: string;
+  /** true = ผ่าน · false = ยังไม่ผ่าน · undefined = ยังไม่มีข้อมูล */
+  value: boolean | undefined;
+}
+
+export function gateRows(gates?: StudentGates): GateRow[] {
+  return GATE_KEYS.map((key) => ({ key, label: GATE_LABELS[key], value: gates?.[key] }));
+}
+
+export function gatesDone(gates?: StudentGates): number {
+  return GATE_KEYS.filter((k) => gates?.[k] === true).length;
+}
+
+/** ครบเกณฑ์จบ = ชิ้นงานสะสม + รายปีทุกปี + ข้อกำหนด Sect II / Design RPD (ถ้ามีข้อมูล)
+ *  ไม่มีข้อมูล gate เลย (เช่น นศ. เดโม) ถือว่าไม่ติดเงื่อนไขนี้ — ไม่งั้นจะไม่มีใครครบได้เลย */
+export function meetsAllRequirements(list: Workpiece[], settings: Settings, now = new Date(), gates?: StudentGates): boolean {
+  const gateOk = !gates || Object.keys(gates).length === 0 || gatesDone(gates) === GATE_KEYS.length;
+  return caseCountTotals(list, settings).allComplete && yearlyRows(list, settings, now).every((r) => r.complete) && gateOk;
 }
 
 /** ความคืบหน้ารวมของนักศึกษาหนึ่งคน (เฉลี่ย % ของทุกชิ้นงาน) */

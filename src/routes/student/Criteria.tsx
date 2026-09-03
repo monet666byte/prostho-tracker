@@ -1,14 +1,18 @@
 import { CalendarCheck, HourglassMedium, SealCheck, WarningCircle } from '@phosphor-icons/react';
 import { Shell } from '../../components/student/Shell';
 import { TYPES } from '../../domain/catalog';
-import { caseCount, caseCountTotals, yearlyRows } from '../../domain/rules';
-import { useWorkpieces } from '../../hooks/data';
+import { caseCount, caseCountTotals, gateRows, yearlyRows } from '../../domain/rules';
+import { useStudent, useWorkpieces } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 export default function Criteria() {
   const { session, settings } = useApp();
   const works = useWorkpieces(session?.studentId);
+  const student = useStudent(session?.studentId);
+  // ข้อกำหนดที่ไม่ใช่ชิ้นงาน — อาจารย์เป็นคนติ๊ก นักศึกษาเห็นอย่างเดียว
+  const gates = gateRows(student?.gates);
+  const gateKnown = gates.some((g) => g.value !== undefined);
 
   const totals = caseCountTotals(works, settings);
   const rows = caseCount(works, settings);
@@ -136,6 +140,30 @@ export default function Criteria() {
             </div>
           </article>
         ))}
+
+        <article className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--text-muted)', flex: 'none' }} />
+            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('ข้อกำหนดก่อนจบ (Sect II · Design RPD)')}</span>
+            <span style={{ font: '700 14px var(--font-mono)', color: gates.every((g) => g.value === true) ? 'var(--success)' : 'var(--text-secondary)' }}>
+              {gates.filter((g) => g.value === true).length} / {gates.length}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 7, marginTop: 11 }}>
+            {gates.map((g) => (
+              <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 11.5px var(--font-body)', color: g.value === true ? 'var(--success-dark)' : 'var(--text-secondary)' }}>
+                {g.value === true ? <SealCheck size={15} weight="fill" /> : g.value === false ? <WarningCircle size={15} weight="fill" color="var(--warning)" /> : <HourglassMedium size={15} color="var(--text-faint)" />}
+                <span style={{ flex: 1 }}>{g.label}</span>
+                <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
+                  {g.value === true ? t('ผ่านแล้ว') : g.value === false ? t('ยังไม่ผ่าน') : t('ยังไม่มีข้อมูล')}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: '10px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
+            {gateKnown ? t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ค่าตั้งต้นมาจากชีต') : t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ยังไม่มีข้อมูลในระบบ')}
+          </p>
+        </article>
 
         <p style={{ margin: '2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
           {t('Simple APD และ Recall ไม่นับเข้าเกณฑ์')}

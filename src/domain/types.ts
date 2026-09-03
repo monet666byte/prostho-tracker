@@ -26,6 +26,18 @@ export interface Teacher {
   title?: string;
 }
 
+/**
+ * ข้อกำหนดก่อนจบที่ "ไม่ใช่ชิ้นงาน" — ชีตเก็บเป็นคอลัมน์รายคน (Sect II. Pt. exam & tx. plan
+ * Removable/Fixed และ Design RPD) กรอกแล้ว 86/88 คนในชีตรุ่น 54 แต่แอปไม่เคยอ่าน (3 ก.ย.)
+ * undefined = ยังไม่มีข้อมูล · อาจารย์ที่ปรึกษาติ๊กในแอปได้ · นักศึกษาเห็นอย่างเดียว
+ */
+export interface StudentGates {
+  sect2Removable?: boolean;
+  sect2Fixed?: boolean;
+  designRpd?: boolean;
+}
+export type GateKey = keyof StudentGates;
+
 export interface Student {
   id: string;
   code: string; // เช่น 6504008
@@ -44,6 +56,8 @@ export interface Student {
    */
   entryYear?: number;
   advisorIds: [string, string];
+  /** ดู StudentGates — เกณฑ์จบข้อที่ไม่ใช่จำนวนชิ้นงาน */
+  gates?: StudentGates;
 }
 
 export interface ClinicGroup {

@@ -7,7 +7,7 @@
  * v1 รองรับคอลัมน์ตามรูปแบบ CSV_COLUMNS (ตรงกับ tab PTn) — เจอชีตจริงแล้วค่อยเติมกติกา
  */
 import { PROCS, RECALL } from '../domain/catalog';
-import type { Patient, Payment, Workpiece, WorkType } from '../domain/types';
+import type { Patient, Payment, Workpiece, WorkType, StudentGates } from '../domain/types';
 
 export interface ImportIssue {
   row: number; // เลขแถวในไฟล์ (เริ่ม 1 = แถวข้อมูลแรกใต้หัวตาราง)
@@ -87,7 +87,10 @@ function parseSheetDate(s: string): string | null {
   const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;
   let year = parseInt(m[3], 10);
-  if (year < 100) year = 2500 + year - 543; // พ.ศ. 2 หลัก → ค.ศ.
+  /* ปี 2 หลักในชีตปนกันสองแบบ: พ.ศ. (67–69) กับ ค.ศ. (25–26 — เจอในคอลัมน์วันที่บันทึกข้อมูล
+     รุ่น 54 "9/3/26") ตัดที่ 60: ต่ำกว่า = ค.ศ. 20xx · ตั้งแต่ 60 = พ.ศ. 25xx */
+  if (year < 60) year = 2000 + year;
+  else if (year < 100) year = 2500 + year - 543;
   else if (year > 2400) year -= 543; // พ.ศ. 4 หลัก → ค.ศ.
   if (year < 2000 || year > 2100) return null;
   return isoIfReal(year, parseInt(m[2], 10), parseInt(m[1], 10));
@@ -410,6 +413,17 @@ export interface GroupBlock {
   studentName: string;
   studentId: string | null; // จับคู่กับ roster ไม่ได้ = null (ลงรายงาน ไม่นำเข้า)
   result: ImportResult;
+  /** คอลัมน์รายคน Sect II Removable/Fixed + Design RPD (อยู่บรรทัดแรกของบล็อก) — ไม่มี = ชีตไม่ได้กรอก */
+  gates?: StudentGates;
+}
+
+/** Yes/No ในชีต → boolean · ว่างหรืออ่านไม่ออก = undefined (ไม่เดา) */
+function parseYesNo(v: string | undefined): boolean | undefined {
+  const s = (v ?? '').trim().toLowerCase();
+  if (!s) return undefined;
+  if (/^(yes|y|✓|✔|true|ใช่|ผ่าน|1)$/.test(s)) return true;
+  if (/^(no|n|false|ไม่|ยัง|0|-)$/.test(s)) return false;
+  return undefined;
 }
 
 export interface GroupImportResult {
@@ -432,6 +446,11 @@ export function importGroupCsv(
     return { blocks: [], fileIssues };
   }
   const header = rows[headerIdx];
+  /* คอลัมน์รายคน: หัว "Sect II. Pt. exam & tx. plan" คร่อม 2 ช่อง (Removable แล้ว Fixed ติดกัน
+     — แถวถัดไปเขียน Remov./Fixed) และ "Design RPD" ถัดไปอีก ค่าอยู่บรรทัดแรกของบล็อกแต่ละคน */
+  const trimmed = header.map((c) => c.trim());
+  const cSect = trimmed.findIndex((h) => /sect\s*\.?\s*ii/i.test(h));
+  const cDesign = trimmed.findIndex((h) => /design\s*rpd|^design$/i.test(h));
 
   // แบ่งบล็อกรายคนจากคอลัมน์แรก
   const dataRows = rows.slice(headerIdx + 1);
@@ -472,7 +491,26 @@ export function importGroupCsv(
     const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
     const mini = [header, ...b.rows].map((r) => r.map(esc).join(',')).join('\n');
     const entryYear = cohortEntryYear;
-    return { studentCode: b.code, studentName: b.name, studentId: sid, result: importSheetCsv(mini, sid, entryYear) };
+    // ค่า gate: เอาบรรทัดแรกในบล็อกที่มีอะไรกรอกในคอลัมน์พวกนี้ (ปกติคือบรรทัดหัวบล็อก)
+    let gates: StudentGates | undefined;
+    if (cSect >= 0 || cDesign >= 0) {
+      const src = b.rows.find((r) => (cSect >= 0 && ((r[cSect] ?? '').trim() || (r[cSect + 1] ?? '').trim())) || (cDesign >= 0 && (r[cDesign] ?? '').trim()));
+      if (src) {
+        const g: StudentGates = {};
+        if (cSect >= 0) {
+          const a = parseYesNo(src[cSect]);
+          const f = parseYesNo(src[cSect + 1]);
+          if (a !== undefined) g.sect2Removable = a;
+          if (f !== undefined) g.sect2Fixed = f;
+        }
+        if (cDesign >= 0) {
+          const d = parseYesNo(src[cDesign]);
+          if (d !== undefined) g.designRpd = d;
+        }
+        if (Object.keys(g).length) gates = g;
+      }
+    }
+    return { studentCode: b.code, studentName: b.name, studentId: sid, result: importSheetCsv(mini, sid, entryYear), gates };
   });
   return { blocks: out, fileIssues };
 }
