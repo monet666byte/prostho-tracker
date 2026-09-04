@@ -279,3 +279,32 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   font: 700 9.5px/1.5 var(--font-mono); letter-spacing: .06em;
   flex: none; white-space: nowrap;
 }
+
+/* ── แบบประเมินตนเองฉบับพิมพ์ (A4) ──────────────────────────────────────────
+   ใช้โครง .a4 เดิม เพิ่มเฉพาะสิ่งที่ฟอร์มนี้ต้องการ:
+   หมวดต้องไม่ถูกตัดกลางหน้า และหัวข้อมีป้ายอังกฤษกำกับตามฟอร์มจริงของภาค */
+.a4 .sasec { break-inside: avoid; page-break-inside: avoid; margin-top: 15px; }
+.a4 .sasec > h2 {
+  font: 600 10.5px var(--font-head); margin: 0 0 4px;
+  border-bottom: 1px solid #d6dae1; padding-bottom: 3px;
+}
+.a4 .sasec table { margin-top: 5px; }
+.a4 .saq { width: 46%; color: #475467; }
+.a4 .sacaption { font: 400 8px var(--font-body); color: #667085; margin-top: 3px; }
+.a4 .sanote {
+  border: 1px solid #d6dae1; border-radius: 6px; padding: 7px 9px; margin-top: 6px;
+  font: 400 8.5px/1.5 var(--font-body); white-space: pre-wrap;
+}
+.a4 .sacard { border: 1px solid #d6dae1; border-radius: 6px; padding: 6px 8px; margin-top: 5px; break-inside: avoid; }
+.a4 .sacard b { font: 600 8.5px var(--font-head); }
+.a4 .sacard p { margin: 2px 0 0; font: 400 8.5px/1.5 var(--font-body); color: #475467; }
+.a4 .sacard .ev { font: 500 8px var(--font-mono); color: #667085; margin-top: 3px; display: block; }
+/* กระดาษจริงกว้าง A4 — ปลดความกว้างขั้นต่ำที่ตั้งไว้เพื่อตารางช่อง 0–10 ของอีกรายงาน */
+.a4--sa { min-width: 0; max-width: 780px; margin: 0 auto; }
+/* กรอบหน้าจอของหน้าพิมพ์ — ตอนพิมพ์ต้องไม่เหลือพื้นหลังสีหรือระยะขอบของแอปติดไปบนกระดาษ */
+.saprint { padding: 20px; background: var(--bg-app); min-height: 100vh; }
+@media print {
+  .a4--sa { max-width: none; }
+  .saprint { padding: 0; background: #fff; min-height: 0; }
+  @page { margin: 14mm; }
+}

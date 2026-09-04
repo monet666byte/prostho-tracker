@@ -7,8 +7,9 @@
  *   ③ คำตอบดิบทุกข้อ เผื่ออาจารย์อยากอ่านเอง
  * ปุ่มสุดท้ายคือ "ปล่อยให้นักศึกษาเห็น" — ก่อนกด นักศึกษาไม่เห็นสรุปเลย
  */
-import { ArrowCounterClockwise, CheckCircle, Clock, PaperPlaneTilt, Sparkle, Student as StudentIcon } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CheckCircle, Clock, PaperPlaneTilt, Printer, Sparkle, Student as StudentIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { SaSummary } from '../../components/SaSummary';
 import { Radar } from '../../components/charts/Radar';
@@ -83,6 +84,7 @@ export default function SelfAssessments() {
   const rows = useSelfAssessments(year);
   const checkins = useAllCheckIns();
   const [openId, setOpenId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [note, setNote] = useState('');
 
   const groupStudents = useMemo(
@@ -207,6 +209,13 @@ export default function SelfAssessments() {
                       })}
                     </span>
                   </span>
+                  <button
+                    className="btn btn--sec"
+                    style={{ height: 38, flex: '0 0 auto', font: '600 11.5px var(--font-body)' }}
+                    onClick={() => navigate(`/teacher/sa/${openSa.studentId}/print`)}
+                  >
+                    <Printer size={14} /> {t('พิมพ์สำหรับลงนาม')}
+                  </button>
                   {openSa.feedbackReleasedAt ? (
                     <button
                       className="btn btn--sec"

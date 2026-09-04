@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, CaretLeft, CheckCircle, Lock, PaperPlaneTilt, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowRight, CaretLeft, CheckCircle, Lock, PaperPlaneTilt, Printer, Sparkle } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { Empty } from '../../components/ui/Bits';
 import { saveSelfAssessmentDraft, submitSelfAssessment } from '../../data/repo';
@@ -159,6 +159,15 @@ export default function SelfAssess() {
               {t('ส่งเรียบร้อย แก้ไม่ได้แล้ว — ถ้าต้องแก้ให้บอกอาจารย์ที่ปรึกษา')}
             </span>
           </div>
+
+          {/* ปริ้นท์ไปให้อาจารย์เซ็นแล้วเก็บเข้าแฟ้ม — ฟอร์ม Word เดิมทำแบบนี้ */}
+          <Link
+            to="/app/self-assessment/print"
+            className="btn btn--sec"
+            style={{ height: 44, textDecoration: 'none' }}
+          >
+            <Printer size={16} weight="fill" /> {t('พิมพ์ฟอร์มสำหรับลงนาม')}
+          </Link>
 
           {saved.feedbackReleasedAt ? (
             <SaSummary sa={saved} showAdvisorNote />

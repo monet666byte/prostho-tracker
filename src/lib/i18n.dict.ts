@@ -1008,4 +1008,10 @@ export const DICT: Record<string, string> = {
   'ปล่อยเมื่อ {d} โดย {w}': 'Released {d} by {w}',
   'ปล่อยสรุปให้นักศึกษาเห็นแล้ว': 'Summary released to the student',
   'ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และระบบจะสรุปเทียบกับผลงานจริงให้อาจารย์อ่านก่อนนัดคุย': 'Once submitted you cannot edit it. Instructors in the department can read every answer, and the app prepares a summary against your actual work for them to read before the meeting.',
+  'พิมพ์ฟอร์มสำหรับลงนาม': 'Print the form for signing',
+  'พิมพ์สำหรับลงนาม': 'Print for signing',
+  'พิมพ์ / บันทึกเป็น PDF': 'Print / Save as PDF',
+  'ในหน้าต่างพิมพ์ เลือกปลายทางเป็น “บันทึกเป็น PDF” เพื่อได้ไฟล์ · ช่องลงนามอยู่ท้ายเอกสาร': 'In the print dialog choose "Save as PDF" to get a file. The signature lines are at the end of the document.',
+  'ยังไม่มีแบบประเมินที่ส่งแล้วของปีนี้': 'No submitted self-assessment for this year',
+  'ลงนามอาจารย์ที่ปรึกษา': 'Advisor\'s signature',
 };
