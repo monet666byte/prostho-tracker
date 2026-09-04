@@ -248,9 +248,45 @@ export interface Settings {
   periodsPerWeek: number;
   photoRequired: boolean;
   remindDays: number; // เตือนล่วงหน้ากี่วัน
+  /** เปิดให้นักศึกษากรอกแบบประเมินตนเองได้ (ภาคเปิดปีละครั้ง ตอนจบเทอม 1) */
+  saOpen: boolean;
+  /** กำหนดส่งแบบประเมินตนเอง (ISO date) — ว่างได้ ถ้าภาคยังไม่กำหนด */
+  saDue?: string;
 }
 
 /** Workpiece + ข้อมูลผู้ป่วยที่ join แล้ว — รูปแบบที่ UI ใช้ */
 export interface WorkpieceView extends Workpiece {
   patient: Patient;
+}
+
+/* ── แบบประเมินตนเอง (Self-assessment) — ปีละครั้ง ตอนจบเทอม 1 ─────────────── */
+
+export type SelfAssessmentStatus = 'draft' | 'submitted';
+
+/**
+ * คำตอบหนึ่งชุด = นักศึกษาหนึ่งคน ต่อหนึ่งปีการศึกษา
+ * โครงคำถามอยู่ที่ domain/selfAssessment.ts — ที่นี่เก็บแค่คำตอบ + สถานะ
+ */
+export interface SelfAssessment {
+  id: string; // `${studentId}-${academicYear}` — คนละปีคนละชุด เขียนซ้ำไม่ทับกัน
+  studentId: string;
+  academicYear: number; // พ.ศ.
+  /** ชั้นปีตอนกรอก — ฟอร์มมีบล็อกเฉพาะปี 5 จึงต้องรู้ว่าตอนนั้นอยู่ปีไหน */
+  classYear: number;
+  /** ฟอร์มฉบับไหน (SA_FORM_VERSION) — ภาคปรับฟอร์มได้ทุกปี ของเก่าต้องยังอ่านออก */
+  formVersion: string;
+  /** คีย์ตามคำถาม → คำตอบ (ตัวเลข / ข้อความ / รายการที่เลือก) */
+  answers: Record<string, string | number | string[] | null>;
+  status: SelfAssessmentStatus;
+  submittedAt?: string;
+  /**
+   * อาจารย์กด "ให้นักศึกษาเห็นสรุป" แล้วเมื่อไหร่ — ก่อนหน้านั้น feedback อัตโนมัติ
+   * เห็นเฉพาะฝั่งอาจารย์ (กฎอัตโนมัติตีความพลาดได้ และเป็นเรื่องอ่อนไหว)
+   */
+  feedbackReleasedAt?: string;
+  feedbackReleasedBy?: string;
+  /** ข้อความที่อาจารย์เขียนเพิ่มท้ายสรุป — ปล่อยพร้อมกับ feedback */
+  advisorNote?: string;
+  createdAt: string;
+  updatedAt: string;
 }

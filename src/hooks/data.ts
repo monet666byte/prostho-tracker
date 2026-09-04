@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import {
-  listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviews,
-  listWorkpieces, pendingIds, stepsOnDate,
+  getSelfAssessment, listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviews,
+  listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
 import type { Review, WorkpieceView } from '../domain/types';
@@ -112,4 +112,18 @@ export function useAllPatients() {
 
 export function useGroups() {
   return useLiveQuery(() => db.groups.toArray(), [], []) ?? [];
+}
+
+/** แบบประเมินตนเองของ นศ. คนหนึ่ง ในปีการศึกษาหนึ่ง */
+export function useSelfAssessment(studentId: string | undefined, academicYear: number) {
+  return useLiveQuery(
+    async () => (studentId ? ((await getSelfAssessment(studentId, academicYear)) ?? null) : null),
+    [studentId, academicYear],
+    undefined,
+  );
+}
+
+/** ทุกชุดของปีการศึกษาหนึ่ง — ฝั่งอาจารย์ใช้ดูว่าใครส่งแล้ว */
+export function useSelfAssessments(academicYear?: number) {
+  return useLiveQuery(() => listSelfAssessments(academicYear), [academicYear], []) ?? [];
 }

@@ -1,11 +1,11 @@
-import { Bell, CaretRight, Check, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
+import { Bell, CaretRight, Check, CheckCircle, CheckSquare, ClipboardText, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
-import { useCheckIns, usePending, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
+import { useCheckIns, usePending, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
@@ -18,6 +18,7 @@ import { tapFeedback } from '../../lib/haptic';
 import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { FIRSTS } from './Achievements';
 import { groupShort } from '../../domain/group';
+import { saYearNow } from '../../domain/saFeedback';
 
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
 const SHOW_ACHIEVEMENT_CARD = false;
@@ -142,6 +143,9 @@ export default function Home() {
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
   const navigate = useNavigate();
+  // แบบประเมินตนเองของปีการศึกษานี้ — ใช้ตัดสินว่าการ์ดบนหน้าแรกโชว์ข้อความไหน
+  const selfAssessment = useSelfAssessment(session?.studentId, saYearNow());
+  const saDone = selfAssessment?.status === 'submitted';
 
   const active = works.filter(isActiveWork);
   const recent = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt));
@@ -421,6 +425,38 @@ export default function Home() {
         </div>
         <span className="growcard__sub growcard__sub--quote">“{dailyQuote()}”</span>
       </div>
+
+      {/* แบบประเมินตนเอง — ปีละครั้งตอนจบเทอม 1 ซ่อนไว้ตลอดปีจนกว่าภาคจะเปิด
+          (การ์ดถาวรที่กดไม่ได้ = ขยะบนหน้าแรก) */}
+      {(settings.saOpen || saDone) && (
+        <Link
+          to="/app/self-assessment"
+          className="card"
+          style={{
+            padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
+            borderColor: saDone ? undefined : 'var(--accent-ring)',
+          }}
+        >
+          <span
+            style={{
+              width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
+              background: saDone ? 'var(--success-tint)' : 'var(--accent-tint)',
+              color: saDone ? 'var(--success-dark)' : 'var(--accent)',
+            }}
+          >
+            <ClipboardText size={17} weight="fill" />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('ประเมินตนเอง')}</span>
+            <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
+              {saDone
+                ? (selfAssessment?.feedbackReleasedAt ? t('อาจารย์ปล่อยสรุปแล้ว — แตะดู') : t('ส่งแล้ว รออาจารย์อ่าน'))
+                : t('ปีละครั้ง ตอนจบเทอม 1 · บันทึกร่างได้')}
+            </span>
+          </span>
+          <CaretRight size={14} color="var(--text-disabled)" />
+        </Link>
+      )}
 
       {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)
           เปิดกลับ: เปลี่ยน SHOW_ACHIEVEMENT_CARD เป็น true */}

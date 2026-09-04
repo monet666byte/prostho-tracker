@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   stale: 14,
   photoRequired: false,
   remindDays: 3,
+  // แบบประเมินตนเอง: ปิดไว้ก่อน — ภาคเปิดเองปีละครั้งตอนจบเทอม 1 ที่หน้าตั้งค่า
+  saOpen: false,
 };
 
 const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ญ', 'ฎ', 'ฏ'];

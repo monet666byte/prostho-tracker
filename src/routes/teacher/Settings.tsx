@@ -4,11 +4,12 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
-import { useAllStudents, useAllWorkpieces, useAudit } from '../../hooks/data';
+import { useAllStudents, useAllWorkpieces, useAudit, useSelfAssessments } from '../../hooks/data';
 import { clock } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
-import { cohortLabel, KEEP_COHORTS } from '../../domain/cohort';
+import { cohortLabel, isActiveStudent, KEEP_COHORTS } from '../../domain/cohort';
+import { saYearNow } from '../../domain/saFeedback';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { currentActor, useApp } from '../../store/app';
 
@@ -42,6 +43,11 @@ export default function Settings() {
   const works = useAllWorkpieces();
   const audit = useAudit(14);
   const staleCount = staleRows(students, works, settings).length;
+  // ยอดส่งแบบประเมินตนเองของปีการศึกษานี้ — ให้อาจารย์เห็นว่าเปิดไปแล้วมีคนตอบไหม
+  const saRows = useSelfAssessments(saYearNow());
+  const activeStudents = students.filter((st) => isActiveStudent(st));
+  const activeIds = new Set(activeStudents.map((st) => st.id));
+  const saSubmitted = saRows.filter((r) => r.status === 'submitted' && activeIds.has(r.studentId)).length;
   // ธีมอยู่ใน localStorage ไม่ใช่ store — ถือ state ให้ปุ่มที่เลือกอยู่อัปเดตทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
   // รายงานว่ามีรุ่นไหนเกินกำหนดเก็บบ้าง
@@ -173,6 +179,27 @@ export default function Settings() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="panel">
+              <h3>{t('แบบประเมินตนเอง')}</h3>
+              <p className="sub">{t('ภาคเปิดปีละครั้ง ตอนจบเทอม 1 — ปิดไว้ นักศึกษาจะไม่เห็นเมนูนี้เลย')}</p>
+              <div className="seg" style={{ marginTop: 11 }}>
+                <button data-on={!settings.saOpen} onClick={() => updateSettings({ saOpen: false })}>{t('ปิด')}</button>
+                <button data-on={settings.saOpen} onClick={() => updateSettings({ saOpen: true })}>{t('เปิดให้กรอก')}</button>
+              </div>
+              <label className="field" style={{ marginTop: 11 }}>
+                <span>{t('กำหนดส่ง (ไม่บังคับ)')}</span>
+                <input
+                  className="input mono"
+                  type="date"
+                  value={settings.saDue ?? ''}
+                  onChange={(e) => updateSettings({ saDue: e.target.value || undefined })}
+                />
+              </label>
+              <p style={{ margin: '11px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+                {t('ส่งแล้ว')} <b>{saSubmitted}</b> {t('คน จากทั้งชั้นปี {n} คน', { n: activeStudents.length })}
+              </p>
             </div>
 
             <div className="panel">

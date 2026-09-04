@@ -34,6 +34,7 @@ const TABLES: TableDef[] = [
   { local: 'submissions', remote: 'submissions', pk: 'id' },
   { local: 'issues', remote: 'issues', pk: 'studentId' },
   { local: 'audit', remote: 'audit', pk: 'id', rename: { at: 'at_when' } },
+  { local: 'selfAssessments', remote: 'self_assessments', pk: 'id' },
 ];
 
 const byLocal = new Map(TABLES.map((t) => [t.local, t]));

@@ -8,7 +8,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
   AuditEntry, ClinicGroup, Patient, Photo, ProgressUpdate, QueueItem,
-  CheckIn, ReportIssue, ReportSubmission, Review, Student, Teacher, Workpiece,
+  CheckIn, ReportIssue, ReportSubmission, Review, SelfAssessment, Student, Teacher, Workpiece,
 } from '../domain/types';
 
 export interface KV {
@@ -30,6 +30,7 @@ export class ProsthoDB extends Dexie {
   reviews!: EntityTable<Review, 'id'>;
   queue!: EntityTable<QueueItem, 'id'>;
   audit!: EntityTable<AuditEntry, 'id'>;
+  selfAssessments!: EntityTable<SelfAssessment, 'id'>;
   kv!: EntityTable<KV, 'key'>;
 
   constructor() {
@@ -69,6 +70,10 @@ export class ProsthoDB extends Dexie {
       await tx.table('students').toCollection().modify((s: { year?: number; entryYear?: number }) => {
         if (!s.entryYear) s.entryYear = curAcademicYear - ((s.year ?? 5) - 5);
       });
+    });
+    /** v4 — แบบประเมินตนเองรายปี (หนึ่งชุดต่อ นศ. ต่อปีการศึกษา) */
+    this.version(4).stores({
+      selfAssessments: 'id, studentId, academicYear, status',
     });
   }
 }

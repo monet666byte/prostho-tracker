@@ -22,6 +22,8 @@ import Roster from './routes/teacher/Roster';
 import Analytics from './routes/teacher/Analytics';
 import MyGroup from './routes/teacher/MyGroup';
 import Evaluate from './routes/teacher/Evaluate';
+import SelfAssess from './routes/student/SelfAssess';
+import SelfAssessments from './routes/teacher/SelfAssessments';
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
   const session = useApp((s) => s.session);
@@ -112,6 +114,7 @@ export default function App() {
         <Route path="/app/sync" element={<Guard role="student"><Sync /></Guard>} />
         <Route path="/app/export" element={<Guard role="student"><ExportScreen /></Guard>} />
         <Route path="/app/achievements" element={<Guard role="student"><Achievements /></Guard>} />
+        <Route path="/app/self-assessment" element={<Guard role="student"><SelfAssess /></Guard>} />
 
         <Route path="/teacher" element={<Guard role="teacher"><Dashboard /></Guard>} />
         <Route path="/teacher/review" element={<Guard role="teacher"><Review /></Guard>} />
@@ -123,6 +126,7 @@ export default function App() {
         <Route path="/teacher/analytics" element={<Guard role="teacher"><Analytics /></Guard>} />
         <Route path="/teacher/group" element={<Guard role="teacher"><MyGroup /></Guard>} />
         <Route path="/teacher/evaluate" element={<Guard role="teacher"><Evaluate /></Guard>} />
+        <Route path="/teacher/sa" element={<Guard role="teacher"><SelfAssessments /></Guard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

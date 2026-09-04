@@ -10,7 +10,7 @@ import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, Review, ReviewStatus, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 import { t } from '../lib/i18n';
@@ -1063,4 +1063,111 @@ export async function setWorkpieceReturned(
     actor,
     { studentId: w.studentId },
   );
+}
+
+// ── แบบประเมินตนเอง (Self-assessment) ─────────────────────────
+
+/** หนึ่งชุดต่อ นศ. ต่อปีการศึกษา — คีย์คงที่ กรอกซ้ำก็ทับชุดเดิม ไม่งอกชุดใหม่ */
+export function saId(studentId: string, academicYear: number): string {
+  return `sa-${studentId}-${academicYear}`;
+}
+
+export async function getSelfAssessment(
+  studentId: string,
+  academicYear: number,
+): Promise<SelfAssessment | undefined> {
+  return db.selfAssessments.get(saId(studentId, academicYear));
+}
+
+export async function listSelfAssessments(academicYear?: number): Promise<SelfAssessment[]> {
+  const all = await db.selfAssessments.toArray();
+  return academicYear === undefined ? all : all.filter((r) => r.academicYear === academicYear);
+}
+
+export interface SaDraftInput {
+  studentId: string;
+  academicYear: number;
+  classYear: number;
+  formVersion: string;
+  answers: Record<string, string | number | string[] | null>;
+}
+
+/**
+ * บันทึกร่าง — เรียกได้บ่อยระหว่างกรอก (autosave)
+ * ส่งแล้วห้ามแก้: ถ้าชุดนี้ส่งไปแล้วจะไม่เขียนทับ คืนของเดิมกลับไป
+ */
+export async function saveSelfAssessmentDraft(input: SaDraftInput): Promise<SelfAssessment> {
+  const id = saId(input.studentId, input.academicYear);
+  const now = new Date().toISOString();
+  const prev = await db.selfAssessments.get(id);
+  if (prev?.status === 'submitted') return prev;
+  const next: SelfAssessment = {
+    id,
+    studentId: input.studentId,
+    academicYear: input.academicYear,
+    classYear: input.classYear,
+    formVersion: input.formVersion,
+    answers: input.answers,
+    status: 'draft',
+    createdAt: prev?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await db.selfAssessments.put(next);
+  return next;
+}
+
+/** ส่งจริง — ล็อกไม่ให้แก้ต่อ (ฟอร์มกระดาษก็ส่งแล้วส่งเลย) */
+export async function submitSelfAssessment(
+  studentId: string,
+  academicYear: number,
+  actor: string,
+): Promise<SelfAssessment | null> {
+  const row = await db.selfAssessments.get(saId(studentId, academicYear));
+  if (!row || row.status === 'submitted') return row ?? null;
+  const next: SelfAssessment = { ...row, status: 'submitted', submittedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  await db.selfAssessments.put(next);
+  await logAudit(`ส่งแบบประเมินตนเอง ปีการศึกษา ${academicYear}`, actor, { studentId });
+  return next;
+}
+
+/**
+ * อาจารย์ปล่อยสรุปให้นักศึกษาเห็น + แนบข้อความของตัวเอง
+ * ก่อนกดปุ่มนี้ นักศึกษาจะไม่เห็นการ์ดสรุปอัตโนมัติเลย — กฎอัตโนมัติตีความพลาดได้
+ */
+export async function releaseSaFeedback(
+  studentId: string,
+  academicYear: number,
+  advisorNote: string,
+  actor: string,
+): Promise<SelfAssessment | null> {
+  const row = await db.selfAssessments.get(saId(studentId, academicYear));
+  if (!row) return null;
+  const now = new Date().toISOString();
+  const next: SelfAssessment = {
+    ...row,
+    advisorNote: advisorNote.trim() || undefined,
+    feedbackReleasedAt: now,
+    feedbackReleasedBy: actor,
+    updatedAt: now,
+  };
+  await db.selfAssessments.put(next);
+  await logAudit(`ปล่อยสรุปแบบประเมินตนเองให้นักศึกษาเห็น (ปี ${academicYear})`, actor, { studentId });
+  return next;
+}
+
+/** ถอนการปล่อย — เผลอกดก่อนอ่านจบ ให้ดึงกลับได้ */
+export async function unreleaseSaFeedback(
+  studentId: string,
+  academicYear: number,
+  actor: string,
+): Promise<void> {
+  const row = await db.selfAssessments.get(saId(studentId, academicYear));
+  if (!row?.feedbackReleasedAt) return;
+  await db.selfAssessments.put({
+    ...row,
+    feedbackReleasedAt: undefined,
+    feedbackReleasedBy: undefined,
+    updatedAt: new Date().toISOString(),
+  });
+  await logAudit(`ถอนสรุปแบบประเมินตนเองกลับเป็นยังไม่ปล่อย (ปี ${academicYear})`, actor, { studentId });
 }
