@@ -236,7 +236,7 @@ export default function SelfAssess() {
         <div className="grabber" />
         <h3 className="h3">{t('ส่งแบบประเมินตนเอง?')}</h3>
         <p style={{ margin: '8px 0 0', font: '400 12px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-          {t('ส่งแล้วแก้เองไม่ได้ อาจารย์ที่ปรึกษาจะเห็นคำตอบทั้งหมด และระบบจะสรุปเทียบกับผลงานจริงให้อาจารย์อ่านก่อนนัดคุย')}
+          {t('ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และระบบจะสรุปเทียบกับผลงานจริงให้อาจารย์อ่านก่อนนัดคุย')}
         </p>
         <button className="btn" style={{ height: 50, marginTop: 14 }} onClick={send}>
           <PaperPlaneTilt size={17} weight="fill" /> {t('ยืนยันส่ง')}

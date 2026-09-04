@@ -4,12 +4,13 @@
 -- ที่มา: ฟอร์ม Word ของภาค "Self-assessment (SA) report: MIDS Prosthodontic Clinic"
 --        นักศึกษากรอกปีละครั้ง ตอนจบเทอม 1 แล้วอาจารย์ที่ปรึกษาอ่านก่อนนัดคุย
 --
--- ⚠️ ตารางนี้ "เข้มกว่า" ตารางอื่นในระบบโดยตั้งใจ
---    ตารางอื่นให้อาจารย์ทุกคนเห็นทั้งชั้นปี (เพราะอาจารย์เวรต้องเซ็นให้ทุกกลุ่ม — ดู 0004)
---    แต่ฟอร์มนี้มีช่องที่นักศึกษาเขียนเรื่องส่วนตัว (ข้อจำกัด ความกังวล ความกลัว)
---    จึงเปิดให้เฉพาะ "อาจารย์ที่ปรึกษาของนักศึกษาคนนั้น" เท่านั้น
---    🔧 ถ้าภาคขอให้อาจารย์ทุกคนเห็น: เปลี่ยน is_advisor_of(student_id) เป็น is_teacher()
---       ในทั้งสอง policy ด้านล่าง (ตัวอย่างอยู่ท้ายไฟล์)
+-- สิทธิ์การเห็น: อาจารย์ทุกคนในภาคเห็นได้ (เท่ากับตารางอื่นในระบบ — ดู 0004)
+--   ผู้ใช้ยืนยัน 4 ก.ย. 69: "เอาให้ทุกคนเห็น บางครั้งมีการแลกกลุ่มบ้าง"
+--   คือที่ปรึกษาไม่ได้ตายตัวตลอดปี ถ้าล็อกไว้ที่ advisor_ids อาจารย์ที่รับช่วงต่อจะเปิดอ่านไม่ได้
+--   ตัวคุมจึงเป็น audit log แบบเดียวกับตารางอื่น ไม่ใช่การบล็อก
+--   ⚠️ ฟอร์มนี้มีช่องที่นักศึกษาเขียนเรื่องส่วนตัว (ข้อจำกัด ความกังวล) — ข้อความที่บอกนักศึกษา
+--      ในแอปจึงต้องพูดตรงว่า "อาจารย์ในภาคเห็นได้" ไม่ใช่ "เฉพาะที่ปรึกษา"
+--   🔧 ถ้าวันหน้าภาคขอให้แคบลงเหลือเฉพาะที่ปรึกษา: ตัวอย่างอยู่ท้ายไฟล์
 --
 -- วิธีติดตั้ง: ก๊อปทั้งไฟล์ → Supabase Dashboard → SQL Editor → Run
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -35,35 +36,25 @@ create index if not exists sa_year_idx on self_assessments (academic_year);
 
 alter table self_assessments enable row level security;
 
--- ① "ฉันเป็นที่ปรึกษาของ นศ. คนนี้ไหม" — อ่าน advisor_ids ของนักศึกษาข้ามสิทธิ์ตัวเอง
-create or replace function is_advisor_of(sid text)
-returns boolean language sql stable security definer set search_path = public
-as $$
-  select exists (
-    select 1 from students s
-    where s.id = sid and my_teacher_id() = any(s.advisor_ids)
-  )
-$$;
-
--- ② นักศึกษา: อ่าน/เขียนของตัวเองเท่านั้น · อาจารย์ที่ปรึกษา: อ่านได้
+-- ① นักศึกษา: อ่านของตัวเองเท่านั้น · อาจารย์: อ่านได้ทุกคน (รองรับการแลกกลุ่มระหว่างปี)
 drop policy if exists sa_own on self_assessments;
 create policy sa_own on self_assessments for select to authenticated
-  using (student_id = my_student_id() or is_advisor_of(student_id));
+  using (student_id = my_student_id() or is_teacher());
 
 drop policy if exists sa_write_own on self_assessments;
 create policy sa_write_own on self_assessments for insert to authenticated
   with check (student_id = my_student_id());
 
--- ③ แก้ไข: นักศึกษาแก้ได้เฉพาะตอนยังเป็นร่าง · ที่ปรึกษาแก้ได้ (ปล่อยสรุป + เขียนความเห็น)
+-- ③ แก้ไข: นักศึกษาแก้ได้เฉพาะตอนยังเป็นร่าง · อาจารย์แก้ได้ (ปล่อยสรุป + เขียนความเห็น)
 --    ส่งแล้วห้ามนักศึกษาแก้ — ฐานข้อมูลบังคับเอง ไม่ใช่แค่ปุ่มในแอปที่ปิดไว้
 drop policy if exists sa_update on self_assessments;
 create policy sa_update on self_assessments for update to authenticated
   using (
-    is_advisor_of(student_id)
+    is_teacher()
     or (student_id = my_student_id() and status = 'draft')
   )
   with check (
-    is_advisor_of(student_id)
+    is_teacher()
     or student_id = my_student_id()
   );
 
@@ -78,11 +69,15 @@ exception when duplicate_object then null;
 end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 🔧 ถ้าภาคขอให้อาจารย์ทุกคนเห็น (ไม่ใช่แค่ที่ปรึกษาของกลุ่มนั้น):
+-- 🔧 ถ้าวันหน้าภาคขอให้แคบลงเหลือ "เฉพาะอาจารย์ที่ปรึกษาของ นศ. คนนั้น":
 --
---   drop policy sa_own on self_assessments;
---   create policy sa_own on self_assessments for select to authenticated
---     using (student_id = my_student_id() or is_teacher());
+--   create or replace function is_advisor_of(sid text)
+--   returns boolean language sql stable security definer set search_path = public
+--   as $$ select exists (
+--     select 1 from students s
+--     where s.id = sid and my_teacher_id() = any(s.advisor_ids)
+--   ) $$;
 --
---   แล้วเปลี่ยน is_advisor_of(student_id) เป็น is_teacher() ใน sa_update ด้วย
+--   แล้วเปลี่ยน is_teacher() เป็น is_advisor_of(student_id) ในทั้ง sa_own และ sa_update
+--   ⚠️ ทำแล้วอาจารย์ที่รับช่วงกลุ่มระหว่างปีจะเปิดอ่านของ นศ. ไม่ได้จนกว่าจะแก้ advisor_ids
 -- ─────────────────────────────────────────────────────────────────────────────

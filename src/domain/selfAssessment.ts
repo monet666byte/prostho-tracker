@@ -126,8 +126,11 @@ export const SA_SECTIONS: readonly SASection[] = [
       { key: 'goals', kind: 'text', label: 'Goals', th: 'เป้าหมายของฉันในคลินิกนี้',
         hint: 'What do you want to achieve in this rotation?', hintTh: 'อยากได้อะไรกลับไปจากการขึ้นคลินิกรอบนี้' },
       { key: 'strength', kind: 'text', label: 'Strength', th: 'จุดแข็งของฉัน' },
+      /* บอกตรงๆ ว่าใครเห็น — ผู้ใช้ยืนยัน 4 ก.ย. 69 ว่าอาจารย์ทุกคนในภาคเห็นได้
+         (ที่ปรึกษาแลกกลุ่มกันระหว่างปี) ข้อความจึงต้องไม่สัญญาว่า "เฉพาะที่ปรึกษา" */
       { key: 'limitations', kind: 'text', label: 'Limitations', th: 'ข้อจำกัดของฉัน',
-        hint: 'Only your advisor sees this', hintTh: 'เห็นเฉพาะอาจารย์ที่ปรึกษาของกลุ่ม' },
+        hint: 'Instructors in the department can read this — not your classmates',
+        hintTh: 'อาจารย์ในภาควิชาอ่านได้ · เพื่อนร่วมรุ่นไม่เห็น' },
     ],
   },
   {

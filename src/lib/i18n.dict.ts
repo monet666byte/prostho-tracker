@@ -1007,4 +1007,5 @@ export const DICT: Record<string, string> = {
   'ปล่อยให้นักศึกษาเห็น': 'Release to the student',
   'ปล่อยเมื่อ {d} โดย {w}': 'Released {d} by {w}',
   'ปล่อยสรุปให้นักศึกษาเห็นแล้ว': 'Summary released to the student',
+  'ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และระบบจะสรุปเทียบกับผลงานจริงให้อาจารย์อ่านก่อนนัดคุย': 'Once submitted you cannot edit it. Instructors in the department can read every answer, and the app prepares a summary against your actual work for them to read before the meeting.',
 };
