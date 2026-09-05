@@ -72,15 +72,39 @@ export default function SelfAssess() {
   const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /* คำตอบล่าสุดที่ยังไม่ได้เขียนลงเครื่อง — ต้องเก็บแยกจาก state
-     เพราะตอน cleanup ของ useEffect เราอ่านค่า state ณ ตอนนั้นไม่ได้ */
-  const unsaved = useRef<Record<string, SAValue> | null>(null);
+  /* ค่าล่าสุดบนจอ + ธงว่ามีของค้างเขียน — ต้องเป็น ref เพราะ cleanup ของ useEffect
+     และตัวจับเวลาอ่าน state ณ ตอนนั้นไม่ได้ */
+  const latest = useRef<Record<string, SAValue>>({});
+  latest.current = answers;
+  const hasUnsaved = useRef(false);
+  /* ช่องที่แก้ในเครื่องนี้ตั้งแต่บันทึกครั้งล่าสุด — ใช้ตอนรวมกับฉบับที่มาจากเครื่องอื่น */
+  const dirty = useRef(new Set<string>());
+  const seenUpdatedAt = useRef<string | null>(null);
 
-  // โหลดร่างเดิมครั้งเดียว — หลังจากนั้นสถานะในหน้าเป็นความจริง (ไม่งั้นพิมพ์ไปโดนทับไป)
+  /**
+   * โหลดร่าง + รับฉบับใหม่จากเครื่องอื่น
+   *
+   * นักศึกษาใช้ทั้งมือถือและ iPad (ผู้ใช้บอก 6 ก.ย. 69) เคสจริง: เปิดฟอร์มค้างไว้บนมือถือ
+   * ไปกรอกต่อบน iPad แล้วกลับมาแตะมือถือหนึ่งที → เดิมมือถือจะเขียนคำตอบชุดเก่าทั้งก้อน
+   * ทับของที่ iPad เพิ่งกรอกไป จึงต้องรวมแบบรายช่อง: ช่องที่แก้ในเครื่องนี้ชนะ
+   * ที่เหลือใช้ของที่ sync มาล่าสุด (saved เป็น live query — ขยับเองเมื่อ Dexie เปลี่ยน)
+   */
   useEffect(() => {
-    if (loaded || saved === undefined) return;
-    if (saved) setAnswers(saved.answers as Record<string, SAValue>);
-    setLoaded(true);
+    if (saved === undefined) return; // ยังโหลดไม่เสร็จ
+    if (!loaded) {
+      if (saved) setAnswers(saved.answers as Record<string, SAValue>);
+      seenUpdatedAt.current = saved?.updatedAt ?? null;
+      setLoaded(true);
+      return;
+    }
+    if (!saved || saved.updatedAt === seenUpdatedAt.current) return;
+    seenUpdatedAt.current = saved.updatedAt;
+    const remote = saved.answers as Record<string, SAValue>;
+    setAnswers((cur) => {
+      const merged: Record<string, SAValue> = { ...remote };
+      dirty.current.forEach((k) => { if (k in cur) merged[k] = cur[k]; });
+      return merged;
+    });
   }, [saved, loaded]);
 
   const submitted = saved?.status === 'submitted';
@@ -96,23 +120,26 @@ export default function SelfAssess() {
     /* ยังไม่รู้ว่าเป็นปี 5 หรือ 6 (แถว student ยังไม่โหลด) → เก็บไว้ในหน้าจอก่อน
        ไม่งั้นแถวแรกจะติด classYear=5 แล้วหมวด OSCE โผล่ให้ปี 6 จนกว่าจะบันทึกรอบถัดไป */
     if (!student) return;
-    unsaved.current = next;
+    latest.current = next;
+    dirty.current.add(key);
+    hasUnsaved.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(flush, 600);
   }
 
-  /** เขียนสิ่งที่ค้างลงเครื่องทันที — ปลอดภัยที่จะเรียกซ้ำ */
+  /** เขียนสิ่งที่ค้างลงเครื่องทันที — ปลอดภัยที่จะเรียกซ้ำ · เขียนจากค่าล่าสุดบนจอเสมอ
+      (ไม่ใช่ snapshot ตอนกด) เพราะระหว่างรอ 600ms อาจมีฉบับจากเครื่องอื่นรวมเข้ามาแล้ว */
   function flush() {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
-    const pending = unsaved.current;
-    if (!pending || !session) return;
-    unsaved.current = null;
+    if (!hasUnsaved.current || !session) return;
+    hasUnsaved.current = false;
+    dirty.current.clear();
     void saveSelfAssessmentDraft({
       studentId: session.studentId,
       academicYear: year,
       classYear,
       formVersion: SA_FORM_VERSION,
-      answers: pending,
+      answers: latest.current,
     });
   }
 
@@ -137,7 +164,8 @@ export default function SelfAssess() {
   async function send() {
     if (!session) return;
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
-    unsaved.current = null;
+    hasUnsaved.current = false;
+    dirty.current.clear();
     await saveSelfAssessmentDraft({
       studentId: session.studentId, academicYear: year, classYear, formVersion: SA_FORM_VERSION, answers,
     });
