@@ -989,3 +989,11 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* การ์ดเคสคืน — ย่อให้เล็กลง ไม่ต้องเด่นเท่างานที่ยังทำอยู่ */
 .reviewcard.returned { padding: 9px 12px; opacity: 0.62; }
 .reviewcard.returned .badge { transform: scale(0.94); }
+
+/* ── หน้าประเมินตนเอง: รายชื่อซ้าย + รายละเอียดขวา ──
+   ต้องอยู่ท้ายไฟล์: กฎมือถือที่เขียนไว้ก่อนหน้าเคยแพ้กฎที่ประกาศทีหลัง (ดู .evalcard__scores) */
+.salayout { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 640px) {
+  .salayout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+

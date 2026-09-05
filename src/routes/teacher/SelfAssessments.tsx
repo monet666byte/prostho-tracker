@@ -150,7 +150,8 @@ export default function SelfAssessments() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 260px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+        {/* สองคอลัมน์บนจอกว้าง · จอแคบ (อาจารย์เปิดจากมือถือ) ซ้อนเป็นคอลัมน์เดียว — กฎอยู่ท้าย teacher.css */}
+        <div className="salayout">
           {/* ① ใครส่งแล้ว */}
           <div style={{ display: 'grid', gap: 7 }}>
             {groupStudents.length === 0 && (
