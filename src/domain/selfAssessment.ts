@@ -301,6 +301,18 @@ export function saColLabel(col: 'K' | 'S'): string {
   return col === 'K' ? 'ความรู้ (K)' : 'ทักษะ (S)';
 }
 
+/**
+ * ข้อความในช่อง "อื่นๆ" ที่นักศึกษาพิมพ์เอง
+ *
+ * เก็บไว้ที่คีย์ `${key}Other` ซึ่งไม่มีคำถามรองรับในโครงฟอร์ม — ถ้าไม่ดึงออกมาตรงนี้
+ * ข้อความจะถูกบันทึกลงฐานข้อมูลแล้วไม่มีใครเห็นเลยสักที่ (เจอตอนไล่บั๊ก 6 ก.ย. 69)
+ */
+export function saOtherText(q: SAQuestion, answers: Record<string, SAValue>): string {
+  if (!q.other) return '';
+  const v = answers[`${q.key}Other`];
+  return typeof v === 'string' ? v.trim() : '';
+}
+
 export function saOption(q: SAQuestion, i: number): string {
   const en = q.options?.[i] ?? '';
   return lang === 'en' ? en : (q.optionsTh?.[i] ?? en);

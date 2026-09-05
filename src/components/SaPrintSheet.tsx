@@ -7,7 +7,7 @@
  * หน้าตายึดตามฟอร์มจริง: หัวข้อภาษาอังกฤษ ตาราง Topics|Assessment และช่องลงนามท้ายเอกสาร
  */
 import {
-  SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saSectionsFor,
+  SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saOtherText, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../domain/selfAssessment';
 import { thaiLong } from '../lib/date';
@@ -15,17 +15,20 @@ import { t } from '../lib/i18n';
 import type { SelfAssessment, Student, Teacher } from '../domain/types';
 
 /** ค่าที่พิมพ์ลงกระดาษ — ตัวเลขต้องมีคำกำกับเสมอ คนอ่านกระดาษไม่มี tooltip ให้ชี้ */
-function printable(q: SAQuestion, v: SAValue | undefined): string {
-  if (v === undefined || v === null || v === '') return '';
-  if (Array.isArray(v)) return v.join(' · ');
+function printable(q: SAQuestion, v: SAValue | undefined, answers: Record<string, SAValue>): string {
+  // เอกสารที่เซ็นต้องมีทุกอย่างที่ นศ. เขียน รวมช่อง "อื่นๆ" ที่เก็บคนละคีย์
+  const extra = answers ? saOtherText(q, answers) : '';
+  const join = (main: string) => [main, extra].filter(Boolean).join(' · ');
+  if (v === undefined || v === null || v === '') return extra;
+  if (Array.isArray(v)) return join(v.join(' · '));
   if (typeof v === 'number') {
     if (q.kind === 'level') return v === SA_APPROPRIATE ? 'Appropriate' : 'Need improvement';
     if (q.kind === 'yesno') return v === 1 ? 'Yes' : 'No';
     if (v < 0) return 'N/A';
     const s = SA_SCALE.find((x) => x.v === v);
-    return s ? `${v} — ${s.label}` : String(v);
+    return join(s ? `${v} — ${s.label}` : String(v));
   }
-  return String(v);
+  return join(String(v));
 }
 
 export function SaPrintSheet({
@@ -76,8 +79,8 @@ export function SaPrintSheet({
                     return (
                       <tr key={row}>
                         <td className="saq">{k?.label ?? row}</td>
-                        <td>{k ? printable(k, sa.answers[k.key] as SAValue) : ''}</td>
-                        <td>{sk ? printable(sk, sa.answers[sk.key] as SAValue) : ''}</td>
+                        <td>{k ? printable(k, sa.answers[k.key] as SAValue, sa.answers as Record<string, SAValue>) : ''}</td>
+                        <td>{sk ? printable(sk, sa.answers[sk.key] as SAValue, sa.answers as Record<string, SAValue>) : ''}</td>
                       </tr>
                     );
                   })}
@@ -97,7 +100,7 @@ export function SaPrintSheet({
                   {plain.map((q) => (
                     <tr key={q.key}>
                       <td className="saq">{q.label}</td>
-                      <td>{printable(q, sa.answers[q.key] as SAValue) || '—'}</td>
+                      <td>{printable(q, sa.answers[q.key] as SAValue, sa.answers as Record<string, SAValue>) || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  saColLabel, saHint, saLabel, saNote, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor,
+  saColLabel, saHint, saLabel, saNote, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -72,6 +72,9 @@ export default function SelfAssess() {
   const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* คำตอบล่าสุดที่ยังไม่ได้เขียนลงเครื่อง — ต้องเก็บแยกจาก state
+     เพราะตอน cleanup ของ useEffect เราอ่านค่า state ณ ตอนนั้นไม่ได้ */
+  const unsaved = useRef<Record<string, SAValue> | null>(null);
 
   // โหลดร่างเดิมครั้งเดียว — หลังจากนั้นสถานะในหน้าเป็นความจริง (ไม่งั้นพิมพ์ไปโดนทับไป)
   useEffect(() => {
@@ -90,26 +93,48 @@ export default function SelfAssess() {
     if (submitted || !session) return;
     const next = { ...answers, [key]: v };
     setAnswers(next);
+    unsaved.current = next;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      void saveSelfAssessmentDraft({
-        studentId: session.studentId,
-        academicYear: year,
-        classYear,
-        formVersion: SA_FORM_VERSION,
-        answers: next,
-      });
-    }, 600);
+    saveTimer.current = setTimeout(flush, 600);
   }
 
-  // ออกจากหน้าไปกลางคัน — บันทึกสิ่งที่ค้างในตัวจับเวลาทันที
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  /** เขียนสิ่งที่ค้างลงเครื่องทันที — ปลอดภัยที่จะเรียกซ้ำ */
+  function flush() {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    const pending = unsaved.current;
+    if (!pending || !session) return;
+    unsaved.current = null;
+    void saveSelfAssessmentDraft({
+      studentId: session.studentId,
+      academicYear: year,
+      classYear,
+      formVersion: SA_FORM_VERSION,
+      answers: pending,
+    });
+  }
+
+  /**
+   * บันทึกสิ่งที่ค้างทันทีเมื่อออกจากหน้า/สลับแอป/ปิดแท็บ
+   *
+   * เดิม cleanup แค่ clearTimeout เฉยๆ — พิมพ์เสร็จแล้วกดย้อนกลับภายใน 600ms
+   * ข้อความล่าสุดหายไปเลยโดยไม่มีใครรู้ (เจอตอนไล่บั๊ก 6 ก.ย. 69)
+   * ในคลินิกเกิดง่ายมาก เพราะ นศ. สลับแอปตลอดเวลา
+   */
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+      flush();
+    };
+  });
 
   async function send() {
     if (!session) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    unsaved.current = null;
     await saveSelfAssessmentDraft({
       studentId: session.studentId, academicYear: year, classYear, formVersion: SA_FORM_VERSION, answers,
     });
@@ -180,7 +205,7 @@ export default function SelfAssess() {
                       {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
                     </span>
                     <span style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
-                      {readable(q, answers[q.key]) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
+                      {readable(q, answers[q.key], answers) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
                     </span>
                   </div>
                 ))}
@@ -271,8 +296,10 @@ export default function SelfAssess() {
                 key={s.key}
                 onClick={() => setStep(i)}
                 title={saSectionLabel(s)}
+                /* 34px ขั้นต่ำที่นิ้ว (โดยเฉพาะตอนใส่ถุงมือ) กดโดนจริง — 26px เดิมพลาดง่าย
+                   จอ 320px ใส่ไม่ครบแถวเดียว ปล่อยให้ตกลงแถวสองได้ (flexWrap เปิดอยู่แล้ว) */
                 style={{
-                  width: 26, height: 26, borderRadius: 8, flex: 'none',
+                  width: 34, height: 34, borderRadius: 9, flex: 'none',
                   border: `1px solid ${i === step ? 'var(--accent)' : 'var(--border)'}`,
                   background: i === step ? 'var(--accent-tint)' : left === 0 ? 'var(--success-tint)' : 'transparent',
                   color: left === 0 ? 'var(--success-dark)' : 'var(--text-muted)',
@@ -420,22 +447,23 @@ function Field({
 }
 
 /** แปลงคำตอบเป็นข้อความอ่านได้ — ใช้ตอนโหมดอ่านอย่างเดียวและฝั่งอาจารย์ */
-export function readable(q: SAQuestion, v: SAValue | undefined): string {
-  if (v === undefined || v === null || v === '') return '';
+export function readable(q: SAQuestion, v: SAValue | undefined, answers?: Record<string, SAValue>): string {
+  // ต่อท้ายด้วยข้อความช่อง "อื่นๆ" เสมอ ไม่งั้นสิ่งที่ นศ. พิมพ์เองจะหายไปจากทุกหน้าจอ
+  const extra = answers ? saOtherText(q, answers) : '';
+  const join = (main: string) => [main, extra].filter(Boolean).join(' · ');
+  if (v === undefined || v === null || v === '') return extra;
   if (Array.isArray(v)) {
-    return v
-      .map((x) => {
-        const i = (q.options ?? []).indexOf(x);
-        return i >= 0 ? saOption(q, i) : x;
-      })
-      .join(' · ');
+    return join(v.map((x) => {
+      const i = (q.options ?? []).indexOf(x);
+      return i >= 0 ? saOption(q, i) : x;
+    }).join(' · '));
   }
   if (typeof v === 'number') {
     if (q.kind === 'level') return v === SA_APPROPRIATE ? (lang === 'en' ? 'Appropriate' : 'เหมาะสมแล้ว') : (lang === 'en' ? 'Need improvement' : 'ต้องปรับปรุง');
     if (q.kind === 'yesno') return v === 1 ? (lang === 'en' ? 'Yes' : 'ใช่') : (lang === 'en' ? 'No' : 'ไม่');
     if (v < 0) return 'N/A';
     const s = SA_SCALE.find((x) => x.v === v);
-    return s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v);
+    return join(s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v));
   }
-  return String(v);
+  return join(String(v));
 }

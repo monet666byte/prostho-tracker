@@ -19,7 +19,7 @@ import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
 import { firstNameOnly, groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
-  SA_APPROPRIATE, saColLabel, saLabel, saOption, saSectionLabel, saSectionsFor, SA_SCALE,
+  SA_APPROPRIATE, saColLabel, saLabel, saOption, saOtherText, saSectionLabel, saSectionsFor, SA_SCALE,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
@@ -30,22 +30,25 @@ import type { ProfileAxis } from '../../domain/analytics';
 import type { SelfAssessment, Student } from '../../domain/types';
 
 /** อ่านค่าคำตอบเป็นข้อความ — เหมือนฝั่งนักศึกษา แต่หน้านี้ไม่ได้ import จอ นศ. มาทั้งไฟล์ */
-function readable(q: SAQuestion, v: SAValue | undefined): string {
-  if (v === undefined || v === null || v === '') return '';
+function readable(q: SAQuestion, v: SAValue | undefined, answers: Record<string, SAValue>): string {
+  // ต่อท้ายข้อความช่อง "อื่นๆ" เสมอ — เก็บคนละคีย์ ถ้าไม่ดึงมาต่อจะหายไปจากหน้าจอ
+  const extra = saOtherText(q, answers);
+  const join = (main: string) => [main, extra].filter(Boolean).join(' · ');
+  if (v === undefined || v === null || v === '') return extra;
   if (Array.isArray(v)) {
-    return v.map((x) => {
+    return join(v.map((x) => {
       const i = (q.options ?? []).indexOf(x);
       return i >= 0 ? saOption(q, i) : x;
-    }).join(' · ');
+    }).join(' · '));
   }
   if (typeof v === 'number') {
     if (q.kind === 'level') return v === SA_APPROPRIATE ? (lang === 'en' ? 'Appropriate' : 'เหมาะสมแล้ว') : (lang === 'en' ? 'Need improvement' : 'ต้องปรับปรุง');
     if (q.kind === 'yesno') return v === 1 ? (lang === 'en' ? 'Yes' : 'ใช่') : (lang === 'en' ? 'No' : 'ไม่');
     if (v < 0) return 'N/A';
     const s = SA_SCALE.find((x) => x.v === v);
-    return s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v);
+    return join(s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v));
   }
-  return String(v);
+  return join(String(v));
 }
 
 /**
@@ -235,7 +238,7 @@ export default function SelfAssessments() {
                             {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
                           </span>
                           <span style={{ flex: 1, minWidth: 0, font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
-                            {readable(q, openSa.answers[q.key] as SAValue) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
+                            {readable(q, openSa.answers[q.key] as SAValue, openSa.answers as Record<string, SAValue>) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
                           </span>
                         </div>
                       ))}
