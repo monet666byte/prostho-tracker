@@ -218,7 +218,7 @@ export const SA_SECTIONS: readonly SASection[] = [
   {
     key: 'procedures',
     title: 'Prosthodontic procedures — Knowledge (K) and Skills (S)',
-    th: 'หัตถการ — ความรู้และทักษะ',
+    th: 'หัตถการ — ความรู้ (K) และทักษะ (S)',
     note: 'Rate what you know (K) and what you can do (S) for each type',
     noteTh: 'ให้คะแนนแยกว่า "รู้" แค่ไหน กับ "ทำได้" แค่ไหน · ยังไม่เคยทำเลือก N/A ได้',
     questions: [
@@ -293,12 +293,12 @@ export function saNote(s: SASection): string | undefined {
 }
 
 /**
- * ป้ายคอลัมน์ K/S ในแอป — ใช้คำเต็ม ไม่ใช้ตัวย่อ (ผู้ใช้ขอ 5 ก.ย. 69)
- * ตัวย่อ K/S ยังคงอยู่ในเอกสารฉบับพิมพ์ เพราะฟอร์มของภาคใช้หัวคอลัมน์แบบนั้น
+ * ป้ายคอลัมน์ K/S — คงตัวย่อไว้ตามฟอร์มจริงของภาค (หัวตารางในไฟล์ Word คือ "K" กับ "S")
+ * นักศึกษาเห็นตัวย่อเดียวกับที่จะเจอในกระดาษ จึงไม่ต้องแปลงในหัวตอนสลับสองที่
  */
 export function saColLabel(col: 'K' | 'S'): string {
-  if (lang === 'en') return col === 'K' ? 'Knowledge' : 'Skill';
-  return col === 'K' ? 'ความรู้' : 'ทักษะ';
+  if (lang === 'en') return col === 'K' ? 'Knowledge (K)' : 'Skill (S)';
+  return col === 'K' ? 'ความรู้ (K)' : 'ทักษะ (S)';
 }
 
 export function saOption(q: SAQuestion, i: number): string {
