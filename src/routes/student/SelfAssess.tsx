@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  saHint, saLabel, saNote, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor,
+  saColLabel, saHint, saLabel, saNote, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -177,7 +177,7 @@ export default function SelfAssess() {
                 {s.questions.map((q) => (
                   <div key={q.key} style={{ display: 'grid', gap: 2 }}>
                     <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                      {saLabel(q)}{q.col ? ` · ${q.col}` : ''}
+                      {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
                     </span>
                     <span style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
                       {readable(q, answers[q.key]) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
@@ -331,7 +331,7 @@ function renderQuestions(
           {group.map((g) => (
             <div key={g.key} style={{ display: 'grid', gap: 4 }}>
               <span style={{ font: '600 10.5px var(--font-body)', color: 'var(--text-muted)' }}>
-                {g.col === 'K' ? (lang === 'en' ? 'Knowledge (K)' : 'ความรู้ (K)') : (lang === 'en' ? 'Skill (S)' : 'ทักษะ (S)')}
+                {saColLabel(g.col!)}
               </span>
               <Choice
                 options={scaleOptions(g.allowNA)}

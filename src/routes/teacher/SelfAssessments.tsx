@@ -19,7 +19,7 @@ import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
 import { firstNameOnly, groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
-  SA_APPROPRIATE, saLabel, saOption, saSectionLabel, saSectionsFor, SA_SCALE,
+  SA_APPROPRIATE, saColLabel, saLabel, saOption, saSectionLabel, saSectionsFor, SA_SCALE,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
@@ -232,7 +232,7 @@ export default function SelfAssessments() {
                       {s.questions.map((q) => (
                         <div key={q.key} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                           <span style={{ flex: '0 0 210px', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-                            {saLabel(q)}{q.col ? ` · ${q.col}` : ''}
+                            {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
                           </span>
                           <span style={{ flex: 1, minWidth: 0, font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
                             {readable(q, openSa.answers[q.key] as SAValue) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
