@@ -1,10 +1,11 @@
 import { ChalkboardTeacher, GoogleLogo, LockSimple, SignIn, Student, Tooth, WarningCircle } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
 import { cloudEnabled } from '../lib/cloud';
 import { useApp } from '../store/app';
 import { PhoneFrame } from '../components/student/Shell';
+import { canInstall, isAppleSafari, isInstalled, onInstallChange, promptInstall } from '../lib/install';
 import type { Role } from '../domain/types';
 
 export default function Login() {
@@ -16,6 +17,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(cloudUnlinked ? t('บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ') : null);
+
+  /* ── ติดตั้งลงหน้าจอโฮม ──
+     เบราว์เซอร์ยิง beforeinstallprompt ตอนไหนก็ได้ (บางทีหลังหน้าโหลดไปแล้วหลายวินาที)
+     จึงต้องรับแจ้งเปลี่ยนแปลง ไม่ใช่อ่านค่าครั้งเดียวตอน render */
+  const [installable, setInstallable] = useState(canInstall());
+  const [installing, setInstalling] = useState(false);
+  useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
+  const installed = isInstalled();
+  const manualOnly = !installable && isAppleSafari();
+
+  async function doInstall() {
+    setInstalling(true);
+    const res = await promptInstall();
+    setInstalling(false);
+    // 'unavailable' = เบราว์เซอร์ไม่มีปุ่มให้เรียก — คงกล่องไว้ให้อ่านวิธีทำมือ
+    if (res !== 'unavailable') dismissInstall();
+  }
 
   async function go() {
     if (!role) return;
@@ -155,12 +173,14 @@ export default function Login() {
           </>
           )}
 
-          <button
-            onClick={openInstall}
-            style={{ marginTop: 12, font: '600 11.5px var(--font-body)', color: 'var(--accent)' }}
-          >
-            {t('เพิ่มลงหน้าจอโฮม (ใช้ออฟไลน์ในคลินิกได้)')}
-          </button>
+          {!installed && (
+            <button
+              onClick={openInstall}
+              style={{ marginTop: 12, font: '600 11.5px var(--font-body)', color: 'var(--accent)' }}
+            >
+              {t('เพิ่มลงหน้าจอโฮม (ใช้ออฟไลน์ในคลินิกได้)')}
+            </button>
+          )}
 
           <p
             className="pretty"
@@ -191,9 +211,28 @@ export default function Login() {
                   </div>
                 </div>
               </div>
+              {manualOnly && (
+                /* Safari ไม่มี API ให้เรียก — บอกทางเดินให้ครบ ดีกว่าปุ่มที่กดแล้วไม่เกิดอะไร */
+                <ol
+                  style={{
+                    margin: '14px 0 0', paddingLeft: 18,
+                    font: '400 11.5px/1.8 var(--font-body)', color: 'var(--text-secondary)',
+                  }}
+                >
+                  <li>{t('แตะปุ่มแชร์ ⬆︎ ด้านล่างจอ')}</li>
+                  <li>{t('เลื่อนหาแล้วแตะ “Add to Home Screen”')}</li>
+                  <li>{t('แตะ “Add” มุมขวาบน')}</li>
+                </ol>
+              )}
               <div style={{ display: 'flex', gap: 9, marginTop: 16 }}>
-                <button className="btn btn--sec" style={{ height: 46 }} onClick={dismissInstall}>{t('ไว้ก่อน')}</button>
-                <button className="btn" style={{ height: 46 }} onClick={dismissInstall}>{t('เพิ่มเลย')}</button>
+                <button className="btn btn--sec" style={{ height: 46 }} onClick={dismissInstall}>
+                  {manualOnly ? t('เข้าใจแล้ว') : t('ไว้ก่อน')}
+                </button>
+                {!manualOnly && (
+                  <button className="btn" style={{ height: 46 }} disabled={!installable || installing} onClick={doInstall}>
+                    {installing ? t('กำลังติดตั้ง…') : installable ? t('เพิ่มเลย') : t('เบราว์เซอร์นี้ยังเพิ่มไม่ได้')}
+                  </button>
+                )}
               </div>
             </div>
           </div>

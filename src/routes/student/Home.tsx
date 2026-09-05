@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
-import { relative, toISODate, weekMonday } from '../../lib/date';
+import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
@@ -19,6 +19,8 @@ import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { FIRSTS } from './Achievements';
 import { groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
+import { saProgress, type SAValue } from '../../domain/selfAssessment';
+import { studentYear } from '../../domain/cohort';
 
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
 const SHOW_ACHIEVEMENT_CARD = false;
@@ -143,9 +145,25 @@ export default function Home() {
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
   const navigate = useNavigate();
-  // แบบประเมินตนเองของปีการศึกษานี้ — ใช้ตัดสินว่าการ์ดบนหน้าแรกโชว์ข้อความไหน
+  /* แบบประเมินตนเองของปีการศึกษานี้ — การ์ดบนหน้าแรกทำหน้าที่แจ้งเตือนไปในตัว
+     3 สถานะ: เปิดแล้วยังไม่เริ่ม (จุดแดง) · กรอกค้าง (บอกความคืบหน้า) · ส่งแล้ว (เงียบ) */
   const selfAssessment = useSelfAssessment(session?.studentId, saYearNow());
   const saDone = selfAssessment?.status === 'submitted';
+  const saNew = settings.saOpen && !selfAssessment;
+  const saDueLeft = settings.saDue ? daysUntil(settings.saDue) : null;
+  const saDueSoon = !saDone && saDueLeft !== null && saDueLeft <= settings.remindDays;
+  const saProg = selfAssessment && !saDone && student
+    ? saProgress(selfAssessment.answers as Record<string, SAValue>, studentYear(student))
+    : null;
+  const saNote = saDone
+    ? t('ส่งแล้ว — อาจารย์อ่านก่อนนัดคุย')
+    : saDueSoon
+      ? (saDueLeft! < 0
+          ? t('เลยกำหนดส่งมาแล้ว {n} วัน', { n: -saDueLeft! })
+          : t('เหลืออีก {n} วันถึงกำหนดส่ง', { n: saDueLeft! }))
+      : saProg
+        ? t('กรอกค้างไว้ · ตอบแล้ว {a}/{b} ข้อ', { a: saProg.done, b: saProg.total })
+        : t('ภาคเปิดให้ทำแล้ว · แตะเพื่อเริ่ม');
 
   const active = works.filter(isActiveWork);
   const recent = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt));
@@ -427,14 +445,18 @@ export default function Home() {
       </div>
 
       {/* แบบประเมินตนเอง — ปีละครั้งตอนจบเทอม 1 ซ่อนไว้ตลอดปีจนกว่าภาคจะเปิด
-          (การ์ดถาวรที่กดไม่ได้ = ขยะบนหน้าแรก) */}
+          (การ์ดถาวรที่กดไม่ได้ = ขยะบนหน้าแรก)
+
+          การ์ดนี้ทำหน้าที่ "แจ้งเตือน" ด้วย — ผู้ใช้ขอ 5 ก.ย. 69 ให้ผูกการเปิดฟอร์มกับ noti
+          วินาทีที่อาจารย์กดสวิตช์เปิด นักศึกษาที่ยังไม่เริ่มจะเห็นจุดแดงบนหน้าแรกทันที
+          (ทำงานออฟไลน์ ไม่ต้องขอสิทธิ์ ไม่ต้องมีเซิร์ฟเวอร์ — push จริงยังไม่มีในระบบ) */}
       {(settings.saOpen || saDone) && (
         <Link
           to="/app/self-assessment"
           className="card"
           style={{
             padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
-            borderColor: saDone ? undefined : 'var(--accent-ring)',
+            borderColor: saNew ? 'var(--accent)' : saDone ? undefined : 'var(--accent-ring)',
           }}
         >
           <span
@@ -442,14 +464,24 @@ export default function Home() {
               width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
               background: saDone ? 'var(--success-tint)' : 'var(--accent-tint)',
               color: saDone ? 'var(--success-dark)' : 'var(--accent)',
+              position: 'relative',
             }}
           >
             <ClipboardText size={17} weight="fill" />
+            {saNew && (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute', top: -3, right: -3, width: 10, height: 10, borderRadius: 99,
+                  background: 'var(--danger)', border: '2px solid var(--bg-elevated)',
+                }}
+              />
+            )}
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('ประเมินตนเอง')}</span>
-            <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
-              {saDone ? t('ส่งแล้ว — อาจารย์อ่านก่อนนัดคุย') : t('ปีละครั้ง ตอนจบเทอม 1 · บันทึกร่างได้')}
+            <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: saDueSoon ? 'var(--warning-dark)' : 'var(--text-muted)', marginTop: 1 }}>
+              {saNote}
             </span>
           </span>
           <CaretRight size={14} color="var(--text-disabled)" />

@@ -5,6 +5,7 @@ import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
 import { toISODate } from '../lib/date';
+import { isInstalled } from '../lib/install';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
 import { groupShort } from '../domain/group';
@@ -175,7 +176,11 @@ export const useApp = create<AppState>((set, get) => ({
       const session = await kvGet<Session | null>('session', null);
       // เชิญเพิ่มลงหน้าจอโฮมเฉพาะบนจอมือถือ และเสนอครั้งเดียว
       let invite = false;
-      try { invite = !session && window.innerWidth < 780 && !localStorage.getItem('installDismissed'); } catch { /* private mode */ }
+      // เปิดจากไอคอนบนหน้าจอโฮมอยู่แล้ว = ติดตั้งไปแล้ว ไม่ต้องเชิญซ้ำ
+      try {
+        invite = !session && window.innerWidth < 780
+          && !isInstalled() && !localStorage.getItem('installDismissed');
+      } catch { /* private mode */ }
       const mineLocal = session ? await findMyGroup(session.teacherId) : null;
       set({
         ready: true, settings, session, installPrompt: invite,
