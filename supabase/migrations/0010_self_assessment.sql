@@ -24,9 +24,6 @@ create table if not exists self_assessments (
   answers jsonb not null default '{}'::jsonb,
   status text not null default 'draft',    -- draft | submitted
   submitted_at timestamptz,
-  feedback_released_at timestamptz,        -- อาจารย์กดปล่อยสรุปให้นักศึกษาเห็นเมื่อไหร่
-  feedback_released_by text,
-  advisor_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -45,8 +42,9 @@ drop policy if exists sa_write_own on self_assessments;
 create policy sa_write_own on self_assessments for insert to authenticated
   with check (student_id = my_student_id());
 
--- ③ แก้ไข: นักศึกษาแก้ได้เฉพาะตอนยังเป็นร่าง · อาจารย์แก้ได้ (ปล่อยสรุป + เขียนความเห็น)
---    ส่งแล้วห้ามนักศึกษาแก้ — ฐานข้อมูลบังคับเอง ไม่ใช่แค่ปุ่มในแอปที่ปิดไว้
+-- ③ แก้ไข: นักศึกษาแก้ได้เฉพาะตอนยังเป็นร่าง — ส่งแล้วห้ามแก้
+--    ฐานข้อมูลบังคับเอง ไม่ใช่แค่ปุ่มในแอปที่ปิดไว้
+--    อาจารย์ยังแก้ได้ เผื่อกรณีที่ภาคต้องแก้ให้ (เช่น นศ. กดส่งพลาด)
 drop policy if exists sa_update on self_assessments;
 create policy sa_update on self_assessments for update to authenticated
   using (

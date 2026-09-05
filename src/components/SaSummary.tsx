@@ -1,10 +1,11 @@
 /**
- * การ์ดสรุปอัตโนมัติจากแบบประเมินตนเอง — ใช้ร่วมกันสองฝั่ง
- *   อาจารย์: เห็นทันทีที่นักศึกษาส่ง (ไว้เตรียมตัวก่อนนัดคุย)
- *   นักศึกษา: เห็นเมื่ออาจารย์กดปล่อยแล้วเท่านั้น
+ * การ์ดสรุปอัตโนมัติจากแบบประเมินตนเอง — เห็นเฉพาะฝั่งอาจารย์
+ *
+ * ผู้ใช้เคาะ 5 ก.ย. 69: นักศึกษาไม่ต้องเห็นสรุปนี้ ให้เป็นเครื่องมือเตรียมตัวของอาจารย์
+ * ก่อนนัดคุยเท่านั้น (จึงไม่มีทั้งปุ่มปล่อยและช่องความเห็นอีกต่อไป)
  * ตัวกฎอยู่ที่ domain/saFeedback.ts — ที่นี่แค่วาด
  */
-import { ChatCircleDots, Info, Sparkle, Warning, WarningOctagon } from '@phosphor-icons/react';
+import { Info, Sparkle, Warning, WarningOctagon } from '@phosphor-icons/react';
 import { buildFeedback, sortFeedback, type FeedbackTone } from '../domain/saFeedback';
 import { useAllCheckIns, useAllProgressUpdates, useAllWorkpieces, useStudent } from '../hooks/data';
 import { t } from '../lib/i18n';
@@ -18,7 +19,7 @@ const TONE: Record<FeedbackTone, { bg: string; ink: string; border: string; Icon
   praise: { bg: 'var(--success-tint)', ink: 'var(--success-dark)', border: 'var(--success-tint)', Icon: Sparkle, label: 'ทำได้ดีกว่าที่คิด' },
 };
 
-export function SaSummary({ sa, showAdvisorNote }: { sa: SelfAssessment; showAdvisorNote?: boolean }) {
+export function SaSummary({ sa }: { sa: SelfAssessment }) {
   const settings = useApp((s) => s.settings);
   const student = useStudent(sa.studentId);
   const allWorks = useAllWorkpieces();
@@ -72,20 +73,8 @@ export function SaSummary({ sa, showAdvisorNote }: { sa: SelfAssessment; showAdv
         );
       })}
 
-      {showAdvisorNote && sa.advisorNote && (
-        <div className="card" style={{ padding: '11px 13px', display: 'grid', gap: 5, borderColor: 'var(--accent-ring)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <ChatCircleDots size={15} weight="fill" color="var(--accent)" />
-            <span style={{ font: '600 12px var(--font-head)' }}>{t('ความเห็นของอาจารย์ที่ปรึกษา')}</span>
-          </div>
-          <span style={{ font: '400 11.5px/1.7 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
-            {sa.advisorNote}
-          </span>
-        </div>
-      )}
-
       <p style={{ margin: 0, font: '400 9.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-        {t('สรุปนี้มาจากกฎที่ตั้งไว้ในระบบ ไม่ใช่คำตัดสิน — ใช้เป็นประเด็นตั้งต้นในการคุยกับอาจารย์')}
+        {t('สรุปนี้มาจากกฎที่ตั้งไว้ในระบบ ไม่ใช่คำตัดสิน — ใช้เป็นประเด็นตั้งต้นในการคุยกับนักศึกษา')}
       </p>
     </div>
   );

@@ -5,15 +5,16 @@
  *   ① ใครส่งแล้ว/ยังไม่ส่ง ในกลุ่มที่ดูแล
  *   ② สรุปอัตโนมัติที่เทียบคำตอบกับผลงานจริง (กฎอยู่ที่ domain/saFeedback.ts)
  *   ③ คำตอบดิบทุกข้อ เผื่ออาจารย์อยากอ่านเอง
- * ปุ่มสุดท้ายคือ "ปล่อยให้นักศึกษาเห็น" — ก่อนกด นักศึกษาไม่เห็นสรุปเลย
+ *
+ * ⚠️ ชั้น ② เห็นเฉพาะที่นี่ — ผู้ใช้เคาะ 5 ก.ย. 69 ว่านักศึกษาไม่ต้องเห็นสรุป
+ *    เป็นเครื่องมือเตรียมตัวของอาจารย์ก่อนนัดคุย ไม่ใช่ผลป้อนกลับที่ส่งถึงนักศึกษา
  */
-import { ArrowCounterClockwise, CheckCircle, Clock, PaperPlaneTilt, Printer, Sparkle, Student as StudentIcon } from '@phosphor-icons/react';
+import { CheckCircle, Clock, Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { SaSummary } from '../../components/SaSummary';
 import { Radar } from '../../components/charts/Radar';
-import { releaseSaFeedback, unreleaseSaFeedback } from '../../data/repo';
 import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
 import { firstNameOnly, groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
@@ -24,7 +25,7 @@ import {
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { lang, t } from '../../lib/i18n';
-import { currentActor, useApp } from '../../store/app';
+import { useApp } from '../../store/app';
 import type { ProfileAxis } from '../../domain/analytics';
 import type { SelfAssessment, Student } from '../../domain/types';
 
@@ -78,14 +79,12 @@ function compareAxes(sa: SelfAssessment, scores: Array<Record<string, number>>):
 
 export default function SelfAssessments() {
   const group = useApp((s) => s.teacherGroup);
-  const { showToast } = useApp();
   const year = saYearNow();
   const students = useAllStudents();
   const rows = useSelfAssessments(year);
   const checkins = useAllCheckIns();
   const [openId, setOpenId] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [note, setNote] = useState('');
 
   const groupStudents = useMemo(
     () => students.filter((s) => s.group === group).sort((a, b) => a.code.localeCompare(b.code)),
@@ -93,7 +92,6 @@ export default function SelfAssessments() {
   );
   const byStudent = useMemo(() => new Map(rows.map((r) => [r.studentId, r])), [rows]);
   const sent = groupStudents.filter((s) => byStudent.get(s.id)?.status === 'submitted');
-  const released = sent.filter((s) => byStudent.get(s.id)?.feedbackReleasedAt);
 
   const openStudent: Student | undefined = groupStudents.find((s) => s.id === openId);
   const openSa = openId ? byStudent.get(openId) : undefined;
@@ -106,13 +104,6 @@ export default function SelfAssessments() {
   );
   const compare = openSa && openSa.status === 'submitted' ? compareAxes(openSa, openScores) : null;
 
-  async function release() {
-    if (!openSa) return;
-    await releaseSaFeedback(openSa.studentId, year, note, currentActor());
-    setNote('');
-    showToast({ message: t('ปล่อยสรุปให้นักศึกษาเห็นแล้ว'), tone: 'success' });
-  }
-
   return (
     <TeacherShell active="sa">
       <main className="main">
@@ -120,9 +111,7 @@ export default function SelfAssessments() {
           <div style={{ flex: 1 }}>
             <h1>{t('ประเมินตนเอง')} · {groupShort(group)}</h1>
             <p>
-              {t('ปีการศึกษา {y} · ส่งแล้ว {a}/{b} คน · ปล่อยสรุปแล้ว {c}', {
-                y: year, a: sent.length, b: groupStudents.length, c: released.length,
-              })}
+              {t('ปีการศึกษา {y} · ส่งแล้ว {a}/{b} คน', { y: year, a: sent.length, b: groupStudents.length })}
             </p>
           </div>
         </div>
@@ -143,7 +132,7 @@ export default function SelfAssessments() {
                 <button
                   key={s.id}
                   className="card"
-                  onClick={() => { setOpenId(on ? null : s.id); setNote(sa?.advisorNote ?? ''); }}
+                  onClick={() => setOpenId(on ? null : s.id)}
                   style={{
                     padding: '10px 12px', textAlign: 'left', cursor: 'pointer', display: 'flex',
                     alignItems: 'center', gap: 9, borderColor: on ? 'var(--accent)' : undefined,
@@ -164,11 +153,6 @@ export default function SelfAssessments() {
                       {s.code}
                     </span>
                   </span>
-                  {sa?.feedbackReleasedAt && (
-                    <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                      {t('ปล่อยแล้ว')}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -214,20 +198,8 @@ export default function SelfAssessments() {
                     style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
                     onClick={() => navigate(`/teacher/sa/${openSa.studentId}/print`)}
                   >
-                    <Printer size={14} /> {t('พิมพ์สำหรับลงนาม')}
+                    <Printer size={14} /> {t('พิมพ์')}
                   </button>
-                  {openSa.feedbackReleasedAt ? (
-                    <button
-                      className="btn btn--sec"
-                      style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
-                      onClick={async () => {
-                        await unreleaseSaFeedback(openSa.studentId, year, currentActor());
-                        showToast({ message: t('ถอนสรุปกลับแล้ว — นักศึกษาไม่เห็นแล้ว'), tone: 'default' });
-                      }}
-                    >
-                      <ArrowCounterClockwise size={14} /> {t('ถอนกลับ')}
-                    </button>
-                  ) : null}
                 </div>
 
                 {compare && (
@@ -251,33 +223,6 @@ export default function SelfAssessments() {
                 )}
 
                 <SaSummary sa={openSa} />
-
-                {/* กล่องเขียนความเห็น + ปล่อย */}
-                <div className="card" style={{ padding: '12px 14px', display: 'grid', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Sparkle size={15} weight="fill" color="var(--accent)" />
-                    <span style={{ font: '600 12.5px var(--font-head)' }}>{t('ปล่อยสรุปให้นักศึกษาเห็น')}</span>
-                  </div>
-                  <p style={{ margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-                    {t('นักศึกษาจะยังไม่เห็นสรุปจนกว่าจะกดปุ่มนี้ — เขียนความเห็นของอาจารย์แนบไปด้วยได้')}
-                  </p>
-                  <textarea
-                    className="input"
-                    rows={3}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder={t('ความเห็นถึงนักศึกษา (ไม่บังคับ)')}
-                  />
-                  <button className="btn" style={{ height: 42 }} onClick={release}>
-                    <PaperPlaneTilt size={16} weight="fill" />
-                    {openSa.feedbackReleasedAt ? t('อัปเดตสรุปที่ปล่อยไว้') : t('ปล่อยให้นักศึกษาเห็น')}
-                  </button>
-                  {openSa.feedbackReleasedAt && (
-                    <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>
-                      {t('ปล่อยเมื่อ {d} โดย {w}', { d: thaiShort(openSa.feedbackReleasedAt), w: t(openSa.feedbackReleasedBy ?? '') })}
-                    </span>
-                  )}
-                </div>
 
                 {/* ③ คำตอบดิบ */}
                 {saSectionsFor(openSa.classYear).map((s) => (

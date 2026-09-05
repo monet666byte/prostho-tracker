@@ -6,15 +6,12 @@
  *
  * หน้าตายึดตามฟอร์มจริง: หัวข้อภาษาอังกฤษ ตาราง Topics|Assessment และช่องลงนามท้ายเอกสาร
  */
-import { buildFeedback, sortFeedback } from '../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../domain/selfAssessment';
-import { useAllCheckIns, useAllProgressUpdates, useAllWorkpieces } from '../hooks/data';
 import { thaiLong } from '../lib/date';
-import { lang, t } from '../lib/i18n';
-import { useApp } from '../store/app';
+import { t } from '../lib/i18n';
 import type { SelfAssessment, Student, Teacher } from '../domain/types';
 
 /** ค่าที่พิมพ์ลงกระดาษ — ตัวเลขต้องมีคำกำกับเสมอ คนอ่านกระดาษไม่มี tooltip ให้ชี้ */
@@ -38,14 +35,6 @@ export function SaPrintSheet({
   student: Student;
   advisors: Teacher[];
 }) {
-  const settings = useApp((s) => s.settings);
-  const allWorks = useAllWorkpieces();
-  const allCheckins = useAllCheckIns();
-  const allUpdates = useAllProgressUpdates();
-
-  const works = allWorks.filter((w) => w.studentId === sa.studentId);
-  const checkins = allCheckins.filter((c) => c.studentId === sa.studentId);
-  const cards = sortFeedback(buildFeedback({ sa, student, works, checkins, updates: allUpdates, settings }));
   const sections = saSectionsFor(sa.classYear);
 
   return (
@@ -117,32 +106,6 @@ export function SaPrintSheet({
           </div>
         );
       })}
-
-      {/* สรุปอัตโนมัติ + ความเห็นอาจารย์ พิมพ์ต่อท้ายเฉพาะที่อาจารย์ปล่อยแล้ว
-          ยังไม่ปล่อย = ยังไม่ได้ตรวจ ไม่ควรกลายเป็นเอกสารในแฟ้ม */}
-      {sa.feedbackReleasedAt && (
-        <div className="sasec">
-          <h2>Summary from the tracking system</h2>
-          <div className="sacaption">
-            Generated from fixed rules comparing the answers above with recorded clinical work — discussion points, not a judgement.
-          </div>
-          {cards.map((c) => (
-            <div className="sacard" key={c.id}>
-              <b>{c.title}</b>
-              <p>{c.body}</p>
-              <span className="ev">{c.evidence}</span>
-            </div>
-          ))}
-          {sa.advisorNote && (
-            <>
-              <div className="sacaption" style={{ marginTop: 8 }}>
-                {lang === 'en' ? "Advisor's comment" : 'ความเห็นของอาจารย์ที่ปรึกษา'}
-              </div>
-              <div className="sanote">{sa.advisorNote}</div>
-            </>
-          )}
-        </div>
-      )}
 
       <div className="sign">
         <div>

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CaretLeft, CheckCircle, Lock, PaperPlaneTilt, Printer, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, ArrowRight, CaretLeft, CheckCircle, Lock, PaperPlaneTilt, Printer } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
@@ -15,7 +15,6 @@ import { useSelfAssessment, useStudent } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { lang, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
-import { SaSummary } from '../../components/SaSummary';
 
 /** ปุ่มเลือกค่าเดียวจากไม่กี่ตัวเลือก — ใช้ทั้ง 0–4 · Appropriate/Need improvement · Yes/No */
 function Choice({
@@ -168,18 +167,8 @@ export default function SelfAssess() {
             className="btn btn--sec"
             style={{ height: 44, textDecoration: 'none' }}
           >
-            <Printer size={16} weight="fill" /> {t('พิมพ์ฟอร์มสำหรับลงนาม')}
+            <Printer size={16} weight="fill" /> {t('พิมพ์')}
           </Link>
-
-          {saved.feedbackReleasedAt ? (
-            <SaSummary sa={saved} showAdvisorNote />
-          ) : (
-            <Empty
-              icon={<Sparkle size={26} />}
-              title={t('อาจารย์ยังไม่ปล่อยสรุป')}
-              hint={t('ระบบสรุปให้แล้ว แต่อาจารย์ที่ปรึกษาจะอ่านก่อน แล้วค่อยเปิดให้เราเห็นพร้อมความเห็นของอาจารย์')}
-            />
-          )}
 
           {sections.map((s) => (
             <div key={s.key} className="card" style={{ padding: '12px 14px' }}>
@@ -247,7 +236,7 @@ export default function SelfAssess() {
         <div className="grabber" />
         <h3 className="h3">{t('ส่งแบบประเมินตนเอง?')}</h3>
         <p style={{ margin: '8px 0 0', font: '400 12px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-          {t('ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และระบบจะสรุปเทียบกับผลงานจริงให้อาจารย์อ่านก่อนนัดคุย')}
+          {t('ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และจะอ่านก่อนนัดคุยกับเรา')}
         </p>
         <button className="btn" style={{ height: 50, marginTop: 14 }} onClick={send}>
           <PaperPlaneTilt size={17} weight="fill" /> {t('ยืนยันส่ง')}

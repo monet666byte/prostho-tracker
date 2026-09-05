@@ -279,14 +279,6 @@ export interface SelfAssessment {
   answers: Record<string, string | number | string[] | null>;
   status: SelfAssessmentStatus;
   submittedAt?: string;
-  /**
-   * อาจารย์กด "ให้นักศึกษาเห็นสรุป" แล้วเมื่อไหร่ — ก่อนหน้านั้น feedback อัตโนมัติ
-   * เห็นเฉพาะฝั่งอาจารย์ (กฎอัตโนมัติตีความพลาดได้ และเป็นเรื่องอ่อนไหว)
-   */
-  feedbackReleasedAt?: string;
-  feedbackReleasedBy?: string;
-  /** ข้อความที่อาจารย์เขียนเพิ่มท้ายสรุป — ปล่อยพร้อมกับ feedback */
-  advisorNote?: string;
   createdAt: string;
   updatedAt: string;
 }

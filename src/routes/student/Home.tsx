@@ -449,9 +449,7 @@ export default function Home() {
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('ประเมินตนเอง')}</span>
             <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
-              {saDone
-                ? (selfAssessment?.feedbackReleasedAt ? t('อาจารย์ปล่อยสรุปแล้ว — แตะดู') : t('ส่งแล้ว รออาจารย์อ่าน'))
-                : t('ปีละครั้ง ตอนจบเทอม 1 · บันทึกร่างได้')}
+              {saDone ? t('ส่งแล้ว — อาจารย์อ่านก่อนนัดคุย') : t('ปีละครั้ง ตอนจบเทอม 1 · บันทึกร่างได้')}
             </span>
           </span>
           <CaretRight size={14} color="var(--text-disabled)" />
