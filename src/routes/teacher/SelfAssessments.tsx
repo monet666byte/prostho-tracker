@@ -211,7 +211,7 @@ export default function SelfAssessments() {
                   </span>
                   <button
                     className="btn btn--sec"
-                    style={{ height: 38, flex: '0 0 auto', font: '600 11.5px var(--font-body)' }}
+                    style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
                     onClick={() => navigate(`/teacher/sa/${openSa.studentId}/print`)}
                   >
                     <Printer size={14} /> {t('พิมพ์สำหรับลงนาม')}
@@ -219,7 +219,7 @@ export default function SelfAssessments() {
                   {openSa.feedbackReleasedAt ? (
                     <button
                       className="btn btn--sec"
-                      style={{ height: 38, flex: '0 0 auto', font: '600 11.5px var(--font-body)' }}
+                      style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
                       onClick={async () => {
                         await unreleaseSaFeedback(openSa.studentId, year, currentActor());
                         showToast({ message: t('ถอนสรุปกลับแล้ว — นักศึกษาไม่เห็นแล้ว'), tone: 'default' });

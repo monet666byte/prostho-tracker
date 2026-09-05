@@ -32,7 +32,9 @@ function Choice({
           key={o.v}
           data-on={value === o.v}
           onClick={() => onPick(o.v)}
-          style={{ flex: '1 1 0', minWidth: 58, display: 'grid', gap: 1, padding: '8px 6px', lineHeight: 1.25 }}
+          /* 6 ตัวเลือก (0–4 + N/A) ต้องอยู่แถวเดียวบนจอมือถือ — ตกบรรทัดแล้ว N/A จะกินเต็มแถว
+             กลายเป็นแถบใหญ่ที่ดูเหมือนปุ่มหลัก ทั้งที่เป็นแค่ตัวเลือกหนึ่ง */
+          style={{ flex: '1 1 0', minWidth: options.length > 5 ? 40 : 58, display: 'grid', gap: 1, padding: '8px 4px', lineHeight: 1.25 }}
         >
           <span style={{ font: '600 12.5px var(--font-body)' }}>{o.label}</span>
           {o.sub && <span style={{ font: '400 9.5px var(--font-body)', opacity: 0.75 }}>{o.sub}</span>}
