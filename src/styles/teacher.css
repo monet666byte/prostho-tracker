@@ -487,6 +487,11 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .window { height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; }
   :root[data-zoom='lg'] .window { height: calc(100dvh / 1.18); }
   :root[data-zoom='xl'] .window { height: calc(100dvh / 1.38); }
+  /* ⚠️ .phone ต้องชดเชยความสูงแบบเดียวกับ .window — เดิมใส่ zoom แต่ไม่ได้หารความสูง
+     กรอบเลยสูง 1206px บนจอ 874 (xl) · body เลื่อนไม่ได้ → ปุ่ม "ถัดไป/ส่ง" ของฟอร์ม
+     ที่วางท้ายกรอบหลุดใต้จอ กดไม่ได้เลย (เจอตอนวัดจริง 6 ก.ย. 69 — แถบเมนูรอดเพราะเป็น fixed) */
+  :root[data-zoom='lg'] .phone { height: calc(100dvh / 1.18); }
+  :root[data-zoom='xl'] .phone { height: calc(100dvh / 1.38); }
   :root[data-zoom='lg'] .phone, :root[data-zoom='lg'] .window { zoom: 1.18; }
   :root[data-zoom='xl'] .phone, :root[data-zoom='xl'] .window { zoom: 1.38; }
 }
