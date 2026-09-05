@@ -93,6 +93,9 @@ export default function SelfAssess() {
     if (submitted || !session) return;
     const next = { ...answers, [key]: v };
     setAnswers(next);
+    /* ยังไม่รู้ว่าเป็นปี 5 หรือ 6 (แถว student ยังไม่โหลด) → เก็บไว้ในหน้าจอก่อน
+       ไม่งั้นแถวแรกจะติด classYear=5 แล้วหมวด OSCE โผล่ให้ปี 6 จนกว่าจะบันทึกรอบถัดไป */
+    if (!student) return;
     unsaved.current = next;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(flush, 600);

@@ -22,6 +22,7 @@ import {
   SA_APPROPRIATE, saColLabel, saLabel, saOption, saOtherText, saSectionLabel, saSectionsFor, SA_SCALE,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
+import { saId } from '../../data/repo';
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { lang, t } from '../../lib/i18n';
@@ -82,9 +83,16 @@ function compareAxes(sa: SelfAssessment, scores: Array<Record<string, number>>):
 
 export default function SelfAssessments() {
   const group = useApp((s) => s.teacherGroup);
-  const year = saYearNow();
+  const thisYear = saYearNow();
+  /* ดูปีย้อนหลังได้ — ภาคเก็บ 5 รุ่น ถ้าผูกกับปีปัจจุบันตายตัว พอ 1 มิ.ย. ทุกอย่างของปีก่อนจะหายจากจอ */
+  const [year, setYear] = useState(thisYear);
   const students = useAllStudents();
-  const rows = useSelfAssessments(year);
+  const allRows = useSelfAssessments();
+  const rows = useMemo(() => allRows.filter((r) => r.academicYear === year), [allRows, year]);
+  const years = useMemo(
+    () => [...new Set([thisYear, ...allRows.map((r) => r.academicYear)])].sort((a, b) => b - a),
+    [allRows, thisYear],
+  );
   const checkins = useAllCheckIns();
   const [openId, setOpenId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -93,7 +101,21 @@ export default function SelfAssessments() {
     () => students.filter((s) => s.group === group).sort((a, b) => a.code.localeCompare(b.code)),
     [students, group],
   );
-  const byStudent = useMemo(() => new Map(rows.map((r) => [r.studentId, r])), [rows]);
+  /* หนึ่งคนควรมีหนึ่งแถวต่อปี — แต่ id ตั้งจากฝั่ง client ถ้ามีใครยิง API สร้างแถวซ้ำ
+     ต้องไม่ให้แถวปลอมทับฉบับจริง: เอาแถวที่ id ตรงสูตร (saId) ก่อน แล้วค่อยแถวที่ส่งแล้ว
+     (0011 ปิดที่ฐานข้อมูลอีกชั้น — ตรงนี้กันไว้เผื่อยังไม่ได้รัน) */
+  const byStudent = useMemo(() => {
+    const m = new Map<string, SelfAssessment>();
+    for (const r of rows) {
+      const cur = m.get(r.studentId);
+      const canonical = r.id === saId(r.studentId, r.academicYear);
+      const curCanonical = cur && cur.id === saId(cur.studentId, cur.academicYear);
+      if (!cur || (canonical && !curCanonical) || (!curCanonical && r.status === 'submitted' && cur.status !== 'submitted')) {
+        m.set(r.studentId, r);
+      }
+    }
+    return m;
+  }, [rows]);
   const sent = groupStudents.filter((s) => byStudent.get(s.id)?.status === 'submitted');
 
   const openStudent: Student | undefined = groupStudents.find((s) => s.id === openId);
@@ -117,6 +139,15 @@ export default function SelfAssessments() {
               {t('ปีการศึกษา {y} · ส่งแล้ว {a}/{b} คน', { y: year, a: sent.length, b: groupStudents.length })}
             </p>
           </div>
+          {years.length > 1 && (
+            <div className="seg seg--sm">
+              {years.map((y) => (
+                <button key={y} data-on={y === year} onClick={() => { setYear(y); setOpenId(null); }}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 260px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
