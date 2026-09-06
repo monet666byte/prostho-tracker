@@ -12,6 +12,7 @@ import {
   RPD_DESIGN_GROUPS, RPD_DESIGN_REMARK, S2_FULL_SCORE, S2_GRADES, sect2Form,
 } from '../domain/sect2';
 import { S3_FULL_SCORE, s3Points, sect3Form } from '../domain/sect3';
+import { SheetBoundary } from './SheetBoundary';
 import { thaiShort } from '../lib/date';
 import { t } from '../lib/i18n';
 import type { Sect2Record, Sect3Record, Student } from '../domain/types';
@@ -69,6 +70,9 @@ function Sign({ caption = 'Instructor signature', date }: { caption?: string; da
 export function Sect3PrintPage({ row, student }: { row: Sect3Record; student: Student }) {
   const form = sect3Form(row.formKey);
   if (!form) return null;
+  /* แถวที่ grades เป็น null (ข้อมูลเพี้ยนจาก sync หรือแอปเวอร์ชันเก่า) เคยทำให้
+     ทั้งหน้าพิมพ์ว่างเปล่า เพราะ React ล้มทั้งต้นไม้ — กันไว้ที่นี่ใบเดียวพัง ที่เหลือยังพิมพ์ได้ */
+  const grades = row.grades ?? {};
   const kindLabel = form.kind === 'K' ? '(Knowledge assessment)' : form.kind === 'S' ? '(Skill assessment)' : '(Knowledge and skill assessment)';
   let n = 0;
   return (
@@ -99,7 +103,7 @@ export function Sect3PrintPage({ row, student }: { row: Sect3Record; student: St
               rows.push(<tr key={`${topic.key}-sub`} className="pfsubrow"><td colSpan={5}>{topic.sub}</td></tr>);
             }
             n++;
-            const picked = row.grades[topic.key];
+            const picked = grades[topic.key];
             rows.push(
               <tr key={topic.key}>
                 <td className="tick">{n}</td>
@@ -287,11 +291,17 @@ export function PortfolioPrintSheet({ student, sect2, sect3 }: {
   return (
     <>
       {s2.map((row) => (
-        row.formKey === 'rpdDesign'
-          ? <RpdDesignPrintPage key={row.id} row={row} student={student} />
-          : <Sect2PrintPages key={row.id} row={row} student={student} />
+        <SheetBoundary key={row.id} label={row.formKey}>
+          {row.formKey === 'rpdDesign'
+            ? <RpdDesignPrintPage row={row} student={student} />
+            : <Sect2PrintPages row={row} student={student} />}
+        </SheetBoundary>
       ))}
-      {s3.map((row) => <Sect3PrintPage key={row.id} row={row} student={student} />)}
+      {s3.map((row) => (
+        <SheetBoundary key={row.id} label={row.formKey}>
+          <Sect3PrintPage row={row} student={student} />
+        </SheetBoundary>
+      ))}
     </>
   );
 }

@@ -66,7 +66,7 @@ export function Sect3FormGroup({ group, forms, latest, onOpen }: {
                     color: r.total === null ? 'var(--warning-dark)' : 'var(--success-dark)',
                   }}>
                     {r.total === null
-                      ? `${t('ร่าง')} ${Object.keys(r.grades).length}/${f.topics.length}`
+                      ? `${t('ร่าง')} ${Object.keys(r.grades ?? {}).length}/${f.topics.length}`
                       : `${r.total}/${S3_FULL_SCORE}`}
                   </span>
                   <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>

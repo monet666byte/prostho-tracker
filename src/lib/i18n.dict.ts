@@ -957,6 +957,9 @@ export const DICT: Record<string, string> = {
   'ปี {n}': 'Year {n}',
   'ความรู้และทักษะ': 'Knowledge & skill',
   'สมุด portfolio': 'Portfolio book',
+  'ใบนี้พิมพ์ไม่ได้ — ข้อมูลไม่สมบูรณ์': 'This form cannot be printed — incomplete data',
+  'ใบอื่นยังพิมพ์ได้ตามปกติ · ลองเปิดใบนี้ในหน้าประเมินแล้วบันทึกใหม่อีกครั้ง':
+    'The other forms still print · try reopening this one in the grading page and saving again',
   'ร่าง': 'Draft',
   'ยังไม่มีใบที่ประเมินแล้วของปีนี้': 'No graded forms for this academic year yet',
   'พิมพ์เฉพาะใบที่ประเมินแล้ว · ช่องที่กาไว้จะเป็นพื้นทึบ อ่านออกบนเครื่องพิมพ์ขาวดำ · ลงนามบนกระดาษที่พิมพ์ออกมา':

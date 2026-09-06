@@ -11,6 +11,9 @@ const asDate = (v: string | Date) =>
 /** "25 ส.ค. 69" (พ.ศ.) / โหมดอังกฤษ "25 Aug 26" (ค.ศ.) — รูปแบบที่ใช้ในการ์ดและตาราง */
 export function thaiShort(v: string | Date): string {
   const d = asDate(v);
+  /* วันที่พังต้องไม่พ่น "NaN undefined NaN" ออกหน้าจอ
+     เกิดได้จากแถวที่ sync มาจากแอปเวอร์ชันอื่นหรือข้อมูลที่ถูกแก้มือ (เจอตอนไล่บั๊ก 7 ก.ย. 69) */
+  if (Number.isNaN(d.getTime())) return '—';
   if (lang === 'en') return `${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
   return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${String((d.getFullYear() + 543) % 100).padStart(2, '0')}`;
 }
@@ -18,6 +21,7 @@ export function thaiShort(v: string | Date): string {
 /** "28 ส.ค. 2569" / "28 Aug 2026" — รูปแบบเต็มสำหรับรอบส่งรายงาน */
 export function thaiLong(v: string | Date): string {
   const d = asDate(v);
+  if (Number.isNaN(d.getTime())) return '—';
   if (lang === 'en') return `${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
