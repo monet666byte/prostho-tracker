@@ -39,3 +39,8 @@ backups
 !.env.example
 *.pem
 *.key
+
+# สคริปต์ไล่บั๊กชั่วคราว — ต้องวางที่รากโปรเจกต์ playwright ถึง resolve เจอ
+# แต่ไม่ควรติดไปกับ repo (เผลอ commit ไปแล้วสองครั้ง 7 ก.ย. 69 ตอนใช้ git add -A)
+t-*.mjs
+t-*.ts
