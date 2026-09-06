@@ -230,8 +230,10 @@ export default function Review() {
                     )}
                   </div>
 
+                  {/* ห่อบรรทัดได้ — แถบ + ตัวเลข + ชื่อขั้นงาน รวมกันต้องการ 243px
+                      แต่โหมดตัวหนังสือใหญ่บน iPhone SE เหลือที่แค่ 185px (วัดเจอ 7 ก.ย. 69) */}
                   {!isReturned(w) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10, flexWrap: 'wrap' }}>
                     <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={8} />
                     <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
                       {Math.max(progression(w), 0)}/{maxProgression(w)}

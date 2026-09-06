@@ -49,7 +49,12 @@
 }
 
 .main { flex: 1; min-width: 0; background: var(--bg-dash); padding: 24px 26px; overflow-y: auto; }
-.main__head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+.main__head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+/* หัวหน้า: ชื่อหน้า + ตัวเลือกปี อยู่แถวเดียวกัน พอที่ว่างไม่พอต้องตกบรรทัด
+   ไม่ใช่ดันทะลุจอ · โหมดตัวใหญ่บน iPad แนวตั้งเหลือที่ 390px แต่ต้องการ 442px
+   (วัดเจอ 7 ก.ย. 69 — @media ไม่ช่วยเพราะจอกว้าง 820 จริงๆ แค่ zoom ทำให้แคบ) */
+:root[data-zoom='lg'] .main__head > :first-child,
+:root[data-zoom='xl'] .main__head > :first-child { min-width: 100%; }
 .main__head h1 { margin: 0; font: 700 22px var(--font-head); }
 .main__head p { margin: 3px 0 0; font: 400 11.5px var(--font-body); color: var(--text-muted); }
 
