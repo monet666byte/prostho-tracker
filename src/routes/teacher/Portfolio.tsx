@@ -20,6 +20,7 @@ import { saYearNow } from '../../domain/saFeedback';
 import { SECT2_FORMS, sect2Form } from '../../domain/sect2';
 import { S3_FULL_SCORE, sect3Form, sect3FormsFor } from '../../domain/sect3';
 import { useAllStudents, useSect2, useSect3 } from '../../hooks/data';
+import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import type { Student } from '../../domain/types';
@@ -116,6 +117,7 @@ export default function Portfolio() {
                       label={r.label}
                       status={sect2Status(latest2.get(r.key))}
                       at={latest2.get(r.key)?.at}
+                      by={latest2.get(r.key)?.by}
                       onOpen={() => setOpenKey(r.key)}
                     />
                   ))}
@@ -209,8 +211,9 @@ function StudentHead({ student, note, canPrint, onPrint }: {
 }
 
 /** แถวใบใน Section II — โครงเดียวกับ Sect3FormGroup แต่ใบน้อยกว่าและสถานะเป็นข้อความ */
-function FormRow({ code, label, status, at, onOpen }: {
-  code: string; label: string; status: string | null; at?: string; onOpen: () => void;
+function FormRow({ code, label, status, at, by, onOpen }: {
+  code: string; label: string; status: { text: string; done: boolean } | null;
+  at?: string; by?: string; onOpen: () => void;
 }) {
   return (
     <button
@@ -222,8 +225,15 @@ function FormRow({ code, label, status, at, onOpen }: {
       <span style={{ flex: 1, minWidth: 0, font: '500 12px/1.45 var(--font-body)' }}>{label}</span>
       {status ? (
         <span style={{ textAlign: 'right', flex: 'none' }}>
-          <span style={{ display: 'block', font: '700 13px var(--font-mono)', color: 'var(--success-dark)' }}>{status}</span>
-          {at && <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>{at}</span>}
+          <span style={{
+            display: 'block', font: '700 13px var(--font-mono)',
+            color: status.done ? 'var(--success-dark)' : 'var(--warning-dark)',
+          }}>{status.text}</span>
+          {at && (
+            <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>
+              {thaiShort(at)}{by ? ` · ${by}` : ''}
+            </span>
+          )}
         </span>
       ) : (
         <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--text-faint)', flex: 'none' }}>{t('ยังไม่ประเมิน')}</span>

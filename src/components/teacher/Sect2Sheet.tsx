@@ -7,11 +7,12 @@
  * · กด "ดูเกณฑ์ทั้ง 4 ระดับ" ถึงจะกางออกมาเทียบกัน
  */
 import { ArrowLeft, CaretDown, CaretUp, CheckCircle, Trash, X } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDraftSave } from '../../hooks/useDraftSave';
 import { firstNameOnly } from '../../domain/group';
 import {
   RPD_DESIGN_GROUPS, RPD_DESIGN_REMARK, RPD_DESIGN_TOPICS, S2_FULL_SCORE, S2_GRADES,
-  rpdDesignPassed, s2Points, sect2Total, type S2Form, type S2Grade,
+  rpdDesignPassed, s2Points, sect2Form, sect2Total, type S2Form, type S2Grade,
 } from '../../domain/sect2';
 import { deleteSect2, saveSect2 } from '../../data/repo';
 import { thaiShort, toISODate } from '../../lib/date';
@@ -87,8 +88,29 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   const total = sect2Total(form, grades);
   const done = form.criteria.filter((c) => grades[c.key]).length;
 
+  /* ร่างอัตโนมัติ — เหตุผลเดียวกับ Sect3Sheet (กาครึ่งใบแล้วถูกขัดจังหวะ ของต้องไม่หาย) */
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const skipNext = useRef(false);
+  const { touch, cancel } = useDraftSave(async () => {
+    const row = await saveSect2({
+      id: editingRef.current, studentId: student.id, formKey: form.key,
+      academicYear: year, classYear, ...f, grades, total, silent: true,
+    }, currentActor());
+    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
+  });
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (skipNext.current) { skipNext.current = false; return; }
+    if (!Object.keys(grades).length) return;
+    touch();
+  }, [grades, f, touch]);
+
   function reset(row?: Sect2Record) {
+    skipNext.current = true;
     setEditing(row?.id);
+    editingRef.current = row?.id;
     setGrades((row?.grades ?? {}) as Record<string, S2Grade>);
     setF({
       patientName: row?.patientName ?? '', hn: row?.hn ?? '',
@@ -99,8 +121,9 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   async function save() {
     setBusy(true);
     try {
+      cancel();
       await saveSect2({
-        id: editing, studentId: student.id, formKey: form.key, academicYear: year, classYear,
+        id: editingRef.current, studentId: student.id, formKey: form.key, academicYear: year, classYear,
         ...f, grades, total,
       }, currentActor());
       onSaved(total);
@@ -253,8 +276,28 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   const complete = marked === RPD_DESIGN_TOPICS.length;
   const passed = rpdDesignPassed(marks);
 
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const skipNext = useRef(false);
+  const { touch, cancel } = useDraftSave(async () => {
+    const row = await saveSect2({
+      id: editingRef.current, studentId: student.id, formKey: 'rpdDesign',
+      academicYear: year, classYear, ...f, marks, passed: complete && passed, silent: true,
+    }, currentActor());
+    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
+  });
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (skipNext.current) { skipNext.current = false; return; }
+    if (!Object.keys(marks).length) return;
+    touch();
+  }, [marks, f, touch]);
+
   function reset(row?: Sect2Record) {
+    skipNext.current = true;
     setEditing(row?.id);
+    editingRef.current = row?.id;
     setMarks(row?.marks ?? {});
     setF({
       patientName: row?.patientName ?? '', hn: row?.hn ?? '',
@@ -265,8 +308,9 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   async function save() {
     setBusy(true);
     try {
+      cancel();
       await saveSect2({
-        id: editing, studentId: student.id, formKey: 'rpdDesign', academicYear: year, classYear,
+        id: editingRef.current, studentId: student.id, formKey: 'rpdDesign', academicYear: year, classYear,
         ...f, marks, passed: complete && passed,
       }, currentActor());
       onSaved(complete && passed);
@@ -391,11 +435,22 @@ function SheetFooter({ left, canSave, busy, editing, onSave, onDelete }: {
   );
 }
 
-/** ค่าที่ใช้โชว์ในรายการใบของ Section II */
-export function sect2Status(row: Sect2Record | undefined): string | null {
+/** ค่าที่ใช้โชว์ในรายการใบของ Section II — ใบที่กาค้างต้องดูออกว่ายังไม่เสร็จ */
+export function sect2Status(row: Sect2Record | undefined): { text: string; done: boolean } | null {
   if (!row) return null;
-  if (row.formKey === 'rpdDesign') return row.passed ? 'PASS' : t('ยังไม่ผ่าน');
-  return row.total === null || row.total === undefined ? '—' : `${row.total}/${S2_FULL_SCORE}`;
+  if (row.formKey === 'rpdDesign') {
+    const marked = RPD_DESIGN_TOPICS.filter((x) => row.marks?.[x.key] !== undefined).length;
+    if (marked < RPD_DESIGN_TOPICS.length) {
+      return { text: `${t('ร่าง')} ${marked}/${RPD_DESIGN_TOPICS.length}`, done: false };
+    }
+    return { text: row.passed ? 'PASS' : t('ยังไม่ผ่าน'), done: true };
+  }
+  const form = sect2Form(row.formKey);
+  if (row.total === null || row.total === undefined) {
+    const marked = Object.keys(row.grades ?? {}).length;
+    return { text: `${t('ร่าง')} ${marked}/${form?.criteria.length ?? 6}`, done: false };
+  }
+  return { text: `${row.total}/${S2_FULL_SCORE}`, done: true };
 }
 
 export { s2Points };

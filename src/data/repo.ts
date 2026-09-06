@@ -1154,6 +1154,8 @@ export interface Sect3Input {
   grades: Record<string, 'O' | 'S' | 'U'>;
   total: number | null;
   at: string;
+  /** ร่างอัตโนมัติ — ไม่ลง audit ไม่งั้น log ท่วมเพราะเซฟทุกครั้งที่กา */
+  silent?: boolean;
 }
 
 export async function listSect3(studentId?: string, academicYear?: number): Promise<Sect3Record[]> {
@@ -1185,6 +1187,7 @@ export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3
     updatedAt: now,
   };
   await db.sect3.put(row);
+  if (input.silent) return row;
   await logAudit(
     `${prev ? 'แก้' : 'บันทึก'}ผลประเมิน Section III · ${input.formKey}${input.total === null ? '' : ` ได้ ${input.total}/10`}`,
     actor,
@@ -1217,6 +1220,8 @@ export interface Sect2Input {
   marks?: Record<string, boolean>;
   passed?: boolean;
   at: string;
+  /** ร่างอัตโนมัติ — ไม่ลง audit */
+  silent?: boolean;
 }
 
 export async function listSect2(studentId?: string, academicYear?: number): Promise<Sect2Record[]> {
@@ -1269,6 +1274,7 @@ export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2
   };
   await db.sect2.put(row);
   await syncSect2Gate(row);
+  if (input.silent) return row;
   const score = row.formKey === 'rpdDesign'
     ? (row.passed ? 'ผ่าน' : 'ยังไม่ผ่าน')
     : (row.total === null || row.total === undefined ? 'ยังไม่ครบ' : `ได้ ${row.total}/70`);

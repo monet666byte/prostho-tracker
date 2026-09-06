@@ -3,7 +3,8 @@
  * แยกจากหน้า Portfolio เพื่อให้ไฟล์หน้าไม่บวม (Section II มีใบของตัวเองอีกชุด)
  */
 import { ArrowLeft, CheckCircle, Trash } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDraftSave } from '../../hooks/useDraftSave';
 import { firstNameOnly } from '../../domain/group';
 import {
   S3_FULL_SCORE, SECT3_FORMS, s3Points, sect3Total,
@@ -59,11 +60,17 @@ export function Sect3FormGroup({ group, forms, latest, onOpen }: {
               </span>
               {r ? (
                 <span style={{ textAlign: 'right', flex: 'none' }}>
-                  <span style={{ display: 'block', font: '700 13px var(--font-mono)', color: 'var(--success-dark)' }}>
-                    {r.total === null ? '—' : `${r.total}/${S3_FULL_SCORE}`}
+                  {/* กาค้างไว้ต้องดูออกทันทีว่ายังไม่เสร็จ — ขีดเฉยๆ อ่านเหมือนประเมินจบแล้ว */}
+                  <span style={{
+                    display: 'block', font: '700 13px var(--font-mono)',
+                    color: r.total === null ? 'var(--warning-dark)' : 'var(--success-dark)',
+                  }}>
+                    {r.total === null
+                      ? `${t('ร่าง')} ${Object.keys(r.grades).length}/${f.topics.length}`
+                      : `${r.total}/${S3_FULL_SCORE}`}
                   </span>
                   <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                    {thaiShort(r.at)}
+                    {thaiShort(r.at)}{r.by ? ` · ${r.by}` : ''}
                   </span>
                 </span>
               ) : (
@@ -103,8 +110,35 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   const total = sect3Total(form, grades);
   const answered = form.topics.filter((x) => grades[x.key]).length;
 
+  /* ── ร่างอัตโนมัติ ──────────────────────────────────────────────────────
+     อาจารย์กาไปครึ่งใบแล้วมีคนไข้เรียก กดออกจากใบ ของต้องยังอยู่
+     แถวแรกที่สร้างจากร่างต้องจำ id ไว้ ไม่งั้นเซฟรอบถัดไปจะสร้างแถวใหม่ซ้ำเรื่อยๆ */
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const skipNext = useRef(false);
+
+  const { touch, cancel } = useDraftSave(async () => {
+    const row = await saveSect3({
+      id: editingRef.current, studentId: student.id, formKey: form.key,
+      academicYear: year, classYear,
+      patientName, hn, grades, total, at, silent: true,
+    }, currentActor());
+    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
+  });
+
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (skipNext.current) { skipNext.current = false; return; }
+    // ยังไม่ได้กาอะไรเลย = อย่าเพิ่งสร้างแถวเปล่าไว้ในฐานข้อมูล
+    if (!Object.keys(grades).length) return;
+    touch();
+  }, [grades, patientName, hn, at, touch]);
+
   function reset(row?: Sect3Record) {
+    skipNext.current = true; // สลับดูครั้งเก่า ไม่ใช่การแก้ ไม่ต้องเซฟทับ
     setEditing(row?.id);
+    editingRef.current = row?.id;
     setGrades(row?.grades ?? {});
     setPatientName(row?.patientName ?? '');
     setHn(row?.hn ?? '');
@@ -114,8 +148,9 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   async function save() {
     setBusy(true);
     try {
+      cancel();
       await saveSect3({
-        id: editing, studentId: student.id, formKey: form.key, academicYear: year, classYear,
+        id: editingRef.current, studentId: student.id, formKey: form.key, academicYear: year, classYear,
         patientName, hn, grades, total, at,
       }, currentActor());
       onSaved(total);
