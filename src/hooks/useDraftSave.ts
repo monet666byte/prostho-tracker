@@ -8,12 +8,15 @@
  * ใช้กับใบประเมินสมุด portfolio: อาจารย์กาไป 4 จาก 6 ข้อแล้วมีคนไข้เรียก
  * กดออกจากใบ ของต้องยังอยู่
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 export function useDraftSave(save: () => void | Promise<void>, delay = 700) {
-  // เก็บ closure ล่าสุดไว้ใน ref — ไม่งั้น flush ตอน unmount จะเซฟค่าเก่า
+  /* เก็บ closure ล่าสุดไว้ใน ref — ไม่งั้น flush ตอน unmount จะเซฟค่าเก่า
+     เขียนใน layout effect ไม่ใช่ตอน render: การเขียน ref ระหว่าง render ไม่บริสุทธิ์
+     ถ้า React ทิ้ง render นั้นไป (concurrent) ref จะค้างค่าที่ไม่เคยถูก commit
+     layout effect ทำงานหลัง commit และก่อน cleanup ของรอบเดียวกัน ค่าจึงตรงเสมอ */
   const saveRef = useRef(save);
-  saveRef.current = save;
+  useLayoutEffect(() => { saveRef.current = save; });
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

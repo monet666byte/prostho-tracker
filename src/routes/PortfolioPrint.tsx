@@ -5,7 +5,6 @@
  * ต้องไม่มีโอกาสติดปุ่มหรือแถบเมนูของแอปหลุดไปบนกระดาษ
  */
 import { ArrowLeft, Printer } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortfolioPrintSheet } from '../components/PortfolioPrintSheet';
 import { saYearNow } from '../domain/saFeedback';
@@ -19,12 +18,10 @@ export default function PortfolioPrint() {
   const student = useStudent(studentId);
   const sect2 = useSect2(studentId, year);
   const sect3 = useSect3(studentId, year);
-  const [ready, setReady] = useState(false);
-
   const count = sect2.length + sect3.length;
-
   // ให้ข้อมูลวาดเสร็จก่อนค่อยปล่อยให้กดพิมพ์ — กันพิมพ์ออกมาเป็นหน้าว่าง
-  useEffect(() => { if (student && count > 0) setReady(true); }, [student, count]);
+  // คำนวณตรงๆ ได้ ไม่ต้องเป็น state (state จะทำให้ render สองรอบโดยไม่ได้อะไร)
+  const ready = !!student && count > 0;
 
   if (!student || count === 0) {
     return (
