@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  saColLabel, saHint, saLabel, saNote, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor,
+  saColLabel, saHint, saLabel, saNote, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -401,6 +401,15 @@ function renderQuestions(
         </div>,
       );
       continue;
+    }
+    const sub = saSub(q);
+    if (sub) {
+      // หัวย่อยตามที่ฟอร์มต้นฉบับจัดกลุ่มไว้ เช่น "Prosthesis design;" คร่อม 4 ประเภทงาน
+      out.push(
+        <div key={`${q.key}-sub`} style={{ font: '600 11.5px var(--font-head)', color: 'var(--text-secondary)', margin: '4px 0 -4px 2px' }}>
+          {sub}
+        </div>,
+      );
     }
     out.push(<Field key={q.key} q={q} answers={answers} set={set} />);
   }

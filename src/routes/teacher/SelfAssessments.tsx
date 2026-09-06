@@ -10,7 +10,7 @@
  *    เป็นเครื่องมือเตรียมตัวของอาจารย์ก่อนนัดคุย ไม่ใช่ผลป้อนกลับที่ส่งถึงนักศึกษา
  */
 import { CheckCircle, Clock, Printer, Student as StudentIcon } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { SaSummary } from '../../components/SaSummary';
@@ -19,7 +19,7 @@ import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
 import { firstNameOnly, groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
-  SA_APPROPRIATE, saColLabel, saLabel, saOption, saOtherText, saSectionLabel, saSectionsFor, SA_SCALE,
+  SA_APPROPRIATE, saColLabel, saLabel, saOption, saOtherText, saSectionLabel, saSectionsFor, saSub, SA_SCALE,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { saId } from '../../data/repo';
@@ -265,7 +265,11 @@ export default function SelfAssessments() {
                     <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 8 }}>{saSectionLabel(s)}</div>
                     <div style={{ display: 'grid', gap: 7 }}>
                       {s.questions.map((q) => (
-                        <div key={q.key} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                        <Fragment key={q.key}>
+                        {saSub(q) && (
+                          <div style={{ font: '600 10.5px var(--font-head)', color: 'var(--text-secondary)', marginTop: 3 }}>{saSub(q)}</div>
+                        )}
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                           <span style={{ flex: '0 0 210px', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
                             {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
                           </span>
@@ -273,6 +277,7 @@ export default function SelfAssessments() {
                             {readable(q, openSa.answers[q.key] as SAValue, openSa.answers as Record<string, SAValue>) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
                           </span>
                         </div>
+                        </Fragment>
                       ))}
                     </div>
                   </div>

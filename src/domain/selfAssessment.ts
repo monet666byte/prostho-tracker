@@ -14,7 +14,7 @@
 import { lang } from '../lib/i18n';
 
 /** ขยับเลขนี้เมื่อ "ความหมายของคำถาม" เปลี่ยน (เพิ่ม/ลบ/แก้ข้อ) — ของเก่ายังอ่านได้ตามเวอร์ชันเดิม */
-export const SA_FORM_VERSION = '2569.1';
+export const SA_FORM_VERSION = '2569.2';
 
 /** ที่มาของฟอร์ม — โชว์ท้ายหน้าให้รู้ว่าอ้างอิงฉบับไหน */
 export const SA_SOURCE = 'MIDS Prosthodontic Clinic · Revision Oct 2025';
@@ -48,6 +48,9 @@ export interface SAQuestion {
   optional?: boolean;
   /** ตอบ N/A ได้ (ฟอร์มจริงมีช่อง N/A ในตาราง K/S) — เก็บเป็น -1 */
   allowNA?: boolean;
+  /** หัวย่อยที่ต้องขึ้นก่อนข้อนี้ ตามที่ฟอร์มต้นฉบับมี (เช่น "Prosthesis design;") */
+  sub?: string;
+  subTh?: string;
   /** ข้อที่อยู่แถวเดียวกันในตาราง K/S — UI จับมารวมเป็นบรรทัดเดียว */
   row?: string;
   col?: 'K' | 'S';
@@ -108,8 +111,9 @@ export const SA_TYPES = [
 
 export type SAType = (typeof SA_TYPES)[number]['key'];
 
-const designQ = (t: (typeof SA_TYPES)[number]): SAQuestion => ({
+const designQ = (t: (typeof SA_TYPES)[number], first = false): SAQuestion => ({
   key: `design${t.key}`, kind: 'scale', label: t.label, th: t.th,
+  ...(first ? { sub: 'Prosthesis design;', subTh: 'การออกแบบชิ้นงาน' } : {}),
 });
 
 const procQ = (t: (typeof SA_TYPES)[number], col: 'K' | 'S'): SAQuestion => ({
@@ -135,7 +139,7 @@ export const SA_SECTIONS: readonly SASection[] = [
   },
   {
     key: 'osce',
-    title: 'Feedback on OSCE',
+    title: 'Part 1: Feedback on OSCE',
     th: 'ความเห็นต่อ OSCE',
     note: 'Only for 5th-year students',
     noteTh: 'เฉพาะนักศึกษาชั้นปีที่ 5',
@@ -143,13 +147,13 @@ export const SA_SECTIONS: readonly SASection[] = [
       { key: 'osceTopics', kind: 'multi', label: 'Challenging Topics', th: 'หัวข้อที่รู้สึกยาก',
         options: OSCE_TOPICS, optionsTh: OSCE_TOPICS_TH, other: true, yearOnly: 5 },
       { key: 'osceHelp', kind: 'text', label: 'How the OSCE Helps', th: 'OSCE ช่วยอะไรเราบ้าง', yearOnly: 5 },
-      { key: 'osceComment', kind: 'text', label: 'Additional Comments / Suggestions',
+      { key: 'osceComment', kind: 'text', label: 'Additional Comments/Suggestions',
         th: 'ข้อเสนอแนะเพิ่มเติม', yearOnly: 5, optional: true },
     ],
   },
   {
     key: 'prep',
-    title: 'Preparedness for clinical rotation & patient treatment',
+    title: 'Part 2: Preparedness for clinical rotation & patient treatment',
     th: 'ความพร้อมก่อนขึ้นคลินิก',
     questions: [
       { key: 'prepSkills', kind: 'scale', label: 'Improvement in Clinical Skills', th: 'พัฒนาการของทักษะคลินิก' },
@@ -172,7 +176,7 @@ export const SA_SECTIONS: readonly SASection[] = [
   },
   {
     key: 'lab',
-    title: 'Preparedness for lab works & work authorization',
+    title: 'Part 3: Preparedness for lab works & work authorization',
     th: 'ความพร้อมด้านงานแล็บ',
     questions: [
       { key: 'labSafety', kind: 'scale', label: 'Understanding of Lab Safety Protocols', th: 'ความเข้าใจเรื่องความปลอดภัยในแล็บ' },
@@ -187,7 +191,7 @@ export const SA_SECTIONS: readonly SASection[] = [
   },
   {
     key: 'course',
-    title: 'Course objectives / requirement progression',
+    title: 'Part 4: Course objectives/requirement progression',
     th: 'วัตถุประสงค์และเกณฑ์ของรายวิชา',
     questions: [
       { key: 'courseObjectives', kind: 'scale', label: 'Understanding of Course Objectives and Work Requirements',
@@ -200,19 +204,25 @@ export const SA_SECTIONS: readonly SASection[] = [
       { key: 'courseAlignment', kind: 'text', label: 'Alignment of Course Requirements with Career Goals',
         th: 'เกณฑ์ของวิชาตรงกับเป้าหมายอาชีพเราไหม', optional: true },
       { key: 'courseSupport', kind: 'yesno', label: 'Adequacy of Instructor Support', th: 'อาจารย์ให้คำแนะนำเพียงพอไหม' },
+      /* ต้นฉบับตอบเป็นข้อความ ("Yes. They are approachable, give clear guidance…") — Yes/No อย่างเดียวเก็บเหตุผลไม่ได้ */
+      { key: 'courseSupportNote', kind: 'text', label: 'Please explain', th: 'ขยายความ', optional: true },
       { key: 'courseExtra', kind: 'yesno', label: 'Interest in Adding Extra Course Requirements',
         th: 'สนใจทำงานเกินเกณฑ์เพิ่มไหม' },
     ],
   },
   {
     key: 'design',
-    title: 'Knowledge on patient examination, treatment planning and prosthesis design',
-    th: 'ความรู้ด้านการตรวจ วางแผน และออกแบบชิ้นงาน',
+    title: 'Patient Examination and Treatment Planning, Knowledge (K) and Skills (S) Assessment on Prosthodontics Topics',
+    th: 'การตรวจ วางแผน และออกแบบชิ้นงาน',
     questions: [
+      /* ข้อนี้อยู่ใต้หัวหมวดในฟอร์มต้นฉบับ ("Type of cases accepted: CD, RPD/APD, Crown or Bridges, Post and core")
+         เคยตกหล่นตอนถอดฟอร์ม — เจอตอนเทียบทีละบรรทัด 6 ก.ย. 69 */
+      { key: 'typesAccepted', kind: 'multi', label: 'Type of cases accepted', th: 'ประเภทเคสที่รับไว้',
+        options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), other: true },
       { key: 'infoGathering', kind: 'scale', label: 'Information gathering', th: 'การเก็บข้อมูลผู้ป่วย' },
       { key: 'reasoning', kind: 'scale', label: 'Clinical reasoning and treatment planning',
         th: 'การให้เหตุผลทางคลินิกและวางแผนการรักษา' },
-      ...SA_TYPES.map(designQ),
+      ...SA_TYPES.map((t, i) => designQ(t, i === 0)),
     ],
   },
   {
@@ -223,15 +233,17 @@ export const SA_SECTIONS: readonly SASection[] = [
     noteTh: 'ให้คะแนนแยกว่า "รู้" แค่ไหน กับ "ทำได้" แค่ไหน · ยังไม่เคยทำเลือก N/A ได้',
     questions: [
       ...SA_TYPES.flatMap((t) => [procQ(t, 'K'), procQ(t, 'S')]),
-      { key: 'confidentTypes', kind: 'multi', label: 'Confident topics', th: 'ประเภทงานที่มั่นใจ',
-        options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), optional: true },
-      { key: 'improveTypes', kind: 'multi', label: 'Need improvement topics', th: 'ประเภทงานที่อยากพัฒนา',
-        options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), optional: true },
+      /* ต้นฉบับให้พิมพ์อิสระ (ตัวอย่างตอบ "RPD" / "Post and core") — คงตัวเลือกไว้ให้กดเร็ว
+         แต่ต้องมีช่องพิมพ์เองด้วย ไม่งั้นตอบเรื่องที่ไม่ใช่ประเภทงาน เช่น "impression technique" ไม่ได้ */
+      { key: 'confidentTypes', kind: 'multi', label: 'Confident topics', th: 'หัวข้อที่มั่นใจ',
+        options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), other: true, optional: true },
+      { key: 'improveTypes', kind: 'multi', label: 'Need improvement topics', th: 'หัวข้อที่อยากพัฒนา',
+        options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), other: true, optional: true },
     ],
   },
   {
     key: 'professionalism',
-    title: 'Patient treatment, attitudes and professionalism',
+    title: 'Patient Treatment, Attitudes, and Professionalism Assessment',
     th: 'การดูแลผู้ป่วย ทัศนคติ และความเป็นวิชาชีพ',
     questions: [
       { key: 'profPrecaution', kind: 'level', label: 'Universal precautions', th: 'การป้องกันการติดเชื้อ' },
@@ -247,27 +259,27 @@ export const SA_SECTIONS: readonly SASection[] = [
   },
   {
     key: 'problems',
-    title: 'Problems in clinical practice',
+    title: 'Problems in Clinical Practice',
     th: 'ปัญหาที่เจอในคลินิก',
     questions: [
       { key: 'probPreprosth', kind: 'yesno', label: 'Pre-prosthetic procedures', th: 'ขั้นเตรียมก่อนใส่ฟันเทียม' },
       { key: 'probRedone', kind: 'yesno', label: 'Repeated steps / Redone work', th: 'ต้องทำซ้ำ / รื้อทำใหม่' },
       { key: 'probComplex', kind: 'yesno', label: 'Complex cases', th: 'เคสยาก' },
       { key: 'probPlanning', kind: 'yesno', label: 'Treatment planning', th: 'การวางแผนการรักษา' },
-      { key: 'probDelay', kind: 'text', label: 'Factors that caused delays in the treatment planning phase',
+      { key: 'probDelay', kind: 'text', label: 'Factors have caused delays in the treatment planning phase',
         th: 'อะไรทำให้การวางแผนล่าช้า', optional: true },
     ],
   },
   {
     key: 'final',
-    title: 'Final thoughts',
+    title: 'Final Thoughts',
     th: 'ส่งท้าย',
     questions: [
-      { key: 'finalInterest', kind: 'text', label: 'Interesting topics you want to strengthen',
+      { key: 'finalInterest', kind: 'text', label: 'Interesting topics',
         th: 'เรื่องที่อยากพัฒนาต่อ' },
-      { key: 'finalOnTrack', kind: 'yesno', label: 'Are you approaching your goals?', th: 'รู้สึกว่าเข้าใกล้เป้าหมายไหม' },
+      { key: 'finalOnTrack', kind: 'yesno', label: 'Goal approaching', th: 'รู้สึกว่าเข้าใกล้เป้าหมายไหม' },
       { key: 'finalGoalNote', kind: 'text', label: 'Why?', th: 'เพราะอะไร', optional: true },
-      { key: 'finalStrategies', kind: 'text', label: 'Strategies / Approaches for the next term',
+      { key: 'finalStrategies', kind: 'text', label: 'Strategies/Approaches',
         th: 'แผนของเทอมหน้า' },
     ],
   },
@@ -311,6 +323,11 @@ export function saOtherText(q: SAQuestion, answers: Record<string, SAValue>): st
   if (!q.other) return '';
   const v = answers[`${q.key}Other`];
   return typeof v === 'string' ? v.trim() : '';
+}
+
+/** หัวย่อยของข้อนี้ (ถ้ามี) — ตามที่ฟอร์มต้นฉบับจัดกลุ่มไว้ */
+export function saSub(q: SAQuestion): string | undefined {
+  return lang === 'en' ? q.sub : (q.subTh ?? q.sub);
 }
 
 export function saOption(q: SAQuestion, i: number): string {

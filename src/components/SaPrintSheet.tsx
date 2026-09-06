@@ -6,6 +6,7 @@
  *
  * หน้าตายึดตามฟอร์มจริง: หัวข้อภาษาอังกฤษ ตาราง Topics|Assessment และช่องลงนามท้ายเอกสาร
  */
+import { Fragment } from 'react';
 import {
   SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saOtherText, saSectionsFor,
   type SAQuestion, type SAValue,
@@ -98,10 +99,15 @@ export function SaPrintSheet({
                 </thead>
                 <tbody>
                   {plain.map((q) => (
-                    <tr key={q.key}>
+                    <Fragment key={q.key}>
+                    {q.sub && (
+                      <tr><td className="saq" colSpan={2} style={{ fontWeight: 600, background: '#f9fafb' }}>{q.sub}</td></tr>
+                    )}
+                    <tr>
                       <td className="saq">{q.label}</td>
                       <td>{printable(q, sa.answers[q.key] as SAValue, sa.answers as Record<string, SAValue>) || '—'}</td>
                     </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
