@@ -108,6 +108,13 @@ const yesnoOptions = () => [
   { v: 0, label: lang === 'en' ? 'No' : 'ไม่' },
 ];
 
+/** ชุดปุ่มของคำถามหนึ่งข้อ — รวมไว้ที่เดียวเพราะทั้งการ์ดเดี่ยวและการ์ดรวมต้องใช้ตัวเดียวกัน */
+const choiceOptions = (q: SAQuestion) =>
+  q.kind === 'level' ? levelOptions() : q.kind === 'yesno' ? yesnoOptions() : scaleOptions(q.allowNA, true);
+
+/** ชนิดคำถามที่ตอบด้วยปุ่มแถวเดียว จับรวมการ์ดได้ */
+const RUN_KINDS = new Set<SAQuestion['kind']>(['scale', 'level', 'yesno']);
+
 export default function SelfAssess() {
   const { session, settings, showToast } = useApp();
   const navigate = useNavigate();
@@ -431,16 +438,19 @@ function renderQuestions(
   set: (k: string, v: SAValue) => void,
 ) {
   const out: React.ReactNode[] = [];
-  /* ข้อสเกลที่ติดกันตั้งแต่ 2 ข้อขึ้นไป → รวมเป็นการ์ดเดียว มีเส้นคั่น
-     ประหยัดขอบการ์ด+ระยะห่างข้อละ ~34px ซึ่งรวมกันแล้วเยอะกว่าที่คิด */
+  /* ข้อที่ตอบด้วยปุ่มเหมือนกันและอยู่ติดกันตั้งแต่ 2 ข้อขึ้นไป → รวมเป็นการ์ดเดียว มีเส้นคั่น
+     ประหยัดขอบการ์ด+ระยะห่างข้อละ ~34px ซึ่งรวมกันแล้วเยอะกว่าที่คิด
+     ใช้กับ scale/level/yesno เหมือนกันหมด จะได้ไม่มีหมวดไหนหน้าตาแปลกไปจากเพื่อน */
+  const runnable = (x: SAQuestion, kind?: SAQuestion['kind']) =>
+    (kind ? x.kind === kind : RUN_KINDS.has(x.kind)) && !x.row && !x.optional && !saHint(x);
   const runEnd = (start: number) => {
     let j = start;
-    while (j < questions.length && questions[j].kind === 'scale' && !questions[j].row && !(j > start && saSub(questions[j]))) j++;
+    while (j < questions.length && runnable(questions[j], questions[start].kind) && !(j > start && saSub(questions[j]))) j++;
     return j;
   };
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
-    if (q.kind === 'scale' && !q.row) {
+    if (runnable(q)) {
       const end = runEnd(i);
       if (end - i >= 2) {
         const run = questions.slice(i, end);
@@ -459,7 +469,7 @@ function renderQuestions(
                 >
                   <span style={{ font: '600 12px/1.45 var(--font-head)' }}>{saLabel(r)}</span>
                   <Choice
-                    options={scaleOptions(r.allowNA, true)}
+                    options={choiceOptions(r)}
                     value={typeof answers[r.key] === 'number' ? (answers[r.key] as number) : null}
                     onPick={(v) => set(r.key, v)}
                   />
