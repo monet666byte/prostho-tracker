@@ -17,6 +17,19 @@ import { lang, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 
 /** ปุ่มเลือกค่าเดียวจากไม่กี่ตัวเลือก — ใช้ทั้ง 0–4 · Appropriate/Need improvement · Yes/No */
+/**
+ * แถวตัวเลือก — ขนาดปุ่มขึ้นกับ "ชนิดของคำตอบ" ไม่ใช่ความกว้างจอ
+ *
+ * ปัญหาเดิม (ผู้ใช้ทัก 6 ก.ย. 69 ว่า "ปุ่มมันกว้างแปลกๆ"): ทุกปุ่มตั้ง flex: 1 1 0
+ * = แบ่งความกว้างเท่ากันเสมอ ยิ่งจอกว้างยิ่งยืด · วัดจริงบน iPad:
+ *   เลข 0–4 กลายเป็น 123×35 (3.5:1) · ปุ่ม "ใช่/ไม่" กลายเป็น 456×37 (12.3:1)
+ * ตัวเลขหลักเดียวในกล่องแบนยาว อ่านแล้วไม่เหมือนสเกลให้คะแนน และสูงแค่ 35px
+ * ต่ำกว่าเป้าหมายนิ้ว 44px ที่ Apple แนะนำ (ยิ่งใส่ถุงมือยิ่งพลาด)
+ *
+ * กติกาใหม่ตามที่แบบสอบถามทั่วไปทำกัน:
+ *   scale → ปุ่มสี่เหลี่ยมจัตุรัส 44×44 ขนาดคงที่ เรียงชิดซ้าย ไม่ยืดตามจอ
+ *   pair  → 2 ตัวเลือกยาวๆ (ใช่/ไม่ · เหมาะสม/ต้องปรับปรุง) ยืดได้แต่จำกัดความกว้าง
+ */
 function Choice({
   options, value, onPick,
 }: {
@@ -24,19 +37,22 @@ function Choice({
   value: number | null;
   onPick: (v: number) => void;
 }) {
+  const pair = options.length <= 2;
   return (
-    <div className="seg" style={{ gap: 6 }}>
+    <div className="seg" style={{ gap: pair ? 8 : 7, maxWidth: pair ? 380 : undefined }}>
       {options.map((o) => (
         <button
           key={o.v}
           data-on={value === o.v}
           onClick={() => onPick(o.v)}
-          /* 6 ตัวเลือก (0–4 + N/A) ต้องอยู่แถวเดียวบนจอมือถือ — ตกบรรทัดแล้ว N/A จะกินเต็มแถว
-             กลายเป็นแถบใหญ่ที่ดูเหมือนปุ่มหลัก ทั้งที่เป็นแค่ตัวเลือกหนึ่ง */
-          style={{ flex: '1 1 0', minWidth: options.length > 5 ? 40 : 58, display: 'grid', gap: 1, padding: '8px 4px', lineHeight: 1.25 }}
+          style={
+            pair
+              ? { flex: '1 1 0', minWidth: 0, height: 44, padding: '0 10px', display: 'grid', placeItems: 'center' }
+              : { flex: '0 0 auto', width: o.label.length > 1 ? 56 : 44, height: 44, display: 'grid', placeItems: 'center', padding: 0, lineHeight: 1.2 }
+          }
         >
-          {/* เลขคือสิ่งที่ต้องกวาดตาเทียบตอนเลือก — ใช้ฟอนต์ mono ตัวหนา ใหญ่กว่าข้อความทั่วไป */}
-          <span style={{ font: o.sub ? '600 12.5px var(--font-body)' : '700 15px var(--font-mono)' }}>{o.label}</span>
+          {/* เลขคือสิ่งที่ต้องกวาดตาเทียบตอนเลือก — ใช้ฟอนต์ mono ตัวหนา */}
+          <span style={{ font: pair ? '600 13px var(--font-body)' : '700 16px var(--font-mono)' }}>{o.label}</span>
           {o.sub && <span style={{ font: '400 9.5px var(--font-body)', opacity: 0.75 }}>{o.sub}</span>}
         </button>
       ))}
@@ -44,13 +60,6 @@ function Choice({
   );
 }
 
-/**
- * ตัวเลือก 0–4 · `bare` = โชว์เฉพาะตัวเลข ไม่มีคำกำกับใต้ปุ่ม
- *
- * คำกำกับ (น้อยมาก/น้อย/…) ซ้ำกันทุกข้อ ทำให้ปุ่มสูงขึ้นเท่าตัวและฟอร์มยาวขึ้นมาก
- * จึงย้ายไปไว้ที่หัวหมวดครั้งเดียว (ScaleLegend) แล้วปุ่มเหลือแค่ตัวเลข
- * — เหมือนตารางในฟอร์มกระดาษที่มี "Scoring rubrics" บอกไว้ครั้งเดียวข้างบน
- */
 const scaleOptions = (allowNA?: boolean, bare?: boolean) => [
   ...SA_SCALE.map((s) => ({ v: s.v, label: String(s.v), sub: bare ? undefined : (lang === 'en' ? s.label : s.th) })),
   ...(allowNA ? [{ v: -1, label: 'N/A', sub: bare ? undefined : (lang === 'en' ? 'not yet' : 'ยังไม่เคย') }] : []),
