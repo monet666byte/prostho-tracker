@@ -372,7 +372,9 @@ export default function Dashboard() {
                             <button
                               className="btn btn--sec"
                               style={{
-                                minHeight: 34, fontSize: 11, whiteSpace: 'nowrap',
+                                /* min-width ตามเนื้อหา — ช่องตารางบีบจนคำว่า "Remind"
+                                   (อังกฤษยาวกว่าไทย) ถูกตัดบน iPad ที่ป้ายยังไม่ซ่อน */
+                                minHeight: 34, fontSize: 11, whiteSpace: 'nowrap', minWidth: 'max-content',
                                 background: pinged[key] ? 'var(--success-tint)' : undefined,
                                 color: pinged[key] ? 'var(--success-dark)' : undefined,
                               }}

@@ -109,7 +109,9 @@ export default function Review() {
           </div>
         </div>
 
-        <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px' }}>
+        {/* ห่อบรรทัดบนจอแคบ — ไม่งั้นข้อความสรุปเหลือ 67px แล้วตกบรรทัดทีละคำ
+            (เห็นชัดตอนสลับเป็นอังกฤษ ซึ่งคำยาวกว่าไทย · วัดเจอ 7 ก.ย. 69) */}
+        <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', flexWrap: 'wrap' }}>
           {/* สลับคนผ่าน dropdown เล็กๆ แทนแถวปุ่มทั้งกลุ่ม (ผู้ใช้ 2 ก.ย.: ปุ่มชื่อคนอื่นทั้งกลุ่มไม่จำเป็น) */}
           <select
             className="input"
@@ -121,8 +123,8 @@ export default function Review() {
               <option key={st.id} value={st.id}>{t(st.name)} · {st.code}</option>
             ))}
           </select>
-          <div style={{ flex: 1 }}>
-            <div style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <div style={{ font: '500 12px/1.55 var(--font-body)', color: 'var(--text-secondary)' }}>
               {t('{n} ชิ้นงาน', { n: works.length })} · {t('เกณฑ์สะสม')}{' '}
               {reqRows.map((r) => `${r.group === 'CROWN' ? 'Crown' : r.group} ${r.done}/${r.required}`).join(' · ')}
               {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
