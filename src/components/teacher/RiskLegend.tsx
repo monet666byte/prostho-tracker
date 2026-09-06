@@ -40,8 +40,9 @@ export function RiskLegend() {
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
+        className="linkbtn"
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
+          background: 'none', border: 'none',
           padding: 0, cursor: 'pointer', font: '500 11.5px var(--font-body)', color: 'var(--accent)',
         }}
       >

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDraftSave } from '../../hooks/useDraftSave';
 import { firstNameOnly } from '../../domain/group';
 import {
-  S3_FULL_SCORE, SECT3_FORMS, s3Points, sect3Total,
+  S3_FULL_SCORE, s3Points, sect3Total,
   type S3Form, type S3Grade,
 } from '../../domain/sect3';
 import { deleteSect3, saveSect3 } from '../../data/repo';
@@ -279,17 +279,4 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
       </div>
     </div>
   );
-}
-
-/** ใช้ที่หน้าอื่นได้ — รวมคะแนน Section III ของ นศ. คนหนึ่ง แยกตามประเภทงานและ K/S */
-export function sect3Summary(rows: Sect3Record[]) {
-  const latest = latestByForm(rows);
-  const out: Record<string, { k: number[]; s: number[] }> = {};
-  for (const [key, r] of latest) {
-    const f = SECT3_FORMS.find((x) => x.key === key);
-    if (!f || f.part !== 'A' || r.total === null) continue;
-    const bucket = (out[f.group] ??= { k: [], s: [] });
-    (f.kind === 'K' ? bucket.k : bucket.s).push(r.total);
-  }
-  return out;
 }

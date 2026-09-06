@@ -163,7 +163,7 @@ export default function Settings() {
                 <button
                   key={String(key)}
                   onClick={() => updateSettings({ [key]: !on } as never)}
-                  style={{ display: 'flex', gap: 11, alignItems: 'center', width: '100%', marginTop: 11, textAlign: 'left' }}
+                  style={{ display: 'flex', gap: 11, alignItems: 'center', width: '100%', minHeight: 40, marginTop: 11, textAlign: 'left' }}
                 >
                   <span style={{ flex: 1, font: '400 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
                     {label} <b>{value}</b>

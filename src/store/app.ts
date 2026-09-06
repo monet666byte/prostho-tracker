@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { db, kvGet, kvSet } from '../data/db';
 import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/repo';
+import { assertSect2 } from '../domain/sect2';
+import { assertSect3 } from '../domain/sect3';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
@@ -146,6 +148,12 @@ export const useApp = create<AppState>((set, get) => ({
   async init() {
 
     try {
+      /* ยามตรวจว่าถอดฟอร์มจากสมุดถูกไหม (ผลรวมต้องได้ 10 และ 70) — รันเฉพาะตอน dev
+         ถ้าพังคือผมพิมพ์ตัวเลขผิดตอนถอดฟอร์ม ไม่ใช่ผู้ใช้ทำอะไรผิด จึงดังแค่ใน console */
+      if (import.meta.env?.DEV) {
+        const formErrs = [...assertSect2(), ...assertSect3()];
+        if (formErrs.length) console.error('[ฟอร์มในสมุด portfolio ถอดผิด]', formErrs);
+      }
       await seedIfEmpty();
       await migrateSettings(); // ปรับค่าเริ่มต้นที่แก้ทีหลัง (เช่น เกณฑ์ CD 1→2) ให้เครื่องเก่าด้วย
       const settings = await getSettings();

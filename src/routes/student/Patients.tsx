@@ -182,7 +182,7 @@ export default function Patients() {
                   {noteEdit?.id !== patient.id && (
                     <button
                       onClick={() => setNoteEdit({ id: patient.id, text: patient.note ?? '' })}
-                      style={{ display: 'block', textAlign: 'left', padding: 0, marginTop: 3, background: 'none', border: 'none', cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'center', minHeight: 34, textAlign: 'left', padding: 0, marginTop: 1, background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       {patient.note ? (
                         <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>

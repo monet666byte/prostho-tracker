@@ -93,7 +93,8 @@ export default function Review() {
       <main className="main">
         <button
           onClick={() => navigate('/teacher/group')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, marginBottom: 8, cursor: 'pointer', font: '500 12px var(--font-body)', color: 'var(--accent)' }}
+          className="linkbtn"
+          style={{ background: 'none', border: 'none', padding: 0, marginBottom: 4, cursor: 'pointer', font: '500 12px var(--font-body)', color: 'var(--accent)' }}
         >
           <ArrowLeft size={14} weight="bold" /> {t('กลับสรุปกลุ่ม')}
         </button>
@@ -333,7 +334,7 @@ export default function Review() {
           <div className="panel" style={{ position: 'sticky', top: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
               <h3 style={{ flex: 1 }}>{t('เกณฑ์ของ')} {t(active?.name ?? '')}</h3>
-              <button className="iconbtn iconbtn--plain" style={{ width: 26, height: 26 }} onClick={() => setShowReq(false)} aria-label={t('ปิด')}>
+              <button className="iconbtn iconbtn--plain" style={{ width: 34, height: 34 }} onClick={() => setShowReq(false)} aria-label={t('ปิด')}>
                 <X size={13} weight="bold" />
               </button>
             </div>

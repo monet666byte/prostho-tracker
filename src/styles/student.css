@@ -818,3 +818,10 @@
   .scalerow > span { padding-right: 4px; }
 }
 
+
+/* ── พื้นที่กด (สแกน 7 ก.ย. 69) ─────────────────────────────────────────── */
+/* ชิปคำค้นด่วน — 29px เล็กไปสำหรับนิ้ว
+   มือถือเท่านั้น เพราะบนเดสก์ท็อปใช้เมาส์ ชิปเตี้ยดูสวยกว่า */
+@media (pointer: coarse) {
+  .qchip { min-height: 34px; display: inline-flex; align-items: center; }
+}

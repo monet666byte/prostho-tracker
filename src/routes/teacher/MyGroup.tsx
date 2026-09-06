@@ -182,7 +182,8 @@ export default function MyGroup() {
                         <button
                           onClick={() => navigate(`/teacher/review?student=${r.student.id}`)}
                           title={t('ดูงานรายคน + คอมเมนต์')}
-                          style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                          className="cellbtn"
+                          style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                         >
                           {(() => {
                             const [fn, ln] = splitPersonName(t(r.student.name));

@@ -140,7 +140,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                   await signOut();
                   navigate('/login');
                 }}
-                style={{ marginTop: 8, font: '500 10.5px var(--font-body)', color: 'var(--text-faint)' }}
+                className="linkbtn"
+                style={{ marginTop: 4, font: '500 10.5px var(--font-body)', color: 'var(--text-faint)' }}
               >
                 {t('ออกจากระบบ')}
               </button>

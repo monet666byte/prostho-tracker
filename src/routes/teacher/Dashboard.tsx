@@ -1,4 +1,4 @@
-import { Archive, BellRinging, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
+import { Archive, BellRinging, Check, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
@@ -294,7 +294,8 @@ export default function Dashboard() {
                               <button
                                 onClick={() => { setGroup(s.student.group); navigate(`/teacher/review?student=${s.student.id}`); }}
                                 title={t('ดูงานรายคน + คอมเมนต์')}
-                                style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                                className="cellbtn"
+                          style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                               >
                                 <div style={{ font: '600 12px/1.35 var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
                                   {fn}
@@ -371,7 +372,7 @@ export default function Dashboard() {
                             <button
                               className="btn btn--sec"
                               style={{
-                                height: 30, fontSize: 11,
+                                minHeight: 34, fontSize: 11, whiteSpace: 'nowrap',
                                 background: pinged[key] ? 'var(--success-tint)' : undefined,
                                 color: pinged[key] ? 'var(--success-dark)' : undefined,
                               }}
@@ -382,7 +383,11 @@ export default function Dashboard() {
                                 showToast({ message: t('จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ', { n: t(r.student.name) }), tone: 'warning' });
                               }}
                             >
-                              {pinged[key] ? t('เตือนแล้ว') : <><BellRinging size={13} /> {t('เตือน')}</>}
+                              {/* จอแคบเหลือแต่ไอคอน — วัดจริงบน iPhone แล้วคำว่า "เตือน" ถูกตัดเหลือ "เตือ"
+                                  เพราะตารางกว้างเกินกรอบไป 2px แล้วคอลัมน์สุดท้ายโดนเบียด */}
+                              {pinged[key]
+                                ? <><Check size={13} weight="bold" /> <span className="hidenarrow">{t('เตือนแล้ว')}</span></>
+                                : <><BellRinging size={13} /> <span className="hidenarrow">{t('เตือน')}</span></>}
                             </button>
                           </td>
                         </tr>

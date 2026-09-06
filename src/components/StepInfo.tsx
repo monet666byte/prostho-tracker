@@ -94,7 +94,7 @@ export function StepInfo({
           )}
         </div>
         {onClose && (
-          <button className="iconbtn iconbtn--plain" style={{ width: 28, height: 28 }} onClick={onClose} aria-label={t('ปิด')}>
+          <button className="iconbtn iconbtn--plain" style={{ width: 34, height: 34 }} onClick={onClose} aria-label={t('ปิด')}>
             <X size={14} weight="bold" />
           </button>
         )}
