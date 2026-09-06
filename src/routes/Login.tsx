@@ -191,7 +191,13 @@ export default function Login() {
           </p>
         </div>
 
-        {installPrompt && (
+        {/* โชว์กล่องเชิญติดตั้งเฉพาะตอนที่ทำอะไรได้จริง
+            ① installable = กดปุ่มเดียวติดตั้งได้ (Chrome/Edge/Android)
+            ② manualOnly  = Safari บนเครื่อง Apple — บอกวิธีทำมือได้
+            นอกจากนี้กล่องจะมีแต่ปุ่มที่กดไม่ได้ ("เบราว์เซอร์นี้ยังเพิ่มไม่ได้")
+            แล้วยังบังหน้า login ทั้งหน้าจนกดเข้าระบบไม่ได้ (วัดเจอ 7 ก.ย. 69)
+            beforeinstallprompt มาช้าหลายวินาทีได้ พอมาแล้ว onInstallChange จะ re-render ให้เอง */}
+        {installPrompt && (installable || manualOnly) && (
           <div className="backdrop" onClick={dismissInstall}>
             <div className="sheet" onClick={(e) => e.stopPropagation()}>
               <div className="grabber" />
