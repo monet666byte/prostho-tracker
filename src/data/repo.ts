@@ -1234,20 +1234,34 @@ export async function listSect2(studentId?: string, academicYear?: number): Prom
 
 /**
  * ธง 3 อันในโปรไฟล์ นศ. (Sect II Removable/Fixed · Design RPD) เดิมอาจารย์ติ๊กเอง
- * พอมีใบจริงแล้วให้ติ๊กเองอัตโนมัติ จะได้ไม่ต้องจำไปติ๊กซ้ำอีกที่
+ * พอมีใบจริงแล้วให้คิดจากใบเสมอ จะได้ไม่ต้องจำไปติ๊กซ้ำอีกที่
  *
- * ใบให้คะแนนติ๊ก true เมื่อกาครบทุกหัวข้อ — ฟอร์มกระดาษไม่ได้เขียนเกณฑ์ผ่านไว้ จึงถือว่า "ประเมินแล้ว"
- * ส่วนใบ RPD design มีเกณฑ์ชัด (ต้องผ่านทุกข้อ) จึงตั้งตามผลจริงได้ทั้งผ่านและไม่ผ่าน
+ * คิดใหม่จากใบที่เหลือทุกครั้ง ไม่ใช่ "ตั้งเป็นจริงแล้วจบ" —
+ * เพราะถ้าอาจารย์ลบใบที่กรอกผิดทิ้ง ธงต้องกลับเป็นยังไม่ผ่านด้วย
+ * ไม่งั้นโปรไฟล์จะบอกว่าผ่านทั้งที่ไม่มีหลักฐานอะไรเหลือ และมันไปมีผลกับ "ครบเกณฑ์จบ"
+ * (เจอตอนไล่บั๊ก 7 ก.ย. 69 — ลบใบแล้วธงค้างเป็นผ่าน)
+ *
+ * ใบให้คะแนนถือว่าผ่านเมื่อกาครบทุกหัวข้อ (ฟอร์มกระดาษไม่ได้เขียนเกณฑ์ผ่านไว้)
+ * ส่วนใบ RPD design มีเกณฑ์ชัดว่าต้องผ่านทุกข้อ จึงใช้ผลจริง
  */
-async function syncSect2Gate(row: Sect2Record): Promise<void> {
-  const st = await db.students.get(row.studentId);
+async function syncSect2Gate(studentId: string, formKey: string): Promise<void> {
+  const st = await db.students.get(studentId);
   if (!st) return;
+  const key = formKey === 'removable' ? 'sect2Removable'
+    : formKey === 'fixed' ? 'sect2Fixed'
+      : formKey === 'rpdDesign' ? 'designRpd' : null;
+  if (!key) return;
+
+  const rows = (await db.sect2.where('studentId').equals(studentId).toArray())
+    .filter((r) => r.formKey === formKey);
+  const passed = formKey === 'rpdDesign'
+    ? rows.some((r) => r.passed === true)
+    : rows.some((r) => r.total !== null && r.total !== undefined);
+
   const gates = { ...(st.gates ?? {}) };
-  if (row.formKey === 'removable' && row.total !== null && row.total !== undefined) gates.sect2Removable = true;
-  else if (row.formKey === 'fixed' && row.total !== null && row.total !== undefined) gates.sect2Fixed = true;
-  else if (row.formKey === 'rpdDesign') gates.designRpd = row.passed === true;
-  else return;
-  await db.students.update(row.studentId, { gates });
+  if (gates[key] === passed) return;   // ไม่มีอะไรเปลี่ยน อย่าเขียนซ้ำให้ sync ทำงานเปล่า
+  gates[key] = passed;
+  await db.students.update(studentId, { gates });
 }
 
 export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2Record> {
@@ -1273,7 +1287,7 @@ export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2
     updatedAt: now,
   };
   await db.sect2.put(row);
-  await syncSect2Gate(row);
+  await syncSect2Gate(row.studentId, row.formKey);
   if (input.silent) return row;
   const score = row.formKey === 'rpdDesign'
     ? (row.passed ? 'ผ่าน' : 'ยังไม่ผ่าน')
@@ -1286,5 +1300,6 @@ export async function deleteSect2(id: string, actor: string): Promise<void> {
   const row = await db.sect2.get(id);
   if (!row) return;
   await db.sect2.delete(id);
+  await syncSect2Gate(row.studentId, row.formKey);   // ลบใบแล้วธงต้องกลับเป็นยังไม่ผ่าน
   await logAudit(`ลบผลประเมิน Section II · ${row.formKey}`, actor, { studentId: row.studentId });
 }
