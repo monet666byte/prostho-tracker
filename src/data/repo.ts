@@ -40,6 +40,7 @@ export async function getWorkpiece(id: string): Promise<WorkpieceView | null> {
 /**
  * ปรับค่าเริ่มต้นที่แก้ทีหลังให้มีผลกับเครื่องที่ตั้งค่าไว้แล้ว — รันครั้งเดียวตอนเปิดแอป
  * v2: เกณฑ์ CD 1 → 2 (นับต่อ arch · ผู้ใช้ยืนยัน 2 ก.ย.) — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
+ * v3: saOpen (เปิด/ปิดรวม) → saOpenYears (แยกชั้นปี) — ที่เคยเปิดไว้ ให้เปิดทั้งสองชั้นปีเหมือนเดิม
  * ถ้าอาจารย์ตั้งเลขอื่นไว้เอง จะไม่ถูกเขียนทับ
  */
 export async function migrateSettings(): Promise<void> {
@@ -48,6 +49,14 @@ export async function migrateSettings(): Promise<void> {
   const cur = await getSettings();
   if (cur.req.cd === 1) {
     await saveSettings({ req: { ...cur.req, cd: 2 } });
+  }
+  if (ver < 3) {
+    /* ต้องอ่านค่าที่ "เก็บไว้จริง" ไม่ใช่ค่าที่ merge กับ DEFAULT_SETTINGS แล้ว
+       เพราะ default มี saOpenYears: [] อยู่ ถ้าดูจากค่า merge จะนึกว่า migrate ไปแล้วเสมอ */
+    const stored = (await kvGet<Partial<Settings> & { saOpen?: boolean }>('settings', {})) ?? {};
+    if (!Array.isArray(stored.saOpenYears)) {
+      await saveSettings({ saOpenYears: stored.saOpen ? [5, 6] : [] });
+    }
   }
   await kvSet('settingsVersion', SETTINGS_VERSION);
 }

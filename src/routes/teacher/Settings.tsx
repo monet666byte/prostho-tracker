@@ -8,8 +8,9 @@ import { useAllStudents, useAllWorkpieces, useAudit, useSelfAssessments } from '
 import { clock } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
-import { cohortLabel, isActiveStudent, KEEP_COHORTS } from '../../domain/cohort';
+import { cohortLabel, isActiveStudent, KEEP_COHORTS, studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
+import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { currentActor, useApp } from '../../store/app';
 
@@ -46,8 +47,13 @@ export default function Settings() {
   // ยอดส่งแบบประเมินตนเองของปีการศึกษานี้ — ให้อาจารย์เห็นว่าเปิดไปแล้วมีคนตอบไหม
   const saRows = useSelfAssessments(saYearNow());
   const activeStudents = students.filter((st) => isActiveStudent(st));
-  const activeIds = new Set(activeStudents.map((st) => st.id));
-  const saSubmitted = saRows.filter((r) => r.status === 'submitted' && activeIds.has(r.studentId)).length;
+  const saSubmittedIds = new Set(saRows.filter((r) => r.status === 'submitted').map((r) => r.studentId));
+  /* นับแยกชั้นปี เพราะเปิดทีละชั้นปีได้ — ตัวหารต้องเป็นคนของชั้นปีนั้น ไม่ใช่ทั้งภาค */
+  const saStat = ([5, 6] as const).map((y) => {
+    const inYear = activeStudents.filter((st) => studentYear(st) === y);
+    return { year: y, total: inYear.length, sent: inYear.filter((st) => saSubmittedIds.has(st.id)).length };
+  });
+  const saOpenYears = settings.saOpenYears ?? [];
   // ธีมอยู่ใน localStorage ไม่ใช่ store — ถือ state ให้ปุ่มที่เลือกอยู่อัปเดตทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
   // รายงานว่ามีรุ่นไหนเกินกำหนดเก็บบ้าง
@@ -183,10 +189,15 @@ export default function Settings() {
 
             <div className="panel">
               <h3>{t('แบบประเมินตนเอง')}</h3>
-              <p className="sub">{t('ภาคเปิดปีละครั้ง ตอนจบเทอม 1 — ปิดไว้ นักศึกษาจะไม่เห็นเมนูนี้เลย')}</p>
+              <p className="sub">{t('ภาคเปิดปีละครั้ง ตอนจบเทอม 1 — เปิดแยกชั้นปีได้ · ชั้นปีที่ยังไม่เปิด นักศึกษาจะไม่เห็นเมนูนี้เลย')}</p>
               <div className="seg" style={{ marginTop: 11 }}>
-                <button data-on={!settings.saOpen} onClick={() => updateSettings({ saOpen: false })}>{t('ปิด')}</button>
-                <button data-on={settings.saOpen} onClick={() => updateSettings({ saOpen: true })}>{t('เปิดให้กรอก')}</button>
+                {([[], [5], [6], [5, 6]] as number[][]).map((ys) => {
+                  const label = ys.length === 0 ? t('ปิด') : ys.length === 2 ? t('ทั้งสองชั้นปี') : t('ปี {n}', { n: ys[0] });
+                  const on = ys.length === saOpenYears.length && ys.every((y) => saOpenYears.includes(y));
+                  return (
+                    <button key={label} data-on={on} onClick={() => updateSettings({ saOpenYears: ys })}>{label}</button>
+                  );
+                })}
               </div>
               <label className="field" style={{ marginTop: 11 }}>
                 <span>{t('กำหนดส่ง (ไม่บังคับ)')}</span>
@@ -197,9 +208,14 @@ export default function Settings() {
                   onChange={(e) => updateSettings({ saDue: e.target.value || undefined })}
                 />
               </label>
-              <p style={{ margin: '11px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('ส่งแล้ว')} <b>{saSubmitted}</b> {t('คน จากทั้งชั้นปี {n} คน', { n: activeStudents.length })}
-              </p>
+              <div style={{ margin: '11px 0 0', display: 'grid', gap: 3 }}>
+                {saStat.map((st) => (
+                  <p key={st.year} style={{ margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+                    {t('ปี {n}', { n: st.year })} · {saOpenFor({ saOpenYears }, st.year) ? t('เปิดอยู่') : t('ปิดอยู่')} ·{' '}
+                    {t('ส่งแล้ว')} <b>{st.sent}</b>/{st.total} {t('คน')}
+                  </p>
+                ))}
+              </div>
             </div>
 
             <div className="panel">

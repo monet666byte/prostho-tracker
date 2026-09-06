@@ -19,7 +19,7 @@ import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { FIRSTS } from './Achievements';
 import { groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
-import { saProgress, type SAValue } from '../../domain/selfAssessment';
+import { saOpenFor, saProgress, type SAValue } from '../../domain/selfAssessment';
 import { studentYear } from '../../domain/cohort';
 
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
@@ -149,7 +149,9 @@ export default function Home() {
      3 สถานะ: เปิดแล้วยังไม่เริ่ม (จุดแดง) · กรอกค้าง (บอกความคืบหน้า) · ส่งแล้ว (เงียบ) */
   const selfAssessment = useSelfAssessment(session?.studentId, saYearNow());
   const saDone = selfAssessment?.status === 'submitted';
-  const saNew = settings.saOpen && !selfAssessment;
+  /* ภาคเปิดทีละชั้นปีได้ — ปี 6 ต้องไม่เห็นการ์ดนี้ถ้าภาคเปิดแค่ปี 5 */
+  const saOpen = saOpenFor(settings, student ? studentYear(student) : null);
+  const saNew = saOpen && !selfAssessment;
   const saDueLeft = settings.saDue ? daysUntil(settings.saDue) : null;
   const saDueSoon = !saDone && saDueLeft !== null && saDueLeft <= settings.remindDays;
   const saProg = selfAssessment && !saDone && student
@@ -450,7 +452,7 @@ export default function Home() {
           การ์ดนี้ทำหน้าที่ "แจ้งเตือน" ด้วย — ผู้ใช้ขอ 5 ก.ย. 69 ให้ผูกการเปิดฟอร์มกับ noti
           วินาทีที่อาจารย์กดสวิตช์เปิด นักศึกษาที่ยังไม่เริ่มจะเห็นจุดแดงบนหน้าแรกทันที
           (ทำงานออฟไลน์ ไม่ต้องขอสิทธิ์ ไม่ต้องมีเซิร์ฟเวอร์ — push จริงยังไม่มีในระบบ) */}
-      {(settings.saOpen || saDone) && (
+      {(saOpen || saDone) && (
         <Link
           to="/app/self-assessment"
           className="card"

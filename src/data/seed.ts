@@ -16,7 +16,7 @@ import type {
 import { db, kvGet, kvSet } from './db';
 
 /** ขยับเลขนี้เมื่อแก้ค่าเริ่มต้นที่ต้องมีผลกับเครื่องที่ตั้งค่าไว้แล้ว (ดู migrateSettings) */
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 
 export const DEFAULT_SETTINGS: Settings = {
   // เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
@@ -30,8 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   stale: 14,
   photoRequired: false,
   remindDays: 3,
-  // แบบประเมินตนเอง: ปิดไว้ก่อน — ภาคเปิดเองปีละครั้งตอนจบเทอม 1 ที่หน้าตั้งค่า
-  saOpen: false,
+  // แบบประเมินตนเอง: ปิดไว้ก่อน — ภาคเปิดเองปีละครั้งตอนจบเทอม 1 ที่หน้าตั้งค่า แยกชั้นปีได้
+  saOpenYears: [],
 };
 
 const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ญ', 'ฎ', 'ฏ'];

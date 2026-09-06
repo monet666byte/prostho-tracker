@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  saColLabel, saHint, saLabel, saNote, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
+  saColLabel, saHint, saLabel, saNote, saOpenFor, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -232,7 +232,7 @@ export default function SelfAssess() {
   }
 
   /* ── ฟอร์มปิด: บอกให้ชัดว่าเปิดเมื่อไหร่ ดีกว่าโชว์ฟอร์มเปล่าที่ส่งไม่ได้ ── */
-  if (!settings.saOpen && !submitted) {
+  if (!saOpenFor(settings, classYear) && !submitted) {
     return (
       <PlainShell>
         <header className="s-header s-header--row">

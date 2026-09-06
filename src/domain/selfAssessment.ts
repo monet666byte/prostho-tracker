@@ -384,6 +384,25 @@ export function saProgress(answers: Record<string, SAValue>, year: number): { do
   return { done: required.length - saMissing(answers, year).length, total: required.length };
 }
 
+/**
+ * ภาคเปิดให้ชั้นปีนี้กรอกหรือยัง
+ *
+ * แยกรายชั้นปีเพราะปี 5 กับปี 6 จบเทอม 1 คนละจังหวะ และภาคอาจอยากทยอยเปิด
+ * รับ settings แบบหลวมๆ เพราะเครื่องที่ยังไม่ได้ migrate จะมี saOpen (boolean) ตัวเก่าอยู่
+ */
+export function saOpenFor(
+  settings: { saOpenYears?: number[]; saOpen?: boolean },
+  classYear: number | null | undefined,
+): boolean {
+  const years = settings.saOpenYears;
+  if (!Array.isArray(years)) return !!settings.saOpen; // ค่าเก่าก่อน v3
+  return classYear != null && years.includes(classYear);
+}
+
+/** เปิดอยู่กี่ชั้นปี — หน้าตั้งค่าใช้ตัดสินว่าจะโชว์ข้อความ "ปิดอยู่" ไหม */
+export const saAnyOpen = (settings: { saOpenYears?: number[]; saOpen?: boolean }): boolean =>
+  Array.isArray(settings.saOpenYears) ? settings.saOpenYears.length > 0 : !!settings.saOpen;
+
 /** ข้อที่ยังไม่ตอบ ในหมวดนี้ — ใช้ติดจุดแดงข้างชื่อหมวด */
 export function saSectionMissing(section: SASection, answers: Record<string, SAValue>, year: number): number {
   return saQuestionsFor(section, year).filter((q) => !q.optional && isBlank(answers[q.key])).length;
