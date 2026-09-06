@@ -35,7 +35,8 @@ function Choice({
              กลายเป็นแถบใหญ่ที่ดูเหมือนปุ่มหลัก ทั้งที่เป็นแค่ตัวเลือกหนึ่ง */
           style={{ flex: '1 1 0', minWidth: options.length > 5 ? 40 : 58, display: 'grid', gap: 1, padding: '8px 4px', lineHeight: 1.25 }}
         >
-          <span style={{ font: '600 12.5px var(--font-body)' }}>{o.label}</span>
+          {/* เลขคือสิ่งที่ต้องกวาดตาเทียบตอนเลือก — ใช้ฟอนต์ mono ตัวหนา ใหญ่กว่าข้อความทั่วไป */}
+          <span style={{ font: o.sub ? '600 12.5px var(--font-body)' : '700 15px var(--font-mono)' }}>{o.label}</span>
           {o.sub && <span style={{ font: '400 9.5px var(--font-body)', opacity: 0.75 }}>{o.sub}</span>}
         </button>
       ))}
@@ -43,10 +44,50 @@ function Choice({
   );
 }
 
-const scaleOptions = (allowNA?: boolean) => [
-  ...SA_SCALE.map((s) => ({ v: s.v, label: String(s.v), sub: lang === 'en' ? s.label : s.th })),
-  ...(allowNA ? [{ v: -1, label: 'N/A', sub: lang === 'en' ? 'not yet' : 'ยังไม่เคย' }] : []),
+/**
+ * ตัวเลือก 0–4 · `bare` = โชว์เฉพาะตัวเลข ไม่มีคำกำกับใต้ปุ่ม
+ *
+ * คำกำกับ (น้อยมาก/น้อย/…) ซ้ำกันทุกข้อ ทำให้ปุ่มสูงขึ้นเท่าตัวและฟอร์มยาวขึ้นมาก
+ * จึงย้ายไปไว้ที่หัวหมวดครั้งเดียว (ScaleLegend) แล้วปุ่มเหลือแค่ตัวเลข
+ * — เหมือนตารางในฟอร์มกระดาษที่มี "Scoring rubrics" บอกไว้ครั้งเดียวข้างบน
+ */
+const scaleOptions = (allowNA?: boolean, bare?: boolean) => [
+  ...SA_SCALE.map((s) => ({ v: s.v, label: String(s.v), sub: bare ? undefined : (lang === 'en' ? s.label : s.th) })),
+  ...(allowNA ? [{ v: -1, label: 'N/A', sub: bare ? undefined : (lang === 'en' ? 'not yet' : 'ยังไม่เคย') }] : []),
 ];
+
+/**
+ * คำอธิบายสเกล — ขึ้นครั้งเดียวต่อหมวด แทนที่จะซ้ำใต้ปุ่มทุกข้อ
+ *
+ * ตัวเลขต้องเด่นกว่าคำอธิบายชัดๆ (ผู้ใช้ทัก 6 ก.ย. 69 ว่า "ตอนนี้อ่อนไปนิด")
+ * เพราะสิ่งที่ต้องเทียบตอนกดปุ่มคือเลข ไม่ใช่คำ — เลขจึงเป็นชิปสีเน้น ส่วนคำเป็นตัวรอง
+ */
+function ScaleLegend({ withNA }: { withNA?: boolean }) {
+  const item = (n: string, word: string) => (
+    <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <b
+        style={{
+          minWidth: 20, height: 20, padding: '0 5px', borderRadius: 6, display: 'inline-grid', placeItems: 'center',
+          background: 'var(--accent)', color: '#fff', font: '700 12px var(--font-mono)',
+        }}
+      >
+        {n}
+      </b>
+      <span style={{ font: '500 11px var(--font-body)', color: 'var(--text-secondary)' }}>{word}</span>
+    </span>
+  );
+  return (
+    <div
+      style={{
+        display: 'flex', flexWrap: 'wrap', gap: '7px 12px', padding: '9px 11px',
+        background: 'var(--accent-tint)', border: '1px solid var(--accent-ring)', borderRadius: 10,
+      }}
+    >
+      {SA_SCALE.map((s) => item(String(s.v), lang === 'en' ? s.label : s.th))}
+      {withNA && item('N/A', t('ยังไม่เคยทำ'))}
+    </div>
+  );
+}
 
 const levelOptions = () => [
   { v: SA_APPROPRIATE, label: lang === 'en' ? 'Appropriate' : 'เหมาะสมแล้ว' },
@@ -359,6 +400,9 @@ export default function SelfAssess() {
               </p>
             )}
           </div>
+          {section.questions.some((q) => q.kind === 'scale') && (
+            <ScaleLegend withNA={section.questions.some((q) => q.allowNA)} />
+          )}
           {renderQuestions(section.questions, answers, set)}
           <p style={{ font: '400 10px/1.6 var(--font-body)', color: 'var(--text-faint)', textAlign: 'center' }}>
             {t('บันทึกร่างอัตโนมัติ · อ้างอิงฟอร์ม')} {SA_SOURCE}
@@ -378,8 +422,46 @@ function renderQuestions(
   set: (k: string, v: SAValue) => void,
 ) {
   const out: React.ReactNode[] = [];
+  /* ข้อสเกลที่ติดกันตั้งแต่ 2 ข้อขึ้นไป → รวมเป็นการ์ดเดียว มีเส้นคั่น
+     ประหยัดขอบการ์ด+ระยะห่างข้อละ ~34px ซึ่งรวมกันแล้วเยอะกว่าที่คิด */
+  const runEnd = (start: number) => {
+    let j = start;
+    while (j < questions.length && questions[j].kind === 'scale' && !questions[j].row && !(j > start && saSub(questions[j]))) j++;
+    return j;
+  };
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
+    if (q.kind === 'scale' && !q.row) {
+      const end = runEnd(i);
+      if (end - i >= 2) {
+        const run = questions.slice(i, end);
+        const sub0 = saSub(q);
+        out.push(
+          <div key={`run-${q.key}`} style={{ display: 'grid', gap: 6 }}>
+            {sub0 && (
+              <div style={{ font: '600 11.5px var(--font-head)', color: 'var(--text-secondary)', margin: '0 0 -2px 2px' }}>{sub0}</div>
+            )}
+            <div className="card" style={{ padding: '4px 13px 11px', display: 'grid' }}>
+              {run.map((r, k) => (
+                <div
+                  key={r.key}
+                  style={{ display: 'grid', gap: 5, padding: '11px 0 0', borderTop: k ? '1px solid var(--divider)' : undefined, marginTop: k ? 4 : 7 }}
+                >
+                  <span style={{ font: '600 12px/1.45 var(--font-head)' }}>{saLabel(r)}</span>
+                  <Choice
+                    options={scaleOptions(r.allowNA, true)}
+                    value={typeof answers[r.key] === 'number' ? (answers[r.key] as number) : null}
+                    onPick={(v) => set(r.key, v)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>,
+        );
+        i = end - 1;
+        continue;
+      }
+    }
     if (q.row) {
       const group = questions.filter((x) => x.row === q.row);
       if (questions.findIndex((x) => x.row === q.row) !== i) continue;
@@ -392,7 +474,7 @@ function renderQuestions(
                 {saColLabel(g.col!)}
               </span>
               <Choice
-                options={scaleOptions(g.allowNA)}
+                options={scaleOptions(g.allowNA, true)}
                 value={typeof answers[g.key] === 'number' ? (answers[g.key] as number) : null}
                 onPick={(v) => set(g.key, v)}
               />
@@ -450,7 +532,7 @@ function Field({
       )}
 
       {q.kind === 'scale' && (
-        <Choice options={scaleOptions(q.allowNA)} value={numV} onPick={(x) => set(q.key, x)} />
+        <Choice options={scaleOptions(q.allowNA, true)} value={numV} onPick={(x) => set(q.key, x)} />
       )}
       {q.kind === 'level' && <Choice options={levelOptions()} value={numV} onPick={(x) => set(q.key, x)} />}
       {q.kind === 'yesno' && <Choice options={yesnoOptions()} value={numV} onPick={(x) => set(q.key, x)} />}

@@ -1009,4 +1009,5 @@ export const DICT: Record<string, string> = {
   'แตะปุ่มแชร์ ⬆︎ ด้านล่างจอ': 'Tap the Share button at the bottom of the screen',
   'เลื่อนหาแล้วแตะ “Add to Home Screen”': 'Scroll and tap "Add to Home Screen"',
   'แตะ “Add” มุมขวาบน': 'Tap "Add" in the top right',
+  'ยังไม่เคยทำ': 'not done yet',
 };
