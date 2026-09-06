@@ -128,12 +128,26 @@ export function useSelfAssessments(academicYear?: number) {
   return useLiveQuery(() => listSelfAssessments(academicYear), [academicYear], []) ?? [];
 }
 
-/** ผลประเมิน Section III — ของ นศ. คนเดียว หรือทั้งหมดถ้าไม่ส่ง studentId */
+/**
+ * ผลประเมิน Section III ของ นศ. คนหนึ่ง
+ *
+ * ไม่ส่ง studentId = ยังไม่ได้เลือกใคร → คืนว่าง ไม่ใช่ "ดึงทุกแถว"
+ * เพราะหน้าอาจารย์เรียก hook นี้ตั้งแต่ก่อนเลือกคน ถ้าไปกวาดทั้งตาราง
+ * พอข้อมูลจริงโตขึ้น (วัดที่ 14,400 แถว) จะกวาดทิ้งทุกครั้งที่ re-render โดยไม่ได้ใช้เลย
+ */
 export function useSect3(studentId?: string, academicYear?: number) {
-  return useLiveQuery(() => listSect3(studentId, academicYear), [studentId, academicYear], []) ?? [];
+  return useLiveQuery(
+    () => (studentId ? listSect3(studentId, academicYear) : Promise.resolve([])),
+    [studentId, academicYear],
+    [],
+  ) ?? [];
 }
 
-/** ผลประเมิน Section II — ของ นศ. คนเดียว หรือทั้งหมดถ้าไม่ส่ง studentId */
+/** ผลประเมิน Section II ของ นศ. คนหนึ่ง — เหตุผลเดียวกับ useSect3 */
 export function useSect2(studentId?: string, academicYear?: number) {
-  return useLiveQuery(() => listSect2(studentId, academicYear), [studentId, academicYear], []) ?? [];
+  return useLiveQuery(
+    () => (studentId ? listSect2(studentId, academicYear) : Promise.resolve([])),
+    [studentId, academicYear],
+    [],
+  ) ?? [];
 }
