@@ -60,8 +60,12 @@ export default function Sect3Page() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('Section III · ความรู้และทักษะ')} · {groupShort(teacherGroup)}</h1>
-            <p>{t('ตามสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ')}</p>
+            <h1>{t('ความรู้และทักษะ')} · {groupShort(teacherGroup)}</h1>
+            <p>
+              {t('Section III ของสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ')}
+              {' · '}
+              {t('Section I คือหน้า “ประเมินรายคาบ”')}
+            </p>
           </div>
         </div>
 
@@ -82,7 +86,7 @@ export default function Sect3Page() {
           {/* ── ใบประเมิน ── */}
           <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
           {!student && (
-            <div className="panel"><p className="sub">{t('เลือกนักศึกษาทางซ้ายเพื่อดูใบประเมิน')}</p></div>
+            <div className="panel"><p className="sub">{t('เลือกนักศึกษาเพื่อดูใบประเมิน')}</p></div>
           )}
 
           {student && !openForm && (

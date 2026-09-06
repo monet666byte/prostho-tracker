@@ -24,8 +24,11 @@ const GROUP_NAV: NavItem[] = [
   { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table },
   /* แบบประเมินตนเองปีละครั้ง — อยู่ในงานประจำกลุ่ม เพราะอ่านเป็นรายคนของกลุ่มที่ปรึกษา */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
-  /* Section III ของสมุด portfolio — ประเมินรายใบ ไม่ผูกกับคาบ จึงอยู่คู่กับ SA ไม่ใช่หน้าประเมินรายคาบ */
-  { key: 'sect3', label: t('Section III'), short: t('Sect III'), to: '/teacher/sect3', Icon: ListChecks },
+  /* Section III ของสมุด portfolio — ประเมินรายใบ ไม่ผูกกับคาบ จึงอยู่คู่กับ SA ไม่ใช่หน้าประเมินรายคาบ
+     ⚠️ ห้ามตั้งชื่อเมนูว่า "Section III" เฉยๆ (ผู้ใช้ทัก 7 ก.ย. 69) — พอมีเลข III ตัวเดียวในเมนู
+     คนจะถามว่า Section I กับ II หายไปไหน ทั้งที่ I คือ "ประเมินรายคาบ" ที่อยู่ข้างบนนี่เอง
+     ตั้งชื่อตามเนื้อหาแทน แล้วไปบอกเลข Section บนหัวหน้าจอซึ่งมีที่พออธิบาย */
+  { key: 'sect3', label: t('ความรู้และทักษะ'), short: 'K/S', to: '/teacher/sect3', Icon: ListChecks },
 ];
 
 /** ระดับชั้นปี */

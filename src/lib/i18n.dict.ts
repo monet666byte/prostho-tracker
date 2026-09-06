@@ -955,12 +955,12 @@ export const DICT: Record<string, string> = {
   'ภาคเปิดปีละครั้ง ตอนจบเทอม 1 — เปิดแยกชั้นปีได้ · ชั้นปีที่ยังไม่เปิด นักศึกษาจะไม่เห็นเมนูนี้เลย':
     'Opened once a year at the end of term 1, per class year. Students in a year that is not open do not see this menu at all',
   'ปี {n}': 'Year {n}',
-  'Section III · ความรู้และทักษะ': 'Section III · Knowledge & skill',
-  'Sect III': 'Sect III',
-  'ตามสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ':
-    'Follows the Clinical Performance Portfolio. Grade here, print, then sign on paper',
+  'ความรู้และทักษะ': 'Knowledge & skill',
+  'Section III ของสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ':
+    'Section III of the Clinical Performance Portfolio — grade here, print, then sign on paper',
+  'Section I คือหน้า “ประเมินรายคาบ”': 'Section I is the “Per-session” page',
   'ยังไม่มีนักศึกษาในกลุ่มนี้': 'No students in this group yet',
-  'เลือกนักศึกษาทางซ้ายเพื่อดูใบประเมิน': 'Pick a student on the left to see their forms',
+  'เลือกนักศึกษาเพื่อดูใบประเมิน': 'Pick a student to see their forms',
   'ชั้นปี {n}': 'Year {n}',
   'ใบ': 'forms',
   'ใบ recall เป็นของปี 6': 'recall forms are year 6 only',
