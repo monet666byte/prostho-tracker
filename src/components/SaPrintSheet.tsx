@@ -8,7 +8,7 @@
  */
 import { Fragment } from 'react';
 import {
-  SA_APPROPRIATE, SA_COURSE_CODE, SA_SCALE, SA_SOURCE, saOtherText, saSectionsFor,
+  SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saCourseCode, saOtherText, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../domain/selfAssessment';
 import { thaiLong } from '../lib/date';
@@ -33,23 +33,23 @@ function printable(q: SAQuestion, v: SAValue | undefined, answers: Record<string
 }
 
 export function SaPrintSheet({
-  sa, student, advisors, courseCode = SA_COURSE_CODE,
+  sa, student, advisors, courseCode,
 }: {
   sa: SelfAssessment;
   student: Student;
   advisors: Teacher[];
-  /** รหัสวิชาบนหัวเอกสาร — ฟอร์ม SA ใช้ DTIS543 ซึ่งคนละตัวกับ DTPT502 ที่แอปใช้ทั้งระบบ
-      ยังไม่ได้ยืนยันกับอาจารย์ว่าอันไหนถูก จึงยึดตามที่ฟอร์มต้นฉบับเขียนไว้ก่อน */
+  /** รหัสวิชาบนหัวเอกสาร — ปกติคิดจากชั้นปี (ปี 5 DTPT502 · ปี 6 DTPT602) ส่งมาทับได้ถ้าภาคเปลี่ยน */
   courseCode?: string;
 }) {
   const sections = saSectionsFor(sa.classYear);
+  const course = courseCode ?? saCourseCode(sa.classYear);
 
   return (
     <div className="a4 a4--sa">
       <h1>Self-assessment (SA) report: MIDS Prosthodontic Clinic {sa.academicYear}</h1>
       <div className="sub">
         {/* ห้ามใส่ค่าสำรองที่ดูสมจริงบนเอกสารที่เซ็นจริง — ไม่มีข้อมูลต้องเห็นว่าว่าง */}
-        {t(student.name)} · {student.code} · {student.group} · {courseCode} Year {sa.classYear} MIDS
+        {t(student.name)} · {student.code} · {student.group} · {course} Year {sa.classYear} MIDS
         {advisors.length > 0 && <> · Advisors: {advisors.map((a) => t(a.name)).join(', ')}</>}
       </div>
       <div className="sub">

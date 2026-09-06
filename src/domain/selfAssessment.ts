@@ -17,10 +17,13 @@ import { lang } from '../lib/i18n';
 export const SA_FORM_VERSION = '2569.2';
 
 /**
- * รหัสวิชาบนหัวฟอร์ม SA ต้นฉบับ — ⚠️ คนละตัวกับ DTPT502 ที่แอปใช้ทั้งระบบ
- * ยังไม่ได้ยืนยันกับอาจารย์ว่าอันไหนถูก จึงยึดตามที่ฟอร์มเขียนไว้ (เจอตอนเทียบ 6 ก.ย. 69)
+ * รหัสวิชาบนหัวเอกสาร — แยกตามชั้นปี (ผู้ใช้ยืนยัน 7 ก.ย. 69 จากปกเล่ม Clinical Performance Portfolio
+ * ที่เขียน "DTPT502 – Academic year 2024 / DTPT602 – Academic year 2025")
+ * ฟอร์ม SA ต้นฉบับพิมพ์ DTIS543 ไว้ ซึ่งเป็นรหัสเก่า/คนละวิชา — ใช้ตามปกเล่มแทน
  */
-export const SA_COURSE_CODE = 'DTIS543';
+export function saCourseCode(classYear: number): string {
+  return classYear >= 6 ? 'DTPT602' : 'DTPT502';
+}
 
 /** ที่มาของฟอร์ม — โชว์ท้ายหน้าให้รู้ว่าอ้างอิงฉบับไหน */
 export const SA_SOURCE = 'MIDS Prosthodontic Clinic · Revision Oct 2025';
