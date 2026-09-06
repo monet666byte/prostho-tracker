@@ -957,6 +957,9 @@ export const DICT: Record<string, string> = {
   'ปี {n}': 'Year {n}',
   'ความรู้และทักษะ': 'Knowledge & skill',
   'สมุด portfolio': 'Portfolio book',
+  'ยังไม่มีใบที่ประเมินแล้วของปีนี้': 'No graded forms for this academic year yet',
+  'พิมพ์เฉพาะใบที่ประเมินแล้ว · ช่องที่กาไว้จะเป็นพื้นทึบ อ่านออกบนเครื่องพิมพ์ขาวดำ · ลงนามบนกระดาษที่พิมพ์ออกมา':
+    'Only graded forms are printed · the chosen cell is filled solid so it reads on a black-and-white printer · sign the printed paper',
   'สมุด': 'Book',
   'Clinical Performance Portfolio — คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ':
     'Clinical Performance Portfolio — enter results here, print, then sign on paper',

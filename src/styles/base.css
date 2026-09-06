@@ -308,3 +308,34 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   .saprint { padding: 0; background: #fff; min-height: 0; }
   @page { margin: 14mm; }
 }
+
+/* ── หน้าพิมพ์สมุด portfolio (Section II + III) ─────────────────────────────
+   ใช้โครง .a4 เดิม เพิ่มเฉพาะสิ่งที่ใบในสมุดต้องการ:
+   ใบละหน้าเสมอ · ช่องที่อาจารย์กาไว้ต้องเห็นชัดบนกระดาษขาวดำ (ทึบ ไม่ใช่แค่สี) */
+.a4--pf { min-width: 0; max-width: 780px; margin: 0 auto 18px; page-break-after: always; }
+.a4--pf:last-child { page-break-after: auto; }
+.a4 .pfhead {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  font: 400 8.5px/1.45 var(--font-body); color: #475467;
+  border-bottom: 1px solid #d6dae1; padding-bottom: 5px;
+}
+.a4 .pfcode { font: 700 10px var(--font-mono); color: #101828; white-space: nowrap; }
+.a4 .pftitle { font: 700 12px var(--font-head); margin: 11px 0 0; text-align: center; text-decoration: underline; }
+.a4 .pfsub { font: 400 9px var(--font-body); color: #475467; text-align: center; margin-top: 2px; }
+.a4 .pffield {
+  display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 9px;
+  font: 400 9px var(--font-body); color: #475467;
+}
+.a4 .pffield b { font: 600 9px var(--font-body); color: #101828; }
+.a4 tr.pfsubrow td { background: #f2f4f7; font-weight: 600; }
+.a4 .pfdet { font: 400 8px/1.4 var(--font-body); color: #667085; margin-top: 2px; font-weight: 400; }
+.a4 th.pfpt, .a4 td.pfpt { width: 34px; text-align: center; font-family: var(--font-mono); }
+/* ช่องที่กา — ใช้พื้นทึบ + เส้นหนา เพราะเครื่องพิมพ์ในภาคเป็นขาวดำ สีอ่อนจะหายไป */
+.a4 td.pfon { background: #101828; color: #fff; font-weight: 700; }
+.a4 tr.pftotal td { background: #f2f4f7; font-weight: 700; }
+.a4 .pfnote { font: 400 8px/1.5 var(--font-body); color: #475467; margin: 7px 0 0; }
+@media print {
+  .a4--pf { margin: 0; }
+  /* พื้นทึบของช่องที่กาต้องไม่ถูกเบราว์เซอร์ตัดทิ้งตอนพิมพ์ */
+  .a4 td.pfon { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

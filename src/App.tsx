@@ -25,6 +25,7 @@ import Evaluate from './routes/teacher/Evaluate';
 import SelfAssess from './routes/student/SelfAssess';
 import SelfAssessments from './routes/teacher/SelfAssessments';
 import Portfolio from './routes/teacher/Portfolio';
+import PortfolioPrint from './routes/PortfolioPrint';
 import SaPrint from './routes/SaPrint';
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
@@ -131,6 +132,7 @@ export default function App() {
         <Route path="/teacher/evaluate" element={<Guard role="teacher"><Evaluate /></Guard>} />
         <Route path="/teacher/sa" element={<Guard role="teacher"><SelfAssessments /></Guard>} />
         <Route path="/teacher/portfolio" element={<Guard role="teacher"><Portfolio /></Guard>} />
+        <Route path="/teacher/portfolio/:studentId/print" element={<Guard role="teacher"><PortfolioPrint /></Guard>} />
         {/* ลิงก์เดิมตอนที่ยังมีแค่ Section III */}
         <Route path="/teacher/sect3" element={<Navigate to="/teacher/portfolio" replace />} />
         <Route path="/teacher/sa/:studentId/print" element={<Guard role="teacher"><SaPrint /></Guard>} />

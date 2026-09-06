@@ -8,8 +8,9 @@
  * ทุกใบมีลายเซ็นอาจารย์บนกระดาษ → หน้านี้ทำหน้าที่ "คีย์ครั้งเดียวแล้วพิมพ์ไปเซ็น"
  * ไม่ได้ตั้งใจแทนลายเซ็น
  */
-import { Student as StudentIcon } from '@phosphor-icons/react';
+import { Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RpdDesignSheet, Sect2ScoreSheet, sect2Status } from '../../components/teacher/Sect2Sheet';
 import { Sect3FormGroup, Sect3Sheet, latestByForm } from '../../components/teacher/Sect3Sheet';
@@ -34,6 +35,7 @@ const SECT2_ROWS = [
 
 export default function Portfolio() {
   const { teacherGroup, showToast } = useApp();
+  const navigate = useNavigate();
   const students = useAllStudents();
   const year = saYearNow();
   const [tab, setTab] = useState<Tab>('sect2');
@@ -99,11 +101,13 @@ export default function Portfolio() {
             {/* ── Section II ── */}
             {student && tab === 'sect2' && !openKey && (
               <div className="panel">
-                <h3>{firstNameOnly(student.name)} · {student.code}</h3>
-                <p className="sub">
-                  {t('ชั้นปี {n}', { n: classYear })} · {t('ประเมินแล้ว')} <b>{latest2.size}</b>/3 {t('ใบ')}
-                  {classYear !== 5 && ` · ${t('ใบชุดนี้เป็นของปี 5')}`}
-                </p>
+                <StudentHead
+                  student={student}
+                  note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest2.size}/3 ${t('ใบ')}`
+                    + (classYear !== 5 ? ` · ${t('ใบชุดนี้เป็นของปี 5')}` : '')}
+                  canPrint={latest2.size + latest3.size > 0}
+                  onPrint={() => navigate(`/teacher/portfolio/${student.id}/print`)}
+                />
                 <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
                   {SECT2_ROWS.map((r) => (
                     <FormRow
@@ -150,11 +154,13 @@ export default function Portfolio() {
             {/* ── Section III ── */}
             {student && tab === 'sect3' && !openKey && (
               <div className="panel">
-                <h3>{firstNameOnly(student.name)} · {student.code}</h3>
-                <p className="sub">
-                  {t('ชั้นปี {n}', { n: classYear })} · {t('ประเมินแล้ว')} <b>{latest3.size}</b>/{forms3.length} {t('ใบ')}
-                  {classYear < 6 && ` · ${t('ใบ recall เป็นของปี 6')}`}
-                </p>
+                <StudentHead
+                  student={student}
+                  note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest3.size}/${forms3.length} ${t('ใบ')}`
+                    + (classYear < 6 ? ` · ${t('ใบ recall เป็นของปี 6')}` : '')}
+                  canPrint={latest2.size + latest3.size > 0}
+                  onPrint={() => navigate(`/teacher/portfolio/${student.id}/print`)}
+                />
                 <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
                   {(['CD', 'RPD', 'FDP'] as const).map((g) => (
                     <Sect3FormGroup key={g} group={g} forms={forms3} latest={latest3} onOpen={setOpenKey} />
@@ -181,6 +187,24 @@ export default function Portfolio() {
         </div>
       </main>
     </TeacherShell>
+  );
+}
+
+/** หัวบล็อกของ นศ. ที่เลือก — ปุ่มพิมพ์รวมทุกใบที่ประเมินแล้ว ไม่แยกตามแท็บ
+    เพราะเวลาส่งเล่มจริงส่งทั้งเล่ม ไม่ได้ส่งทีละ Section */
+function StudentHead({ student, note, canPrint, onPrint }: {
+  student: Student; note: string; canPrint: boolean; onPrint: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 150 }}>
+        <h3 style={{ margin: 0 }}>{firstNameOnly(student.name)} · {student.code}</h3>
+        <p className="sub" style={{ margin: '2px 0 0' }}>{note}</p>
+      </div>
+      <button className="btn btn--sec" style={{ height: 40 }} disabled={!canPrint} onClick={onPrint}>
+        <Printer size={15} /> {t('พิมพ์')}
+      </button>
+    </div>
   );
 }
 
