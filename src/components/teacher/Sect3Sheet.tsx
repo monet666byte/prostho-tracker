@@ -1,169 +1,34 @@
 /**
- * Section III ฝั่งอาจารย์ — Knowledge & skill assessments (สมุด portfolio)
- *
- * โครงเดียวกับกระดาษ: เลือกนักศึกษา → เลือกใบ → กา O/S/U ทีละข้อ → รวมคะแนน /10
- * นิยามใบทั้ง 15 อยู่ที่ domain/sect3.ts (ถอดจากสมุดจริง Edited: 3 May 2024)
- *
- * ⚠️ เก็บได้หลายครั้งต่อใบ — ยังไม่ยืนยันกับภาคว่าประเมินซ้ำได้ไหม (ค้างถาม 7 ก.ย. 69)
- *    ถ้าภาคตอบว่าครั้งเดียว ล็อกที่หน้าจอนี้พอ ไม่ต้องแตะฐานข้อมูล
+ * ใบประเมิน Section III — ส่วนที่วาดใบและรับคะแนน
+ * แยกจากหน้า Portfolio เพื่อให้ไฟล์หน้าไม่บวม (Section II มีใบของตัวเองอีกชุด)
  */
-import { ArrowLeft, CheckCircle, Trash, Student as StudentIcon } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
-import { TeacherShell } from '../../components/teacher/TeacherShell';
-import { studentYear } from '../../domain/cohort';
-import { firstNameOnly, groupShort } from '../../domain/group';
-import { saYearNow } from '../../domain/saFeedback';
+import { ArrowLeft, CheckCircle, Trash } from '@phosphor-icons/react';
+import { useState } from 'react';
+import { firstNameOnly } from '../../domain/group';
 import {
-  S3_FULL_SCORE, SECT3_FORMS, s3Points, sect3Form, sect3FormsFor, sect3Total,
+  S3_FULL_SCORE, SECT3_FORMS, s3Points, sect3Total,
   type S3Form, type S3Grade,
 } from '../../domain/sect3';
 import { deleteSect3, saveSect3 } from '../../data/repo';
-import { useAllStudents, useSect3 } from '../../hooks/data';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
-import { currentActor, useApp } from '../../store/app';
+import { currentActor } from '../../store/app';
 import type { Sect3Record, Student } from '../../domain/types';
 
-const GRADES: Array<{ v: S3Grade; label: string; th: string }> = [
-  { v: 'O', label: 'Outstanding', th: 'ดีมาก' },
-  { v: 'S', label: 'Satisfactory', th: 'พอใช้' },
-  { v: 'U', label: 'Unsatisfactory', th: 'ต้องแก้ไข' },
+const GRADES: Array<{ v: S3Grade; label: string }> = [
+  { v: 'O', label: 'Outstanding' },
+  { v: 'S', label: 'Satisfactory' },
+  { v: 'U', label: 'Unsatisfactory' },
 ];
 
-/** ใบล่าสุดของแต่ละ formKey — ตารางสรุปโชว์ครั้งหลังสุด ส่วนครั้งก่อนดูได้ในใบ */
-function latestByForm(rows: Sect3Record[]): Map<string, Sect3Record> {
-  const m = new Map<string, Sect3Record>();
-  for (const r of rows) if (!m.has(r.formKey)) m.set(r.formKey, r); // listSect3 เรียงล่าสุดก่อนแล้ว
+/** ใบล่าสุดของแต่ละ formKey — listSect3 เรียงล่าสุดก่อนแล้ว */
+export function latestByForm<T extends { formKey: string }>(rows: T[]): Map<string, T> {
+  const m = new Map<string, T>();
+  for (const r of rows) if (!m.has(r.formKey)) m.set(r.formKey, r);
   return m;
 }
 
-export default function Sect3Page() {
-  const { teacherGroup, showToast } = useApp();
-  const students = useAllStudents();
-  const year = saYearNow();
-  const [selId, setSelId] = useState<string | null>(null);
-  const [openKey, setOpenKey] = useState<string | null>(null);
-
-  const roster = useMemo(
-    () => students.filter((s) => s.group === teacherGroup).sort((a, b) => a.code.localeCompare(b.code)),
-    [students, teacherGroup],
-  );
-  const student = roster.find((s) => s.id === selId) ?? null;
-  const rows = useSect3(student?.id, year);
-  const latest = latestByForm(rows);
-  const classYear = student ? studentYear(student) : 5;
-  const forms = sect3FormsFor(classYear);
-  const openForm = openKey ? sect3Form(openKey) : undefined;
-
-  return (
-    <TeacherShell active="sect3">
-      <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('ความรู้และทักษะ')} · {groupShort(teacherGroup)}</h1>
-            <p>
-              {t('Section III ของสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ')}
-              {' · '}
-              {t('Section I คือหน้า “ประเมินรายคาบ”')}
-            </p>
-          </div>
-        </div>
-
-        <div className="salayout">
-          {/* ── รายชื่อในกลุ่ม ── */}
-          <div className="panel">
-          <h3>{t('กลุ่ม')} {groupShort(teacherGroup)}</h3>
-          <p className="sub">{t('ปีการศึกษา')} {year}</p>
-          <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-            {roster.map((s) => (
-              <RosterRow key={s.id} student={s} year={year} on={s.id === selId}
-                onPick={() => { setSelId(s.id); setOpenKey(null); }} />
-            ))}
-            {!roster.length && <p className="sub">{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
-          </div>
-          </div>
-
-          {/* ── ใบประเมิน ── */}
-          <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
-          {!student && (
-            <div className="panel"><p className="sub">{t('เลือกนักศึกษาเพื่อดูใบประเมิน')}</p></div>
-          )}
-
-          {student && !openForm && (
-            <div className="panel">
-              <h3>{firstNameOnly(student.name)} · {student.code}</h3>
-              <p className="sub">
-                {t('ชั้นปี {n}', { n: classYear })} · {t('ประเมินแล้ว')} <b>{latest.size}</b>/{forms.length} {t('ใบ')}
-                {classYear < 6 && ` · ${t('ใบ recall เป็นของปี 6')}`}
-              </p>
-              <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-                {(['CD', 'RPD', 'FDP'] as const).map((g) => (
-                  <FormGroup key={g} group={g} forms={forms} latest={latest} onOpen={setOpenKey} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {student && openForm && (
-            <GradeSheet
-              key={openForm.key}
-              form={openForm}
-              student={student}
-              classYear={classYear}
-              year={year}
-              history={rows.filter((r) => r.formKey === openForm.key)}
-              onClose={() => setOpenKey(null)}
-              onSaved={(n) => showToast({
-                message: n === null ? t('บันทึกร่างแล้ว — ยังกาไม่ครบทุกข้อ') : t('บันทึกแล้ว · ได้ {n}/{m}', { n, m: S3_FULL_SCORE }),
-                tone: 'success',
-              })}
-              onDeleted={() => showToast({ message: t('ลบผลประเมินแล้ว'), tone: 'success' })}
-            />
-            )}
-          </div>
-        </div>
-      </main>
-    </TeacherShell>
-  );
-}
-
-/* ── รายชื่อหนึ่งแถว — โชว์ว่าประเมินไปกี่ใบแล้ว ─────────────────────────── */
-function RosterRow({ student, year, on, onPick }: {
-  student: Student; year: number; on: boolean; onPick: () => void;
-}) {
-  const rows = useSect3(student.id, year);
-  const done = latestByForm(rows).size;
-  const total = sect3FormsFor(studentYear(student)).length;
-  return (
-    <button
-      onClick={onPick}
-      data-on={on}
-      className="card"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', textAlign: 'left',
-        border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
-        background: on ? 'var(--accent-tint)' : 'transparent', cursor: 'pointer',
-      }}
-    >
-      <StudentIcon size={16} weight={done === total ? 'fill' : 'regular'}
-        color={done === total ? 'var(--success-dark)' : 'var(--text-faint)'} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', font: '600 12px var(--font-head)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {firstNameOnly(student.name)}
-        </span>
-        <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>
-          {student.code}
-        </span>
-      </span>
-      <span style={{ font: '600 11px var(--font-mono)', color: done === total ? 'var(--success-dark)' : 'var(--text-muted)' }}>
-        {done}/{total}
-      </span>
-    </button>
-  );
-}
-
-/* ── ใบทั้งหมดของหนึ่งประเภทงาน ─────────────────────────────────────────── */
-function FormGroup({ group, forms, latest, onOpen }: {
+export function Sect3FormGroup({ group, forms, latest, onOpen }: {
   group: 'CD' | 'RPD' | 'FDP';
   forms: S3Form[];
   latest: Map<string, Sect3Record>;
@@ -215,7 +80,7 @@ function FormGroup({ group, forms, latest, onOpen }: {
 }
 
 /* ── ใบประเมินหนึ่งใบ ───────────────────────────────────────────────────── */
-function GradeSheet({ form, student, classYear, year, history, onClose, onSaved, onDeleted }: {
+export function Sect3Sheet({ form, student, classYear, year, history, onClose, onSaved, onDeleted }: {
   form: S3Form;
   student: Student;
   classYear: number;

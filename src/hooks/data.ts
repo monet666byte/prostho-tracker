@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import {
   getSelfAssessment, listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviews,
-  listSect3, listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
+  listSect2, listSect3, listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
 import type { Review, WorkpieceView } from '../domain/types';
@@ -131,4 +131,9 @@ export function useSelfAssessments(academicYear?: number) {
 /** ผลประเมิน Section III — ของ นศ. คนเดียว หรือทั้งหมดถ้าไม่ส่ง studentId */
 export function useSect3(studentId?: string, academicYear?: number) {
   return useLiveQuery(() => listSect3(studentId, academicYear), [studentId, academicYear], []) ?? [];
+}
+
+/** ผลประเมิน Section II — ของ นศ. คนเดียว หรือทั้งหมดถ้าไม่ส่ง studentId */
+export function useSect2(studentId?: string, academicYear?: number) {
+  return useLiveQuery(() => listSect2(studentId, academicYear), [studentId, academicYear], []) ?? [];
 }

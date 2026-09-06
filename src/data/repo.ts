@@ -10,7 +10,7 @@ import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 import { t } from '../lib/i18n';
@@ -1198,4 +1198,87 @@ export async function deleteSect3(id: string, actor: string): Promise<void> {
   if (!row) return;
   await db.sect3.delete(id);
   await logAudit(`ลบผลประเมิน Section III · ${row.formKey}`, actor, { studentId: row.studentId });
+}
+
+// ── Section II (Patient exam & treatment planning) ────────────────────────
+
+export interface Sect2Input {
+  id?: string;
+  studentId: string;
+  formKey: string;
+  academicYear: number;
+  classYear: number;
+  patientName?: string;
+  hn?: string;
+  typeOfWorks?: string;
+  workpieceId?: string;
+  grades?: Record<string, 'O' | 'S' | 'M' | 'U'>;
+  total?: number | null;
+  marks?: Record<string, boolean>;
+  passed?: boolean;
+  at: string;
+}
+
+export async function listSect2(studentId?: string, academicYear?: number): Promise<Sect2Record[]> {
+  const rows = studentId
+    ? await db.sect2.where('studentId').equals(studentId).toArray()
+    : await db.sect2.toArray();
+  const filtered = academicYear ? rows.filter((r) => r.academicYear === academicYear) : rows;
+  return filtered.sort((a, b) => b.at.localeCompare(a.at) || b.createdAt.localeCompare(a.createdAt));
+}
+
+/**
+ * ธง 3 อันในโปรไฟล์ นศ. (Sect II Removable/Fixed · Design RPD) เดิมอาจารย์ติ๊กเอง
+ * พอมีใบจริงแล้วให้ติ๊กเองอัตโนมัติ จะได้ไม่ต้องจำไปติ๊กซ้ำอีกที่
+ *
+ * ใบให้คะแนนติ๊ก true เมื่อกาครบทุกหัวข้อ — ฟอร์มกระดาษไม่ได้เขียนเกณฑ์ผ่านไว้ จึงถือว่า "ประเมินแล้ว"
+ * ส่วนใบ RPD design มีเกณฑ์ชัด (ต้องผ่านทุกข้อ) จึงตั้งตามผลจริงได้ทั้งผ่านและไม่ผ่าน
+ */
+async function syncSect2Gate(row: Sect2Record): Promise<void> {
+  const st = await db.students.get(row.studentId);
+  if (!st) return;
+  const gates = { ...(st.gates ?? {}) };
+  if (row.formKey === 'removable' && row.total !== null && row.total !== undefined) gates.sect2Removable = true;
+  else if (row.formKey === 'fixed' && row.total !== null && row.total !== undefined) gates.sect2Fixed = true;
+  else if (row.formKey === 'rpdDesign') gates.designRpd = row.passed === true;
+  else return;
+  await db.students.update(row.studentId, { gates });
+}
+
+export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2Record> {
+  const now = new Date().toISOString();
+  const prev = input.id ? await db.sect2.get(input.id) : undefined;
+  const row: Sect2Record = {
+    id: prev?.id ?? uid('s2'),
+    studentId: input.studentId,
+    formKey: input.formKey,
+    academicYear: input.academicYear,
+    classYear: input.classYear,
+    patientName: input.patientName?.trim() || undefined,
+    hn: input.hn?.trim() || undefined,
+    typeOfWorks: input.typeOfWorks?.trim() || undefined,
+    workpieceId: input.workpieceId,
+    grades: input.grades,
+    total: input.total,
+    marks: input.marks,
+    passed: input.passed,
+    by: actor,
+    at: input.at,
+    createdAt: prev?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await db.sect2.put(row);
+  await syncSect2Gate(row);
+  const score = row.formKey === 'rpdDesign'
+    ? (row.passed ? 'ผ่าน' : 'ยังไม่ผ่าน')
+    : (row.total === null || row.total === undefined ? 'ยังไม่ครบ' : `ได้ ${row.total}/70`);
+  await logAudit(`${prev ? 'แก้' : 'บันทึก'}ผลประเมิน Section II · ${row.formKey} ${score}`, actor, { studentId: row.studentId });
+  return row;
+}
+
+export async function deleteSect2(id: string, actor: string): Promise<void> {
+  const row = await db.sect2.get(id);
+  if (!row) return;
+  await db.sect2.delete(id);
+  await logAudit(`ลบผลประเมิน Section II · ${row.formKey}`, actor, { studentId: row.studentId });
 }

@@ -8,7 +8,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
   AuditEntry, ClinicGroup, Patient, Photo, ProgressUpdate, QueueItem,
-  CheckIn, ReportIssue, ReportSubmission, Review, Sect3Record, SelfAssessment, Student, Teacher, Workpiece,
+  CheckIn, ReportIssue, ReportSubmission, Review, Sect2Record, Sect3Record, SelfAssessment, Student, Teacher, Workpiece,
 } from '../domain/types';
 
 export interface KV {
@@ -31,6 +31,7 @@ export class ProsthoDB extends Dexie {
   queue!: EntityTable<QueueItem, 'id'>;
   audit!: EntityTable<AuditEntry, 'id'>;
   selfAssessments!: EntityTable<SelfAssessment, 'id'>;
+  sect2!: EntityTable<Sect2Record, 'id'>;
   sect3!: EntityTable<Sect3Record, 'id'>;
   kv!: EntityTable<KV, 'key'>;
 
@@ -79,6 +80,10 @@ export class ProsthoDB extends Dexie {
     /** v5 — Section III ของสมุด portfolio (อาจารย์ประเมินรายใบ · เก็บได้หลายครั้งต่อใบ) */
     this.version(5).stores({
       sect3: 'id, studentId, formKey, academicYear, [studentId+formKey]',
+    });
+    /** v6 — Section II (ตรวจแผนการรักษา + ใบ RPD design) */
+    this.version(6).stores({
+      sect2: 'id, studentId, formKey, academicYear, [studentId+formKey]',
     });
   }
 }

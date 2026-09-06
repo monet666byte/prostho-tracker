@@ -13,7 +13,7 @@ import { groupShort } from '../../domain/group';
 import { studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect3' | 'settings' | 'roster' | 'import' | 'alumni';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'portfolio' | 'settings' | 'roster' | 'import' | 'alumni';
 
 type NavItem = { key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour };
 
@@ -24,11 +24,10 @@ const GROUP_NAV: NavItem[] = [
   { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table },
   /* แบบประเมินตนเองปีละครั้ง — อยู่ในงานประจำกลุ่ม เพราะอ่านเป็นรายคนของกลุ่มที่ปรึกษา */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
-  /* Section III ของสมุด portfolio — ประเมินรายใบ ไม่ผูกกับคาบ จึงอยู่คู่กับ SA ไม่ใช่หน้าประเมินรายคาบ
-     ⚠️ ห้ามตั้งชื่อเมนูว่า "Section III" เฉยๆ (ผู้ใช้ทัก 7 ก.ย. 69) — พอมีเลข III ตัวเดียวในเมนู
-     คนจะถามว่า Section I กับ II หายไปไหน ทั้งที่ I คือ "ประเมินรายคาบ" ที่อยู่ข้างบนนี่เอง
-     ตั้งชื่อตามเนื้อหาแทน แล้วไปบอกเลข Section บนหัวหน้าจอซึ่งมีที่พออธิบาย */
-  { key: 'sect3', label: t('ความรู้และทักษะ'), short: 'K/S', to: '/teacher/sect3', Icon: ListChecks },
+  /* Section II + III ของสมุด portfolio รวมอยู่หน้าเดียวใช้แท็บ
+     ⚠️ ห้ามตั้งชื่อเมนูด้วยเลข Section (ผู้ใช้ทัก 7 ก.ย. 69) — พอเห็นเลขเดี่ยวๆ คนจะถามว่าเลขอื่นหายไปไหน
+     ทั้งที่ Section I คือ "ประเมินรายคาบ" ที่อยู่ข้างบนนี่เอง · ไปบอกเลขบนหัวหน้าจอซึ่งมีที่พออธิบาย */
+  { key: 'portfolio', label: t('สมุด portfolio'), short: t('สมุด'), to: '/teacher/portfolio', Icon: ListChecks },
 ];
 
 /** ระดับชั้นปี */

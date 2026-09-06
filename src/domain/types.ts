@@ -285,6 +285,32 @@ export interface Sect3Record {
   updatedAt: string;
 }
 
+/* ── Section II · Patient exam & treatment planning ────────────────────────
+   ใบเดียวกันเก็บได้สองแบบ: ใบให้คะแนน (removable/fixed) กับใบผ่าน/ไม่ผ่าน (rpdDesign) */
+export interface Sect2Record {
+  id: string;
+  studentId: string;
+  /** 'removable' | 'fixed' | 'rpdDesign' */
+  formKey: string;
+  academicYear: number;
+  classYear: number;
+  patientName?: string;
+  hn?: string;
+  /** ช่อง Type of works บนหัวฟอร์ม */
+  typeOfWorks?: string;
+  workpieceId?: string;
+  /** ใบให้คะแนน — คีย์หัวข้อ → ระดับที่กา · total เป็น null ถ้ายังกาไม่ครบ */
+  grades?: Record<string, 'O' | 'S' | 'M' | 'U'>;
+  total?: number | null;
+  /** ใบ RPD design — คีย์ข้อ → ผ่าน(true)/ไม่ผ่าน(false) · passed = ผ่านครบทุกข้อ */
+  marks?: Record<string, boolean>;
+  passed?: boolean;
+  by: string;
+  at: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Workpiece + ข้อมูลผู้ป่วยที่ join แล้ว — รูปแบบที่ UI ใช้ */
 export interface WorkpieceView extends Workpiece {
   patient: Patient;

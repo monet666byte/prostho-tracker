@@ -35,6 +35,7 @@ const TABLES: TableDef[] = [
   { local: 'issues', remote: 'issues', pk: 'studentId' },
   { local: 'audit', remote: 'audit', pk: 'id', rename: { at: 'at_when' } },
   { local: 'selfAssessments', remote: 'self_assessments', pk: 'id' },
+  { local: 'sect2', remote: 'sect2_records', pk: 'id', rename: { by: 'by_who', at: 'at_when' } },
   { local: 'sect3', remote: 'sect3_records', pk: 'id', rename: { by: 'by_who', at: 'at_when' } },
 ];
 
