@@ -976,8 +976,6 @@ export const DICT: Record<string, string> = {
   'ตกอยู่ {n} ข้อ': '{n} topics failed',
   'บันทึกแล้ว · ผ่านครบทุกข้อ': 'Saved · passed every topic',
   'บันทึกแล้ว · ยังไม่ผ่านครบ': 'Saved · not every topic passed',
-  'Section III ของสมุด Clinical Performance Portfolio — กาผลแล้วพิมพ์ออกไปลงนามบนกระดาษ':
-    'Section III of the Clinical Performance Portfolio — grade here, print, then sign on paper',
   'Section I คือหน้า “ประเมินรายคาบ”': 'Section I is the “Per-session” page',
   'ยังไม่มีนักศึกษาในกลุ่มนี้': 'No students in this group yet',
   'เลือกนักศึกษาเพื่อดูใบประเมิน': 'Pick a student to see their forms',
