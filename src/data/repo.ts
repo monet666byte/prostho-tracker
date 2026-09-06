@@ -10,7 +10,7 @@ import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, Review, ReviewStatus, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 import { t } from '../lib/i18n';
@@ -1137,4 +1137,65 @@ export async function submitSelfAssessment(
   await db.selfAssessments.put(next);
   await logAudit(`ส่งแบบประเมินตนเอง ปีการศึกษา ${academicYear}`, actor, { studentId });
   return next;
+}
+
+// ── Section III (Knowledge & skill assessment) ────────────────────────────
+
+export interface Sect3Input {
+  /** ส่งมาถ้าแก้ของเดิม · ไม่ส่ง = สร้างแถวใหม่ */
+  id?: string;
+  studentId: string;
+  formKey: string;
+  academicYear: number;
+  classYear: number;
+  patientName?: string;
+  hn?: string;
+  workpieceId?: string;
+  grades: Record<string, 'O' | 'S' | 'U'>;
+  total: number | null;
+  at: string;
+}
+
+export async function listSect3(studentId?: string, academicYear?: number): Promise<Sect3Record[]> {
+  const rows = studentId
+    ? await db.sect3.where('studentId').equals(studentId).toArray()
+    : await db.sect3.toArray();
+  const filtered = academicYear ? rows.filter((r) => r.academicYear === academicYear) : rows;
+  // ล่าสุดขึ้นก่อน — ใบเดียวกันประเมินซ้ำได้ อาจารย์ควรเห็นครั้งหลังสุดบนสุด
+  return filtered.sort((a, b) => b.at.localeCompare(a.at) || b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3Record> {
+  const now = new Date().toISOString();
+  const prev = input.id ? await db.sect3.get(input.id) : undefined;
+  const row: Sect3Record = {
+    id: prev?.id ?? uid('s3'),
+    studentId: input.studentId,
+    formKey: input.formKey,
+    academicYear: input.academicYear,
+    classYear: input.classYear,
+    patientName: input.patientName?.trim() || undefined,
+    hn: input.hn?.trim() || undefined,
+    workpieceId: input.workpieceId,
+    grades: input.grades,
+    total: input.total,
+    by: actor,
+    at: input.at,
+    createdAt: prev?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await db.sect3.put(row);
+  await logAudit(
+    `${prev ? 'แก้' : 'บันทึก'}ผลประเมิน Section III · ${input.formKey}${input.total === null ? '' : ` ได้ ${input.total}/10`}`,
+    actor,
+    { studentId: input.studentId },
+  );
+  return row;
+}
+
+export async function deleteSect3(id: string, actor: string): Promise<void> {
+  const row = await db.sect3.get(id);
+  if (!row) return;
+  await db.sect3.delete(id);
+  await logAudit(`ลบผลประเมิน Section III · ${row.formKey}`, actor, { studentId: row.studentId });
 }

@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -13,7 +13,7 @@ import { groupShort } from '../../domain/group';
 import { studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'settings' | 'roster' | 'import' | 'alumni';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect3' | 'settings' | 'roster' | 'import' | 'alumni';
 
 type NavItem = { key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour };
 
@@ -24,6 +24,8 @@ const GROUP_NAV: NavItem[] = [
   { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table },
   /* แบบประเมินตนเองปีละครั้ง — อยู่ในงานประจำกลุ่ม เพราะอ่านเป็นรายคนของกลุ่มที่ปรึกษา */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
+  /* Section III ของสมุด portfolio — ประเมินรายใบ ไม่ผูกกับคาบ จึงอยู่คู่กับ SA ไม่ใช่หน้าประเมินรายคาบ */
+  { key: 'sect3', label: t('Section III'), short: t('Sect III'), to: '/teacher/sect3', Icon: ListChecks },
 ];
 
 /** ระดับชั้นปี */

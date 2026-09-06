@@ -255,6 +255,36 @@ export interface Settings {
   saDue?: string;
 }
 
+/* ── Section III · Knowledge & skill assessment ────────────────────────────
+   หนึ่งแถว = อาจารย์ประเมินใบหนึ่งของ นศ. คนหนึ่ง หนึ่งครั้ง
+
+   ทำไมเก็บได้หลายแถวต่อใบ: ยังไม่ยืนยันกับภาคว่าประเมินซ้ำได้ไหม (ค้างถาม 7 ก.ย. 69)
+   เก็บหลายแถวไว้ก่อนครอบทั้งสองกรณี — ถ้าภาคตอบว่าครั้งเดียวก็แค่ล็อกที่หน้าจอ
+   ถ้าเก็บแถวเดียวแล้วภาคตอบว่าซ้ำได้ ต้อง migrate ฐานข้อมูล ซึ่งแพงกว่ามาก */
+export interface Sect3Record {
+  id: string;
+  studentId: string;
+  /** คีย์ใบใน SECT3_FORMS เช่น 'cdK1' 'recallRpd' */
+  formKey: string;
+  academicYear: number; // พ.ศ.
+  /** ชั้นปีตอนถูกประเมิน — Part B เป็นของปี 6 */
+  classYear: number;
+  /** ช่อง Patient full name / H.N. บนหัวฟอร์ม */
+  patientName?: string;
+  hn?: string;
+  /** ผูกกับชิ้นงานในแอปได้ถ้าเลือกจากทะเบียนเคส (ไม่บังคับ — ฟอร์มให้เขียนมือ) */
+  workpieceId?: string;
+  /** คีย์ข้อ → ระดับที่อาจารย์กา O / S / U */
+  grades: Record<string, 'O' | 'S' | 'U'>;
+  /** คะแนนรวม /10 — null ถ้ายังกาไม่ครบทุกข้อ */
+  total: number | null;
+  /** อาจารย์ผู้ประเมิน (ชื่อที่แสดง) และวันที่ในช่อง Date ของฟอร์ม */
+  by: string;
+  at: string; // ISO date
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Workpiece + ข้อมูลผู้ป่วยที่ join แล้ว — รูปแบบที่ UI ใช้ */
 export interface WorkpieceView extends Workpiece {
   patient: Patient;

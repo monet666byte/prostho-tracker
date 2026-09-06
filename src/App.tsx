@@ -24,6 +24,7 @@ import MyGroup from './routes/teacher/MyGroup';
 import Evaluate from './routes/teacher/Evaluate';
 import SelfAssess from './routes/student/SelfAssess';
 import SelfAssessments from './routes/teacher/SelfAssessments';
+import Sect3Page from './routes/teacher/Sect3';
 import SaPrint from './routes/SaPrint';
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
@@ -129,6 +130,7 @@ export default function App() {
         <Route path="/teacher/group" element={<Guard role="teacher"><MyGroup /></Guard>} />
         <Route path="/teacher/evaluate" element={<Guard role="teacher"><Evaluate /></Guard>} />
         <Route path="/teacher/sa" element={<Guard role="teacher"><SelfAssessments /></Guard>} />
+        <Route path="/teacher/sect3" element={<Guard role="teacher"><Sect3Page /></Guard>} />
         <Route path="/teacher/sa/:studentId/print" element={<Guard role="teacher"><SaPrint /></Guard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
