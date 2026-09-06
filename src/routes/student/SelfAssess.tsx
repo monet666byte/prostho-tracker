@@ -445,6 +445,7 @@ function renderQuestions(
               {run.map((r, k) => (
                 <div
                   key={r.key}
+                  className="scalerow"
                   style={{ display: 'grid', gap: 5, padding: '11px 0 0', borderTop: k ? '1px solid var(--divider)' : undefined, marginTop: k ? 4 : 7 }}
                 >
                   <span style={{ font: '600 12px/1.45 var(--font-head)' }}>{saLabel(r)}</span>
@@ -469,7 +470,7 @@ function renderQuestions(
         <div key={q.row} className="card" style={{ padding: '11px 13px', display: 'grid', gap: 8 }}>
           <span style={{ font: '600 12px var(--font-head)' }}>{saLabel(q)}</span>
           {group.map((g) => (
-            <div key={g.key} style={{ display: 'grid', gap: 4 }}>
+            <div key={g.key} className="scalerow" style={{ display: 'grid', gap: 4 }}>
               <span style={{ font: '600 10.5px var(--font-body)', color: 'var(--text-muted)' }}>
                 {saColLabel(g.col!)}
               </span>
