@@ -304,8 +304,10 @@ export function buildFeedback(input: FeedbackInput): FeedbackCard[] {
       .map((k) => SA_TYPES.find((t) => t.key === k))
       .filter(Boolean)
       .map((t) => (lang === 'en' ? t!.label : t!.th));
-    // ใช้ชื่อเต็มของกลุ่มเกณฑ์ ไม่ใช่รหัสย่อ (CD/RPD/CROWN) — อาจารย์อ่านรายงานนี้ ไม่ใช่โปรแกรมเมอร์
-    const shortNames = shortRows.map((r) => tText(r.label)).join(' · ');
+    /* ใช้ชื่อเต็มของกลุ่มเกณฑ์ ไม่ใช่รหัสย่อ (CD/RPD/CROWN) — อาจารย์อ่านรายงานนี้ ไม่ใช่โปรแกรมเมอร์
+       และติดตัวเลขว่ายังขาดเท่าไรไปด้วย ตามกฎของโปรเจกต์ว่าทุกการ์ดต้องมีตัวเลขจริงกำกับ
+       "ยังขาด CD" กับ "CD 0/2" คนละน้ำหนักกันมากเวลาอาจารย์อ่านก่อนนัดคุย (เจอตอนไล่บั๊ก 7 ก.ย. 69) */
+    const shortNames = shortRows.map((r) => `${tText(r.label)} ${r.done}/${r.required}`).join(' · ');
     cards.push({
       id: 'wants', tone: 'info',
       title: tx('เรื่องที่นักศึกษาอยากพัฒนา', 'What the student wants to improve'),
