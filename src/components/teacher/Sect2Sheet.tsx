@@ -107,6 +107,20 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
     touch();
   }, [grades, f, touch]);
 
+
+  /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
+     เดิมต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
+     ถ้ายังไม่ได้กาอะไรเลยและไม่ได้ตั้งใจกด "ประเมินใหม่" → รับแถวที่มีอยู่มาแก้ต่อ
+     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง) */
+  const wantNew = useRef(false);
+  useEffect(() => {
+    if (editingRef.current || wantNew.current) return;
+    if (Object.keys(grades).length) return;
+    const latest = history[0];
+    if (latest) reset(latest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
+
   function reset(row?: Sect2Record) {
     skipNext.current = true;
     setEditing(row?.id);
@@ -118,7 +132,10 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
     });
   }
 
+  const saving = useRef(false);
   async function save() {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     try {
       cancel();
@@ -128,21 +145,21 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
       }, currentActor());
       onSaved(total);
       onClose();
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   return (
     <div className="panel">
       <SheetHead student={student} title={form.title} code={form.key === 'removable' ? 'Sect II · Removable' : 'Sect II · Fixed'} onClose={onClose} />
 
-      {history.length > 1 && (
+      {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => reset(r)}>
-              {i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
+            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+              {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => reset(undefined)}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 
@@ -294,6 +311,20 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
     touch();
   }, [marks, f, touch]);
 
+
+  /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
+     เดิมต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
+     ถ้ายังไม่ได้กาอะไรเลยและไม่ได้ตั้งใจกด "ประเมินใหม่" → รับแถวที่มีอยู่มาแก้ต่อ
+     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง) */
+  const wantNew = useRef(false);
+  useEffect(() => {
+    if (editingRef.current || wantNew.current) return;
+    if (Object.keys(marks).length) return;
+    const latest = history[0];
+    if (latest) reset(latest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
+
   function reset(row?: Sect2Record) {
     skipNext.current = true;
     setEditing(row?.id);
@@ -305,7 +336,10 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
     });
   }
 
+  const saving = useRef(false);
   async function save() {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     try {
       cancel();
@@ -315,21 +349,21 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
       }, currentActor());
       onSaved(complete && passed);
       onClose();
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   return (
     <div className="panel">
       <SheetHead student={student} title="RPD Design Examination Form" code="Sect II · Design RPD" onClose={onClose} />
 
-      {history.length > 1 && (
+      {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => reset(r)}>
-              {i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
+            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+              {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => reset(undefined)}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 

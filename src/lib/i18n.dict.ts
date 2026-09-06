@@ -988,6 +988,7 @@ export const DICT: Record<string, string> = {
   'บันทึกร่างแล้ว — ยังกาไม่ครบทุกข้อ': 'Saved as draft — not every topic is graded yet',
   'บันทึกแล้ว · ได้ {n}/{m}': 'Saved · {n}/{m}',
   'ลบผลประเมินแล้ว': 'Assessment deleted',
+  'ใบที่ทำไว้': 'Saved form',
   'ครั้งล่าสุด': 'Latest',
   'ครั้งที่ {n}': 'Attempt {n}',
   'ประเมินใหม่': 'New assessment',

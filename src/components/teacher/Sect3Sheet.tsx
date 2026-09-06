@@ -135,6 +135,20 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
     touch();
   }, [grades, patientName, hn, at, touch]);
 
+
+  /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
+     เดิมต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
+     ถ้ายังไม่ได้กาอะไรเลยและไม่ได้ตั้งใจกด "ประเมินใหม่" → รับแถวที่มีอยู่มาแก้ต่อ
+     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง) */
+  const wantNew = useRef(false);
+  useEffect(() => {
+    if (editingRef.current || wantNew.current) return;
+    if (Object.keys(grades).length) return;
+    const latest = history[0];
+    if (latest) reset(latest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
+
   function reset(row?: Sect3Record) {
     skipNext.current = true; // สลับดูครั้งเก่า ไม่ใช่การแก้ ไม่ต้องเซฟทับ
     setEditing(row?.id);
@@ -145,7 +159,12 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
     setAt(row?.at ?? toISODate(new Date()));
   }
 
+  /* กันกดบันทึกรัว — ต้องเป็น ref เพราะ disabled={busy} มีผลหลัง re-render
+     กดสองทีเร็วๆ บนเครื่องช้าจะสร้างแถวซ้ำ (วัดได้ 5 คลิก = 5 แถว ตอนไล่บั๊ก 7 ก.ย. 69) */
+  const saving = useRef(false);
   async function save() {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     try {
       cancel();
@@ -155,7 +174,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
       }, currentActor());
       onSaved(total);
       onClose();
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   async function remove() {
@@ -179,14 +198,14 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
         </div>
       </div>
 
-      {history.length > 1 && (
+      {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => reset(r)}>
-              {i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
+            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+              {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => reset(undefined)}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 
