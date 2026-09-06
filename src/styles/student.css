@@ -825,3 +825,7 @@
 @media (pointer: coarse) {
   .qchip { min-height: 34px; display: inline-flex; align-items: center; }
 }
+
+/* การ์ดในหน้า sync กว้างเกินจอตอนตัวหนังสือใหญ่สุด (วัดเจอ 7 ก.ย. 69 · iPhone SE + xl) */
+:root[data-zoom='lg'] .screen .card,
+:root[data-zoom='xl'] .screen .card { min-width: 0; }

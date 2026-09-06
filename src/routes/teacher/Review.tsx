@@ -237,7 +237,7 @@ export default function Review() {
                       {Math.max(progression(w), 0)}/{maxProgression(w)}
                     </span>
                     <span className="chip" style={{ background: meta.tint, color: meta.ink }}>{percentCompleted(w)}%</span>
-                    <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 140 }}>
+                    <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 'min(140px, 100%)' }}>
                       {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
                     </span>
                   </div>
@@ -295,7 +295,9 @@ export default function Review() {
                       );
                     })()}
 
-                    <div style={{ flex: '1 1 280px', minWidth: 260 }}>
+                    <div /* min() แทนตัวเลขดิบ — โหมดตัวหนังสือใหญ่ทำให้ที่ว่างเหลือ ~206px
+                       ค่า minWidth ตายตัวจะดันการ์ดทะลุจอ (วัดเจอ 7 ก.ย. 69) */
+                    style={{ flex: '1 1 280px', minWidth: 'min(260px, 100%)' }}>
                       <textarea
                         className="input"
                         style={{ minHeight: 64, fontSize: 12 }}

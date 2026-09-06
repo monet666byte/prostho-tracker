@@ -1068,3 +1068,36 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .panel > .tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 .tblwrap { overflow-x: auto; }
+
+/* ── โหมดตัวหนังสือใหญ่ทำให้ที่ว่างจริงแคบลง แต่ media query ไม่รู้ ─────────
+   zoom: 1.38 ย่อพื้นที่ CSS ที่ใช้ได้ลง 28% แต่ @media ยังอ่านความกว้างจริงของจอ
+   กฎ "จอแคบ" จึงไม่ทำงาน แล้วเลย์เอาต์คอลัมน์ตายตัวก็ดันทะลุออกนอกหน้า
+   (วัดเจอ 7 ก.ย. 69: iPad แนวตั้ง + xl → หน้าวิเคราะห์ล้น 113px · หน้าแรกล้น 51px)
+
+   แก้สองทาง — ทางที่ยั่งยืนกว่าคือให้กริดรีโฟลว์เองตามที่ว่าง ไม่ใช่สั่งจำนวนคอลัมน์
+   ส่วนกล่องที่กว้างตายตัวจริงๆ (แผนที่ขั้นงาน 11 ช่อง) ให้เลื่อนในแผงตัวเอง */
+
+/* การ์ดกลุ่ม PT1–PT12: repeat(6, 1fr) ไม่ยอมลดคอลัมน์ตามที่ว่าง
+   เปลี่ยนเป็น auto-fill เฉพาะโหมดตัวใหญ่ — บนจอปกติคง 6 คอลัมน์ไว้เหมือนเดิม
+   (ถ้าใช้ auto-fill ทุกกรณี จอกว้างจะกลายเป็น 8–10 คอลัมน์ซึ่งไม่ใช่ที่ออกแบบไว้) */
+:root[data-zoom='lg'] .groupgrid,
+:root[data-zoom='xl'] .groupgrid { grid-template-columns: repeat(auto-fill, minmax(min(96px, 100%), 1fr)); }
+
+:root[data-zoom='lg'] .panel,
+:root[data-zoom='xl'] .panel { overflow-x: auto; }
+
+/* การ์ดตรวจงาน: ฝั่งขวากว้างตายตัว 246px พอตัวใหญ่ขึ้นก็ไม่เหลือที่ให้ฝั่งซ้าย */
+:root[data-zoom='lg'] .reviewcard,
+:root[data-zoom='xl'] .reviewcard { flex-wrap: wrap; }
+:root[data-zoom='lg'] .reviewcard__side,
+:root[data-zoom='xl'] .reviewcard__side {
+  width: 100%; border-left: 0; padding-left: 0;
+  border-top: 1px solid var(--divider); padding-top: 12px;
+}
+@media (max-width: 640px) {
+  .reviewcard { flex-wrap: wrap; }
+  .reviewcard__side {
+    width: 100%; border-left: 0; padding-left: 0;
+    border-top: 1px solid var(--divider); padding-top: 12px;
+  }
+}

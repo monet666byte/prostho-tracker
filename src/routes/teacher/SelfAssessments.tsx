@@ -220,7 +220,7 @@ export default function SelfAssessments() {
             {openStudent && openSa?.status === 'submitted' && (
               <>
                 <div className="card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ flex: 1, minWidth: 160 }}>
+                  <span style={{ flex: 1, minWidth: 'min(160px, 100%)' }}>
                     <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{firstNameOnly(t(openStudent.name))}</span>
                     <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
                       {t('ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}', {

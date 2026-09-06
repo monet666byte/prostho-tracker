@@ -471,7 +471,7 @@ export default function Evaluate() {
             // flex-wrap + จัดชิดบน: จอแคบ/ตัวหนังสือใหญ่ กราฟขวาจะตกลงมาเต็มแถวแทนที่จะโดนบีบ
             // และความสูงที่เปลี่ยน (เปิดตาราง/เปิดกราฟหัวข้อ) จะไม่ดันของอย่างอื่นขยับ
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 30, alignItems: 'flex-start', marginTop: 4 }}>
-              <div style={{ flex: '1 1 400px', minWidth: 300, maxWidth: 560 }}>
+              <div style={{ flex: '1 1 400px', minWidth: 'min(300px, 100%)', maxWidth: 560 }}>
                 <Radar
                   axes={criterionAvg(selectedRows)}
                   reference={groupProfile}
@@ -483,7 +483,7 @@ export default function Evaluate() {
                   floor={50}
                 />
               </div>
-              <div style={{ flex: '1 1 320px', minWidth: 270, maxWidth: 500 }}>
+              <div style={{ flex: '1 1 320px', minWidth: 'min(270px, 100%)', maxWidth: 500 }}>
                 <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>{t('คะแนนรวมรายคาบ (เต็ม {n})', { n: MAX_TOTAL })}</div>
                 <ScoreTrend rows={selectedRows} />
                 {critKey ? (() => {

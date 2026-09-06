@@ -199,7 +199,7 @@ function StudentHead({ student, note, canPrint, onPrint }: {
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 150 }}>
+      <div style={{ flex: 1, minWidth: 'min(150px, 100%)' }}>
         <h3 style={{ margin: 0 }}>{firstNameOnly(student.name)} · {student.code}</h3>
         <p className="sub" style={{ margin: '2px 0 0' }}>{note}</p>
       </div>
