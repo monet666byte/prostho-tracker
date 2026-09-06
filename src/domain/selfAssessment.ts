@@ -16,6 +16,12 @@ import { lang } from '../lib/i18n';
 /** ขยับเลขนี้เมื่อ "ความหมายของคำถาม" เปลี่ยน (เพิ่ม/ลบ/แก้ข้อ) — ของเก่ายังอ่านได้ตามเวอร์ชันเดิม */
 export const SA_FORM_VERSION = '2569.2';
 
+/**
+ * รหัสวิชาบนหัวฟอร์ม SA ต้นฉบับ — ⚠️ คนละตัวกับ DTPT502 ที่แอปใช้ทั้งระบบ
+ * ยังไม่ได้ยืนยันกับอาจารย์ว่าอันไหนถูก จึงยึดตามที่ฟอร์มเขียนไว้ (เจอตอนเทียบ 6 ก.ย. 69)
+ */
+export const SA_COURSE_CODE = 'DTIS543';
+
 /** ที่มาของฟอร์ม — โชว์ท้ายหน้าให้รู้ว่าอ้างอิงฉบับไหน */
 export const SA_SOURCE = 'MIDS Prosthodontic Clinic · Revision Oct 2025';
 
@@ -48,6 +54,14 @@ export interface SAQuestion {
   optional?: boolean;
   /** ตอบ N/A ได้ (ฟอร์มจริงมีช่อง N/A ในตาราง K/S) — เก็บเป็น -1 */
   allowNA?: boolean;
+  /**
+   * ตอนพิมพ์ ให้เอาคำตอบข้อนี้ไปต่อท้ายแถวก่อนหน้า แทนที่จะขึ้นแถวใหม่
+   *
+   * ฟอร์มต้นฉบับบางข้อเป็นข้อความยาวช่องเดียว (เช่น "Adequacy of Instructor Support:
+   * Yes. They are approachable…") แต่ในแอปเราแยกเป็น Yes/No + ช่องเหตุผล เพื่อให้
+   * ระบบเอาไปคำนวณได้ · กระดาษที่อาจารย์เซ็นจึงต้องรวมกลับเป็นแถวเดียวให้เหมือนเดิม
+   */
+  printMerge?: boolean;
   /** หัวย่อยที่ต้องขึ้นก่อนข้อนี้ ตามที่ฟอร์มต้นฉบับมี (เช่น "Prosthesis design;") */
   sub?: string;
   subTh?: string;
@@ -60,6 +74,13 @@ export interface SASection {
   key: string;
   title: string;
   th: string;
+  /**
+   * ตอนพิมพ์ ไม่ต้องขึ้นหัวหมวดใหม่ — ต่อจากหมวดก่อนหน้าเลย
+   * ฟอร์มต้นฉบับมีหัวเดียว ("Patient Examination and Treatment Planning, K and S…")
+   * คร่อมทั้งตาราง Prosthesis design และ Prosthodontic procedures
+   * แต่ในแอปเราแยกเป็น 2 หมวดเพื่อไม่ให้หน้าจอมือถือยาวเกินไป
+   */
+  printContinues?: boolean;
   note?: string;
   noteTh?: string;
   questions: readonly SAQuestion[];
@@ -200,12 +221,12 @@ export const SA_SECTIONS: readonly SASection[] = [
         th: 'ความเข้าใจเกณฑ์การให้คะแนน' },
       { key: 'courseConfidence', kind: 'scale', label: 'Confidence in Completing Course Requirements',
         th: 'ความมั่นใจว่าจะทำครบเกณฑ์ทันเวลา' },
-      { key: 'courseConfidenceNote', kind: 'text', label: 'Why do you feel that way?', th: 'เพราะอะไรถึงรู้สึกแบบนั้น' },
+      { key: 'courseConfidenceNote', kind: 'text', label: 'Why do you feel that way?', th: 'เพราะอะไรถึงรู้สึกแบบนั้น', printMerge: true },
       { key: 'courseAlignment', kind: 'text', label: 'Alignment of Course Requirements with Career Goals',
         th: 'เกณฑ์ของวิชาตรงกับเป้าหมายอาชีพเราไหม', optional: true },
       { key: 'courseSupport', kind: 'yesno', label: 'Adequacy of Instructor Support', th: 'อาจารย์ให้คำแนะนำเพียงพอไหม' },
       /* ต้นฉบับตอบเป็นข้อความ ("Yes. They are approachable, give clear guidance…") — Yes/No อย่างเดียวเก็บเหตุผลไม่ได้ */
-      { key: 'courseSupportNote', kind: 'text', label: 'Please explain', th: 'ขยายความ', optional: true },
+      { key: 'courseSupportNote', kind: 'text', label: 'Please explain', th: 'ขยายความ', optional: true, printMerge: true },
       { key: 'courseExtra', kind: 'yesno', label: 'Interest in Adding Extra Course Requirements',
         th: 'สนใจทำงานเกินเกณฑ์เพิ่มไหม' },
     ],
@@ -227,6 +248,7 @@ export const SA_SECTIONS: readonly SASection[] = [
   },
   {
     key: 'procedures',
+    printContinues: true,
     title: 'Prosthodontic procedures — Knowledge (K) and Skills (S)',
     th: 'หัตถการ — ความรู้ (K) และทักษะ (S)',
     note: 'Rate what you know (K) and what you can do (S) for each type',
@@ -278,7 +300,7 @@ export const SA_SECTIONS: readonly SASection[] = [
       { key: 'finalInterest', kind: 'text', label: 'Interesting topics',
         th: 'เรื่องที่อยากพัฒนาต่อ' },
       { key: 'finalOnTrack', kind: 'yesno', label: 'Goal approaching', th: 'รู้สึกว่าเข้าใกล้เป้าหมายไหม' },
-      { key: 'finalGoalNote', kind: 'text', label: 'Why?', th: 'เพราะอะไร', optional: true },
+      { key: 'finalGoalNote', kind: 'text', label: 'Why?', th: 'เพราะอะไร', optional: true, printMerge: true },
       { key: 'finalStrategies', kind: 'text', label: 'Strategies/Approaches',
         th: 'แผนของเทอมหน้า' },
     ],

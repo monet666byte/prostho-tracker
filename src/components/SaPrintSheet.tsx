@@ -8,7 +8,7 @@
  */
 import { Fragment } from 'react';
 import {
-  SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saOtherText, saSectionsFor,
+  SA_APPROPRIATE, SA_COURSE_CODE, SA_SCALE, SA_SOURCE, saOtherText, saSectionsFor,
   type SAQuestion, type SAValue,
 } from '../domain/selfAssessment';
 import { thaiLong } from '../lib/date';
@@ -33,11 +33,14 @@ function printable(q: SAQuestion, v: SAValue | undefined, answers: Record<string
 }
 
 export function SaPrintSheet({
-  sa, student, advisors,
+  sa, student, advisors, courseCode = SA_COURSE_CODE,
 }: {
   sa: SelfAssessment;
   student: Student;
   advisors: Teacher[];
+  /** รหัสวิชาบนหัวเอกสาร — ฟอร์ม SA ใช้ DTIS543 ซึ่งคนละตัวกับ DTPT502 ที่แอปใช้ทั้งระบบ
+      ยังไม่ได้ยืนยันกับอาจารย์ว่าอันไหนถูก จึงยึดตามที่ฟอร์มต้นฉบับเขียนไว้ก่อน */
+  courseCode?: string;
 }) {
   const sections = saSectionsFor(sa.classYear);
 
@@ -46,7 +49,7 @@ export function SaPrintSheet({
       <h1>Self-assessment (SA) report: MIDS Prosthodontic Clinic {sa.academicYear}</h1>
       <div className="sub">
         {/* ห้ามใส่ค่าสำรองที่ดูสมจริงบนเอกสารที่เซ็นจริง — ไม่มีข้อมูลต้องเห็นว่าว่าง */}
-        {t(student.name)} · {student.code} · {student.group} · Year {sa.classYear}
+        {t(student.name)} · {student.code} · {student.group} · {courseCode} Year {sa.classYear} MIDS
         {advisors.length > 0 && <> · Advisors: {advisors.map((a) => t(a.name)).join(', ')}</>}
       </div>
       <div className="sub">
@@ -58,17 +61,30 @@ export function SaPrintSheet({
       {sections.map((s) => {
         // ตาราง K/S ในฟอร์มจริงเป็น 3 คอลัมน์ (Topic | K | S) — คงรูปเดิมไว้ อาจารย์คุ้นตาแบบนี้
         const ksRows = [...new Set(s.questions.filter((q) => q.row).map((q) => q.row!))];
-        const plain = s.questions.filter((q) => !q.row);
+        /* ข้อที่ตั้ง printMerge ไม่ขึ้นแถวของตัวเอง — ไปต่อท้ายคำตอบของข้อก่อนหน้า
+           เพื่อให้กระดาษหน้าตาเหมือนฟอร์ม Word ที่เป็นข้อความยาวช่องเดียว */
+        const plain = s.questions.filter((q) => !q.row && !q.printMerge);
+        const mergedInto = new Map<string, SAQuestion[]>();
+        let prev: SAQuestion | undefined;
+        for (const q of s.questions) {
+          if (q.row) continue;
+          if (q.printMerge && prev) mergedInto.set(prev.key, [...(mergedInto.get(prev.key) ?? []), q]);
+          else prev = q;
+        }
+        const cell = (q: SAQuestion) => [
+          printable(q, sa.answers[q.key] as SAValue, sa.answers as Record<string, SAValue>),
+          ...(mergedInto.get(q.key) ?? []).map((m) => printable(m, sa.answers[m.key] as SAValue, sa.answers as Record<string, SAValue>)),
+        ].filter(Boolean).join(' · ');
         return (
-          <div className="sasec" key={s.key}>
-            <h2>{s.title}</h2>
-            {s.note && <div className="sacaption">{s.note}</div>}
+          <div className="sasec" key={s.key} style={s.printContinues ? { marginTop: 8 } : undefined}>
+            {!s.printContinues && <h2>{s.title}</h2>}
+            {s.note && !s.printContinues && <div className="sacaption">{s.note}</div>}
 
             {ksRows.length > 0 && (
               <table>
                 <thead>
                   <tr>
-                    <th className="saq">Prosthodontic procedures</th>
+                    <th className="saq">Prosthodontic procedures;</th>
                     <th style={{ width: '27%' }}>Knowledge (K)</th>
                     <th style={{ width: '27%' }}>Skill (S)</th>
                   </tr>
@@ -105,7 +121,7 @@ export function SaPrintSheet({
                     )}
                     <tr>
                       <td className="saq">{q.label}</td>
-                      <td>{printable(q, sa.answers[q.key] as SAValue, sa.answers as Record<string, SAValue>) || '—'}</td>
+                      <td>{cell(q) || '—'}</td>
                     </tr>
                     </Fragment>
                   ))}
