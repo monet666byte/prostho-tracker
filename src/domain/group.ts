@@ -1,27 +1,46 @@
 /**
  * รหัสกลุ่มคลินิก — แต่ละชั้นปีมี PT1–PT12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69)
- * ชื่อกลุ่มเลยซ้ำกันข้ามปีได้ รหัสในระบบจึงติด tag ปี:
- *   ปี 5 → 'TH-PT7' (รูปแบบเดิม — ข้อมูล/ลิงก์เก่าไม่พัง)
- *   ปี 6 → 'TH6-PT7'
- * ของจริงชั้นปีของนักศึกษามาจาก roster (student.year) — tag ในรหัสกลุ่ม
- * ใช้แยกกลุ่มชื่อซ้ำและบอกปีของ "กลุ่ม" เท่านั้น
+ * ชื่อกลุ่มซ้ำกันข้ามรุ่นได้ รหัสในระบบจึงมี prefix กำกับ และตอนนี้มีสองแบบปนกัน:
+ *   ข้อมูลตัวอย่าง/ของเดิม → 'TH-PT7' (ปี 5), 'TH6-PT7' (ปี 6), 'TH7-…' (จบแล้ว)  = ตัวเลขคือ "ชั้นปี"
+ *   รายชื่อที่นำเข้าจริง    → 'TH55-PT7'                                          = ตัวเลขคือ "เลขรุ่น DTMU"
+ *
+ * ⚠️ ห้ามอ่านชั้นปีจากรหัสกลุ่มเด็ดขาด — ตัวเลขในสองแบบนี้คนละความหมายกัน
+ * เคยมี groupYear() ที่ทำแบบนั้น พอนำเข้ารายชื่อจริงมันอ่าน 'TH55-' ได้ว่า "ชั้นปีที่ 55"
+ * แล้วส่งค่านั้นไปตั้งแท็บเริ่มต้นของหน้าอาจารย์ ซึ่งไม่มีแท็บไหนตรง = เปิดมาเจอหน้าว่าง
+ *
+ * ชั้นปีมาจาก studentYear() ของสมาชิกเสมอ (ดู domain/cohort.ts) ซึ่งเลื่อนเองตามปีการศึกษา
+ * ต่างจากรหัสกลุ่มที่แช่แข็งอยู่กับที่ตอนสร้าง — กลุ่มเดิมจะมีสมาชิกเป็นปี 6 ทั้งกลุ่มเมื่อขึ้นปีใหม่
  */
+import type { Student } from './types';
+import { studentYear } from './cohort';
 
-/** 'TH-PT7' / 'TH6-PT7' → 'PT7' — ใช้ทุกจุดที่โชว์ชื่อกลุ่ม แทน .replace('TH-','') เดิม */
+/** 'TH-PT7' / 'TH6-PT7' / 'TH55-PT7' → 'PT7' — ใช้ทุกจุดที่โชว์ชื่อกลุ่ม (ครอบทั้งสองแบบ) */
 export function groupShort(code: string | undefined): string {
   return (code ?? '').replace(/^TH\d*-/, '');
 }
 
-/** ปีของกลุ่มจากรหัส — 'TH6-' = ปี 6 · รูปแบบเดิม = ปี 5 */
-export function groupYear(code: string | undefined): number {
-  const m = (code ?? '').match(/^TH(\d+)-/);
-  return m ? Number(m[1]) : 5;
-}
-
-/** ป้ายสั้นสำหรับ chip/ตัวเลือกที่เห็นสองปีปนกัน — ปี 5 คงเดิม 'PT7' · ปี 6 = 'PT7·6' */
-export function groupLabel(code: string | undefined): string {
-  const y = groupYear(code);
-  return y === 5 ? groupShort(code) : `${groupShort(code)}·${y}`;
+/**
+ * ชั้นปีของกลุ่ม = ชั้นปีที่พบมากสุดของสมาชิก · ไม่มีสมาชิก/ไม่รู้จักกลุ่ม = undefined
+ *
+ * ใช้ตอนอยากรู้ว่า "กลุ่มที่อาจารย์คนนี้ดูแล ตอนนี้เป็นปีอะไร" เช่นตั้งแท็บเริ่มต้น
+ * นับเสียงข้างมากเพราะกลุ่มหนึ่งอาจมีคนซ้ำชั้นปนอยู่ (เหตุผลเดียวกับ modeYear ใน aggregate.ts)
+ */
+export function groupYearOf(
+  code: string | undefined,
+  students: ReadonlyArray<Pick<Student, 'group' | 'year' | 'entryYear'>>,
+  asOf: Date = new Date(),
+): number | undefined {
+  if (!code) return undefined;
+  const tally = new Map<number, number>();
+  for (const s of students) {
+    if (s.group !== code) continue;
+    const y = studentYear(s, asOf);
+    tally.set(y, (tally.get(y) ?? 0) + 1);
+  }
+  let best: number | undefined;
+  let most = 0;
+  for (const [y, n] of tally) if (n > most) { most = n; best = y; }
+  return best;
 }
 
 /** แยก "นายสมชาย ใจดี" → ["นายสมชาย", "ใจดี"] (ตัดที่ช่องว่างแรก)

@@ -17,7 +17,7 @@ import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
-import { groupShort, groupYear, splitPersonName } from '../../domain/group';
+import { groupShort, groupYearOf, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
@@ -45,7 +45,12 @@ export default function Dashboard() {
   const myGroup = useApp((st) => st.myGroup);
   // เข้าทางเมนู "รุ่นที่จบแล้ว" = ล็อกโหมดนี้ไว้ ไม่ปนกับตัวกรองชั้นปีที่จำไว้ในเครื่อง
   const alumniPage = useLocation().pathname.endsWith('/alumni');
-  const [savedYearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
+  const [savedYearView, setYearView] = useYearView(
+    // ปีเริ่มต้น = ปีของกลุ่มที่ตัวเองดูแล นับจากสมาชิกจริง ไม่ใช่แกะจากรหัสกลุ่ม
+    // ยังโหลดนักศึกษาไม่เสร็จ · กลุ่มว่าง · กลุ่มที่จบไปแล้ว → 'รวมปี' ไว้ก่อน
+    // ต้องรับเฉพาะ 5 กับ 6 เท่านั้น ค่าอื่นไม่มีแท็บรองรับ = เปิดมาเจอหน้าว่าง
+    defaultYearView(groupYearOf(myGroup ?? undefined, allStudents)),
+  );
   const yearView: YearView = alumniPage ? 'alumni' : savedYearView === 'alumni' ? 'all' : savedYearView;
   // รุ่นที่เลือกดูในโหมด "จบแล้ว" (null = ทุกรุ่นที่จบ) — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกได้
   const [cohortPick, setCohortPick] = useState<number | null>(null);
@@ -480,4 +485,9 @@ export default function Dashboard() {
       </main>
     </TeacherShell>
   );
+}
+
+/** ปีของกลุ่มอาจารย์ → แท็บเริ่มต้น · รับแค่ 5/6 นอกนั้นเป็น 'รวมปี' (ดู useYearView) */
+function defaultYearView(year: number | undefined): YearView {
+  return year === 5 ? '5' : year === 6 ? '6' : 'all';
 }

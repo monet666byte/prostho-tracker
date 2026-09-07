@@ -10,11 +10,11 @@ import {
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
-import { useYearView } from '../../hooks/useYearView';
+import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-import { groupShort, groupYear } from '../../domain/group';
+import { groupShort, groupYearOf } from '../../domain/group';
 import { isActiveStudent, isAlumni, studentYear } from '../../domain/cohort';
 
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
@@ -26,7 +26,12 @@ export default function Analytics() {
   const updatesAll = useAllProgressUpdates();
   // ตัวกรองชั้นปีเดียวกับหน้าสรุปกลุ่ม (จำค่าร่วมกัน) — กรองต้นทาง ทุกกราฟได้ผลตาม
   const myGroup = useApp((st) => st.myGroup);
-  const [yearView, setYearView] = useYearView(String(groupYear(myGroup ?? undefined)) as '5' | '6');
+  const [yearView, setYearView] = useYearView(
+    // ปีเริ่มต้น = ปีของกลุ่มที่ตัวเองดูแล นับจากสมาชิกจริง ไม่ใช่แกะจากรหัสกลุ่ม
+    // ยังโหลดนักศึกษาไม่เสร็จ · กลุ่มว่าง · กลุ่มที่จบไปแล้ว → 'รวมปี' ไว้ก่อน
+    // ต้องรับเฉพาะ 5 กับ 6 เท่านั้น ค่าอื่นไม่มีแท็บรองรับ = เปิดมาเจอหน้าว่าง
+    defaultYearView(groupYearOf(myGroup ?? undefined, allStudents)),
+  );
   const students = useMemo(
     () => {
       // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
@@ -298,4 +303,9 @@ export default function Analytics() {
       </main>
     </TeacherShell>
   );
+}
+
+/** ปีของกลุ่มอาจารย์ → แท็บเริ่มต้น · รับแค่ 5/6 นอกนั้นเป็น 'รวมปี' (ดู useYearView) */
+function defaultYearView(year: number | undefined): YearView {
+  return year === 5 ? '5' : year === 6 ? '6' : 'all';
 }
