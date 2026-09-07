@@ -11,6 +11,7 @@
  */
 import { db, kvGet, kvSet } from './db';
 import { cloudEnabled, supabase } from '../lib/cloud';
+import { flushSettings, pullSettings } from './settingsSync';
 
 /* ── ตารางที่ sync + กติกาแปลงชื่อคอลัมน์ camelCase ↔ snake_case ── */
 
@@ -199,6 +200,8 @@ const lastPulled = new Map<string, string>(); // remote table → max updated_at
 
 export async function pullAll(): Promise<void> {
   if (!supabase) return;
+  // ค่าตั้งของภาคอยู่คนละตารางและมีกติกาของตัวเอง (แถวเดียว · เขียนได้เฉพาะอาจารย์)
+  await pullSettings();
   for (const def of TABLES) {
     // เช็คก่อนว่าตารางนี้มีอะไรใหม่มั้ย — ส่วนใหญ่ไม่มี จะได้ไม่ต้องดึง/เขียนทับให้เสี่ยง
     const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
@@ -253,6 +256,10 @@ function subscribeRealtime() {
   supabase
     .channel('prostho-db')
     .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+      if (payload.table === 'app_settings') {
+        void pullSettings(); // แถวเดียว ดึงใหม่ทั้งแถวง่ายกว่าแกะ payload
+        return;
+      }
       const def = byRemote.get(payload.table);
       if (!def) return;
       const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
@@ -343,10 +350,14 @@ export async function initCloudSync(): Promise<void> {
     setInterval(() => {
       void (async () => {
         await flush();
+        await flushSettings();
         await pullAll();
       })();
     }, 15_000);
-    window.addEventListener('online', () => void flush());
+    window.addEventListener('online', () => void (async () => {
+      await flush();
+      await flushSettings();
+    })());
     // เปิดจอ/สลับกลับมาที่แอป → sync ทันที (สำคัญกับมือถือที่พักหน้าจอบ่อย — ตอนพักเบราว์เซอร์หน่วง timer)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {

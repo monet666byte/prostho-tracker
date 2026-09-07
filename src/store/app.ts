@@ -4,6 +4,7 @@ import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/re
 import { assertSect2 } from '../domain/sect2';
 import { assertSect3 } from '../domain/sect3';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
+import { onRemoteSettings, pushSettings } from '../data/settingsSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
 import { toISODate } from '../lib/date';
@@ -21,6 +22,9 @@ async function liveStudentId(): Promise<string> {
   const first = all.sort((a, b) => a.code.localeCompare(b.code))[0];
   return first?.id ?? DEMO.studentId;
 }
+
+/** ตัวถอดผู้ฟังค่าตั้งจากตู้กลาง — เก็บไว้กันสมัครซ้ำตอน init ถูกเรียกใหม่ */
+let unsubSettings: (() => void) | null = null;
 
 export interface Session {
   role: Role;
@@ -171,6 +175,12 @@ export const useApp = create<AppState>((set, get) => ({
             myGroup: mine,
             teacherGroup: mine ?? get().teacherGroup,
           });
+          /* อาจารย์อีกเครื่องกดเปิดฟอร์ม → ค่าตั้งไหลลงมาระหว่างที่หน้าจอเปิดค้างอยู่
+             ต้องยัดเข้า state ด้วย ไม่งั้นนักศึกษาต้องปิดแอปเปิดใหม่ถึงจะเห็น */
+          unsubSettings?.();
+          unsubSettings = onRemoteSettings(() => {
+            void (async () => set({ settings: await getSettings(), revision: get().revision + 1 }))();
+          });
           void initCloudSync();
         } else {
           // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
@@ -305,8 +315,23 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async updateSettings(patch) {
+    const before = get().settings;
     const settings = await saveSettings(patch);
     set({ settings, revision: get().revision + 1 });
+    /* ค่าตั้งเป็นของภาค ไม่ใช่ของเครื่อง — ต้องขึ้นตู้กลาง ไม่งั้นอาจารย์กดเปิดฟอร์ม
+       บนโน้ตบุ๊กตัวเอง แล้วนักศึกษาทุกคนยังเห็นว่าปิดอยู่ (ดู settingsSync.ts) */
+    void pushSettings(settings as unknown as Record<string, unknown>, get().actorName);
+    // เปิด/ปิดแบบประเมินตนเองมีผลกับทุกคนทั้งภาค — ต้องรู้ว่าใครกดและกดเมื่อไหร่
+    const wasOpen = (before.saOpenYears ?? []).join(',');
+    const nowOpen = (settings.saOpenYears ?? []).join(',');
+    if (wasOpen !== nowOpen) {
+      void logAudit(
+        nowOpen
+          ? `เปิดแบบประเมินตนเอง ชั้นปี ${nowOpen.split(',').join(' และ ')}`
+          : 'ปิดแบบประเมินตนเอง',
+        get().actorName,
+      );
+    }
   },
 
   setTeacherGroup(code) {

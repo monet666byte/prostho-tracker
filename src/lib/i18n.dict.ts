@@ -1053,5 +1053,9 @@ export const DICT: Record<string, string> = {
   'แตะปุ่มแชร์ ⬆︎ ด้านล่างจอ': 'Tap the Share button at the bottom of the screen',
   'เลื่อนหาแล้วแตะ “Add to Home Screen”': 'Scroll and tap "Add to Home Screen"',
   'แตะ “Add” มุมขวาบน': 'Tap "Add" in the top right',
+  /* ── ค่าตั้งของภาคขึ้นเครื่องกลาง (settingsSync.ts) ── */
+  'กำลังส่งขึ้นเครื่องกลาง…': 'Sending to the shared server…',
+  'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
+  'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
   'ยังไม่เคยทำ': 'not done yet',
 };

@@ -44,3 +44,4 @@ backups
 # แต่ไม่ควรติดไปกับ repo (เผลอ commit ไปแล้วสองครั้ง 7 ก.ย. 69 ตอนใช้ git add -A)
 t-*.mjs
 t-*.ts
+supabase/.temp/

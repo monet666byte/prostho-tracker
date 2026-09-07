@@ -1,5 +1,5 @@
 import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
@@ -13,6 +13,8 @@ import { saYearNow } from '../../domain/saFeedback';
 import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { currentActor, useApp } from '../../store/app';
+import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
+import { cloudEnabled } from '../../lib/cloud';
 
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['cd', 'CD / Complicated APD', TYPES.CD.color, t('จำนวนเคส CD ที่ต้องทำให้ครบตลอดหลักสูตร')],
@@ -199,6 +201,7 @@ export default function Settings() {
                   );
                 })}
               </div>
+              <SettingsSyncNote />
               <label className="field" style={{ marginTop: 11 }}>
                 <span>{t('กำหนดส่ง (ไม่บังคับ)')}</span>
                 <input
@@ -363,5 +366,32 @@ export default function Settings() {
         )}
       </main>
     </TeacherShell>
+  );
+}
+
+
+/**
+ * บอกว่าค่าที่เพิ่งกด "ถึงเครื่องคนอื่นหรือยัง"
+ *
+ * ทำไมต้องมี: กดปุ่มแล้วหน้าจอตัวเองเปลี่ยนทันทีเสมอ (ค่าลงเครื่องไปแล้ว)
+ * ถ้าส่งขึ้นตู้กลางไม่สำเร็จ อาจารย์จะเข้าใจว่าเปิดฟอร์มแล้ว ทั้งที่นักศึกษายังไม่เห็นอะไรเลย
+ * โหมด local/เดโม (ไม่ต่อเซิร์ฟเวอร์) ไม่ต้องขึ้นอะไร — ไม่มีตู้กลางให้ส่งอยู่แล้ว
+ */
+function SettingsSyncNote() {
+  const state = useSyncExternalStore(onSettingsSyncState, settingsSyncState, () => 'off' as const);
+  if (!cloudEnabled || state === 'off') return null;
+  const failed = state === 'failed';
+  return (
+    <p
+      style={{
+        margin: '9px 0 0',
+        font: '400 11px/1.6 var(--font-body)',
+        color: failed ? 'var(--danger, #c0392b)' : 'var(--text-muted)',
+      }}
+    >
+      {state === 'pending' && t('กำลังส่งขึ้นเครื่องกลาง…')}
+      {state === 'synced' && t('ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้')}
+      {failed && t('ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา')}
+    </p>
   );
 }
