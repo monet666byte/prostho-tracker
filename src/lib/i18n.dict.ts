@@ -435,6 +435,7 @@ export const DICT: Record<string, string> = {
   'ไว้ก่อน': 'Not now',
   'เพิ่มเลย': 'Add',
   'กำลังเตรียมข้อมูล…': 'Preparing data…',
+  'ครั้งแรกใช้เวลาสักครู่ · เปิดครั้งต่อไปจะเร็วขึ้น': 'The first open takes a moment · later opens are faster',
 
   /* ── สรุปกลุ่ม (อาจารย์) ── */
   'กลุ่ม': 'Group',

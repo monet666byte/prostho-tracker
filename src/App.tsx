@@ -74,6 +74,11 @@ function Splash() {
         <div className="skel" style={{ width: 240, height: 10, borderRadius: 5 }} />
         <div className="skel" style={{ width: 210, height: 10, borderRadius: 5 }} />
         <div style={{ font: '500 11px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>{t('กำลังเตรียมข้อมูล…')}</div>
+        {/* เปิดครั้งแรกต้องสร้างข้อมูลตัวอย่างหลายพันแถว วัดจริงได้ ~6 วินาที ครั้งต่อไป ~2
+            ถ้าไม่บอก คนเปิดครั้งแรก (โดยเฉพาะอาจารย์ที่เปิดจากลิงก์เดโม) จะนึกว่าค้าง */}
+        <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-disabled)' }}>
+          {t('ครั้งแรกใช้เวลาสักครู่ · เปิดครั้งต่อไปจะเร็วขึ้น')}
+        </div>
       </div>
     </div>
   );
