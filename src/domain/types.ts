@@ -325,7 +325,9 @@ export type SelfAssessmentStatus = 'draft' | 'submitted';
  * โครงคำถามอยู่ที่ domain/selfAssessment.ts — ที่นี่เก็บแค่คำตอบ + สถานะ
  */
 export interface SelfAssessment {
-  id: string; // `${studentId}-${academicYear}` — คนละปีคนละชุด เขียนซ้ำไม่ทับกัน
+  /** คีย์จาก saId() ใน domain/selfAssessment.ts — `sa-${studentId}-${academicYear}`
+   *  คนละปีคนละชุด เขียนซ้ำไม่ทับกัน · ห้ามประกอบเอง ให้เรียก saId() เสมอ */
+  id: string;
   studentId: string;
   academicYear: number; // พ.ศ.
   /** ชั้นปีตอนกรอก — ฟอร์มมีบล็อกเฉพาะปี 5 จึงต้องรู้ว่าตอนนั้นอยู่ปีไหน */

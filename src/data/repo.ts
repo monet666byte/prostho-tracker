@@ -11,8 +11,10 @@ import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
   CheckIn, DentureClass, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+import { saId } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
+export { saId };
 import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/image';
 
@@ -1077,9 +1079,7 @@ export async function setWorkpieceReturned(
 // ── แบบประเมินตนเอง (Self-assessment) ─────────────────────────
 
 /** หนึ่งชุดต่อ นศ. ต่อปีการศึกษา — คีย์คงที่ กรอกซ้ำก็ทับชุดเดิม ไม่งอกชุดใหม่ */
-export function saId(studentId: string, academicYear: number): string {
-  return `sa-${studentId}-${academicYear}`;
-}
+
 
 export async function getSelfAssessment(
   studentId: string,

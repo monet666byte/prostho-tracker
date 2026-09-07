@@ -414,3 +414,15 @@ export const num = (v: SAValue | undefined): number | null =>
 export const list = (v: SAValue | undefined): string[] => (Array.isArray(v) ? v : []);
 
 export const text = (v: SAValue | undefined): string => (typeof v === 'string' ? v : '');
+
+/**
+ * คีย์ของแบบประเมินตนเอง — หนึ่งคน หนึ่งปีการศึกษา หนึ่งใบ
+ *
+ * อยู่ที่ชั้น domain เพราะทั้ง repo และ seed ต้องใช้ ถ้าปล่อยไว้ที่ repo แล้วให้ seed
+ * import ข้ามมา จะเกิด import วนกัน (repo import seed อยู่ก่อนแล้ว)
+ * ⚠️ ห้ามประกอบ id เองที่อื่น — เคยพลาดตอน seed เขียน `${id}-${year}` ตกคำว่า sa-
+ * ผลคือหน้าอาจารย์ยังเห็น (กวาดทั้งตาราง) แต่ฝั่งนักศึกษาหาด้วย id ไม่เจอ เปิดมาเป็นฟอร์มเปล่า
+ */
+export function saId(studentId: string, academicYear: number): string {
+  return `sa-${studentId}-${academicYear}`;
+}

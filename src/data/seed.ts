@@ -12,10 +12,14 @@ import { procList } from '../domain/rules';
 import { isAlumni, studentYear } from '../domain/cohort';
 import { RPD_DESIGN_TOPICS, rpdDesignPassed, s2Points, sect2Form } from '../domain/sect2';
 import { s3Points, sect3FormsFor } from '../domain/sect3';
+import {
+  SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, saId, saSectionsFor, type SAValue,
+} from '../domain/selfAssessment';
 import type {
   CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Sect2Record, Sect3Record,
-  Settings, Student, Teacher, WorkType, Workpiece,
+  SelfAssessment, Settings, Student, Teacher, WorkType, Workpiece,
 } from '../domain/types';
+import { cloudEnabled } from '../lib/cloud';
 import { db, kvGet, kvSet } from './db';
 
 /** ขยับเลขนี้เมื่อแก้ค่าเริ่มต้นที่ต้องมีผลกับเครื่องที่ตั้งค่าไว้แล้ว (ดู migrateSettings) */
@@ -291,7 +295,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 33; // 33: ใบประเมิน Section II/III ตัวอย่าง (เดิมสมุด portfolio ว่างเปล่าทั้งสองฝั่ง)
+export const SEED_VERSION = 34; // 34: + แบบประเมินตนเองตัวอย่าง และเปิดฟอร์มไว้ในโหมดเดโม
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -521,8 +525,9 @@ async function seedIfEmptyInner(): Promise<void> {
     groups.map((g) => [g.code, nameOfTeacher.get(g.advisorIds[0]) ?? 'อาจารย์ที่ปรึกษา']),
   );
   const portfolio = buildPortfolio(students, teacherOfGroup);
+  const selfAssessments = buildSelfAssessments(students);
 
-  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.sect2, db.sect3, db.kv], async () => {
+  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.sect2, db.sect3, db.selfAssessments, db.kv], async () => {
     await db.teachers.bulkPut(teachers);
     await db.students.bulkPut(students);
     await db.groups.bulkPut(groups);
@@ -533,7 +538,11 @@ async function seedIfEmptyInner(): Promise<void> {
     await db.updates.bulkPut(buildDemoUpdates(checkinRows));
     await db.sect2.bulkPut(portfolio.sect2);
     await db.sect3.bulkPut(portfolio.sect3);
-    await kvSet('settings', DEFAULT_SETTINGS);
+    await db.selfAssessments.bulkPut(selfAssessments);
+    /* เดโม/รันในเครื่องที่ยังไม่ต่อเซิร์ฟเวอร์ — เปิดแบบประเมินตนเองไว้ให้ลองกดได้
+       ค่าจริงของภาคยังเป็น "ปิด" ตาม DEFAULT_SETTINGS เพราะภาคต้องเป็นคนเปิดเองปีละครั้ง
+       ถ้าไม่เปิดไว้ ฝั่งนักศึกษาจะไม่มีเมนูนี้เลย คนดูเดโมก็ประเมินฟอร์มไม่ได้ */
+    await kvSet('settings', cloudEnabled ? DEFAULT_SETTINGS : { ...DEFAULT_SETTINGS, saOpenYears: [5, 6] });
     await kvSet('seedVersion', SEED_VERSION);
     if (keptSession) await kvSet('session', keptSession);
   });
@@ -655,4 +664,109 @@ function buildPortfolio(students: Student[], teacherOf: Map<string, string>) {
     }
   }
   return { sect2, sect3 };
+}
+
+/* ── แบบประเมินตนเองตัวอย่าง ────────────────────────────────────────────────
+   เหตุผลเดียวกับสมุด portfolio: ของจริงมีแต่ฟอร์มเปล่า อาจารย์เปิดหน้า "ประเมินตนเอง"
+   มาจะไม่เห็นอะไรเลย ทั้งที่ต้องตัดสินว่าฟอร์มนี้ถามได้ตรงที่อยากรู้ไหม
+
+   คำตอบข้อความใช้ประโยคที่นักศึกษาเขียนจริงน่าจะเขียน — ไม่ใช่ lorem
+   เพราะสิ่งที่อาจารย์ต้องประเมินคือ "อ่านแล้วได้ข้อมูลพอไหม" ซึ่งดูจากคำตอบปลอมๆ ไม่ออก */
+
+const SA_TEXT_POOL: Record<string, string[]> = {
+  goals: [
+    'อยากทำ CD ให้ครบทั้งบนและล่างภายในเทอมนี้ และอยากให้คนไข้ใส่ฟันได้จริงโดยไม่ต้องแก้หลายรอบ',
+    'ตั้งใจจะจบเคส RPD ให้ได้อย่างน้อย 2 เคส และฝึกอ่าน survey line ให้แม่นขึ้น',
+    'อยากลดเวลาต่อคาบลง ตอนนี้ยังใช้เวลานานกับขั้นตอนพิมพ์ปาก',
+  ],
+  strength: [
+    'วางแผนล่วงหน้าและเตรียมเครื่องมือก่อนคนไข้มาเสมอ ทำให้ไม่เสียเวลาในคาบ',
+    'คุยกับคนไข้ได้ดี คนไข้ให้ความร่วมมือและมาตามนัดตลอด',
+    'จดบันทึกละเอียด ย้อนกลับไปดูขั้นตอนเดิมได้ตลอด',
+  ],
+  limitations: [
+    'ยังไม่มั่นใจเรื่อง jaw relation ต้องให้อาจารย์ตรวจซ้ำเกือบทุกครั้ง',
+    'บริหารเวลาไม่ค่อยดี บางคาบทำไม่ทันขั้นตอนที่วางไว้',
+    'ยังไม่ชินกับการแก้ปัญหาเฉพาะหน้าเวลาชิ้นงานจากแล็บไม่พอดี',
+  ],
+  osceHelp: [
+    'ช่วยให้เห็นภาพขั้นตอนก่อนลงมือกับคนไข้จริง ทำให้ไม่ตื่นเต้นตอนทำครั้งแรก',
+    'ได้ทบทวนลำดับขั้นตอนอย่างเป็นระบบ และรู้ว่าตัวเองยังพลาดตรงไหน',
+  ],
+  osceComment: ['อยากให้มีเวลาซ้อมกับหุ่นมากกว่านี้ก่อนสอบ', 'โจทย์ตรงกับที่เจอในคลินิกจริงดีแล้วครับ'],
+  prepNeeds: [
+    'อยากได้วิดีโอสาธิตขั้นตอน border molding ไว้ดูทบทวนก่อนลงคลินิก',
+    'อยากให้มี checklist สรุปว่าแต่ละคาบต้องเตรียมอะไรบ้าง',
+  ],
+  prepApproaches: [
+    'ถ้าอาจารย์สาธิตให้ดูหนึ่งรอบก่อนให้ลงมือเองจะเข้าใจเร็วกว่าอ่านเอกสาร',
+    'อยากให้มีเวลาถามตอบหลังจบคาบสั้นๆ จะได้เคลียร์ข้อสงสัยทันที',
+  ],
+  labIssues: [
+    'ใบสั่งงานบางครั้งเขียนไม่ครบ ทำให้แล็บต้องโทรกลับมาถาม เสียเวลาหนึ่งรอบ',
+    'ยังไม่ค่อยแน่ใจว่าต้องระบุรายละเอียดอะไรบ้างในใบ authorization',
+  ],
+};
+/** คำตอบสำรองเมื่อข้อความไม่มีในคลัง — ยังต้องอ่านรู้เรื่อง ไม่ใช่ข้อความสุ่ม */
+const SA_TEXT_FALLBACK = [
+  'โดยรวมคิดว่าทำได้ตามที่ตั้งใจไว้ แต่ยังต้องฝึกให้เร็วและมั่นใจกว่านี้',
+  'ยังต้องพัฒนาอีกหลายอย่าง โดยเฉพาะการวางแผนขั้นตอนล่วงหน้า',
+  'คิดว่าเทอมนี้ดีขึ้นกว่าเทอมก่อน แต่ยังพึ่งคำแนะนำจากอาจารย์อยู่พอสมควร',
+];
+
+function buildSelfAssessments(students: Student[]): SelfAssessment[] {
+  const rows: SelfAssessment[] = [];
+  const year = academicYear(new Date());
+
+  for (const student of students) {
+    if (isAlumni(student)) continue;
+    const classYear = studentYear(student);
+    const pick = rng(hashString(student.id + ':sa'));
+    const demo = student.id === DEMO_STUDENT_ID;
+    // ของจริงจะมีคนยังไม่ส่งเสมอ — อาจารย์ต้องเห็นทั้งคนส่งแล้ว คนกรอกค้าง และคนยังไม่เริ่ม
+    const roll = pick();
+    const state = demo ? 'submitted' : roll < 0.55 ? 'submitted' : roll < 0.75 ? 'draft' : 'none';
+    if (state === 'none') continue;
+
+    const questions = saSectionsFor(classYear).flatMap((s) => s.questions);
+    // ใบร่าง = ตอบไปได้ราวครึ่งเดียว
+    const answered = state === 'draft' ? questions.slice(0, Math.ceil(questions.length * (0.3 + pick() * 0.3))) : questions;
+    const answers: Record<string, SAValue> = {};
+
+    for (const q of answered) {
+      if (q.kind === 'scale') {
+        // ประเมินตัวเองมักเกาะกลางค่อนไปทางสูง — ให้เห็นการกระจายจริงไม่ใช่ 4 หมดทุกข้อ
+        const r = pick();
+        answers[q.key] = r < 0.08 ? 1 : r < 0.35 ? 2 : r < 0.78 ? 3 : 4;
+      } else if (q.kind === 'level') {
+        answers[q.key] = pick() < 0.78 ? SA_APPROPRIATE : SA_NEEDS_WORK;
+      } else if (q.kind === 'yesno') {
+        answers[q.key] = pick() < 0.85 ? 1 : 0;
+      } else if (q.kind === 'multi') {
+        const opts = q.options ?? [];
+        const chosen = opts.filter(() => pick() < 0.35);
+        answers[q.key] = chosen.length ? [...chosen] : opts.length ? [opts[Math.floor(pick() * opts.length)]] : [];
+      } else {
+        const pool = SA_TEXT_POOL[q.key] ?? SA_TEXT_FALLBACK;
+        answers[q.key] = pool[Math.floor(pick() * pool.length)];
+      }
+    }
+
+    const submittedAt = daysAgo(3 + Math.floor(pick() * 40));
+    rows.push({
+      // ต้องใช้ saId() ไม่ใช่ประกอบเอง — ของจริงมี prefix 'sa-' ซึ่งคอมเมนต์ใน types.ts เขียนไว้ไม่ครบ
+      // ประกอบเองแล้วหน้าอาจารย์ยังดูได้ (กวาดทั้งตาราง) แต่ฝั่งนักศึกษาหาด้วย id เลยเจอเป็นฟอร์มเปล่า
+      id: saId(student.id, year),
+      studentId: student.id,
+      academicYear: year,
+      classYear,
+      formVersion: SA_FORM_VERSION,
+      answers,
+      status: state === 'submitted' ? 'submitted' : 'draft',
+      submittedAt: state === 'submitted' ? submittedAt : undefined,
+      createdAt: submittedAt,
+      updatedAt: submittedAt,
+    });
+  }
+  return rows;
 }
