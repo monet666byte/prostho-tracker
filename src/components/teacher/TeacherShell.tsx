@@ -94,7 +94,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               style={{ borderRadius: 9, flex: 'none' }}
             />
             {/* ชื่อฝั่งอาจารย์ตามที่ผู้ใช้เคาะ 2 ก.ย. (แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยนภายหลัง) */}
-            <b>Prosth MU</b>
+            <b>Prosth Mahidol</b>
           </div>
 
           <label className="mygroup">

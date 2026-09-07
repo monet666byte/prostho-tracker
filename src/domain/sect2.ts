@@ -146,7 +146,7 @@ export const SECT2_FORMS: readonly S2Form[] = [
         rubric: {
           O: 'Demonstrates well knowledge for FPD design principles, materials and biomechanics. AND produces FPD designs that meet all clinical criteria with optimal aesthetics, function, and longevity.',
           S: 'Demonstrates well knowledge for FPD design principles, materials and biomechanics. BUT produces FPD designs that meet most clinical requirements with minor deficiencies.',
-          M: 'Demonstrates knowledge for FPD design principles, materials and biomechanics AND produces FPD designs that meet some clinical requirements.',
+          M: 'Demonstrates average knowledge for FPD design principles, materials and biomechanics AND produces FPD designs that meet some clinical requirements.',
           U: 'Lacks of knowledge for prostheses design, FPD design principles, materials and biomechanics OR cannot produce the design that meet basic requirements.',
         },
       },
