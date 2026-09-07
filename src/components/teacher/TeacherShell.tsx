@@ -15,19 +15,24 @@ import { studentYear } from '../../domain/cohort';
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'portfolio' | 'settings' | 'roster' | 'import' | 'alumni';
 
-type NavItem = { key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour };
+type NavItem = {
+  key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour;
+  /** เลขหัวข้อในสมุด portfolio เล่มจริง — ต่อท้ายชื่อเมนูเป็นตัวอ้างอิงกลับไปที่เล่ม */
+  sect?: string;
+};
 
 /** งานประจำกลุ่ม — เกาะอยู่ใต้ตัวเลือกกลุ่ม */
 const GROUP_NAV: NavItem[] = [
   // ตรวจงานรายคนยุบเป็นหน้าลูกของสรุปกลุ่ม (กดชื่อนักศึกษาในตาราง) — ไม่มีเมนูของตัวเอง
   { key: 'mygroup', label: t('สรุปกลุ่ม'), to: '/teacher/group', Icon: Users },
-  { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table },
+  { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table, sect: 'I' },
   /* แบบประเมินตนเองปีละครั้ง — อยู่ในงานประจำกลุ่ม เพราะอ่านเป็นรายคนของกลุ่มที่ปรึกษา */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
   /* Section II + III ของสมุด portfolio รวมอยู่หน้าเดียวใช้แท็บ
-     ⚠️ ห้ามตั้งชื่อเมนูด้วยเลข Section (ผู้ใช้ทัก 7 ก.ย. 69) — พอเห็นเลขเดี่ยวๆ คนจะถามว่าเลขอื่นหายไปไหน
-     ทั้งที่ Section I คือ "ประเมินรายคาบ" ที่อยู่ข้างบนนี่เอง · ไปบอกเลขบนหัวหน้าจอซึ่งมีที่พออธิบาย */
-  { key: 'portfolio', label: t('สมุด portfolio'), short: t('สมุด'), to: '/teacher/portfolio', Icon: ListChecks },
+     ⚠️ ชื่อเมนู "ห้ามเป็นเลข Section เดี่ยวๆ" (ผู้ใช้ทัก 7 ก.ย. 69) — เห็นเลขลอยมาคนจะถามว่าเลขอื่นหายไปไหน
+     ทางออกที่ผู้ใช้เสนอเอง: ชื่อไทยนำ เลขต่อท้ายเป็นป้ายเล็ก และต้องติดให้ "ครบทุกหัวข้อที่มีในเล่ม"
+     พอ I อยู่ที่ประเมินรายคาบ และ II–III อยู่ที่นี่ เมนูก็เล่าตัวเองได้ว่าไม่มีเลขไหนหาย */
+  { key: 'portfolio', label: t('สมุด portfolio'), short: t('สมุด'), to: '/teacher/portfolio', Icon: ListChecks, sect: 'II–III' },
 ];
 
 /** ระดับชั้นปี */
@@ -104,11 +109,13 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </label>
 
           <div className="side__cluster">
-            {GROUP_NAV.map(({ key, label, short, to, Icon }) => (
+            {GROUP_NAV.map(({ key, label, short, to, Icon, sect }) => (
               <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
                 <span className="navlabel">{label}</span>
                 <span className="navlabel--short">{short ?? label}</span>
+                {/* เลขหัวข้อในเล่ม — ไม่แปลภาษา เพราะเป็นชื่อเฉพาะบนสมุดที่เป็นภาษาอังกฤษอยู่แล้ว */}
+                {sect && <span className="navsect" title={`Section ${sect}`}>{sect}</span>}
                 {key === 'evaluate' && pendingEval > 0 && (
                   <span className="count" title={t('นักศึกษา {n} คนรอประเมิน', { n: pendingEval })}>{pendingEval}</span>
                 )}
