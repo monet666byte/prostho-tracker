@@ -1,11 +1,11 @@
-import { Bell, CaretRight, Check, CheckCircle, CheckSquare, ClipboardText, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
+import { Bell, BookOpen, CaretRight, Check, CheckCircle, CheckSquare, ClipboardText, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
-import { useCheckIns, usePending, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
+import { useCheckIns, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
@@ -148,6 +148,16 @@ export default function Home() {
   /* แบบประเมินตนเองของปีการศึกษานี้ — การ์ดบนหน้าแรกทำหน้าที่แจ้งเตือนไปในตัว
      3 สถานะ: เปิดแล้วยังไม่เริ่ม (จุดแดง) · กรอกค้าง (บอกความคืบหน้า) · ส่งแล้ว (เงียบ) */
   const selfAssessment = useSelfAssessment(session?.studentId, saYearNow());
+  /* จำนวนใบที่ "ประเมินเสร็จแล้ว" บนการ์ดสมุดของฉัน — นับใบเดียวกับที่หน้าสมุดโชว์
+     ใบร่างที่อาจารย์กรอกค้างไม่นับ ไม่งั้นเลขบนการ์ดกับในเล่มจะไม่ตรงกัน */
+  const pf2 = useSect2(session?.studentId, saYearNow());
+  const pf3 = useSect3(session?.studentId, saYearNow());
+  const portfolioDone = useMemo(() => {
+    const keys = new Set<string>();
+    for (const r of pf2) if (r.formKey === 'rpdDesign' ? r.passed != null : r.total != null) keys.add(`2:${r.formKey}`);
+    for (const r of pf3) if (r.total != null) keys.add(`3:${r.formKey}`);
+    return keys.size;
+  }, [pf2, pf3]);
   const saDone = selfAssessment?.status === 'submitted';
   /* ภาคเปิดทีละชั้นปีได้ — ปี 6 ต้องไม่เห็นการ์ดนี้ถ้าภาคเปิดแค่ปี 5 */
   const saOpen = saOpenFor(settings, student ? studentYear(student) : null);
@@ -489,6 +499,32 @@ export default function Home() {
           <CaretRight size={14} color="var(--text-disabled)" />
         </Link>
       )}
+
+      {/* สมุดของฉัน — portfolio ทั้งเล่มที่อาจารย์ประเมินไว้ (Section I/II/III)
+          อยู่ต่อจากแบบประเมินตนเองเพราะเป็นเรื่องเดียวกัน: ของที่ "คนอื่นกรอกให้เรา"
+          การ์ดถาวร ไม่ซ่อนตอนยังไม่มีใบไหนถูกประเมิน — สมุดเปล่าก็ยังเป็นสมุดของเขา
+          และเป็นที่เดียวที่บอกได้ว่าเล่มนี้มีอะไรรออยู่บ้าง */}
+      <Link
+        to="/app/portfolio"
+        className="card"
+        style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}
+      >
+        <span
+          style={{
+            width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
+            background: 'var(--fill)', color: 'var(--text-secondary)',
+          }}
+        >
+          <BookOpen size={17} weight="fill" />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('สมุดของฉัน')}</span>
+          <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
+            {t('อาจารย์ประเมินแล้ว {n} ใบ', { n: portfolioDone })}
+          </span>
+        </span>
+        <CaretRight size={14} color="var(--text-disabled)" />
+      </Link>
 
       {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)
           เปิดกลับ: เปลี่ยน SHOW_ACHIEVEMENT_CARD เป็น true */}

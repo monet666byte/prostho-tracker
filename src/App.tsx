@@ -25,6 +25,7 @@ import Evaluate from './routes/teacher/Evaluate';
 import SelfAssess from './routes/student/SelfAssess';
 import SelfAssessments from './routes/teacher/SelfAssessments';
 import Portfolio from './routes/teacher/Portfolio';
+import StudentPortfolio from './routes/student/Portfolio';
 import PortfolioPrint from './routes/PortfolioPrint';
 import SaPrint from './routes/SaPrint';
 
@@ -119,6 +120,9 @@ export default function App() {
         <Route path="/app/achievements" element={<Guard role="student"><Achievements /></Guard>} />
         <Route path="/app/self-assessment" element={<Guard role="student"><SelfAssess /></Guard>} />
         <Route path="/app/self-assessment/print" element={<Guard role="student"><SaPrint /></Guard>} />
+        {/* สมุดของฉัน — นักศึกษาเปิดดู portfolio ตัวเองทั้งเล่ม (อ่านอย่างเดียว) */}
+        <Route path="/app/portfolio" element={<Guard role="student"><StudentPortfolio /></Guard>} />
+        <Route path="/app/portfolio/print" element={<Guard role="student"><PortfolioPrint /></Guard>} />
 
         <Route path="/teacher" element={<Guard role="teacher"><Dashboard /></Guard>} />
         <Route path="/teacher/review" element={<Guard role="teacher"><Review /></Guard>} />

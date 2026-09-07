@@ -1057,5 +1057,17 @@ export const DICT: Record<string, string> = {
   'กำลังส่งขึ้นเครื่องกลาง…': 'Sending to the shared server…',
   'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
   'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
+  /* ── สมุดของฉัน · portfolio ฝั่งนักศึกษา ── */
+  'สมุดของฉัน': 'My portfolio',
+  'ตรวจและวางแผนการรักษา': 'Examination and treatment planning',
+  'ชั้นปีที่ {n}': 'Year {n}',
+  'ยังไม่ได้ประเมิน': 'Not assessed yet',
+  'ลงนามจริงบนกระดาษ': 'signed on the printed page',
+  'O = ได้เต็มข้อ · S = ได้ครึ่งข้อ · U = ไม่ได้คะแนน': 'O = full marks · S = half marks · U = no marks',
+  'อาจารย์ประเมินแล้ว {n} คาบ': 'Instructors have assessed {n} sessions',
+  'จากที่เช็คอินไว้ {n} คาบ · แตะเพื่อดูรายคาบ': 'out of {n} checked in · tap for session details',
+  'อาจารย์ประเมินแล้ว {n} ใบ': '{n} forms assessed by instructors',
+  'พิมพ์สมุดของฉัน': 'Print my portfolio',
+  'อาจารย์เป็นผู้ประเมินและลงนามบนสมุดกระดาษ หน้านี้ดูได้อย่างเดียว แก้ไม่ได้ · ใบที่อาจารย์ยังกรอกไม่เสร็จจะขึ้นว่ายังไม่ได้ประเมิน': 'Instructors assess and sign the paper book. This page is read-only. A form an instructor has not finished still shows as not assessed.',
   'ยังไม่เคยทำ': 'not done yet',
 };

@@ -1,23 +1,35 @@
 /**
- * หน้าพิมพ์สมุด portfolio — /teacher/portfolio/:studentId/print
+ * หน้าพิมพ์สมุด portfolio — ใช้ร่วมกันสองทาง (แบบเดียวกับหน้าพิมพ์ SA)
+ *   อาจารย์    /teacher/portfolio/:studentId/print   (ของ นศ. ที่เลือก)
+ *   นักศึกษา   /app/portfolio/print                  (ของตัวเอง — ไม่มี :studentId)
  *
- * แยกเป็นหน้าของตัวเองเหมือนหน้าพิมพ์ SA เพราะเอกสารที่จะเซ็นจริง
+ * แยกเป็นหน้าของตัวเองเพราะเอกสารที่จะเซ็นจริง
  * ต้องไม่มีโอกาสติดปุ่มหรือแถบเมนูของแอปหลุดไปบนกระดาษ
+ *
+ * ⚠️ พิมพ์เฉพาะใบที่ประเมินเสร็จแล้ว — ใบที่อาจารย์กรอกค้างไว้ต้องไม่หลุดออกกระดาษ
+ * (ข้อความใต้ปุ่มเขียนไว้แบบนี้มาตลอด แต่โค้ดเดิมส่งทุกแถวเข้าไปพิมพ์จริงๆ)
  */
 import { ArrowLeft, Printer } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useApp } from '../store/app';
 import { PortfolioPrintSheet } from '../components/PortfolioPrintSheet';
 import { saYearNow } from '../domain/saFeedback';
 import { useSect2, useSect3, useStudent } from '../hooks/data';
 import { t } from '../lib/i18n';
 
 export default function PortfolioPrint() {
-  const { studentId } = useParams();
+  const { studentId: fromRoute } = useParams();
+  const session = useApp((s) => s.session);
+  // ไม่มี :studentId = นักศึกษาเปิดสมุดตัวเอง
+  const studentId = fromRoute ?? session?.studentId;
   const navigate = useNavigate();
   const year = saYearNow();
   const student = useStudent(studentId);
-  const sect2 = useSect2(studentId, year);
-  const sect3 = useSect3(studentId, year);
+  const allSect2 = useSect2(studentId, year);
+  const allSect3 = useSect3(studentId, year);
+  // ใบร่างต้องไม่ออกกระดาษ — ใบให้คะแนนดูที่ total · ใบ RPD design ดูที่ passed
+  const sect2 = allSect2.filter((r) => (r.formKey === 'rpdDesign' ? r.passed != null : r.total != null));
+  const sect3 = allSect3.filter((r) => r.total != null);
   const count = sect2.length + sect3.length;
   // ให้ข้อมูลวาดเสร็จก่อนค่อยปล่อยให้กดพิมพ์ — กันพิมพ์ออกมาเป็นหน้าว่าง
   // คำนวณตรงๆ ได้ ไม่ต้องเป็น state (state จะทำให้ render สองรอบโดยไม่ได้อะไร)
