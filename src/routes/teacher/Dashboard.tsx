@@ -1,5 +1,5 @@
 import { Archive, BellRinging, Check, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
@@ -13,6 +13,7 @@ import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
+import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
@@ -45,6 +46,23 @@ export default function Dashboard() {
   const myGroup = useApp((st) => st.myGroup);
   // เข้าทางเมนู "รุ่นที่จบแล้ว" = ล็อกโหมดนี้ไว้ ไม่ปนกับตัวกรองชั้นปีที่จำไว้ในเครื่อง
   const alumniPage = useLocation().pathname.endsWith('/alumni');
+  /* รุ่นที่จบแล้วโหลดตอนกด ไม่ได้โหลดตอนเปิดแอป (ดู ensureAlumniSeeded ใน seed.ts)
+     ต้องมีสถานะ "กำลังโหลด" ให้เห็น ไม่งั้นกดเข้ามาจะเจอหน้าว่างแล้วนึกว่าไม่มีข้อมูล */
+  const [alumniLoading, setAlumniLoading] = useState(false);
+  /* revision ขยับตอนกด "รีเซ็ตข้อมูลเดโม" — ต้องอยู่ใน deps ด้วย
+     ไม่งั้นรีเซ็ตขณะเปิดหน้ารุ่นจบค้างไว้ ข้อมูลจะหายแล้วไม่มีอะไรสั่งโหลดกลับ */
+  const revision = useApp((st) => st.revision);
+  useEffect(() => {
+    if (!alumniPage) return;
+    let alive = true;
+    void (async () => {
+      if (await alumniReady()) return;
+      if (alive) setAlumniLoading(true);
+      await ensureAlumniSeeded();
+      if (alive) setAlumniLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [alumniPage, revision]);
   const [savedYearView, setYearView] = useYearView(
     // ปีเริ่มต้น = ปีของกลุ่มที่ตัวเองดูแล นับจากสมาชิกจริง ไม่ใช่แกะจากรหัสกลุ่ม
     // ยังโหลดนักศึกษาไม่เสร็จ · กลุ่มว่าง · กลุ่มที่จบไปแล้ว → 'รวมปี' ไว้ก่อน
@@ -161,7 +179,20 @@ export default function Dashboard() {
           </div>
         )}
 
-        {yearView === 'alumni' && alumniCohorts.length > 0 && (
+        {yearView === 'alumni' && alumniLoading && (
+          <div className="panel" style={{ display: 'grid', gap: 8, placeItems: 'center', padding: 26 }}>
+            <div className="skel" style={{ width: 190, height: 13, borderRadius: 7 }} />
+            <div className="skel" style={{ width: 250, height: 10, borderRadius: 5 }} />
+            <span style={{ font: '500 11.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 4 }}>
+              {t('กำลังเปิดข้อมูลรุ่นที่จบแล้ว…')}
+            </span>
+            <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
+              {t('เปิดครั้งแรกครั้งเดียว ครั้งต่อไปเข้าได้ทันที')}
+            </span>
+          </div>
+        )}
+
+        {yearView === 'alumni' && !alumniLoading && alumniCohorts.length > 0 && (
           <div className="cohortpick">
             <span className="cohortpick__label">{t('เลือกรุ่น')}</span>
             {alumniCohorts.map((c) => (

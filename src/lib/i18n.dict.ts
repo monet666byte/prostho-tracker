@@ -1058,6 +1058,8 @@ export const DICT: Record<string, string> = {
   'กำลังส่งขึ้นเครื่องกลาง…': 'Sending to the shared server…',
   'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
   'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
+  'กำลังเปิดข้อมูลรุ่นที่จบแล้ว…': 'Opening graduated cohorts…',
+  'เปิดครั้งแรกครั้งเดียว ครั้งต่อไปเข้าได้ทันที': 'Only on the first open · instant next time',
   /* ── สมุดของฉัน · portfolio ฝั่งนักศึกษา ── */
   'ดูคำอธิบายเกณฑ์ที่ได้': 'Show the rubric for these levels',
   'ซ่อนคำอธิบายเกณฑ์': 'Hide rubric',

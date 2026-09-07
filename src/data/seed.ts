@@ -295,7 +295,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 34; // 34: + แบบประเมินตนเองตัวอย่าง และเปิดฟอร์มไว้ในโหมดเดโม
+export const SEED_VERSION = 35; // 35: รุ่นที่จบแล้วเปลี่ยนเป็น "กดแล้วค่อยโหลด" (เปิดแอปครั้งแรกเร็วขึ้น)
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -439,6 +439,72 @@ function buildDemoUpdates(checkins: CheckIn[]): ProgressUpdate[] {
   return rows;
 }
 
+/** ดัชนีกลุ่มของรุ่นที่ยังเรียนอยู่ (ปี 5 + ปี 6) และของรุ่นที่จบไปแล้ว */
+const ACTIVE_GI = GROUPS.map((_, i) => i).filter((i) => i < GROUPS_Y5.length + GROUPS_Y6.length);
+const ALUMNI_GI = GROUPS.map((_, i) => i).filter((i) => i >= GROUPS_Y5.length + GROUPS_Y6.length);
+
+/**
+ * สร้างอาจารย์ + นักศึกษา + กลุ่ม ของกลุ่มตามดัชนีที่ระบุ
+ *
+ * แยกออกมาเป็นฟังก์ชันเพราะรุ่นที่จบแล้วไม่ได้สร้างตอนเปิดแอป แต่สร้างตอนกดดูจริง
+ * ผลลัพธ์ขึ้นกับ gi กับ code เท่านั้น เรียกเมื่อไหร่ก็ได้ค่าเดิมเป๊ะ
+ */
+function buildPeople(indices: number[]): Array<{ teachers: Teacher[]; students: Student[]; group: ClinicGroup }> {
+  return indices.map((gi) => {
+    const code = GROUPS[gi];
+    const advisorIds: [string, string] = [`tc-${code}-1`, `tc-${code}-2`];
+    const teachers: Teacher[] = [
+      {
+        id: advisorIds[0],
+        name: advisorIds[0] === DEMO_TEACHER_ID ? DEMO_TEACHER_NAME : `อ. ${TH_LETTERS[gi % TH_LETTERS.length]}.`,
+        title: 'อาจารย์ที่ปรึกษากลุ่ม',
+      },
+      { id: advisorIds[1], name: `อ. ${TH_LETTERS[(gi + 6) % TH_LETTERS.length]}.`, title: 'อาจารย์ที่ปรึกษากลุ่ม' },
+    ];
+    const students: Student[] = [];
+    const studentIds: string[] = [];
+    // ปีละ 96 คน: ปี 5 (gi 0–11) รหัสรุ่น 65 — นศ. เดโมอยู่ TH-PT7 รหัส 6504049 คงเดิม
+    // 12 กลุ่มต่อรุ่น: gi 0–11 = ปี 5 · 12–23 = ปี 6 · 24+ = รุ่นที่จบไปแล้ว (เก่าลงทีละปี)
+    const cohortIdx = Math.floor(gi / 12);
+    const y6 = cohortIdx === 1;
+    const alumni = cohortIdx >= 2;
+    const yearsBack = cohortIdx;
+    const codeBase = 6504001 - cohortIdx * 100000;
+    for (let si = 0; si < 8; si++) {
+      const id = `st-${code}-${si + 1}`;
+      studentIds.push(id);
+      students.push({
+        id,
+        code: String(codeBase + (gi % 12) * 8 + si),
+        name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
+        group: code,
+        year: alumni ? 6 : y6 ? 6 : 5,
+        // รุ่น = ปีการศึกษาที่ขึ้นคลินิกปีแรก · ยิ่งรุ่นเก่ายิ่งย้อนหลังมากขึ้น
+        entryYear: academicYear(new Date()) - yearsBack,
+        advisorIds,
+      });
+    }
+    return { teachers, students, group: { code, advisorIds, studentIds } };
+  });
+}
+
+/** เคสของนักศึกษาชุดหนึ่ง — นศ. เดโมใช้ fixture มือ ที่เหลือสุ่มแบบ deterministic */
+function buildCases(list: Student[]): { patients: Patient[]; works: Workpiece[] } {
+  const patients: Patient[] = [];
+  const works: Workpiece[] = [];
+  for (const student of list) {
+    if (student.id === DEMO_STUDENT_ID) {
+      patients.push(...DEMO_PATIENTS.map((p) => ({ ...p, ownerStudentId: DEMO_STUDENT_ID })));
+      works.push(...buildDemoWorkpieces());
+    } else {
+      const gen = generateFor(student, hashString(student.id), isAlumni(student));
+      patients.push(...gen.patients);
+      works.push(...gen.works);
+    }
+  }
+  return { patients, works };
+}
+
 export async function seedIfEmpty(): Promise<void> {
   const { setSyncPaused } = await import('./cloudSync');
   setSyncPaused(true);
@@ -466,58 +532,17 @@ async function seedIfEmptyInner(): Promise<void> {
   const patients: Patient[] = [];
   const workpieces: Workpiece[] = [];
 
-  GROUPS.forEach((code, gi) => {
-    const advisorIds: [string, string] = [`tc-${code}-1`, `tc-${code}-2`];
-    teachers.push(
-      {
-        id: advisorIds[0],
-        name: advisorIds[0] === DEMO_TEACHER_ID ? DEMO_TEACHER_NAME : `อ. ${TH_LETTERS[gi % TH_LETTERS.length]}.`,
-        title: 'อาจารย์ที่ปรึกษากลุ่ม',
-      },
-      { id: advisorIds[1], name: `อ. ${TH_LETTERS[(gi + 6) % TH_LETTERS.length]}.`, title: 'อาจารย์ที่ปรึกษากลุ่ม' },
-    );
-
-    const studentIds: string[] = [];
-    // ปีละ 96 คน: ปี 5 (gi 0–11) รหัสรุ่น 65 — นศ. เดโมอยู่ TH-PT7 รหัส 6504049 คงเดิม
-    // ปี 6 (gi 12–23) รหัสรุ่น 64
-    // 12 กลุ่มต่อรุ่น: gi 0–11 = ปี 5 · 12–23 = ปี 6 · 24+ = รุ่นที่จบไปแล้ว (เก่าลงทีละปี)
-    const cohortIdx = Math.floor(gi / 12); // 0 = ปี 5, 1 = ปี 6, 2+ = จบแล้ว
-    const y6 = cohortIdx === 1;
-    const alumni = cohortIdx >= 2;
-    const yearsBack = cohortIdx; // จำนวนปีที่เข้าคลินิกก่อนรุ่นปี 5 ปัจจุบัน
-    const codeBase = 6504001 - cohortIdx * 100000;
-    for (let si = 0; si < 8; si++) {
-      const id = `st-${code}-${si + 1}`;
-      studentIds.push(id);
-      students.push({
-        id,
-        code: String(codeBase + (gi % 12) * 8 + si),
-        name: id === DEMO_STUDENT_ID ? DEMO_STUDENT_NAME : `นศ. ${TH_LETTERS[si]}`,
-        group: code,
-        year: alumni ? 6 : y6 ? 6 : 5,
-        // รุ่น = ปีการศึกษาที่ขึ้นคลินิกปีแรก · ยิ่งรุ่นเก่ายิ่งย้อนหลังมากขึ้น
-        entryYear: academicYear(new Date()) - yearsBack,
-        advisorIds,
-      });
-    }
-    groups.push({ code, advisorIds, studentIds });
+  buildPeople(ACTIVE_GI).forEach((r) => {
+    teachers.push(...r.teachers);
+    students.push(...r.students);
+    groups.push(r.group);
   });
 
-  for (const student of students) {
-    if (student.id === DEMO_STUDENT_ID) {
-      patients.push(...DEMO_PATIENTS.map((p) => ({ ...p, ownerStudentId: DEMO_STUDENT_ID })));
-      workpieces.push(...buildDemoWorkpieces());
-    } else {
-      const seed = hashString(student.id);
-      const gen = generateFor(student, seed, isAlumni(student));
-      patients.push(...gen.patients);
-      workpieces.push(...gen.works);
-    }
-
-    // เดิมตรงนี้สร้างแถว "รอบส่งรายงาน" 96 คน × 7 รอบ = 672 แถว
-    // ให้ระบบรายงานที่ถูกถอดออกไปแล้ว — ข้อมูลที่ไม่มีใครอ่าน แต่ sync ขึ้นเซิร์ฟเวอร์
-    // และไปกองอยู่ในไฟล์สำรองทุกวัน จึงเลิกสร้าง
-  }
+  /* เดิมตรงนี้สร้างแถว "รอบส่งรายงาน" 96 คน × 7 รอบ = 672 แถว ให้ระบบรายงานที่ถอดออกไปแล้ว
+     ข้อมูลที่ไม่มีใครอ่าน แต่ sync ขึ้นเซิร์ฟเวอร์และไปกองในไฟล์สำรองทุกวัน จึงเลิกสร้าง */
+  const cases = buildCases(students);
+  patients.push(...cases.patients);
+  workpieces.push(...cases.works);
 
   // ชื่ออาจารย์ที่ปรึกษาคนแรกของแต่ละกลุ่ม — ใช้เป็นคนเซ็นในใบประเมิน
   const nameOfTeacher = new Map(teachers.map((t) => [t.id, t.name]));
@@ -545,7 +570,62 @@ async function seedIfEmptyInner(): Promise<void> {
     await kvSet('settings', cloudEnabled ? DEFAULT_SETTINGS : { ...DEFAULT_SETTINGS, saOpenYears: [5, 6] });
     await kvSet('seedVersion', SEED_VERSION);
     if (keptSession) await kvSet('session', keptSession);
+    // รุ่นที่จบแล้วยังไม่เขียน — รอจนกดเมนู "รุ่นที่จบแล้ว" (ดู ensureAlumniSeeded)
+    await kvSet(ALUMNI_KEY, false);
   });
+}
+
+/** ธงว่ารุ่นที่จบไปแล้วถูกเขียนลงเครื่องหรือยัง */
+const ALUMNI_KEY = 'alumniSeeded';
+
+/**
+ * โหลดรุ่นที่จบไปแล้วแบบ "กดแล้วค่อยโหลด"
+ *
+ * ที่มา: ผู้ใช้เสนอ 7 ก.ย. 69 — ปกติไม่มีใครกดดูรุ่นเก่าบ่อย ไม่ควรให้ทุกคนรอตอนเปิดแอป
+ * รุ่นเก่า 3 รุ่น = ราวหนึ่งในสามของแถวทั้งหมด ซึ่งเป็นต้นทุนก้อนใหญ่ของการเปิดครั้งแรก
+ *
+ * ⚠️ เคยลองย้ายไปเขียน "เบื้องหลัง" ตอนเปิดแอปแล้วไม่ได้ผลเลย เพราะ Dexie เข้าคิวให้
+ * คำสั่งถัดไปที่แตะฐานก็ไปรอต่อท้ายอยู่ดี — ต้องไม่เขียนตั้งแต่แรกเท่านั้นถึงจะเร็วขึ้นจริง
+ *
+ * เรียกซ้ำได้ ปลอดภัย (ธงกันซ้ำ + กันเรียกพร้อมกันหลายที่ด้วย promise เดียว)
+ */
+let alumniLoading: Promise<void> | null = null;
+
+export async function ensureAlumniSeeded(): Promise<void> {
+  if (await kvGet<boolean>(ALUMNI_KEY, false)) return;
+  if (alumniLoading) return alumniLoading;
+  alumniLoading = (async () => {
+    const { setSyncPaused } = await import('./cloudSync');
+    setSyncPaused(true);
+    try {
+      const teachers: Teacher[] = [];
+      const students: Student[] = [];
+      const groups: ClinicGroup[] = [];
+      buildPeople(ALUMNI_GI).forEach((r) => {
+        teachers.push(...r.teachers);
+        students.push(...r.students);
+        groups.push(r.group);
+      });
+      const { patients, works } = buildCases(students);
+      await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.kv], async () => {
+        await db.teachers.bulkPut(teachers);
+        await db.students.bulkPut(students);
+        await db.groups.bulkPut(groups);
+        await db.patients.bulkPut(patients);
+        await db.workpieces.bulkPut(works);
+        await kvSet(ALUMNI_KEY, true);
+      });
+    } finally {
+      setSyncPaused(false);
+      alumniLoading = null;
+    }
+  })();
+  return alumniLoading;
+}
+
+/** โหลดรุ่นเก่าไว้หรือยัง — หน้าจอใช้ตัดสินว่าจะขึ้นสถานะกำลังโหลดไหม */
+export async function alumniReady(): Promise<boolean> {
+  return (await kvGet<boolean>(ALUMNI_KEY, false)) === true;
 }
 
 /** ล้างและ seed ใหม่ — ใช้ปุ่ม "รีเซ็ตข้อมูลเดโม" ก่อนเริ่มนำเสนอรอบใหม่ */

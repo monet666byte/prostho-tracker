@@ -12,6 +12,7 @@ import { cohortLabel, isActiveStudent, KEEP_COHORTS, studentYear } from '../../d
 import { saYearNow } from '../../domain/saFeedback';
 import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
+import { ensureAlumniSeeded } from '../../data/seed';
 import { currentActor, useApp } from '../../store/app';
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
 import { cloudEnabled } from '../../lib/cloud';
@@ -63,6 +64,9 @@ export default function Settings() {
   const [confirmPurge, setConfirmPurge] = useState(false);
   const [purging, setPurging] = useState(false);
   const refreshReport = () => { retentionReport().then(setReport).catch(() => setReport(null)); };
+  /* แผง "ข้อมูลย้อนหลัง" นับรุ่นเก่าโดยตรง — ต้องสั่งโหลดรุ่นที่จบแล้วก่อน
+     ไม่งั้นจะรายงานว่าเก็บอยู่น้อยกว่าความจริง (รุ่นเก่าโหลดตอนกดดู ไม่ได้โหลดตอนเปิดแอป) */
+  useEffect(() => { void ensureAlumniSeeded().then(refreshReport); }, []);
   useEffect(() => { refreshReport(); }, [students.length]);
 
   async function doPurge() {
