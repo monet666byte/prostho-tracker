@@ -140,7 +140,10 @@ export default function App() {
         <Route path="/teacher/group" element={<Guard role="teacher"><MyGroup /></Guard>} />
         <Route path="/teacher/evaluate" element={<Guard role="teacher"><Evaluate /></Guard>} />
         <Route path="/teacher/sa" element={<Guard role="teacher"><SelfAssessments /></Guard>} />
-        <Route path="/teacher/portfolio" element={<Guard role="teacher"><Portfolio /></Guard>} />
+        {/* Section II กับ III แยกเมนู — หน้าเดียวกัน อ่านจาก path ว่าเปิดหัวข้อไหน */}
+        <Route path="/teacher/sect2" element={<Guard role="teacher"><Portfolio /></Guard>} />
+        <Route path="/teacher/sect3" element={<Guard role="teacher"><Portfolio /></Guard>} />
+        <Route path="/teacher/portfolio" element={<Navigate to="/teacher/sect2" replace />} />
         <Route path="/teacher/portfolio/:studentId/print" element={<Guard role="teacher"><PortfolioPrint /></Guard>} />
         {/* ลิงก์เดิมตอนที่ยังมีแค่ Section III */}
         <Route path="/teacher/sect3" element={<Navigate to="/teacher/portfolio" replace />} />

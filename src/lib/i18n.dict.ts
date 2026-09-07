@@ -1058,6 +1058,9 @@ export const DICT: Record<string, string> = {
   'กำลังส่งขึ้นเครื่องกลาง…': 'Sending to the shared server…',
   'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
   'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
+  'แผนรักษา': 'Tx. plan',
+  'เลือกจากเคสของนักศึกษา — แตะแล้วเติมให้เอง': "Pick from the student's cases — one tap fills it in",
+  'คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ': 'Enter results here, then print and sign on paper',
   'กำลังเปิดข้อมูลรุ่นที่จบแล้ว…': 'Opening graduated cohorts…',
   'เปิดครั้งแรกครั้งเดียว ครั้งต่อไปเข้าได้ทันที': 'Only on the first open · instant next time',
   /* ── สมุดของฉัน · portfolio ฝั่งนักศึกษา ── */

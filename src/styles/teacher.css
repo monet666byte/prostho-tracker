@@ -1124,3 +1124,14 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
     border-top: 1px solid var(--divider); padding-top: 12px;
   }
 }
+
+/* ปุ่มเลือกเคสของนักศึกษาบนหัวฟอร์มประเมิน — แตะแล้วเติมชื่อ/HN/ประเภทงานให้เอง */
+.chipbtn {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 7px 11px; min-height: 34px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--surface);
+  font: 500 11.5px var(--font-body); color: var(--text-body); cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.chipbtn:hover { background: var(--fill); }
+.chipbtn[data-on='true'] { background: var(--accent-tint); border-color: var(--accent-ring); color: var(--accent-hover); }

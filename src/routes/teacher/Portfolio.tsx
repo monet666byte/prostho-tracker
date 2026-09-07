@@ -10,7 +10,7 @@
  */
 import { Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RpdDesignSheet, Sect2ScoreSheet, sect2Status } from '../../components/teacher/Sect2Sheet';
 import { Sect3FormGroup, Sect3Sheet, latestByForm } from '../../components/teacher/Sect3Sheet';
@@ -39,7 +39,9 @@ export default function Portfolio() {
   const navigate = useNavigate();
   const students = useAllStudents();
   const year = saYearNow();
-  const [tab, setTab] = useState<Tab>('sect2');
+  /* Section II กับ III เป็นคนละเมนูในแถบซ้ายแล้ว (ผู้ใช้เสนอ 7 ก.ย. 69)
+     หน้านี้จึงอ่านว่าเปิดมาจากเมนูไหนแทนการมีแท็บซ้อนข้างใน — เมนูทำหน้าที่นั้นแทน */
+  const tab: Tab = useLocation().pathname.endsWith('/sect3') ? 'sect3' : 'sect2';
   const [selId, setSelId] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
 
@@ -56,29 +58,23 @@ export default function Portfolio() {
   const latest3 = latestByForm(rows3);
   const forms3 = sect3FormsFor(classYear);
 
-  const switchTab = (nx: Tab) => { setTab(nx); setOpenKey(null); };
-
   return (
-    <TeacherShell active="portfolio">
+    <TeacherShell active={tab}>
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('สมุด portfolio')} · {groupShort(teacherGroup)}</h1>
+            {/* ชื่อหัวข้อภาษาอังกฤษตามที่พิมพ์บนหัวกระดาษจริง — อาจารย์เทียบกับเล่มได้ทันที */}
+            <h1>
+              {tab === 'sect2' ? t('ตรวจและวางแผนการรักษา') : t('ความรู้และทักษะ')} · {groupShort(teacherGroup)}
+            </h1>
             <p>
-              {t('Clinical Performance Portfolio — คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ')}
+              {tab === 'sect2'
+                ? 'Section II: Patient examination and treatment planning assessments'
+                : 'Section III: Knowledge and skill assessments in specific prosthodontic procedures'}
               {' · '}
-              {t('Section I คือหน้า “ประเมินรายคาบ”')}
+              {t('คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ')}
             </p>
           </div>
-        </div>
-
-        <div className="tabs">
-          <button data-on={tab === 'sect2'} onClick={() => switchTab('sect2')}>
-            {t('Section II · แผนการรักษา')}
-          </button>
-          <button data-on={tab === 'sect3'} onClick={() => switchTab('sect3')}>
-            {t('Section III · ความรู้และทักษะ')}
-          </button>
         </div>
 
         <div className="salayout">

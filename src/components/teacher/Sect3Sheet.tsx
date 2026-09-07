@@ -13,6 +13,7 @@ import {
 import { deleteSect3, saveSect3 } from '../../data/repo';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { CasePicker } from './CasePicker';
 import { currentActor } from '../../store/app';
 import type { Sect3Record, Student } from '../../domain/types';
 
@@ -209,7 +210,14 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', marginTop: 12 }}>
+      <CasePicker
+        studentId={student.id}
+        patientName={patientName}
+        hn={hn}
+        onPick={(c) => { setPatientName(c.name); setHn(c.hn); }}
+      />
+
+      <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', marginTop: 10 }}>
         <label className="field">
           <span>{t('ชื่อผู้ป่วย')}</span>
           <input className="input" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder={t('ตามที่เขียนในฟอร์ม')} />

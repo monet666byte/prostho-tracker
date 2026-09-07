@@ -15,6 +15,7 @@ import {
   rpdDesignPassed, s2Points, sect2Form, sect2Total, type S2Form, type S2Grade,
 } from '../../domain/sect2';
 import { deleteSect2, saveSect2 } from '../../data/repo';
+import { CasePicker } from './CasePicker';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { currentActor } from '../../store/app';
@@ -37,12 +38,21 @@ function SheetHead({ student, title, code, onClose }: {
   );
 }
 
-function CaseFields({ patientName, hn, typeOfWorks, at, set }: {
+/** ช่องหัวฟอร์ม (ชื่อผู้ป่วย · H.N. · ประเภทงาน · วันที่) — มีตัวเลือกเคสอยู่ข้างบน */
+function CaseFields({ studentId, patientName, hn, typeOfWorks, at, set }: {
+  studentId: string;
   patientName: string; hn: string; typeOfWorks: string; at: string;
   set: (k: 'patientName' | 'hn' | 'typeOfWorks' | 'at', v: string) => void;
 }) {
   return (
-    <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', marginTop: 12 }}>
+    <>
+      <CasePicker
+        studentId={studentId}
+        patientName={patientName}
+        hn={hn}
+        onPick={(c) => { set('patientName', c.name); set('hn', c.hn); set('typeOfWorks', c.works.join(', ')); }}
+      />
+    <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', marginTop: 10 }}>
       <label className="field">
         <span>{t('ชื่อผู้ป่วย')}</span>
         <input className="input" value={patientName} onChange={(e) => set('patientName', e.target.value)} placeholder={t('ตามที่เขียนในฟอร์ม')} />
@@ -60,6 +70,7 @@ function CaseFields({ patientName, hn, typeOfWorks, at, set }: {
         <input className="input mono" type="date" value={at} onChange={(e) => set('at', e.target.value)} />
       </label>
     </div>
+    </>
   );
 }
 
@@ -163,7 +174,7 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
         </div>
       )}
 
-      <CaseFields {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
+      <CaseFields studentId={student.id} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
       <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
         {form.criteria.map((c, i) => {
@@ -367,7 +378,7 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
         </div>
       )}
 
-      <CaseFields {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
+      <CaseFields studentId={student.id} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
       <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
         {RPD_DESIGN_GROUPS.map((g) => (

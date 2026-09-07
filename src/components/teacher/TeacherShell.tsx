@@ -13,7 +13,7 @@ import { groupShort } from '../../domain/group';
 import { studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'portfolio' | 'settings' | 'roster' | 'import' | 'alumni';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'settings' | 'roster' | 'import' | 'alumni';
 
 type NavItem = {
   key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour;
@@ -26,11 +26,13 @@ const GROUP_NAV: NavItem[] = [
   // ตรวจงานรายคนยุบเป็นหน้าลูกของสรุปกลุ่ม (กดชื่อนักศึกษาในตาราง) — ไม่มีเมนูของตัวเอง
   { key: 'mygroup', label: t('สรุปกลุ่ม'), to: '/teacher/group', Icon: Users },
   { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table, sect: 'I' },
-  /* Section II + III ของสมุด portfolio รวมอยู่หน้าเดียวใช้แท็บ
-     ⚠️ ชื่อเมนู "ห้ามเป็นเลข Section เดี่ยวๆ" (ผู้ใช้ทัก 7 ก.ย. 69) — เห็นเลขลอยมาคนจะถามว่าเลขอื่นหายไปไหน
-     ทางออกที่ผู้ใช้เสนอเอง: ชื่อไทยนำ เลขต่อท้ายเป็นป้ายเล็ก และต้องติดให้ "ครบทุกหัวข้อที่มีในเล่ม"
-     พอ I อยู่ที่ประเมินรายคาบ และ II–III อยู่ที่นี่ เมนูก็เล่าตัวเองได้ว่าไม่มีเลขไหนหาย */
-  { key: 'portfolio', label: t('สมุด portfolio'), short: t('สมุด'), to: '/teacher/portfolio', Icon: ListChecks, sect: 'II–III' },
+  /* Section II กับ III แยกเป็นคนละเมนู (ผู้ใช้เสนอ 7 ก.ย. 69)
+     เดิมรวมหน้าเดียวใช้แท็บ เพราะกลัวว่าเห็น "Section III" ลอยมาแล้วงงว่าเลขอื่นหายไปไหน
+     พอติดเลขครบทั้งสามหัวข้อ เมนูก็เล่าตัวเองได้ว่าไม่มีเลขไหนหาย และไม่ต้องมีแท็บซ้อนข้างใน
+     ชื่อย่อภาษาไทยตามหัวข้อจริงในสมุด (Patient examination and treatment planning /
+     Knowledge and skill assessments) ซึ่งยาวเกินกว่าจะใส่เต็มในแถบ 214px */
+  { key: 'sect2', label: t('ตรวจและวางแผนการรักษา'), short: t('แผนรักษา'), to: '/teacher/sect2', Icon: ClipboardText, sect: 'II' },
+  { key: 'sect3', label: t('ความรู้และทักษะ'), short: t('ความรู้'), to: '/teacher/sect3', Icon: ListChecks, sect: 'III' },
   /* แบบประเมินตนเอง — อยู่ล่างสุดเพราะทำปีละครั้งตอนจบเทอม 1 (ผู้ใช้ขอ 7 ก.ย. 69)
      ไม่ใช่งานประจำเหมือนสามอันบน · ผลพลอยได้คือ Section I กับ II–III ได้อยู่ติดกันตามลำดับเล่ม */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
