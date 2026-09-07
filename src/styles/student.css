@@ -215,9 +215,10 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* ห้าแท็บบนจอ 375px = ช่องละ ~69px ยังพอสำหรับไอคอน 22px + ป้ายสั้น 10px */
+  grid-template-columns: repeat(5, 1fr);
   align-items: center;
-  padding: 0 6px;
+  padding: 0 5px;
 }
 /* จอกว้าง (กรอบมือถือจำลองบนเดสก์ท็อป) — แคปซูลต้องอยู่ในกรอบ */
 @media (min-width: 781px) and (pointer: fine) {

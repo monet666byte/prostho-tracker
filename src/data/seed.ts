@@ -9,9 +9,12 @@
 import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
 import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
-import { isAlumni } from '../domain/cohort';
+import { isAlumni, studentYear } from '../domain/cohort';
+import { RPD_DESIGN_TOPICS, rpdDesignPassed, s2Points, sect2Form } from '../domain/sect2';
+import { s3Points, sect3FormsFor } from '../domain/sect3';
 import type {
-  CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Settings, Student, Teacher, WorkType, Workpiece,
+  CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Sect2Record, Sect3Record,
+  Settings, Student, Teacher, WorkType, Workpiece,
 } from '../domain/types';
 import { db, kvGet, kvSet } from './db';
 
@@ -288,7 +291,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 32; // 32: 5 รุ่น (ปี5/ปี6 + จบแล้ว 3 รุ่น) · รุ่นจบทำครบ 100%
+export const SEED_VERSION = 33; // 33: ใบประเมิน Section II/III ตัวอย่าง (เดิมสมุด portfolio ว่างเปล่าทั้งสองฝั่ง)
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -512,7 +515,14 @@ async function seedIfEmptyInner(): Promise<void> {
     // และไปกองอยู่ในไฟล์สำรองทุกวัน จึงเลิกสร้าง
   }
 
-  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.kv], async () => {
+  // ชื่ออาจารย์ที่ปรึกษาคนแรกของแต่ละกลุ่ม — ใช้เป็นคนเซ็นในใบประเมิน
+  const nameOfTeacher = new Map(teachers.map((t) => [t.id, t.name]));
+  const teacherOfGroup = new Map(
+    groups.map((g) => [g.code, nameOfTeacher.get(g.advisorIds[0]) ?? 'อาจารย์ที่ปรึกษา']),
+  );
+  const portfolio = buildPortfolio(students, teacherOfGroup);
+
+  await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.sect2, db.sect3, db.kv], async () => {
     await db.teachers.bulkPut(teachers);
     await db.students.bulkPut(students);
     await db.groups.bulkPut(groups);
@@ -521,6 +531,8 @@ async function seedIfEmptyInner(): Promise<void> {
     const checkinRows = buildCheckIns();
     await db.checkins.bulkPut(checkinRows);
     await db.updates.bulkPut(buildDemoUpdates(checkinRows));
+    await db.sect2.bulkPut(portfolio.sect2);
+    await db.sect3.bulkPut(portfolio.sect3);
     await kvSet('settings', DEFAULT_SETTINGS);
     await kvSet('seedVersion', SEED_VERSION);
     if (keptSession) await kvSet('session', keptSession);
@@ -533,4 +545,114 @@ export async function resetDemoData(): Promise<void> {
   await db.open();
   await kvSet('seedVersion', 0);
   await seedIfEmpty();
+}
+
+/* ── ข้อมูลตัวอย่างสมุด portfolio (Section II + III) ────────────────────────────
+   ทำไมต้องมี: seed สร้างเคส/คาบ/รูปครบหมด แต่ไม่เคยสร้างใบประเมินสักใบ
+   อาจารย์เปิดหน้า "สมุด portfolio" กับนักศึกษาเปิด "สมุดของฉัน" เลยเจอหน้าเปล่าทั้งคู่
+   ทั้งที่เป็นของหลักที่ต้องให้เขาตัดสินว่าจะใช้แทนกระดาษไหม
+
+   กติกาการสุ่ม: deterministic จาก id ของนักศึกษา — รีเซ็ตกี่ครั้งก็ได้ภาพเดิม
+   กระจายให้เหมือนของจริงกลางเทอม: บางคนเกือบครบ ส่วนใหญ่ทำไปบ้าง บางคนยังไม่เริ่ม
+   และจงใจใส่ "ใบร่าง" (total = null) ไว้ด้วย เพื่อให้เห็นว่าระบบซ่อนใบที่ยังกรอกไม่เสร็จ
+   จากนักศึกษาและจากหน้าพิมพ์จริง */
+
+/** ใบที่กรอกค้างไว้ — คีย์ใบที่จะถูกทิ้งเป็นร่างของนักศึกษาคนนั้น */
+function draftKeyFor(pick: () => number, keys: string[]): string | null {
+  return keys.length && pick() < 0.28 ? keys[Math.floor(pick() * keys.length)] : null;
+}
+
+function buildPortfolio(students: Student[], teacherOf: Map<string, string>) {
+  const sect2: Sect2Record[] = [];
+  const sect3: Sect3Record[] = [];
+  const year = academicYear(new Date());
+
+  for (const student of students) {
+    // รุ่นที่จบไปแล้วไม่ต้องมี — ใบของเขาเป็นของปีการศึกษาเก่า ซึ่งหน้าจอกรองด้วยปีปัจจุบันอยู่แล้ว
+    if (isAlumni(student)) continue;
+    const classYear = studentYear(student);
+    const pick = rng(hashString(student.id + ':pf'));
+    const by = teacherOf.get(student.group) ?? 'อาจารย์ที่ปรึกษา';
+    // นักศึกษาเดโมต้องมีของให้ดูเยอะหน่อย — เป็นเล่มที่คนเปิดดูบ่อยสุดตอนนำเสนอ
+    const demo = student.id === DEMO_STUDENT_ID;
+    /** ทำไปแล้วกี่ส่วนของเล่ม — 0 = ยังไม่เริ่ม */
+    const progress = demo ? 0.8 : pick() < 0.12 ? 0 : 0.25 + pick() * 0.6;
+
+    /** ให้ระดับแบบสมจริง: ส่วนใหญ่ O · รองมา S · U นานๆ ครั้ง */
+    const grade3 = (): 'O' | 'S' | 'U' => {
+      const r = pick();
+      return r < 0.7 ? 'O' : r < 0.94 ? 'S' : 'U';
+    };
+    const grade2 = (): 'O' | 'S' | 'M' | 'U' => {
+      const r = pick();
+      return r < 0.5 ? 'O' : r < 0.87 ? 'S' : r < 0.97 ? 'M' : 'U';
+    };
+
+    const forms3 = sect3FormsFor(classYear);
+    const doneKeys3 = forms3.filter(() => pick() < progress).map((f) => f.key);
+    const draft3 = draftKeyFor(pick, doneKeys3);
+
+    for (const form of forms3) {
+      if (!doneKeys3.includes(form.key)) continue;
+      const isDraft = form.key === draft3;
+      // ใบร่าง = กาไม่ครบ ทำให้ total เป็น null ตามที่ repo คำนวณจริง
+      const topics = isDraft ? form.topics.slice(0, Math.max(1, Math.floor(form.topics.length / 2))) : form.topics;
+      const grades: Record<string, 'O' | 'S' | 'U'> = {};
+      for (const topic of topics) grades[topic.key] = grade3();
+      const total = isDraft
+        ? null
+        : form.topics.reduce((sum, topic) => sum + (s3Points(topic, grades[topic.key]) ?? 0), 0);
+      const at = dateAgo(10 + Math.floor(pick() * 120));
+      sect3.push({
+        id: `s3-${student.id}-${form.key}`,
+        studentId: student.id,
+        formKey: form.key,
+        academicYear: year,
+        classYear,
+        grades,
+        total: total === null ? null : Math.round(total * 100) / 100,
+        by,
+        at,
+        createdAt: at,
+        updatedAt: at,
+      });
+    }
+
+    // Section II — สองใบให้คะแนน + ใบ RPD design ผ่าน/ไม่ผ่าน
+    const doneKeys2 = ['removable', 'fixed', 'rpdDesign'].filter(() => pick() < progress);
+    const draft2 = draftKeyFor(pick, doneKeys2);
+    for (const key of doneKeys2) {
+      const isDraft = key === draft2;
+      const at = dateAgo(20 + Math.floor(pick() * 120));
+      const base = {
+        id: `s2-${student.id}-${key}`,
+        studentId: student.id,
+        formKey: key,
+        academicYear: year,
+        classYear,
+        by,
+        at,
+        createdAt: at,
+        updatedAt: at,
+      };
+      if (key === 'rpdDesign') {
+        const marks: Record<string, boolean> = {};
+        const topics = isDraft ? RPD_DESIGN_TOPICS.slice(0, 6) : RPD_DESIGN_TOPICS;
+        // ผ่านทุกข้อถึงจะผ่านทั้งใบ — ปล่อยให้ตกได้บ้างจะได้เห็นสถานะ "ยังไม่ผ่าน" จริง
+        for (const topic of topics) marks[topic.key] = pick() < 0.93;
+        sect2.push({ ...base, marks, passed: isDraft ? undefined : rpdDesignPassed(marks) });
+        continue;
+      }
+      const form = sect2Form(key);
+      if (!form) continue;
+      const criteria = isDraft ? form.criteria.slice(0, 3) : form.criteria;
+      const grades: Record<string, 'O' | 'S' | 'M' | 'U'> = {};
+      for (const c of criteria) grades[c.key] = grade2();
+      const total = isDraft
+        ? null
+        : form.criteria.reduce((sum, c) => sum + (s2Points(c, grades[c.key]) ?? 0), 0);
+      sect2.push({ ...base, grades, total });
+    }
+  }
+  return { sect2, sect3 };
 }

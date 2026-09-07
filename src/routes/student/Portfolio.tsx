@@ -166,12 +166,21 @@ function Sect3Detail({ row }: { row: Sect3Record }) {
   );
 }
 
+/**
+ * รายละเอียดใบ Section II
+ *
+ * ⚠️ ข้อความเกณฑ์ของ Section II เป็นร้อยแก้วยาวมาก (บางข้อมี 5 ข้อย่อยในย่อหน้าเดียว)
+ * รอบแรกเอามาแปะใต้ทุกหัวข้อ ผู้ใช้ทักว่ารก — กลายเป็นกำแพงตัวหนังสือจนหาคะแนนไม่เจอ
+ * ค่าเริ่มต้นจึงเหลือ "หัวข้อ · ระดับ · คะแนน" แล้วซ่อนคำอธิบายไว้ใต้ปุ่มเดียวของทั้งใบ
+ * (ล้อกับปุ่ม "ดูเกณฑ์ทั้ง 4 ระดับ" ฝั่งอาจารย์ที่ใช้วิธีเดียวกัน)
+ */
 function Sect2Detail({ row }: { row: Sect2Record }) {
+  const [showRubric, setShowRubric] = useState(false);
   const form = sect2Form(row.formKey);
   if (!form) return null;
   return (
     <>
-      <div style={{ display: 'grid', gap: 7 }}>
+      <div style={{ display: 'grid', gap: 6 }}>
         {form.criteria.map((c) => {
           const g = row.grades?.[c.key] as S2Grade | undefined;
           const pts = s2Points(c, g);
@@ -179,20 +188,45 @@ function Sect2Detail({ row }: { row: Sect2Record }) {
           return (
             <div key={c.key}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                <span style={{ flex: 1, minWidth: 0, font: '600 10.5px/1.45 var(--font-body)' }}>{c.title}</span>
+                <span style={{ flex: 1, minWidth: 0, font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)' }}>
+                  {c.title}
+                </span>
+                <span
+                  style={{
+                    flex: 'none', font: '700 9.5px var(--font-head)', borderRadius: 5, padding: '1px 5px',
+                    background: g === 'O' ? 'var(--success-tint)' : g === 'S' ? 'var(--accent-tint)'
+                      : g === 'M' ? 'var(--warning-tint)' : g === 'U' ? 'var(--danger-tint)' : 'var(--fill)',
+                    color: g === 'O' ? 'var(--success-dark)' : g === 'S' ? 'var(--accent)'
+                      : g === 'M' ? 'var(--warning-dark)' : g === 'U' ? 'var(--danger)' : 'var(--text-disabled)',
+                  }}
+                >
+                  {g ?? '–'}
+                </span>
                 <span style={{ flex: 'none', font: '600 11px var(--font-head)', width: 46, textAlign: 'right' }}>
                   {pts ?? '—'}/{c.max}
                 </span>
               </div>
-              {level && (
-                <p style={{ margin: '2px 0 0', font: '400 10px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-                  {level.label} — {c.rubric[level.v]}
+              {showRubric && level && (
+                <p style={{ margin: '3px 0 5px', font: '400 10px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
+                  <b style={{ color: 'var(--text-muted)' }}>{level.label}</b> — {c.rubric[level.v]}
                 </p>
               )}
             </div>
           );
         })}
       </div>
+      <button
+        onClick={() => setShowRubric((v) => !v)}
+        style={{
+          marginTop: 8, background: 'none', border: 0, padding: 0,
+          font: '600 10.5px var(--font-body)', color: 'var(--accent)', cursor: 'pointer',
+        }}
+      >
+        {showRubric ? t('ซ่อนคำอธิบายเกณฑ์') : t('ดูคำอธิบายเกณฑ์ที่ได้')}
+      </button>
+      <p style={{ margin: '7px 0 0', font: '400 10px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
+        {t('O = Outstanding · S = Satisfactory · M = Marginal · U = Unsatisfactory')}
+      </p>
       <Signed by={row.by} at={row.at} />
     </>
   );

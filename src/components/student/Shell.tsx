@@ -1,5 +1,5 @@
 import {
-  BatteryFull, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CloudSlash, House, UsersThree, WifiHigh,
+  BatteryFull, BookOpen, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CloudSlash, House, UsersThree, WifiHigh,
 } from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
@@ -10,11 +10,15 @@ import { ToastView } from '../ToastView';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
 
+/* ห้าแท็บ — "สมุด" คือ portfolio ของตัวเอง (Section I/II/III)
+   เดิมมีแค่การ์ดบนหน้าแรก ซึ่งอยู่ต่ำกว่าขอบจอ 196px ต้องเลื่อนลงไปหา
+   ผู้ใช้ถามหาสองรอบว่าเปิดเล่มตัวเองยังไง = หาไม่เจอจริง จึงยกขึ้นมาเป็นแท็บ */
 const TABS = [
   { to: '/app', label: t('หน้าแรก'), Icon: House, end: true },
   { to: '/app/patients', label: t('คนไข้'), Icon: UsersThree, end: false },
   { to: '/app/criteria', label: t('เกณฑ์'), Icon: ChartDonut, end: false },
   { to: '/app/checkin', label: t('คาบ'), Icon: CalendarCheck, end: false },
+  { to: '/app/portfolio', label: t('สมุด'), Icon: BookOpen, end: false },
 ];
 
 /** ความสูงเต็มของเครื่อง (820 + ขอบ 10×2) */

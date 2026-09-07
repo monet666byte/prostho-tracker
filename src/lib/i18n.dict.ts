@@ -1058,6 +1058,9 @@ export const DICT: Record<string, string> = {
   'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
   'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
   /* ── สมุดของฉัน · portfolio ฝั่งนักศึกษา ── */
+  'ดูคำอธิบายเกณฑ์ที่ได้': 'Show the rubric for these levels',
+  'ซ่อนคำอธิบายเกณฑ์': 'Hide rubric',
+  'O = Outstanding · S = Satisfactory · M = Marginal · U = Unsatisfactory': 'O = Outstanding · S = Satisfactory · M = Marginal · U = Unsatisfactory',
   'สมุดของฉัน': 'My portfolio',
   'ตรวจและวางแผนการรักษา': 'Examination and treatment planning',
   'ชั้นปีที่ {n}': 'Year {n}',
