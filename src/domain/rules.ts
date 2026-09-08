@@ -108,9 +108,15 @@ export function daysSinceUpdate(w: Workpiece, now = new Date()): number {
   return Math.max(0, Math.floor((now.getTime() - then) / 86_400_000));
 }
 
-/** เคสค้าง: ไม่มีการอัปเดตเกิน N วัน และยังไม่จบเคส */
+/**
+ * เคสค้าง: ไม่มีการอัปเดตเกิน N วัน และยังเป็นงานที่ทำอยู่จริง
+ *
+ * ต้องใช้ isActiveWork ไม่ใช่ !isComplete — เคสที่คืนไปแล้วจะไม่มีใครอัปเดตอีกตลอดกาล
+ * ถ้าดูแค่ "ยังไม่จบ" มันจะค้างถาวรและไปพองอยู่ในตัวเลข "เคสค้าง" ของหน้าอาจารย์
+ * ทุกหน้า (ภาพรวม/ตรวจงาน/วิเคราะห์) โดยไม่มีวันลดลง
+ */
 export function isStale(w: Workpiece, settings: Settings, now = new Date()): boolean {
-  return !isComplete(w) && daysSinceUpdate(w, now) >= settings.stale;
+  return isActiveWork(w) && daysSinceUpdate(w, now) >= settings.stale;
 }
 
 /**

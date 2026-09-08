@@ -274,7 +274,7 @@ export default function Patients() {
                   </span>
                   {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
                   {pending.has(w.id) && !isReturned(w) && <PendingBadge />}
-                  {isStale(w, settings) && !isReturned(w) && <StaleBadge days={daysSinceUpdate(w)} />}
+                  {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
                   {editing && (
                     <button
                       className="delbtn"
