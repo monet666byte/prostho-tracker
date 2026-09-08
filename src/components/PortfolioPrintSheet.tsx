@@ -139,7 +139,7 @@ function Sect2Half({ row, student, from, to, part }: {
     <section className="a4 a4--pf">
       <Head
         section="Section II: Patient examination and treatment planning assessments"
-        code="YEAR 5"
+        code={`YEAR ${row.classYear}`}
         student={student}
       />
       <h1 className="pftitle">{form.title} {part}</h1>
@@ -214,7 +214,7 @@ export function RpdDesignPrintPage({ row, student }: { row: Sect2Record; student
     <section className="a4 a4--pf">
       <Head
         section="Section II: Patient examination and treatment planning assessments"
-        code="YEAR 5"
+        code={`YEAR ${row.classYear}`}
         student={student}
       />
       <h1 className="pftitle">RPD Design Examination Form</h1>

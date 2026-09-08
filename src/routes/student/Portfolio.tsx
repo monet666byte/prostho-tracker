@@ -233,6 +233,19 @@ function Sect2Detail({ row }: { row: Sect2Record }) {
 }
 
 function RpdDesignDetail({ row }: { row: Sect2Record }) {
+  /* อาจารย์อนุมัติโดยไม่ได้กาทีละข้อ (ทางปกติตั้งแต่ 7 ก.ย. 69) — ไม่ต้องโชว์ 17 ข้อว่างเปล่า */
+  if (!Object.keys(row.marks ?? {}).length) {
+    return (
+      <>
+        <p style={{ margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+          {row.passed
+            ? t('อาจารย์ตรวจแบบออกแบบ RPD และอนุมัติแล้ว')
+            : t('อาจารย์ตรวจแล้ว ยังไม่ผ่าน — ติดต่ออาจารย์ที่ปรึกษาเพื่อแก้ไข')}
+        </p>
+        <Signed by={row.by} at={row.at} />
+      </>
+    );
+  }
   return (
     <>
       <div style={{ display: 'grid', gap: 8 }}>
@@ -301,7 +314,7 @@ export default function Portfolio() {
         </p>
         {student && (
           <p style={{ margin: '3px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-            {student.name} · {student.code} · {groupShort(student.group)} · {cohortLabel(cohortOf(student))}
+            {t(student.name)} · {student.code} · {groupShort(student.group)} · {cohortLabel(cohortOf(student))}
             {' · '}{t('ชั้นปีที่ {n}', { n: classYear })}
           </p>
         )}

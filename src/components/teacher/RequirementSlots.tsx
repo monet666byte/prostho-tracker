@@ -130,7 +130,7 @@ export function RequirementSlots({
         <div style={{ padding: '10px 0', borderBottom: '1px solid var(--divider)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--text-muted)', flex: 'none' }} />
-            <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{t('ข้อกำหนดก่อนจบ (Sect II · Design RPD)')}</span>
+            <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{t('ข้อกำหนดก่อนจบ (ไม่ใช่ชิ้นงาน)')}</span>
             <span
               className="mono"
               style={{ font: '600 11px var(--font-mono)', color: gateMissing === 0 ? 'var(--success)' : 'var(--text-muted)' }}

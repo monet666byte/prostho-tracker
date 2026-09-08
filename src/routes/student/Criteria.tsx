@@ -144,7 +144,7 @@ export default function Criteria() {
         <article className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--text-muted)', flex: 'none' }} />
-            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('ข้อกำหนดก่อนจบ (Sect II · Design RPD)')}</span>
+            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('ข้อกำหนดก่อนจบ (ไม่ใช่ชิ้นงาน)')}</span>
             <span style={{ font: '700 14px var(--font-mono)', color: gates.every((g) => g.value === true) ? 'var(--success)' : 'var(--text-secondary)' }}>
               {gates.filter((g) => g.value === true).length} / {gates.length}
             </span>

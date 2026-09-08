@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users } from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -10,10 +10,16 @@ import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
 import { groupShort } from '../../domain/group';
+/* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
+   เดิมเป็น `${BASE_URL}logo-mark.svg` = ไฟล์แยกที่ต้องวางข้าง index.html
+   แต่ build:share ส่งออกไฟล์เดียว และ artifact host รับแค่ index.html
+   รูปเลยขึ้นเป็น "?" ในลิงก์เดโมทุกครั้ง (ผู้ใช้ทัก 8 ก.ย. 69) — ในเครื่อง dev ไม่เจอเพราะ public/ ถูกเสิร์ฟอยู่
+   พอ import แบบนี้ assetsInlineLimit ของโหมด share จะฝังเป็น data URI ให้เอง ไม่ว่าไฟล์จะใหญ่แค่ไหน */
+import logoMark from '../../assets/logo-mark.svg';
 import { studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'settings' | 'roster' | 'import' | 'alumni';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'exams' | 'settings' | 'roster' | 'import' | 'alumni';
 
 type NavItem = {
   key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour;
@@ -33,6 +39,10 @@ const GROUP_NAV: NavItem[] = [
      Knowledge and skill assessments) ซึ่งยาวเกินกว่าจะใส่เต็มในแถบ 214px */
   { key: 'sect2', label: t('ตรวจและวางแผนการรักษา'), short: t('แผนรักษา'), to: '/teacher/sect2', Icon: ClipboardText, sect: 'II' },
   { key: 'sect3', label: t('ความรู้และทักษะ'), short: t('ความรู้'), to: '/teacher/sect3', Icon: ListChecks, sect: 'III' },
+  /* OSCE + สอบ RPD design — ผู้ใช้เคาะ 8 ก.ย. 69 ว่าทำเป็นแค่ช่องติ๊กพอ ไม่ต้องมีฟอร์ม
+     ไม่ติดเลข section เพราะ OSCE อยู่หน้าแรกสุดของเล่ม ส่วนใบสอบ design อยู่ใน Section II
+     ติดเลขจะยิ่งงงกว่าเดิม — ตรงนี้จึงเป็นหมวดของตัวเองว่า "การสอบ" */
+  { key: 'exams', label: t('การสอบ'), short: t('สอบ'), to: '/teacher/exams', Icon: SealCheck },
   /* แบบประเมินตนเอง — อยู่ล่างสุดเพราะทำปีละครั้งตอนจบเทอม 1 (ผู้ใช้ขอ 7 ก.ย. 69)
      ไม่ใช่งานประจำเหมือนสามอันบน · ผลพลอยได้คือ Section I กับ II–III ได้อยู่ติดกันตามลำดับเล่ม */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
@@ -89,7 +99,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             {/* logo-mark = ไอคอนแอปเวอร์ชันสำหรับขนาดเล็ก (พื้นน้ำเงิน เส้นขาวหนา)
                 ตัวเต็ม icon.svg เส้นบางบนพื้นขาว พอย่อเหลือ 30px แทบมองไม่เห็น (ผู้ใช้แจ้ง 2 ก.ย.) */}
             <img
-              src={`${import.meta.env.BASE_URL}logo-mark.svg`}
+              src={logoMark}
               alt=""
               width={30}
               height={30}

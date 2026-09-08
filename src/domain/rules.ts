@@ -278,13 +278,19 @@ export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date
 }
 
 /** ครบเกณฑ์จริงต้องผ่านทั้งเกณฑ์สะสมและเกณฑ์รายปีทุกปี */
-export const GATE_KEYS: GateKey[] = ['sect2Removable', 'sect2Fixed', 'designRpd'];
+export const GATE_KEYS: GateKey[] = ['sect2Removable', 'sect2Fixed', 'osce', 'designRpd'];
 /** ชื่อตามหัวคอลัมน์ในชีต — คงเป็นอังกฤษทั้งสองภาษาเหมือนหัวข้อ radar */
 export const GATE_LABELS: Record<GateKey, string> = {
   sect2Removable: 'Sect II Tx. plan · Removable',
   sect2Fixed: 'Sect II Tx. plan · Fixed',
   designRpd: 'Design RPD',
+  osce: 'OSCE',
 };
+
+/** ข้อที่อาจารย์ติ๊กเองในหน้า "การสอบ" — ที่เหลือระบบติ๊กให้จากใบประเมิน Section II
+ *  เรียง OSCE ก่อน (ผู้ใช้เคาะ 8 ก.ย. 69) ให้ตรงลำดับในเล่ม — ลำดับใน GATE_KEYS ก็สลับตามแล้ว
+ *  หน้าเกณฑ์ฝั่งนักศึกษาจะได้เรียงเหมือนกัน */
+export const EXAM_GATE_KEYS: GateKey[] = ['osce', 'designRpd'];
 
 export interface GateRow {
   key: GateKey;

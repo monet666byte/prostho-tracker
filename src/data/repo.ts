@@ -1254,13 +1254,26 @@ async function syncSect2Gate(studentId: string, formKey: string): Promise<void> 
 
   const rows = (await db.sect2.where('studentId').equals(studentId).toArray())
     .filter((r) => r.formKey === formKey);
-  const passed = formKey === 'rpdDesign'
-    ? rows.some((r) => r.passed === true)
-    : rows.some((r) => r.total !== null && r.total !== undefined);
+  /**
+   * แยก "ยังไม่มีข้อมูล" ออกจาก "ไม่ผ่าน" — สามสถานะ ไม่ใช่สองสถานะ
+   *
+   * ใบที่เพิ่งเปิดแล้วยังไม่ตัดสิน (autosave เก็บหัวฟอร์มไว้เฉยๆ) ไม่ใช่ใบที่ตก
+   * ถ้ามัดรวมเป็น false นักศึกษาจะเห็นหน้าเกณฑ์ตัวเองขึ้น "ยังไม่ผ่าน"
+   * ทั้งที่อาจารย์ยังไม่ได้ตัดสินอะไรเลย — และนี่คือเงื่อนไขจบ (เจอตอนไล่เช็ค 8 ก.ย. 69)
+   *
+   * ไม่มีใบที่ตัดสินแล้วเลย = ลบธงทิ้ง (กลับไปเป็น "ยังไม่มีข้อมูล")
+   * ซึ่งครอบกรณีลบใบทิ้งหมดด้วย — ธงต้องไม่ค้างเป็นผ่าน (บั๊กที่แก้ไปรอบไล่บั๊ก 4)
+   */
+  const decided = formKey === 'rpdDesign'
+    ? rows.filter((r) => r.passed === true || r.passed === false)
+    : rows.filter((r) => r.total !== null && r.total !== undefined);
+  const next = decided.length === 0
+    ? undefined
+    : formKey === 'rpdDesign' ? decided.some((r) => r.passed === true) : true;
 
   const gates = { ...(st.gates ?? {}) };
-  if (gates[key] === passed) return;   // ไม่มีอะไรเปลี่ยน อย่าเขียนซ้ำให้ sync ทำงานเปล่า
-  gates[key] = passed;
+  if (gates[key] === next) return;   // ไม่มีอะไรเปลี่ยน อย่าเขียนซ้ำให้ sync ทำงานเปล่า
+  if (next === undefined) delete gates[key]; else gates[key] = next;
   await db.students.update(studentId, { gates });
 }
 

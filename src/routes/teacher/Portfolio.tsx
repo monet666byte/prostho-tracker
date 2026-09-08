@@ -100,8 +100,7 @@ export default function Portfolio() {
               <div className="panel">
                 <StudentHead
                   student={student}
-                  note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest2.size}/3 ${t('ใบ')}`
-                    + (classYear !== 5 ? ` · ${t('ใบชุดนี้เป็นของปี 5')}` : '')}
+                  note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest2.size}/3 ${t('ใบ')}`}
                   canPrint={latest2.size + latest3.size > 0}
                   onPrint={() => navigate(`/teacher/portfolio/${student.id}/print`)}
                 />
@@ -196,7 +195,7 @@ function StudentHead({ student, note, canPrint, onPrint }: {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 'min(150px, 100%)' }}>
-        <h3 style={{ margin: 0 }}>{firstNameOnly(student.name)} · {student.code}</h3>
+        <h3 style={{ margin: 0 }}>{firstNameOnly(t(student.name))} · {student.code}</h3>
         <p className="sub" style={{ margin: '2px 0 0' }}>{note}</p>
       </div>
       <button className="btn btn--sec" style={{ height: 40 }} disabled={!canPrint} onClick={onPrint}>
@@ -261,7 +260,7 @@ function RosterRow({ student, year, tab, on, onPick }: {
         color={full ? 'var(--success-dark)' : 'var(--text-faint)'} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', font: '600 12px var(--font-head)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {firstNameOnly(student.name)}
+          {firstNameOnly(t(student.name))}
         </span>
         <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>{student.code}</span>
       </span>

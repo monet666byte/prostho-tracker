@@ -193,7 +193,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: 0 }}>{form.title}</h3>
           <p className="sub" style={{ margin: '2px 0 0' }}>
-            {form.code} · {firstNameOnly(student.name)} {student.code}
+            {form.code} · {firstNameOnly(t(student.name))} {student.code}
             {form.yearOnly ? ` · YEAR ${form.yearOnly}` : ''}
           </p>
         </div>

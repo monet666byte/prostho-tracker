@@ -191,8 +191,11 @@ function generateFor(student: Student, seed: number, graduated = false) {
   let n = 0;
   let actives = 0; // ชิ้นที่ยังไม่จบ — ของจริงถือพร้อมกันไม่เกิน 3
   const MAX_ACTIVE = 3;
-  // เพดานรวมทั้งจบแล้ว: ข้อมูลตัวอย่างให้คนละไม่เกิน 3 ชิ้น จะได้นับด้วยตาไม่งง
-  const MAX_TOTAL_PIECES = 3;
+  /* เพดานจำนวนชิ้นต่อคน — คนที่ยังเรียนอยู่ให้ไม่เกิน 3 จะได้นับด้วยตาไม่งง
+     แต่รุ่นที่จบไปแล้วต้องเกิน 3 ไม่งั้นไม่มีวันครบเกณฑ์สะสม (CD 2 + RPD 2 + Crown 2 = 6)
+     ⚠️ เพดาน 3 เดิมครอบรุ่นจบด้วย ทำให้หน้ารุ่นจบขึ้น "เกณฑ์สะสม 3/6" มาตลอด
+     ซึ่งขัดกับที่ผู้ใช้ขอไว้ว่ารุ่นจบต้องครบ 100% (เจอตอนไล่เช็ค 8 ก.ย. 69) */
+  const MAX_TOTAL_PIECES = graduated ? 8 : 3;
 
   /**
    * เคสจะจบได้ก็ต่อเมื่อ "รับมานานพอ" เทียบกับเวลาที่งานประเภทนั้นใช้จริง
@@ -274,8 +277,10 @@ function generateFor(student: Student, seed: number, graduated = false) {
   // RPD 17 สัปดาห์ยังไม่มีใครจบ — ให้ตัวเลขทั้งชั้นปีออกมาสมเหตุผลเอง
   const local = (bias = 0) => pace + bias + (rand() - 0.5) * 0.44;
   if (graduated) {
-    // จบหลักสูตรแล้ว = ทำครบเกณฑ์ทุกประเภทหลัก ไม่เหลือค้าง
-    (['CD', 'RPD', 'CB'] as WorkType[]).forEach((ty) => push(ty, true));
+    /* จบหลักสูตรแล้ว = ทำครบเกณฑ์ทุกประเภท ไม่เหลือค้าง
+       ชุดนี้ตรงกับ DEFAULT_SETTINGS.req พอดี: CD 2 · RPD 2 · Crown/Bridge 2 (มี Post-core 1 ในนั้น)
+       ถ้าภาคปรับเกณฑ์ในหน้าตั้งค่า ตัวเลขนี้จะไม่ตามให้ — แต่เป็นข้อมูลตัวอย่าง รับได้ */
+    (['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC'] as WorkType[]).forEach((ty) => push(ty, true));
     return { patients, works };
   }
   const finishTarget = (() => { const l = local(); return l > 0.86 ? 2 : l > 0.32 ? 1 : 0; })();
@@ -295,7 +300,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 35; // 35: รุ่นที่จบแล้วเปลี่ยนเป็น "กดแล้วค่อยโหลด" (เปิดแอปครั้งแรกเร็วขึ้น)
+export const SEED_VERSION = 36; // 36: รุ่นจบทำครบเกณฑ์จริง (เดิมได้ 3 ชิ้นจาก 6 เพราะติดเพดาน)
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {

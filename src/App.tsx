@@ -25,6 +25,7 @@ import Evaluate from './routes/teacher/Evaluate';
 import SelfAssess from './routes/student/SelfAssess';
 import SelfAssessments from './routes/teacher/SelfAssessments';
 import Portfolio from './routes/teacher/Portfolio';
+import Exams from './routes/teacher/Exams';
 import StudentPortfolio from './routes/student/Portfolio';
 import PortfolioPrint from './routes/PortfolioPrint';
 import SaPrint from './routes/SaPrint';
@@ -143,6 +144,8 @@ export default function App() {
         {/* Section II กับ III แยกเมนู — หน้าเดียวกัน อ่านจาก path ว่าเปิดหัวข้อไหน */}
         <Route path="/teacher/sect2" element={<Guard role="teacher"><Portfolio /></Guard>} />
         <Route path="/teacher/sect3" element={<Guard role="teacher"><Portfolio /></Guard>} />
+        {/* OSCE + สอบ RPD design — แค่ช่องติ๊ก ไม่มีฟอร์ม */}
+        <Route path="/teacher/exams" element={<Guard role="teacher"><Exams /></Guard>} />
         <Route path="/teacher/portfolio" element={<Navigate to="/teacher/sect2" replace />} />
         <Route path="/teacher/portfolio/:studentId/print" element={<Guard role="teacher"><PortfolioPrint /></Guard>} />
         {/* ลิงก์เดิมตอนที่ยังมีแค่ Section III */}

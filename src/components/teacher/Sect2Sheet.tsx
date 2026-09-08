@@ -10,6 +10,7 @@ import { ArrowLeft, CaretDown, CaretUp, CheckCircle, Trash, X } from '@phosphor-
 import { useEffect, useRef, useState } from 'react';
 import { useDraftSave } from '../../hooks/useDraftSave';
 import { firstNameOnly } from '../../domain/group';
+import { studentYear } from '../../domain/cohort';
 import {
   RPD_DESIGN_GROUPS, RPD_DESIGN_REMARK, RPD_DESIGN_TOPICS, S2_FULL_SCORE, S2_GRADES,
   rpdDesignPassed, s2Points, sect2Form, sect2Total, type S2Form, type S2Grade,
@@ -31,7 +32,7 @@ function SheetHead({ student, title, code, onClose }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ margin: 0 }}>{title}</h3>
         <p className="sub" style={{ margin: '2px 0 0' }}>
-          {code} · {firstNameOnly(student.name)} {student.code} · YEAR 5
+          {code} · {firstNameOnly(t(student.name))} {student.code} · {t('ปี {n}', { n: studentYear(student) })}
         </p>
       </div>
     </div>
@@ -300,9 +301,21 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   });
   const [busy, setBusy] = useState(false);
 
+  /* ผู้ใช้ขอ 7 ก.ย. 69: ปกติแค่ติ๊กว่าสอบแล้วและอาจารย์กดอนุมัติก็พอ ไม่ต้องกาทีละ 17 ข้อ
+     แต่ยังเก็บทางกาแบบละเอียดไว้ (พับไว้) เพราะกระดาษจริงมี 17 ข้อ
+     ถ้าใครกาไว้แล้ว ผลจะคิดจากรายข้อเหมือนเดิม — ของที่บันทึกไปแล้วไม่เพี้ยน */
+  /* ⚠️ ต้องมีสถานะ "ยังไม่ตัดสิน" (undefined) แยกจาก "ไม่ผ่าน" (false)
+     ไม่งั้นแค่แตะเลือกเคสแล้ว autosave จะบันทึกว่าไม่ผ่าน และไปตั้งธงเงื่อนไขจบให้เลย
+     ทั้งที่อาจารย์ยังไม่ได้ตัดสินอะไร (วัดจริงตอนไล่เช็ค 8 ก.ย. 69) */
+  const [approved, setApproved] = useState<boolean | undefined>(cur?.passed ?? undefined);
+  const [showItems, setShowItems] = useState(Object.keys(cur?.marks ?? {}).length > 0);
+
   const marked = RPD_DESIGN_TOPICS.filter((x) => marks[x.key] !== undefined).length;
   const complete = marked === RPD_DESIGN_TOPICS.length;
-  const passed = rpdDesignPassed(marks);
+  /** กาแบบรายข้อไว้หรือยัง — ถ้ายัง ใช้ธงอนุมัติแทน */
+  const detailed = marked > 0;
+  const passed = detailed ? rpdDesignPassed(marks) : approved;
+  const canSave = detailed ? complete : approved !== undefined;
 
   const editingRef = useRef(editing);
   editingRef.current = editing;
@@ -310,7 +323,8 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   const { touch, cancel } = useDraftSave(async () => {
     const row = await saveSect2({
       id: editingRef.current, studentId: student.id, formKey: 'rpdDesign',
-      academicYear: year, classYear, ...f, marks, passed: complete && passed, silent: true,
+      academicYear: year, classYear, ...f, marks,
+      passed: detailed ? (complete && passed) : approved, silent: true,
     }, currentActor());
     if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
   });
@@ -318,9 +332,8 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return; }
     if (skipNext.current) { skipNext.current = false; return; }
-    if (!Object.keys(marks).length) return;
     touch();
-  }, [marks, f, touch]);
+  }, [marks, f, approved, touch]);
 
 
   /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
@@ -345,6 +358,8 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
       patientName: row?.patientName ?? '', hn: row?.hn ?? '',
       typeOfWorks: row?.typeOfWorks ?? '', at: row?.at ?? toISODate(new Date()),
     });
+    setApproved(row?.passed ?? undefined);
+    setShowItems(Object.keys(row?.marks ?? {}).length > 0);
   }
 
   const saving = useRef(false);
@@ -354,11 +369,14 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
     setBusy(true);
     try {
       cancel();
+      // ปุ่มบันทึกถูกปิดอยู่แล้วเมื่อยังไม่ตัดสิน — เช็คซ้ำเพื่อให้ชนิดข้อมูลชัดและกันทางลัด
+      const verdict = detailed ? (complete && rpdDesignPassed(marks)) : approved;
+      if (verdict === undefined) return;
       await saveSect2({
         id: editingRef.current, studentId: student.id, formKey: 'rpdDesign', academicYear: year, classYear,
-        ...f, marks, passed: complete && passed,
+        ...f, marks, passed: verdict,
       }, currentActor());
-      onSaved(complete && passed);
+      onSaved(verdict);
       onClose();
     } finally { saving.current = false; setBusy(false); }
   }
@@ -380,7 +398,51 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
 
       <CaseFields studentId={student.id} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
-      <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+      {/* ทางหลัก: ติ๊กว่าสอบแล้ว แล้วอาจารย์กดอนุมัติ — พอสำหรับการใช้งานปกติ (ผู้ใช้ขอ 7 ก.ย. 69) */}
+      <div className="card" style={{ padding: 14, marginTop: 14, display: 'grid', gap: 10 }}>
+        <div>
+          <span style={{ font: '700 12.5px var(--font-head)' }}>{t('ผลการสอบ')}</span>
+          <span style={{ display: 'block', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
+            {detailed
+              ? t('มีการบันทึกผลรายข้อไว้แล้ว — ผลคิดจากรายการข้างล่าง')
+              : t('นักศึกษาสอบและอาจารย์ตรวจแล้ว กดอนุมัติได้เลย ไม่ต้องกาทีละข้อ')}
+          </span>
+        </div>
+        <div className="seg" style={{ gap: 7, maxWidth: 340 }}>
+          <button
+            data-on={!detailed && approved === true}
+            disabled={detailed}
+            onClick={() => setApproved(true)}
+            style={{ flex: '1 1 0', height: 46, display: 'grid', placeItems: 'center' }}
+          >
+            <span style={{ font: '600 12.5px var(--font-body)' }}>{t('สอบผ่านแล้ว')}</span>
+          </button>
+          <button
+            data-on={!detailed && approved === false}
+            disabled={detailed}
+            onClick={() => setApproved(false)}
+            style={{ flex: '1 1 0', height: 46, display: 'grid', placeItems: 'center' }}
+          >
+            <span style={{ font: '600 12.5px var(--font-body)' }}>{t('ยังไม่ผ่าน')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ทางละเอียด: 17 ข้อตามกระดาษ — พับไว้ ใครอยากบันทึกรายข้อค่อยกาง
+          ถ้ากาไว้แล้ว ผลจะคิดจากตรงนี้แทนปุ่มอนุมัติข้างบน */}
+      <button
+        onClick={() => setShowItems((v) => !v)}
+        style={{
+          marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, minHeight: 34,
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          font: '600 11px var(--font-body)', color: 'var(--accent)',
+        }}
+      >
+        {showItems ? <CaretUp size={12} /> : <CaretDown size={12} />}
+        {showItems ? t('ซ่อนรายการ 17 ข้อ') : t('บันทึกผลรายข้อ (17 ข้อตามกระดาษ)')}
+      </button>
+
+      <div style={{ display: showItems ? 'grid' : 'none', gap: 12, marginTop: 12 }}>
         {RPD_DESIGN_GROUPS.map((g) => (
           <div key={g.no}>
             <div style={{ font: '700 11.5px/1.5 var(--font-head)', color: 'var(--text-secondary)', margin: '0 0 6px 2px' }}>
@@ -430,21 +492,29 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
       <SheetFooter
         left={
           <>
+            {/* กาแบบรายข้อ = สรุปจากรายการ · ไม่ได้กา = ผลมาจากปุ่มอนุมัติข้างบน */}
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               font: '700 15px var(--font-head)',
-              color: !complete ? 'var(--text-faint)' : passed ? 'var(--success-dark)' : 'var(--danger-dark)',
+              color: (detailed && !complete) || passed === undefined ? 'var(--text-faint)'
+                : passed ? 'var(--success-dark)' : 'var(--danger-dark)',
             }}>
-              {complete ? (passed ? <CheckCircle size={18} weight="fill" /> : <X size={16} weight="bold" />) : null}
-              {!complete ? t('ยังกาไม่ครบ') : passed ? 'PASS' : t('ยังไม่ผ่าน')}
+              {passed !== undefined && (!detailed || complete)
+                ? (passed ? <CheckCircle size={18} weight="fill" /> : <X size={16} weight="bold" />) : null}
+              {passed === undefined ? t('ยังไม่ตัดสิน')
+                : detailed && !complete ? t('ยังกาไม่ครบ') : passed ? 'PASS' : t('ยังไม่ผ่าน')}
             </span>
             <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-              {t('กาแล้ว {a}/{b} ข้อ', { a: marked, b: RPD_DESIGN_TOPICS.length })}
-              {complete && !passed && ` · ${t('ตกอยู่ {n} ข้อ', { n: RPD_DESIGN_TOPICS.filter((x) => marks[x.key] === false).length })}`}
+              {detailed
+                ? t('กาแล้ว {a}/{b} ข้อ', { a: marked, b: RPD_DESIGN_TOPICS.length })
+                : approved === undefined
+                  ? t('เลือกผลก่อนจึงจะบันทึกได้')
+                  : t('อาจารย์อนุมัติ (ไม่ได้บันทึกรายข้อ)')}
+              {detailed && complete && !passed && ` · ${t('ตกอยู่ {n} ข้อ', { n: RPD_DESIGN_TOPICS.filter((x) => marks[x.key] === false).length })}`}
             </span>
           </>
         }
-        canSave={marked > 0}
+        canSave={canSave}
         busy={busy}
         editing={editing}
         onSave={save}
@@ -485,6 +555,13 @@ export function sect2Status(row: Sect2Record | undefined): { text: string; done:
   if (!row) return null;
   if (row.formKey === 'rpdDesign') {
     const marked = RPD_DESIGN_TOPICS.filter((x) => row.marks?.[x.key] !== undefined).length;
+    /* ไม่ได้กาสักข้อ = ใช้ทางอนุมัติอย่างเดียว ซึ่งเป็นทางปกติ ไม่ใช่ร่าง
+       (ถ้าไม่แยกกรณีนี้ ใบที่อนุมัติแล้วจะขึ้นว่า "ร่าง 0/17" ทั้งที่เสร็จแล้ว) */
+    if (marked === 0) {
+      return row.passed === undefined || row.passed === null
+        ? { text: t('ร่าง'), done: false }
+        : { text: row.passed ? 'PASS' : t('ยังไม่ผ่าน'), done: true };
+    }
     if (marked < RPD_DESIGN_TOPICS.length) {
       return { text: `${t('ร่าง')} ${marked}/${RPD_DESIGN_TOPICS.length}`, done: false };
     }

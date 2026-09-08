@@ -35,6 +35,9 @@ export interface StudentGates {
   sect2Removable?: boolean;
   sect2Fixed?: boolean;
   designRpd?: boolean;
+  /** OSCE — ข้อสอบที่จัดต่างหาก ไม่มีฟอร์มในแอป อาจารย์ติ๊กว่าผ่านอย่างเดียว
+   *  (ผู้ใช้เคาะ 8 ก.ย. 69: OSCE กับสอบ RPD design ทำเป็นแค่ช่องติ๊กพอ) */
+  osce?: boolean;
 }
 export type GateKey = keyof StudentGates;
 
