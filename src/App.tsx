@@ -1,34 +1,52 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useApp } from './store/app';
 import { t } from './lib/i18n';
 
 import Login from './routes/Login';
-import Home from './routes/student/Home';
-import Patients from './routes/student/Patients';
-import WorkpieceDetail from './routes/student/WorkpieceDetail';
-import Criteria from './routes/student/Criteria';
-import NewWorkpiece from './routes/student/NewWorkpiece';
-import Search from './routes/student/Search';
-import Photos from './routes/student/Photos';
-import Sync from './routes/student/Sync';
-import ExportScreen from './routes/student/Export';
-import Achievements from './routes/student/Achievements';
-import CheckInPage from './routes/student/CheckIn';
-import Dashboard from './routes/teacher/Dashboard';
-import Review from './routes/teacher/Review';
-import TeacherSettings from './routes/teacher/Settings';
-import Roster from './routes/teacher/Roster';
-import Analytics from './routes/teacher/Analytics';
-import MyGroup from './routes/teacher/MyGroup';
-import Evaluate from './routes/teacher/Evaluate';
-import SelfAssess from './routes/student/SelfAssess';
-import SelfAssessments from './routes/teacher/SelfAssessments';
-import Portfolio from './routes/teacher/Portfolio';
-import Exams from './routes/teacher/Exams';
-import StudentPortfolio from './routes/student/Portfolio';
-import PortfolioPrint from './routes/PortfolioPrint';
-import SaPrint from './routes/SaPrint';
+
+/**
+ * แยกโค้ดตามกลุ่มหน้า — ตอนเปิดแอปจึงโหลดแค่โครงกับกลุ่มที่บทบาทนั้นเปิดถึง
+ * (นักศึกษาไม่เคยเห็นหน้าอาจารย์ แต่เดิมต้องโหลดมาทั้งหมดก่อนถึงจะวาดหน้าแรกได้)
+ *
+ * ตัว `load*` เรียกซ้ำได้ไม่เปลืองอะไร — ครั้งที่สองได้ก้อนเดิมจากแคชโมดูลของเบราว์เซอร์
+ * เลยใช้ทั้งเป็นตัวโหลดจริงและตัวดึงล่วงหน้า (ดู usePrefetchPages ข้างล่าง)
+ */
+const loadStudent = () => import('./routes/student');
+const loadTeacher = () => import('./routes/teacher');
+const loadPrint = () => import('./routes/print');
+
+function page<M, K extends keyof M>(load: () => Promise<M>, key: K) {
+  return lazy(() => load().then((m) => ({ default: m[key] as React.ComponentType })));
+}
+
+const Home = page(loadStudent, 'Home');
+const Patients = page(loadStudent, 'Patients');
+const WorkpieceDetail = page(loadStudent, 'WorkpieceDetail');
+const Criteria = page(loadStudent, 'Criteria');
+const NewWorkpiece = page(loadStudent, 'NewWorkpiece');
+const Search = page(loadStudent, 'Search');
+const Photos = page(loadStudent, 'Photos');
+const Sync = page(loadStudent, 'Sync');
+const ExportScreen = page(loadStudent, 'Export');
+const Achievements = page(loadStudent, 'Achievements');
+const CheckInPage = page(loadStudent, 'CheckIn');
+const SelfAssess = page(loadStudent, 'SelfAssess');
+const StudentPortfolio = page(loadStudent, 'Portfolio');
+
+const Dashboard = page(loadTeacher, 'Dashboard');
+const Review = page(loadTeacher, 'Review');
+const TeacherSettings = page(loadTeacher, 'Settings');
+const Roster = page(loadTeacher, 'Roster');
+const Analytics = page(loadTeacher, 'Analytics');
+const MyGroup = page(loadTeacher, 'MyGroup');
+const Evaluate = page(loadTeacher, 'Evaluate');
+const SelfAssessments = page(loadTeacher, 'SelfAssessments');
+const Portfolio = page(loadTeacher, 'Portfolio');
+const Exams = page(loadTeacher, 'Exams');
+
+const PortfolioPrint = page(loadPrint, 'PortfolioPrint');
+const SaPrint = page(loadPrint, 'SaPrint');
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
   const session = useApp((s) => s.session);
@@ -85,8 +103,29 @@ function Splash() {
   );
 }
 
+/**
+ * ดึงก้อนหน้าที่เหลือมาไว้ล่วงหน้าหลังวาดหน้าแรกเสร็จ
+ *
+ * ถ้าไม่ทำ การกดเปลี่ยนหน้าครั้งแรกของแต่ละกลุ่มจะต้องรอเน็ตก่อน ซึ่งบนเน็ตคลินิก
+ * แปลว่าจอว่างค้างเป็นวินาที — คือสิ่งที่งานลดขนาดนี้ตั้งใจไม่ให้เกิด
+ * ดึงเฉพาะกลุ่มที่บทบาทนี้เปิดถึงจริง อีกฝั่งไม่ต้องเสียเน็ตโหลด
+ */
+function usePrefetchPages(role: 'student' | 'teacher' | undefined) {
+  useEffect(() => {
+    if (!role) return;
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 200));
+    const id = idle(() => {
+      void (role === 'teacher' ? loadTeacher() : loadStudent());
+      void loadPrint();
+    });
+    return () => (window.cancelIdleCallback ?? window.clearTimeout)(id as number);
+  }, [role]);
+}
+
 export default function App() {
   const { ready, init, session, initError } = useApp();
+
+  usePrefetchPages(ready ? (session?.role ?? 'student') : undefined);
 
   useEffect(() => {
     void init();
@@ -109,6 +148,10 @@ export default function App() {
 
   return (
     <HashRouter>
+      {/* ระหว่างรอก้อนหน้า ปล่อยพื้นหลังว่างเปล่า ไม่ใส่ตัวหมุนหรือ skeleton
+          เพราะหน้าโหลดดักไว้แล้ว (usePrefetchPages) กรณีที่เห็นจริงคือเสี้ยววินาทีตอนเน็ตช้ามาก
+          ถ้าใส่อะไรกะพริบตรงนี้จะกลายเป็นของใหม่ที่ผู้ใช้ไม่เคยเห็น */}
+      <Suspense fallback={<div style={{ height: '100%' }} />}>
       <Routes>
         <Route path="/" element={<Navigate to={session ? (session.role === 'student' ? '/app' : '/teacher') : '/login'} replace />} />
         <Route path="/login" element={<Login />} />
@@ -154,6 +197,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </HashRouter>
   );
 }

@@ -1,0 +1,11 @@
+/** รวมหน้าฝั่งอาจารย์เป็นก้อนเดียว — นักศึกษาไม่มีทางเปิดถึง จึงไม่ต้องโหลด (ดูเหตุผลเรื่องจำนวนคำขอใน ../student/index.ts) */
+export { default as Analytics } from './Analytics';
+export { default as Dashboard } from './Dashboard';
+export { default as Evaluate } from './Evaluate';
+export { default as Exams } from './Exams';
+export { default as MyGroup } from './MyGroup';
+export { default as Portfolio } from './Portfolio';
+export { default as Review } from './Review';
+export { default as Roster } from './Roster';
+export { default as SelfAssessments } from './SelfAssessments';
+export { default as Settings } from './Settings';
