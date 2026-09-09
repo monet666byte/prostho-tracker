@@ -155,6 +155,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   }, [history]);
 
   function reset(row?: Sect3Record) {
+    everSaved.current = !!row;
     skipNext.current = true; // สลับดูครั้งเก่า ไม่ใช่การแก้ ไม่ต้องเซฟทับ
     setEditing(row?.id);
     editingRef.current = row?.id;
@@ -166,6 +167,10 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
 
   /* กันกดบันทึกรัว — ต้องเป็น ref เพราะ disabled={busy} มีผลหลัง re-render
      กดสองทีเร็วๆ บนเครื่องช้าจะสร้างแถวซ้ำ (วัดได้ 5 คลิก = 5 แถว ตอนไล่บั๊ก 7 ก.ย. 69) */
+  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
+     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
+     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
+  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -175,8 +180,9 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
       cancel();
       await saveSect3({
         id: editingRef.current, studentId: student.id, formKey: form.key, academicYear: year, classYear,
-        patientName, hn, grades, total, at,
+        patientName, hn, grades, total, at, edited: everSaved.current,
       }, currentActor());
+      everSaved.current = true;
       onSaved(total);
       onClose();
     } finally { saving.current = false; setBusy(false); }

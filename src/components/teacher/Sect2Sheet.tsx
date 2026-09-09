@@ -141,6 +141,7 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   }, [history]);
 
   function reset(row?: Sect2Record) {
+    everSaved.current = !!row;
     skipNext.current = true;
     setEditing(row?.id);
     editingRef.current = row?.id;
@@ -151,6 +152,10 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
     });
   }
 
+  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
+     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
+     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
+  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -160,8 +165,9 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
       cancel();
       await saveSect2({
         id: editingRef.current, studentId: student.id, formKey: form.key, academicYear: year, classYear,
-        ...f, grades, total,
+        ...f, grades, total, edited: everSaved.current,
       }, currentActor());
+      everSaved.current = true;
       onSaved(total);
       onClose();
     } finally { saving.current = false; setBusy(false); }
@@ -361,6 +367,7 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   }, [history]);
 
   function reset(row?: Sect2Record) {
+    everSaved.current = !!row;
     skipNext.current = true;
     setEditing(row?.id);
     editingRef.current = row?.id;
@@ -373,6 +380,10 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
     setShowItems(Object.keys(row?.marks ?? {}).length > 0);
   }
 
+  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
+     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
+     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
+  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -385,8 +396,9 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
       if (verdict === undefined) return;
       await saveSect2({
         id: editingRef.current, studentId: student.id, formKey: 'rpdDesign', academicYear: year, classYear,
-        ...f, marks, passed: verdict,
+        ...f, marks, passed: verdict, edited: everSaved.current,
       }, currentActor());
+      everSaved.current = true;
       onSaved(verdict);
       onClose();
     } finally { saving.current = false; setBusy(false); }

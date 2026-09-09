@@ -1327,6 +1327,8 @@ export interface Sect3Input {
   at: string;
   /** ร่างอัตโนมัติ — ไม่ลง audit ไม่งั้น log ท่วมเพราะเซฟทุกครั้งที่กา */
   silent?: boolean;
+  /** เคยกดบันทึกใบนี้มาก่อนแล้วหรือยัง — เหตุผลเต็มอยู่ที่ Sect2Input.edited */
+  edited?: boolean;
 }
 
 
@@ -1363,7 +1365,7 @@ export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3
   await db.sect3.put(row);
   if (input.silent) return row;
   await logAudit(
-    `${prev ? 'แก้' : 'บันทึก'}ผลประเมิน Section III · ${input.formKey}${input.total === null ? '' : ` ได้ ${input.total}/10`}`,
+    `${input.edited ? 'แก้' : 'บันทึก'}ผลประเมิน Section III · ${input.formKey}${input.total === null ? '' : ` ได้ ${input.total}/10`}`,
     actor,
     { studentId: input.studentId },
   );
@@ -1396,6 +1398,15 @@ export interface Sect2Input {
   at: string;
   /** ร่างอัตโนมัติ — ไม่ลง audit */
   silent?: boolean;
+  /**
+   * ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — หน้าจอเป็นคนบอก
+   *
+   * ดูจากแถวในฐานข้อมูลอย่างเดียวไม่ได้ เพราะร่างอัตโนมัติสร้างแถวไว้ตั้งแต่อาจารย์กาข้อแรก
+   * พอกดบันทึกจริง แถวจึงมีอยู่แล้วเสมอ แล้ว audit จะขึ้นว่า "แก้ผลประเมิน" ทั้งที่เพิ่งบันทึกครั้งแรก
+   * แถว audit ลบไม่ได้ตามการออกแบบ ประโยคที่ไม่จริงจึงอยู่ถาวร — และคำว่า "แก้คะแนน"
+   * เป็นคนละเรื่องกับ "ลงคะแนนครั้งแรก" มากเวลามีใครย้อนมาอ่าน
+   */
+  edited?: boolean;
 }
 
 export async function listSect2(studentId?: string, academicYear?: number): Promise<Sect2Record[]> {
@@ -1481,7 +1492,7 @@ export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2
   const score = row.formKey === 'rpdDesign'
     ? (row.passed ? 'ผ่าน' : 'ยังไม่ผ่าน')
     : (row.total === null || row.total === undefined ? 'ยังไม่ครบ' : `ได้ ${row.total}/70`);
-  await logAudit(`${prev ? 'แก้' : 'บันทึก'}ผลประเมิน Section II · ${row.formKey} ${score}`, actor, { studentId: row.studentId });
+  await logAudit(`${input.edited ? 'แก้' : 'บันทึก'}ผลประเมิน Section II · ${row.formKey} ${score}`, actor, { studentId: row.studentId });
   return row;
 }
 
