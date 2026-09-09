@@ -129,13 +129,33 @@ export interface ProgressUpdate {
   syncedAt: string | null;
 }
 
-export type PhotoStatus = 'ok' | 'queue' | 'fail';
+/**
+ * สถานะรูป — ต้องสะท้อน "ของขึ้นคลาวด์จริงหรือยัง" ไม่ใช่ป้ายให้ดูดี
+ *
+ * เคยพังมาแล้วสองแบบ: (ก) addPhoto รุ่นแรกไม่รับไฟล์เลย สร้างแถวเปล่าพร้อมขนาดไฟล์สุ่ม
+ * หน้าจอขึ้น "อัปโหลดแล้ว" ทั้งที่ไม่มีรูปสักใบ (ข) syncNow() ตั้ง status='ok' ให้ทุกใบที่ค้างคิว
+ * โดยไม่ได้ส่งอะไรขึ้นไปจริง ทั้งสองแบบผู้ใช้จะรู้ตัวก็ตอนเปิดจากอีกเครื่องแล้วรูปไม่อยู่ ซึ่งสายไปแล้ว
+ *
+ * 'local' มีไว้เพราะโหมดเดโม/แชร์/GitHub Pages ไม่มีเซิร์ฟเวอร์ให้อัปเลย
+ * การขึ้นว่า 'ok' ในโหมดพวกนั้นคือการโกหกที่ไม่มีวันถูก
+ */
+export type PhotoStatus = 'ok' | 'queue' | 'fail' | 'local';
 
 export interface Photo {
   id: string;
   workpieceId: string;
   progression: number;
   stepLabel: string;
+  /**
+   * path ในบักเก็ต case-photos — ตัวชี้ขาดว่า "ไบต์ขึ้นคลาวด์แล้ว" ไม่ใช่ status
+   * (status เป็นแค่ป้ายที่สะท้อนตามหลัง ถ้าสองอย่างขัดกัน ให้เชื่อช่องนี้)
+   */
+  storagePath?: string;
+  /**
+   * ของเก่าก่อนย้ายไป storage — base64 ทั้งก้อนที่เคยวิ่งขึ้น-ลง Postgres ทุกครั้งที่ sync
+   * ห้ามล้างจนกว่า storagePath จะถูกตั้ง ไม่งั้นเน็ตหลุดกลางทางแล้วรูปหายถาวร
+   * (รูปถ่ายจากปากคนไข้จริง ถ่ายซ้ำไม่ได้)
+   */
   dataUrl?: string;
   sizeLabel: string;
   status: PhotoStatus;

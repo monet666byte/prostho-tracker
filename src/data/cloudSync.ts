@@ -176,6 +176,17 @@ function quarantineRow(local: string, key: unknown, reason: string) {
   problemListeners.forEach((fn) => fn());
 }
 
+/**
+ * ให้โมดูลอื่นแจ้ง "ของชิ้นนี้ส่งขึ้นไม่ได้จริงๆ" เข้ารายการเดียวกับที่หน้า sync แสดงอยู่แล้ว
+ *
+ * ตอนนี้มีผู้ใช้รายเดียวคือ photoStore — ไฟล์รูปไม่ได้ขึ้นทางเดียวกับแถวข้อมูล (คนละ API)
+ * แต่ผู้ใช้ไม่ควรต้องรู้เรื่องนั้น ถ้ารูปไม่ขึ้นก็ต้องโผล่ที่การ์ดเตือนใบเดิม
+ * ไม่ใช่สร้าง UI คู่ขนานอีกชุดให้พลาดคนละที่
+ */
+export function reportSyncProblem(table: string, key: unknown, reason: string): void {
+  quarantineRow(table, key, reason);
+}
+
 /** ผู้ใช้กด "ลองส่งใหม่" ในหน้า sync — เอาของที่กักไว้กลับเข้าคิว */
 export function retryQuarantined(): void {
   const items = [...quarantine.values()];
@@ -183,6 +194,42 @@ export function retryQuarantined(): void {
   failCount.clear();
   problemListeners.forEach((fn) => fn());
   for (const it of items) markDirty(it.table, [it.key]);
+  // ของที่ไม่ได้ขึ้นทางคิวแถว (ไฟล์รูป) ต้องถูกปลุกด้วย ไม่งั้นปุ่มนี้โกหกครึ่งเดียว
+  retryListeners.forEach((fn) => fn());
+}
+
+/* ── จุดต่อขยาย: งานส่งขึ้นที่ไม่ได้อยู่ในรูปของ "แถวในตาราง" ─────────────────
+ *
+ * ไฟล์รูปขึ้นผ่าน Storage API คนละทางกับ upsert แต่ต้องถูกปลุกจังหวะเดียวกันเป๊ะ
+ * (รอบ 15 วิ · event online · เปิดจอกลับมา · ปุ่ม sync) ไม่งั้นจะมีสภาพแบบ
+ * "แถวขึ้นแล้วแต่ไฟล์ยังไม่ขึ้น" ค้างอยู่จนกว่าผู้ใช้จะบังเอิญเปิดหน้าคลังรูป
+ *
+ * ทำเป็นตัวลงทะเบียนแทน import ตรงๆ เพราะ photoStore ต้องใช้ reportSyncProblem จากไฟล์นี้
+ * ถ้าไฟล์นี้ import photoStore กลับไปด้วยจะเป็นวงกลม (vite ยอม แต่ลำดับ init จะเดาไม่ได้)
+ */
+type PumpHook = () => Promise<void>;
+const pumpHooks = new Set<PumpHook>();
+const retryListeners = new Set<() => void>();
+
+export function onSyncPump(fn: PumpHook): () => void {
+  pumpHooks.add(fn);
+  return () => pumpHooks.delete(fn);
+}
+
+export function onRetryRequested(fn: () => void): () => void {
+  retryListeners.add(fn);
+  return () => retryListeners.delete(fn);
+}
+
+/** เรียกงานที่ลงทะเบียนไว้ — ตัวไหนพังไม่ลากตัวอื่นตก */
+async function runPumpHooks(): Promise<void> {
+  for (const fn of pumpHooks) {
+    try {
+      await fn();
+    } catch (e) {
+      console.error('sync pump hook ล้ม', e);
+    }
+  }
 }
 
 /** ส่งของค้างขึ้นตู้กลาง */
@@ -257,7 +304,10 @@ async function flush(): Promise<void> {
  * ใช้ตอนผู้ใช้กด sync เอง และในเทสต์ (ก้อนที่ตกไปแล้วไม่ได้ตั้งเวลาลองใหม่ให้ตัวเอง
  * ในแอปจริงรอบ 15 วิ กับ event 'online' เป็นคนพามันกลับมา)
  */
-export const flushNow = (): Promise<void> => flush();
+export const flushNow = async (): Promise<void> => {
+  await flush();
+  await runPumpHooks();
+};
 
 /* ── ดึงลง / ดันขึ้น ทั้งตู้ ── */
 
@@ -446,18 +496,21 @@ export async function initCloudSync(): Promise<void> {
       void (async () => {
         await flush();
         await flushSettings();
+        await runPumpHooks();
         await pullAll();
       })();
     }, 15_000);
     window.addEventListener('online', () => void (async () => {
       await flush();
       await flushSettings();
+      await runPumpHooks();
     })());
     // เปิดจอ/สลับกลับมาที่แอป → sync ทันที (สำคัญกับมือถือที่พักหน้าจอบ่อย — ตอนพักเบราว์เซอร์หน่วง timer)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         void (async () => {
           await flush();
+          await runPumpHooks();
           await pullAll();
         })();
       }

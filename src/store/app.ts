@@ -4,6 +4,7 @@ import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/re
 import { assertSect2 } from '../domain/sect2';
 import { assertSect3 } from '../domain/sect3';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
+import { initPhotoSync, stopPhotoSync } from '../data/photoStore';
 import { onRemoteSettings, pushSettings } from '../data/settingsSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
@@ -196,6 +197,9 @@ export const useApp = create<AppState>((set, get) => ({
             void (async () => set({ settings: await getSettings(), revision: get().revision + 1 }))();
           });
           void initCloudSync();
+          // ส่ง studentId เข้าไปด้วย — คนอัปรูปต้องเป็นเจ้าของรูปเท่านั้น (RLS ของบักเก็ต)
+          // ไม่งั้นเครื่องอาจารย์ซึ่งดึงแถวของ นศ. ทุกคนลงมา จะไล่อัปรูปคนอื่นแล้วโดนปฏิเสธหมด
+          initPhotoSync(session.studentId);
         } else {
           // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
           const signedIn = await hasCloudSession();
@@ -253,6 +257,7 @@ export const useApp = create<AppState>((set, get) => ({
       teacherGroup: myGroup ?? get().teacherGroup,
     });
     void initCloudSync();
+    initPhotoSync(session.studentId);
     return {};
   },
 
@@ -266,6 +271,7 @@ export const useApp = create<AppState>((set, get) => ({
   async signOut() {
     if (cloudEnabled) {
       stopCloudSync();
+      stopPhotoSync(); // ลิงก์ที่เซ็นไว้ของคนก่อนต้องไม่ค้างให้คนถัดไปเปิดดูได้
       await signOutCloud();
     }
     await kvSet('session', null);

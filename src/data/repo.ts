@@ -13,7 +13,7 @@ import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { saId } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
 import { byNewestReview, isOthersForm, pickLatestReviews } from '../domain/conflict';
@@ -21,6 +21,9 @@ import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 export { saId };
 import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/image';
+import {
+  dropLocalBlobs, initialPhotoStatus, putLocalBlob, removePhotoFiles, retryPhotoUpload, uploadPendingPhotos,
+} from './photoStore';
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -325,23 +328,32 @@ export async function listQueue(): Promise<QueueItem[]> {
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/**
+ * ผู้ใช้กด "sync ทันที"
+ *
+ * ⚠️ เดิมตรงนี้ตั้ง status='ok' ให้รูปที่ค้างคิว "ทุกใบ" โดยไม่ได้ส่งอะไรขึ้นไปเลย
+ *    เป็นป้ายหลอกแบบเดียวกับที่ addPhoto รุ่นแรกเคยทำ ผู้ใช้จะรู้ตัวก็ตอนเปิดจากอีกเครื่อง
+ *    แล้วรูปไม่อยู่ ซึ่งสายไปแล้ว — ตอนนี้ส่งของจริงแล้วให้ photoStore เป็นคนตั้งสถานะเอง
+ *
+ * การอัปโหลดต้องอยู่นอก transaction — ยิงเน็ตในระหว่างที่ถือ transaction ของ Dexie ค้างไว้
+ * ทำให้ธุรกรรมค้างยาวเป็นวินาทีบนเน็ตคลินิก แล้วการเขียนอื่นทั้งแอปรอตาม
+ */
 export async function syncNow(actor: string): Promise<number> {
+  const photos = await uploadPendingPhotos();
   const items = await db.queue.toArray();
-  if (!items.length) return 0;
-  await db.transaction('rw', [db.queue, db.updates, db.photos, db.audit], async () => {
+  if (!items.length && !photos.uploaded) return 0;
+  await db.transaction('rw', [db.queue, db.updates, db.audit], async () => {
     const unsynced = await db.updates.filter((u) => u.syncedAt === null).toArray();
     await db.updates.bulkPut(unsynced.map((u) => ({ ...u, syncedAt: new Date().toISOString() })));
-    const queuedPhotos = await db.photos.where('status').equals('queue').toArray();
-    await db.photos.bulkPut(queuedPhotos.map((p) => ({ ...p, status: 'ok' as const })));
     await db.queue.clear();
     await db.audit.add({
       id: uid('a'),
-      text: `sync ข้อมูลค้าง ${items.length} รายการขึ้นเซิร์ฟเวอร์`,
+      text: `sync ข้อมูลค้าง ${items.length} รายการ · รูป ${photos.uploaded} ใบขึ้นเซิร์ฟเวอร์`,
       who: actor,
       at: new Date().toISOString(),
     });
   });
-  return items.length;
+  return items.length + photos.uploaded;
 }
 
 /** workpieceId ที่ยังมีรายการค้างในคิว */
@@ -368,31 +380,56 @@ export async function listPhotos(studentId: string): Promise<Array<Photo & { det
  * เดิมฟังก์ชันนี้ไม่รับไฟล์เลย — สร้างแถวเปล่าพร้อม "ขนาดไฟล์" ที่สุ่มขึ้นมา
  * หน้าจอจึงขึ้นว่า "อัปโหลดรูปแล้ว" ทั้งที่ไม่มีรูปอยู่จริงสักใบ
  *
- * TODO เมื่อขยายเกินกลุ่มทดลอง: ย้ายไป Supabase Storage แล้วเก็บแค่ลิงก์
- * ตอนนี้ data URL อยู่ในแถวเดียวกับข้อมูลอื่น พอสำหรับ 8 คน แต่ 96 คนจะหนัก
+ * ตอนนี้ไบต์ลงตาราง blobs ในเครื่องก่อนเสมอ (ตารางนั้นไม่ sync) แล้วค่อยขึ้น Storage
+ * ถ่ายตอนออฟไลน์ข้างเก้าอี้คนไข้ได้ปกติ — ไม่ต้องมีเน็ตถึงจะกดถ่ายได้
+ *
+ * ⚠️ status ตั้งต้นห้ามเป็น 'ok' เด็ดขาด ไม่ว่าจะออนไลน์อยู่หรือไม่
+ *    'ok' เขียนได้จากที่เดียวในระบบคือหลัง storage ตอบรับ (photoStore.uploadOne)
+ *
+ * ไม่รับ offline แล้ว — ออนไลน์หรือไม่ไม่เปลี่ยนสิ่งที่ฟังก์ชันนี้ทำเลย (ลงเครื่องเหมือนกัน)
+ * การตัดสินใจว่า "จะส่งขึ้นเดี๋ยวนี้ไหม" ย้ายไปอยู่ที่ผู้เรียก เพราะมันต้องรอผลไปบอกผู้ใช้
  */
 export async function addPhoto(
   workpieceId: string,
-  offline: boolean,
-  image: { dataUrl: string; bytes: number },
-): Promise<void> {
+  image: { blob: Blob; bytes: number },
+): Promise<Photo | null> {
   const w = await db.workpieces.get(workpieceId);
-  if (!w) return;
+  if (!w) return null;
   const cur = procAt(w, Math.max(0, w.procIndex));
-  await db.photos.add({
+  const photo: Photo = {
     id: uid('ph'),
     workpieceId,
     progression: cur?.progression ?? 0,
     stepLabel: cur ? procLabel(w.type, cur) : TYPES[w.type].prefix,
-    dataUrl: image.dataUrl,
     sizeLabel: formatBytes(image.bytes),
-    status: offline ? 'queue' : 'ok',
+    status: initialPhotoStatus(),
     createdAt: new Date().toISOString(),
-  });
+  };
+  // ไบต์ต้องลงเครื่องให้สำเร็จก่อนสร้างแถว ไม่งั้นได้แถวที่ชี้ไปยังรูปที่ไม่มีอยู่
+  await putLocalBlob(photo.id, image.blob);
+  await db.photos.add(photo);
+  return photo;
 }
 
-export async function retryPhoto(photoId: string, offline: boolean): Promise<void> {
-  await db.photos.update(photoId, { status: offline ? 'queue' : 'ok' });
+/**
+ * สถานะจริงของรูปใบเดียว — ให้หน้าจอรายงานผลตามของจริง
+ * (เดิมปุ่ม "ลองส่งใหม่" ขึ้นข้อความสำเร็จทุกครั้ง ไม่ว่าจะส่งขึ้นหรือไม่)
+ */
+export async function getPhotoStatus(photoId: string): Promise<PhotoStatus | null> {
+  const p = await db.photos.get(photoId);
+  return p?.status ?? null;
+}
+
+/** นับว่ารูปชุดนี้ขึ้นคลาวด์ไปกี่ใบจริงๆ — นับจาก storagePath ไม่ใช่ status (ดูกติกา ① ใน photoStore) */
+export async function countUploadedPhotos(ids: string[]): Promise<number> {
+  if (!ids.length) return 0;
+  const rows = await db.photos.bulkGet(ids);
+  return rows.filter((p) => p?.storagePath).length;
+}
+
+/** ผู้ใช้แตะรูปที่ขึ้นว่าส่งไม่สำเร็จ — ปลดใบนั้นแล้วลองส่งจริง (ไม่ใช่แค่เปลี่ยนป้าย) */
+export async function retryPhoto(photoId: string): Promise<void> {
+  await retryPhotoUpload(photoId);
 }
 
 // ── ฝั่งอาจารย์ ───────────────────────────────────────────────
@@ -472,6 +509,10 @@ export async function deleteWorkpiece(workpieceId: string, actor: string): Promi
   const w = await db.workpieces.get(workpieceId);
   if (!w) return;
 
+  // เก็บรายชื่อไฟล์ไว้ก่อนลบแถว — พอแถวหายแล้วจะไม่มีทางรู้ว่าไฟล์ไหนเป็นของชิ้นงานนี้
+  // (ไฟล์ที่ค้างในบักเก็ตคือรูปในปากคนไข้ที่ไม่มีใครเป็นเจ้าของแล้ว ลบยากกว่าปล่อยไว้)
+  const doomedPhotos = await db.photos.where('workpieceId').equals(workpieceId).toArray();
+
   await db.transaction(
     'rw',
     [db.workpieces, db.patients, db.updates, db.photos, db.queue, db.reviews, db.audit],
@@ -493,6 +534,10 @@ export async function deleteWorkpiece(workpieceId: string, actor: string): Promi
       });
     },
   );
+
+  // นอก transaction — ยิงเน็ตระหว่างถือ transaction ค้างทำให้การเขียนอื่นทั้งแอปรอตาม
+  await dropLocalBlobs(doomedPhotos.map((p) => p.id));
+  await removePhotoFiles(doomedPhotos.flatMap((p) => (p.storagePath ? [p.storagePath] : [])));
 }
 
 // ── เช็คอินรายคาบ + ประเมิน ──────────────────────────────────
@@ -861,6 +906,9 @@ export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): 
   const patientIds = new Set(patients.map((p) => p.id));
   const works = await db.workpieces.filter((w) => ids.has(w.studentId)).toArray();
   const workIds = new Set(works.map((w) => w.id));
+  // ต้องอ่านก่อนลบแถว — หลังลบแล้วไม่มีทางรู้ว่าไฟล์ไหนในบักเก็ตเป็นของรุ่นนี้
+  // (retention คือการลบ "ให้หมด" ตามกรอบ PDPA รูปในปากคนไข้ค้างไว้ไม่ได้)
+  const doomedPhotos = await db.photos.filter((ph) => workIds.has(ph.workpieceId)).toArray();
 
   await db.transaction(
     'rw',
@@ -888,6 +936,14 @@ export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): 
       await db.groups.bulkDelete(groups.filter((g) => !liveGroups.has(g.code)).map((g) => g.code));
     },
   );
+
+  await dropLocalBlobs(doomedPhotos.map((p) => p.id));
+  /**
+   * โหมด cloud: purge_expired_cohorts (0016) ลบแถว photos ฝั่งเซิร์ฟเวอร์ไปแล้ว
+   * ซึ่ง trigger ใน 0018 จะเก็บกวาด storage.objects ตามให้ — แต่ยังเรียกซ้ำตรงนี้
+   * เพราะทางนี้ลบไบต์จริงผ่าน Storage API ส่วน trigger ลบได้แค่แถว metadata
+   */
+  await removePhotoFiles(doomedPhotos.flatMap((p) => (p.storagePath ? [p.storagePath] : [])));
 
   // โหมด cloud ไม่ต้องจดซ้ำ — purge_expired_cohorts จดแถว audit ให้แล้วด้วยเวลาของเซิร์ฟเวอร์
   if (server !== 'ok') {

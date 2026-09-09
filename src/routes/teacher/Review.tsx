@@ -8,13 +8,14 @@ import { setReview, setStudentGate } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
-import { useAllStudents, usePending, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
+import { useAllStudents, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
+import type { Photo } from '../../domain/types';
 
 type Filter = 'all' | 'stale' | 'done';
 
@@ -54,14 +55,20 @@ export default function Review() {
    * รูปงานจริงของแต่ละชิ้น — เดิมตรงนี้เป็นช่องรูปเปล่า 2 ช่องกับป้ายว่า
    * "2 รูป (เดโม — ยังไม่มีรูปจริง)" ตอนนี้ระบบเก็บรูปจริงแล้วจึงดึงมาแสดง
    */
-  const photoByWork = useLiveQuery(async () => {
+  const photoRows = useLiveQuery(async () => {
     const ids = works.map((w) => w.id);
-    if (!ids.length) return new Map<string, { id: string; dataUrl?: string; stepLabel: string }[]>();
-    const rows = await db.photos.where('workpieceId').anyOf(ids).toArray();
-    const map = new Map<string, { id: string; dataUrl?: string; stepLabel: string }[]>();
-    rows.forEach((ph) => map.set(ph.workpieceId, [...(map.get(ph.workpieceId) ?? []), ph]));
-    return map;
-  }, [works.map((w) => w.id).join(',')], new Map()) ?? new Map();
+    if (!ids.length) return [] as Photo[];
+    return db.photos.where('workpieceId').anyOf(ids).toArray();
+  }, [works.map((w) => w.id).join(',')], [] as Photo[]) ?? [];
+
+  // ไม่ห่อ useMemo — useLiveQuery คืน array ใหม่ทุกครั้ง เอามาเป็น dep แล้ว memo ไม่เคยกิน
+  // (จัดกลุ่มไม่กี่สิบแถวถูกกว่าการเทียบ dep อยู่แล้ว)
+  const photoByWork = new Map<string, Photo[]>();
+  photoRows.forEach((ph) => photoByWork.set(ph.workpieceId, [...(photoByWork.get(ph.workpieceId) ?? []), ph]));
+
+  /* ขอลิงก์ทีเดียวทั้งหน้า — บักเก็ตเป็น private ต้องเซ็นลิงก์ก่อนดู
+     ถ้าขอทีละรูป หน้านี้ (6 รูป × หลายชิ้นงาน) จะยิงหลายสิบ request ต่อการเปิดหนึ่งครั้ง */
+  const photoSrcs = usePhotoSrc(photoRows);
 
   const [filter, setFilter] = useState<Filter>('all');
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -292,7 +299,7 @@ export default function Review() {
                     })()}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
                     {(() => {
-                      const shots = (photoByWork.get(w.id) ?? []) as { id: string; dataUrl?: string; stepLabel: string }[];
+                      const shots = photoByWork.get(w.id) ?? [];
                       return (
                         <div style={{ flex: '0 1 auto' }}>
                           <div style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)', marginBottom: 5 }}>
@@ -303,7 +310,7 @@ export default function Review() {
                           {shots.length > 0 && (
                             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                               {shots.slice(0, 6).map((ph) => (
-                                <PhotoSlot key={ph.id} size={64} filled src={ph.dataUrl} alt={ph.stepLabel} />
+                                <PhotoSlot key={ph.id} size={64} filled src={photoSrcs.get(ph.id)} alt={ph.stepLabel} />
                               ))}
                             </div>
                           )}

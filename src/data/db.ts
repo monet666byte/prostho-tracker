@@ -16,6 +16,25 @@ export interface KV {
   value: unknown;
 }
 
+/**
+ * ไบต์รูปจริง — แยกออกจากตาราง photos โดยตั้งใจ
+ *
+ * ⚠️ ตารางนี้ต้องไม่อยู่ใน TABLES ของ cloudSync เด็ดขาด
+ *    เดิมรูปเก็บเป็น data URL ในคอลัมน์เดียวกับ metadata ซึ่งแปลว่า base64 ทั้งก้อน
+ *    วิ่งขึ้น-ลง Postgres ทุกรอบ sync (ทุก 15 วิ) ที่ 8 คนยังไหว ที่ 96 คนช้าจนใช้ไม่ได้
+ *    และไปเบียดโควตาฐานข้อมูลซึ่งเป็นแผนฟรี
+ *
+ * เก็บเป็น Blob ไม่ใช่สตริง base64 — IndexedDB เก็บ Blob ได้ตรงๆ ประหยัดกว่า ~33%
+ * และไม่ต้อง decode ตอนอ่าน (base64 ยาว 400KB บนมือถือเก่าทำให้เลื่อนหน้าสะดุด)
+ */
+export interface PhotoBlob {
+  photoId: string;
+  blob: Blob;
+  bytes: number;
+  /** เวลาที่เก็บลงเครื่อง — ใช้เลือกใบเก่าสุดทิ้งตอนชนเพดาน cache */
+  at: string;
+}
+
 export class ProsthoDB extends Dexie {
   teachers!: EntityTable<Teacher, 'id'>;
   students!: EntityTable<Student, 'id'>;
@@ -33,6 +52,7 @@ export class ProsthoDB extends Dexie {
   selfAssessments!: EntityTable<SelfAssessment, 'id'>;
   sect2!: EntityTable<Sect2Record, 'id'>;
   sect3!: EntityTable<Sect3Record, 'id'>;
+  blobs!: EntityTable<PhotoBlob, 'photoId'>;
   kv!: EntityTable<KV, 'key'>;
 
   constructor() {
@@ -84,6 +104,15 @@ export class ProsthoDB extends Dexie {
     /** v6 — Section II (ตรวจแผนการรักษา + ใบ RPD design) */
     this.version(6).stores({
       sect2: 'id, studentId, formKey, academicYear, [studentId+formKey]',
+    });
+    /**
+     * v7 — ไบต์รูปย้ายออกมาอยู่ตารางของตัวเอง (ดู PhotoBlob ข้างบน)
+     * ไม่มี upgrade() แปลงของเก่า: แถวเดิมที่มี dataUrl ปล่อยไว้อย่างนั้นก่อน
+     * แล้วให้ photoStore.migrateLegacyPhotos() ค่อยๆ ย้ายขึ้นคลาวด์ทีละใบตอนออนไลน์
+     * (ถ้าแปลงตอนเปิด DB จะบล็อกการเปิดแอปเป็นสิบวินาที และล้มกลางทางแล้วกู้ยาก)
+     */
+    this.version(7).stores({
+      blobs: 'photoId, at',
     });
   }
 }

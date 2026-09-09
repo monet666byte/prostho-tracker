@@ -5,9 +5,9 @@
  * และตอน sync ขึ้นเซิร์ฟเวอร์จะช้ามาก (แผนฟรีมีพื้นที่จำกัด) รูปงานทันตกรรม
  * ใช้ดูความคืบหน้า ไม่ต้องละเอียดระดับวินิจฉัย ด้านยาว 1280 px ก็เกินพอ
  *
- * หมายเหตุสำหรับอนาคต: ตอนนี้เก็บเป็น data URL ในตารางเดียวกับข้อมูลอื่น
- * ซึ่งพอสำหรับกลุ่มทดลอง แต่ถ้าขยายเป็น 96 คนควรย้ายไป Supabase Storage
- * (เก็บไฟล์แยก เหลือแค่ลิงก์ในตาราง) — ดู TODO ใน repo.addPhoto
+ * คืนเป็น Blob ไม่ใช่ data URL: ปลายทางคือ Supabase Storage ซึ่งรับ Blob ตรงๆ
+ * ถ้าแปลงเป็น base64 ก่อนจะพองขึ้น 33% แล้วต้องแปลงกลับตอนอัป เสียเปล่าสองต่อ
+ * (ของเดิมเก็บ data URL ในแถวเดียวกับ metadata ทำให้ base64 วิ่งขึ้น-ลง Postgres ทุกรอบ sync)
  */
 
 /** ด้านยาวสุดที่ยอมให้ (px) */
@@ -18,13 +18,16 @@ const TARGET_BYTES = 320 * 1024;
 export const HARD_LIMIT_BYTES = 900 * 1024;
 
 export interface CompressedImage {
-  dataUrl: string;
+  blob: Blob;
   bytes: number;
   width: number;
   height: number;
 }
 
-/** ขนาดไฟล์โดยประมาณจากความยาว data URL (base64 พองขึ้น ~4/3) */
+/**
+ * ขนาดไฟล์โดยประมาณจากความยาว data URL (base64 พองขึ้น ~4/3)
+ * ยังต้องมีอยู่ — ใช้กับรูปเก่าที่ยังเป็น data URL ตอนย้ายขึ้น storage (ดู photoStore.ts)
+ */
 export function dataUrlBytes(dataUrl: string): number {
   const i = dataUrl.indexOf(',');
   if (i < 0) return 0;
@@ -62,6 +65,11 @@ async function loadBitmap(file: File): Promise<{ w: number; h: number; draw: (c:
   };
 }
 
+/** canvas.toBlob เป็น callback — ห่อเป็น promise · คืน null ถ้าเบราว์เซอร์เข้ารหัสไม่ได้ */
+function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', quality));
+}
+
 /**
  * บีบรูปให้เล็กลงจนอยู่ในงบ — คืน null ถ้าไฟล์ไม่ใช่รูปหรือบีบไม่ลง
  */
@@ -85,17 +93,31 @@ export async function compressImage(file: File): Promise<CompressedImage | null>
     src.draw(ctx, w, h);
 
     let quality = 0.72;
-    let dataUrl = canvas.toDataURL('image/jpeg', quality);
-    let bytes = dataUrlBytes(dataUrl);
+    let blob = await toBlob(canvas, quality);
     // ลดคุณภาพทีละขั้นจนพอดีงบ (อย่างมาก 4 รอบ กันวนนาน)
-    for (let i = 0; i < 4 && bytes > TARGET_BYTES && quality > 0.35; i++) {
+    for (let i = 0; i < 4 && blob && blob.size > TARGET_BYTES && quality > 0.35; i++) {
       quality -= 0.1;
-      dataUrl = canvas.toDataURL('image/jpeg', quality);
-      bytes = dataUrlBytes(dataUrl);
+      blob = await toBlob(canvas, quality);
     }
-    if (bytes > HARD_LIMIT_BYTES) return null;
-    return { dataUrl, bytes, width: w, height: h };
+    if (!blob || blob.size > HARD_LIMIT_BYTES) return null;
+    return { blob, bytes: blob.size, width: w, height: h };
   } finally {
     src.close();
+  }
+}
+
+/** แปลง data URL เก่าเป็น Blob — ใช้ตอนย้ายรูปที่ค้างอยู่ในเครื่องผู้ใช้ขึ้น storage */
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) return null;
+  const mime = /data:([^;,]+)/.exec(dataUrl)?.[1] ?? 'image/jpeg';
+  try {
+    const bin = atob(dataUrl.slice(comma + 1));
+    const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return new Blob([buf], { type: mime });
+  } catch {
+    // base64 เสีย (ถูกตัดกลางทางตอน sync สมัยที่ยังส่งทั้งก้อน) — คืน null ให้ผู้เรียกกักไว้
+    return null;
   }
 }

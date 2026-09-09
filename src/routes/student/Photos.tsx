@@ -2,30 +2,38 @@ import { ArrowLeft, Camera, Images, WarningCircle } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom';
 import { Empty, PhotoSlot } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
-import { retryPhoto } from '../../data/repo';
-import { usePhotos, useWorkpieces } from '../../hooks/data';
+import { getPhotoStatus, retryPhoto } from '../../data/repo';
+import { usePhotoSrc, usePhotos, useWorkpieces } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { useApp } from '../../store/app';
 import type { PhotoStatus } from '../../domain/types';
 import { t, tText } from '../../lib/i18n';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 
+/**
+ * ป้ายต้องตรงกับความจริง ไม่ใช่ตรงกับที่อยากให้เป็น
+ * 'local' = โหมดที่ไม่มีเซิร์ฟเวอร์ให้อัปเลย (เดโม/แชร์/GitHub Pages) — ใช้สีกลาง ไม่ใช่สีเตือน
+ * เพราะมันไม่ใช่ความผิดพลาด แค่ไม่ได้ต่อคลาวด์ ต่างจาก 'queue' ที่แปลว่าต่ออยู่แต่ยังไม่ขึ้น
+ */
 const CHIP: Record<PhotoStatus, { label: string; bg: string; fg: string }> = {
   ok: { label: t('อัปโหลดแล้ว'), bg: 'var(--success-tint)', fg: 'var(--success)' },
   queue: { label: t('รออัปโหลด'), bg: 'var(--warning-tint)', fg: 'var(--warning)' },
   fail: { label: t('ส่งไม่สำเร็จ'), bg: 'var(--danger-tint)', fg: 'var(--danger-dark)' },
+  local: { label: t('เก็บในเครื่องนี้'), bg: 'var(--fill)', fg: 'var(--text-muted)' },
 };
 
 export default function Photos() {
   const navigate = useNavigate();
-  const { session, offline, showToast } = useApp();
+  const { session, showToast } = useApp();
   const photos = usePhotos(session?.studentId);
+  const srcs = usePhotoSrc(photos);
   const works = useWorkpieces(session?.studentId);
 
   const target = works.find((w) => w.procIndex >= 0);
   const cam = usePhotoAttach(target?.id, { camera: true });
   const lib = usePhotoAttach(target?.id);
   const busy = cam.busy || lib.busy;
+  const uploading = cam.uploading || lib.uploading;
 
   return (
     <PlainShell>
@@ -47,11 +55,11 @@ export default function Photos() {
       <div style={{ display: 'flex', gap: 11, padding: '14px 16px 0' }}>
         <button className="card" style={bigBtn} disabled={busy} onClick={cam.open}>
           <Camera size={24} weight="fill" color="var(--accent)" />
-          {busy ? t('กำลังย่อรูป…') : t('ถ่ายรูป')}
+          {busy ? (uploading ? t('กำลังส่งรูป…') : t('กำลังย่อรูป…')) : t('ถ่ายรูป')}
         </button>
         <button className="card" style={bigBtn} disabled={busy} onClick={lib.open}>
           <Images size={24} weight="fill" color="var(--accent)" />
-          {busy ? t('รอสักครู่') : t('เลือกจากคลัง')}
+          {busy ? (uploading ? t('กำลังส่งรูป…') : t('รอสักครู่')) : t('เลือกจากคลัง')}
         </button>
       </div>
 
@@ -72,11 +80,15 @@ export default function Photos() {
               style={{ padding: 10, display: 'flex', gap: 11, alignItems: 'center', textAlign: 'left' }}
               onClick={async () => {
                 if (p.status !== 'fail') return;
-                await retryPhoto(p.id, offline);
-                showToast({ message: t('ลองส่งรูปใหม่แล้ว'), tone: 'default' });
+                await retryPhoto(p.id);
+                // อ่านสถานะจริงหลังลองส่ง — เดิมขึ้น "ลองส่งใหม่แล้ว" ทุกครั้งไม่ว่าผลจะเป็นยังไง
+                const now = await getPhotoStatus(p.id);
+                showToast(now === 'ok'
+                  ? { message: t('ส่งรูปขึ้นเซิร์ฟเวอร์แล้ว'), tone: 'success' }
+                  : { message: t('ยังส่งไม่ขึ้น — ดูสาเหตุที่หน้า “การเชื่อมต่อ & sync”'), tone: 'warning' });
               }}
             >
-              <PhotoSlot size={74} filled src={p.dataUrl} alt={p.stepLabel} />
+              <PhotoSlot size={74} filled src={srcs.get(p.id)} alt={p.stepLabel} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', font: '500 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
                   {p.stepLabel}

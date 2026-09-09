@@ -10,7 +10,7 @@ import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { TYPES } from '../../domain/catalog';
 import {
   maxProgression, nextProc, progression, stepGroups, isReturned } from '../../domain/rules';
-import { usePending, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
+import { usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { setWorkpieceReturned } from '../../data/repo';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -27,6 +27,7 @@ export default function WorkpieceDetail() {
   // ต้องเรียกก่อน early return ด้านล่าง — กฎของ hook
   const attach = usePhotoAttach(id);
   const shots = useWorkpiecePhotos(id);
+  const shotSrcs = usePhotoSrc(shots);
 
   /* คืนเคส — เคสที่คนไข้ไม่มาต่อ/ยกเลิก นักศึกษากดเองได้ (ผู้ใช้ถาม 2 ก.ย.)
      ⚠️ hook ต้องอยู่เหนือ early return ด้านล่าง (กฎของ hook — เคยพลาดตรงนี้จนหน้าเปล่า) */
@@ -251,7 +252,7 @@ export default function WorkpieceDetail() {
                     {g.state === 'active' && (
                     <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
                       {shots.slice(0, 4).map((ph) => (
-                        <PhotoSlot key={ph.id} src={ph.dataUrl} alt={ph.stepLabel} filled />
+                        <PhotoSlot key={ph.id} src={shotSrcs.get(ph.id)} alt={ph.stepLabel} filled />
                       ))}
                       <button
                         className="dashed"

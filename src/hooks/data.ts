@@ -1,11 +1,13 @@
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
+import { resolvePhotoSrc } from '../data/photoStore';
 import {
   getSelfAssessment, listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviewConflicts, listReviews,
   listSect2, listSect3, listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
-import type { Review, WorkpieceView } from '../domain/types';
+import type { Photo, Review, WorkpieceView } from '../domain/types';
 
 export function useWorkpieces(studentId: string | undefined): WorkpieceView[] {
   return (
@@ -37,6 +39,26 @@ export function useQueue() {
 
 export function usePhotos(studentId: string | undefined) {
   return useLiveQuery(async () => (studentId ? listPhotos(studentId) : []), [studentId], []) ?? [];
+}
+
+/**
+ * src ของรูปหลายใบพร้อมกัน — คืน Map photoId → URL
+ *
+ * ต้องเป็น hook แยกเพราะบักเก็ตเป็น private: รูปที่ขึ้นคลาวด์แล้วต้องขอ "ลิงก์ที่เซ็นแล้ว"
+ * ซึ่งเป็นงาน async ต่างจากเดิมที่ data URL อยู่ในแถวแล้วเสียบเข้า <img> ได้เลย
+ * (สำเนาในเครื่องยังมาก่อนเสมอ — เร็วกว่า ไม่กินเน็ต และใช้ได้ตอนออฟไลน์)
+ */
+export function usePhotoSrc(photos: Photo[]): Map<string, string> {
+  const [srcs, setSrcs] = useState<Map<string, string>>(new Map());
+  /* คีย์ต้องมี storagePath ด้วย ไม่ใช่แค่ id — รูปที่เพิ่งอัปเสร็จจะเปลี่ยนจาก
+     "ไม่มีลิงก์" เป็น "มี" โดยที่ id เท่าเดิม ถ้าดูแค่ id หน้าจอจะค้างเป็นช่องว่าง */
+  const key = photos.map((p) => `${p.id}:${p.storagePath ?? ''}:${p.dataUrl ? '1' : ''}`).join(',');
+  useEffect(() => {
+    let alive = true;
+    void resolvePhotoSrc(photos).then((m) => { if (alive) setSrcs(m); });
+    return () => { alive = false; };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return srcs;
 }
 
 /** รูปของชิ้นงานชิ้นเดียว — ใช้โชว์ในหน้ารายละเอียด */
