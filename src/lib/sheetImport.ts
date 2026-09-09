@@ -185,6 +185,16 @@ function hash(s: string): string {
   }
   return h.toString(36);
 }
+/**
+ * ตัด ' นำหน้าที่เป็นแค่ "ป้ายบอก Excel ว่าเป็นข้อความ" ทิ้ง
+ *
+ * ไฟล์ที่แอปเราส่งออกเองจะเติม ' หน้าเซลล์ที่ขึ้นต้นด้วย = + @ - เพื่อกันไม่ให้
+ * Excel ตีความเป็นสูตร (ดู escapeCell ใน lib/export.ts) ถ้าไม่ตัดออกตรงนี้
+ * ค่าที่วิ่งออกไปแล้ววิ่งกลับเข้ามาจะไม่เท่าเดิม และป้ายชิ้นงานจะจับคู่ประเภทไม่ได้
+ * (ชีตที่คนพิมพ์เองก็เจอ ' นำหน้าได้เหมือนกัน เวลาเขาบังคับให้ช่องเป็นข้อความ)
+ */
+const unquoteLead = (v: string) => v.trim().replace(/^'(?=[=+@-])/, '');
+
 const patientId = (studentId: string, hn: string) => `p-imp-${hash(`${studentId}|${hn}`)}`;
 /** nth = ลำดับของแถวที่ให้กุญแจซ้ำกันในไฟล์เดียว (ไฟล์เรียงคงที่ ค่าจึงคงที่ด้วย) */
 const workpieceId = (studentId: string, hn: string, label: string, accepted: string, nth: number) =>
@@ -253,7 +263,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
 
   dataRows.forEach((r, i) => {
     const rowNo = i + 1;
-    const get = (idx: number) => (idx >= 0 && idx < r.length ? r[idx].trim() : '');
+    const get = (idx: number) => (idx >= 0 && idx < r.length ? unquoteLead(r[idx]) : '');
 
     const workLabel = get(cWork);
     if (!workLabel) {
@@ -553,7 +563,7 @@ export function parseStudentList(csvText: string): { entries: RosterEntry[]; iss
   const cLast = col(/last/i);
   const entries: RosterEntry[] = [];
   rows.slice(headerIdx + 1).forEach((r, i) => {
-    const get = (idx: number) => (idx >= 0 && idx < r.length ? r[idx].trim() : '');
+    const get = (idx: number) => (idx >= 0 && idx < r.length ? unquoteLead(r[idx]) : '');
     const idRaw = get(cId);
     const code = (idRaw.match(/(\d{7})/) ?? [])[1];
     if (!code) {
