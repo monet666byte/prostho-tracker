@@ -6,6 +6,9 @@
 import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
+import { pdpaPolicy } from './pdpaSync';
+import { caseCode } from '../lib/privacy';
+import { cloudEnabled, supabase } from '../lib/cloud';
 import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
@@ -754,8 +757,16 @@ export async function stepsOnDate(studentId: string, date: string): Promise<stri
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   เก็บข้อมูลย้อนหลังเท่าที่ภาคกำหนด (ปัจจุบัน 5 รุ่น) แล้วลบรุ่นที่เกิน
+   เก็บข้อมูลย้อนหลังเท่าที่ภาคกำหนด แล้วลบรุ่นที่เกิน (PDPA · retention)
    อาจารย์ขอ 1 ก.ย. 69: "จัดเก็บข้อมูลไว้ประมาณ 5 ปี"
+   ⚠️ "ประมาณ 5 ปี" ยังไม่ใช่มติภาค — ตัวเลขจริงกับจุดเริ่มนับยังค้างอยู่ (ดู README)
+      ระบบจึงล็อกไว้: ตราบใดที่ pdpa_policy.retention_enabled = false ลบอะไรไม่ได้เลย
+
+   ลบสองฝั่งเสมอ:
+     · ฝั่งเซิร์ฟเวอร์ ลบด้วย RPC purge_expired_cohorts (migration 0016) ในธุรกรรมเดียว
+     · ฝั่งเครื่อง ลบจาก IndexedDB ของเครื่องที่กดปุ่ม
+   ทำไมต้องทำทั้งสองฝั่งแทนที่จะพึ่งคิว sync อย่างเดียว — เหตุผลเต็มอยู่ในหัว 0016 ข้อ ⑥
+   สรุปสั้นๆ: คิว sync ลบได้เฉพาะแถวที่ "มีอยู่ในเครื่องนี้" และล้มเหลวแบบเงียบได้หลายทาง
    ══════════════════════════════════════════════════════════════════ */
 
 export interface RetentionReport {
@@ -763,16 +774,29 @@ export interface RetentionReport {
   keep: number[];
   /** รุ่นที่เกินกำหนดเก็บแล้ว พร้อมจำนวนข้อมูลที่จะถูกลบ */
   expired: Array<{ cohort: number; students: number; workpieces: number; checkins: number }>;
+  /** เก็บย้อนหลังกี่รุ่นตามนโยบายที่ใช้อยู่ */
+  keepCohorts: number;
+  /** ภาคเปิดใช้การลบตามกำหนดเก็บแล้วหรือยัง — false = ปุ่มลบต้องกดไม่ได้ */
+  enabled: boolean;
+  /**
+   * คนที่ไม่มี entryYear — เดารุ่นไม่ได้ จึงไม่ลบ
+   * ตั้งใจให้เห็นเป็นตัวเลข ไม่ใช่เงียบไป: ถ้ามีคนค้างตรงนี้แปลว่าข้อมูลนำเข้ามาไม่ครบ
+   * ต้องไปเติมรุ่นให้ก่อน ไม่ใช่ปล่อยให้ retention คิดว่าลบครบแล้วทั้งที่ยังเหลือ
+   */
+  undated: number;
 }
 
 /** สำรวจว่ามีรุ่นไหนเกินกำหนดเก็บบ้าง — ดูอย่างเดียว ยังไม่ลบ */
 export async function retentionReport(asOf: Date = new Date()): Promise<RetentionReport> {
+  const pol = pdpaPolicy();
   const students = await db.students.toArray();
   const keep = new Set<number>();
   const expiredIds = new Map<number, string[]>();
+  let undated = 0;
   students.forEach((s) => {
+    if (!s.entryYear) { undated++; return; }
     const c = cohortOf(s, asOf);
-    if (isWithinRetention(c, asOf)) keep.add(c);
+    if (isWithinRetention(c, asOf, pol.retentionCohorts)) keep.add(c);
     else expiredIds.set(c, [...(expiredIds.get(c) ?? []), s.id]);
   });
 
@@ -783,41 +807,93 @@ export async function retentionReport(asOf: Date = new Date()): Promise<Retentio
     const checks = await db.checkins.filter((c) => idSet.has(c.studentId)).count();
     expired.push({ cohort, students: ids.length, workpieces: works, checkins: checks });
   }
-  return { keep: [...keep].sort((a, b) => b - a), expired };
+  return {
+    keep: [...keep].sort((a, b) => b - a),
+    expired,
+    keepCohorts: pol.retentionCohorts,
+    enabled: pol.retentionEnabled,
+    undated,
+  };
+}
+
+export interface PurgeResult {
+  cohorts: number[];
+  students: number;
+  /** ลบฝั่งเซิร์ฟเวอร์สำเร็จไหม — false ในโหมด local (ไม่มีเซิร์ฟเวอร์) ก็ถือว่าปกติ */
+  server: 'ok' | 'skipped' | 'failed';
+  /** เหตุผลที่เซิร์ฟเวอร์ปฏิเสธ — ต้องเอาไปโชว์ ห้ามกลืน */
+  serverError?: string;
 }
 
 /**
  * ลบข้อมูลของรุ่นที่เกินกำหนดเก็บ — ลบจริง กู้คืนไม่ได้
- * ลบทุกตารางที่ผูกกับนักศึกษาคนนั้น ไม่ให้เหลือเศษข้อมูลกำพร้า
+ *
+ * ลำดับสำคัญ: ลบฝั่งเซิร์ฟเวอร์ให้สำเร็จก่อน แล้วค่อยลบในเครื่อง
+ * ถ้าทำกลับกันแล้วเซิร์ฟเวอร์ปฏิเสธ เครื่องนี้จะว่างแต่ตู้กลางยังเต็ม
+ * แล้ว pullAll รอบถัดไปจะดึงกลับลงมาทั้งหมด — ผู้ใช้เห็นว่า "ลบแล้วมันกลับมา" โดยไม่รู้สาเหตุ
  */
-export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): Promise<{ cohorts: number[]; students: number }> {
+export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): Promise<PurgeResult> {
+  const pol = pdpaPolicy();
+  if (!pol.retentionEnabled) {
+    // ไม่ throw — หน้าจอกันไว้อยู่แล้ว ตรงนี้เป็นด่านสุดท้ายเผื่อ UI พลาด
+    return { cohorts: [], students: 0, server: 'skipped', serverError: 'ภาควิชายังไม่ได้เปิดใช้การลบตามกำหนดเก็บ' };
+  }
+
   const students = await db.students.toArray();
-  const doomed = students.filter((s) => !isWithinRetention(cohortOf(s, asOf), asOf));
-  if (!doomed.length) return { cohorts: [], students: 0 };
+  // ไม่มี entryYear = เดารุ่นไม่ได้ ห้ามลบ (ลบผิดคนคือความเสียหายที่กู้ไม่ได้)
+  const doomed = students.filter((s) => !!s.entryYear && !isWithinRetention(cohortOf(s, asOf), asOf, pol.retentionCohorts));
+  if (!doomed.length) return { cohorts: [], students: 0, server: 'skipped' };
 
   const ids = new Set(doomed.map((s) => s.id));
   const cohorts = [...new Set(doomed.map((s) => cohortOf(s, asOf)))].sort((a, b) => b - a);
+
+  // ① ฝั่งเซิร์ฟเวอร์ก่อน — ล้มเหลวแล้วหยุด ไม่แตะข้อมูลในเครื่อง
+  let server: PurgeResult['server'] = 'skipped';
+  let serverError: string | undefined;
+  if (cloudEnabled && supabase) {
+    const { error } = await supabase.rpc('purge_expired_cohorts', { p_confirm: 'ลบถาวร' });
+    if (error) return { cohorts: [], students: 0, server: 'failed', serverError: error.message };
+    server = 'ok';
+  }
+
+  // ② แล้วค่อยฝั่งเครื่อง — ตารางลูกทุกใบที่ผูกกับนักศึกษาคนนั้น ไม่ให้เหลือเศษข้อมูลกำพร้า
   const patients = await db.patients.filter((p) => ids.has(p.ownerStudentId)).toArray();
   const patientIds = new Set(patients.map((p) => p.id));
   const works = await db.workpieces.filter((w) => ids.has(w.studentId)).toArray();
   const workIds = new Set(works.map((w) => w.id));
 
-  await db.transaction('rw', [db.students, db.patients, db.workpieces, db.checkins, db.updates, db.photos, db.groups], async () => {
-    await db.checkins.filter((c) => ids.has(c.studentId)).delete();
-    await db.updates.filter((u) => workIds.has(u.workpieceId)).delete();
-    await db.photos.filter((ph) => workIds.has(ph.workpieceId)).delete();
-    await db.workpieces.bulkDelete([...workIds]);
-    await db.patients.bulkDelete([...patientIds]);
-    await db.students.bulkDelete([...ids]);
-    // กลุ่มที่ไม่เหลือสมาชิกแล้วก็ลบทิ้ง ไม่งั้นค้างเป็นกลุ่มว่าง
-    const groups = await db.groups.toArray();
-    const remaining = await db.students.toArray();
-    const liveGroups = new Set(remaining.map((s) => s.group));
-    await db.groups.bulkDelete(groups.filter((g) => !liveGroups.has(g.code)).map((g) => g.code));
-  });
+  await db.transaction(
+    'rw',
+    [db.students, db.patients, db.workpieces, db.checkins, db.updates, db.photos, db.groups,
+     db.reviews, db.submissions, db.issues, db.queue, db.selfAssessments, db.sect2, db.sect3],
+    async () => {
+      await db.checkins.filter((c) => ids.has(c.studentId)).delete();
+      await db.updates.filter((u) => workIds.has(u.workpieceId)).delete();
+      await db.photos.filter((ph) => workIds.has(ph.workpieceId)).delete();
+      // สามใบนี้เคยตกหล่น — ผลตรวจงานกับผลประเมิน portfolio ค้างอยู่หลังลบเจ้าของทิ้งไปแล้ว
+      await db.reviews.filter((r) => workIds.has(r.workpieceId)).delete();
+      await db.submissions.filter((sb) => ids.has(sb.studentId)).delete();
+      await db.issues.filter((is) => ids.has(is.studentId)).delete();
+      await db.queue.filter((q) => workIds.has(q.workpieceId)).delete();
+      await db.selfAssessments.filter((sa) => ids.has(sa.studentId)).delete();
+      await db.sect2.filter((r) => ids.has(r.studentId)).delete();
+      await db.sect3.filter((r) => ids.has(r.studentId)).delete();
+      await db.workpieces.bulkDelete([...workIds]);
+      await db.patients.bulkDelete([...patientIds]);
+      await db.students.bulkDelete([...ids]);
+      // กลุ่มที่ไม่เหลือสมาชิกแล้วก็ลบทิ้ง ไม่งั้นค้างเป็นกลุ่มว่าง
+      const groups = await db.groups.toArray();
+      const remaining = await db.students.toArray();
+      const liveGroups = new Set(remaining.map((s) => s.group));
+      await db.groups.bulkDelete(groups.filter((g) => !liveGroups.has(g.code)).map((g) => g.code));
+    },
+  );
 
-  await logAudit(`ลบข้อมูลรุ่นที่เกินกำหนดเก็บ: ${cohorts.map((c) => `DTMU${c - 2514}`).join(', ')} · ${doomed.length} คน`, by);
-  return { cohorts, students: doomed.length };
+  // โหมด cloud ไม่ต้องจดซ้ำ — purge_expired_cohorts จดแถว audit ให้แล้วด้วยเวลาของเซิร์ฟเวอร์
+  if (server !== 'ok') {
+    await logAudit(`ลบข้อมูลรุ่นที่เกินกำหนดเก็บ: ${cohorts.map((c) => `DTMU${c - 2514}`).join(', ')} · ${doomed.length} คน`, by);
+  }
+  return { cohorts, students: doomed.length, server, serverError };
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1079,8 +1155,11 @@ export async function updatePatientNote(patientId: string, note: string, actor: 
   const clean = note.trim();
   if ((before.note ?? '') === clean) return;
   await db.patients.update(patientId, { note: clean || undefined });
+  /* ⚠️ ห้ามใส่ชื่อหรือ HN ผู้ป่วยลง audit — แถว audit ลบไม่ได้ (trigger ใน 0009)
+     ถ้าใส่ชื่อลงไป ข้อมูลจะอยู่เกินกำหนดเก็บถาวรและลบตาม retention ไม่ได้
+     ใช้รหัสเคสแทน: อาจารย์ยังจับคู่กับแถวในหน้าเคสได้ แต่ตัวบันทึกไม่มีตัวตนคนไข้ */
   await logAudit(
-    `แก้สถานะผู้ป่วย ${before.name}${before.hn ? ` (HN ${before.hn})` : ''}: ${clean || '(ล้างออก)'}`,
+    `แก้สถานะผู้ป่วย ${caseCode(before.id)}: ${clean || '(ล้างออก)'}`,
     actor,
     { studentId: before.ownerStudentId },
   );

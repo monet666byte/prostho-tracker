@@ -2,6 +2,10 @@ import { TYPES } from '../domain/catalog';
 import { currentProc, maxProgression, percentCompleted, procLabel, progression } from '../domain/rules';
 import type { WorkpieceView } from '../domain/types';
 import { toSheetDate } from './date';
+import { caseCode, maskedHn, maskedName } from './privacy';
+import { pdpaPolicy, type PdpaRole } from '../data/pdpaSync';
+import { cloudEnabled, supabase } from './cloud';
+import { logAudit } from '../data/repo';
 
 /** ช่องติ๊ก progression 0–10 เหมือนในชีต */
 export const PROGRESSION_COLUMNS = Array.from({ length: 11 }, (_, i) => String(i));
@@ -37,7 +41,17 @@ export function passedProgressions(w: WorkpieceView): boolean[] {
   return PROGRESSION_COLUMNS.map((_, i) => i <= max && i <= prog);
 }
 
-export function toCsvRows(works: WorkpieceView[]): string[][] {
+/**
+ * ไฟล์ที่ส่งออกมีชื่อ+HN จริงไหม
+ *  identified = true  → เหมือนชีตเดิมทุกช่อง (ใช้ได้เฉพาะบทบาทที่ภาคเปิดสิทธิ์ให้)
+ *  identified = false → ช่องชื่อกลายเป็นรหัสเคส · ช่อง HN ถูกปิดบัง
+ * ชื่อคอลัมน์คงเดิมทั้งสองแบบ เพราะไฟล์ต้องเปิดในชีตของภาคได้เหมือนกัน
+ */
+export interface CsvOptions {
+  identified: boolean;
+}
+
+export function toCsvRows(works: WorkpieceView[], opt: CsvOptions): string[][] {
   return works.map((w, i) => {
     const cur = currentProc(w);
     const note = [
@@ -46,8 +60,8 @@ export function toCsvRows(works: WorkpieceView[]): string[][] {
 
     return [
       String(i + 1),
-      w.patient.name,
-      w.patient.hn,
+      opt.identified ? w.patient.name : `${caseCode(w.patient.id)} (${maskedName(w.patient.name)})`,
+      opt.identified ? w.patient.hn : maskedHn(w.patient.hn),
       w.detail,
       toSheetDate(w.acceptedDate),
       w.minimumRequirement ? 'Yes' : 'No',
@@ -68,14 +82,14 @@ function escapeCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-export function buildCsv(works: WorkpieceView[]): string {
-  const rows = [CSV_COLUMNS, ...toCsvRows(works)];
+export function buildCsv(works: WorkpieceView[], opt: CsvOptions): string {
+  const rows = [CSV_COLUMNS, ...toCsvRows(works, opt)];
   // BOM เพื่อให้ Excel อ่านภาษาไทยถูก
   return '﻿' + rows.map((r) => r.map(escapeCell).join(',')).join('\n');
 }
 
-export function downloadCsv(works: WorkpieceView[], filename: string): void {
-  const blob = new Blob([buildCsv(works)], { type: 'text/csv;charset=utf-8' });
+function downloadCsv(works: WorkpieceView[], filename: string, opt: CsvOptions): void {
+  const blob = new Blob([buildCsv(works, opt)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -86,4 +100,86 @@ export function downloadCsv(works: WorkpieceView[], filename: string): void {
 
 export function typeLabel(w: WorkpieceView): string {
   return TYPES[w.type].full;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   สิทธิ์ส่งออก + audit  (PDPA · 9 ก.ย. 69)
+
+   เดิมปุ่มส่งออกใครกดก็ได้ และไม่มีร่องรอยว่าใครดึงอะไรออกไปเมื่อไหร่
+   ตอนนี้ทุกการส่งออกต้องผ่าน exportCsv() ตัวเดียว ซึ่งทำสามอย่างตามลำดับ
+     ① ถามนโยบายของภาค (pdpa_policy) ว่าบทบาทนี้ส่งออกได้ไหม และได้แบบมีชื่อไหม
+     ② จดลง audit ที่ฝั่งเซิร์ฟเวอร์ก่อน (log_export) — เวลาและตัวตนมาจากเซิร์ฟเวอร์
+     ③ จดผ่านแล้วค่อยสร้างไฟล์ · จดไม่ผ่าน = ไม่มีไฟล์
+
+   ⚠️ ขอบเขตที่ทำได้จริง — เขียนไว้ตรงนี้กันเข้าใจผิด:
+   นี่คือการคุม "ปุ่มในแอป" ไม่ใช่การคุม "การเอาข้อมูลออก" ทั้งหมด
+   คนที่เขียนสคริปต์ยิง REST API อ่านแถวเองแล้วประกอบไฟล์เองยังทำได้อยู่
+   ตัวคุมของกรณีนั้นคือ RLS (migration 0004–0012) ว่าบัญชีนั้นอ่านแถวไหนได้บ้าง
+   ══════════════════════════════════════════════════════════════════ */
+
+export type ExportScope = 'own-progress' | 'group' | 'cohort';
+
+export interface ExportRequest {
+  scope: ExportScope;
+  works: WorkpieceView[];
+  filename: string;
+  /** ขอไฟล์ที่มีชื่อ+HN จริง — ไม่มีสิทธิ์จะถูกลดเป็นไฟล์ปิดบังให้เอง ไม่ใช่ปฏิเสธทิ้ง */
+  wantIdentified: boolean;
+  role: PdpaRole;
+  /** ส่งออกของนักศึกษาคนไหน (ถ้าเป็นรายคน) — เซิร์ฟเวอร์ใช้ตรวจว่า นศ. ดึงของตัวเองจริง */
+  studentId?: string;
+  groupCode?: string;
+  /** ชื่อคนกด — ใช้ตอนไม่มีเซิร์ฟเวอร์ (โหมด local) เท่านั้น */
+  actor: string;
+}
+
+export type ExportResult =
+  | { ok: true; identified: boolean; downgraded: boolean }
+  | { ok: false; reason: string };
+
+/** ตรวจสิทธิ์ล้วนๆ ไม่ยิงเน็ต — หน้าจอใช้ตัดสินว่าปุ่มควรกดได้ไหม และควรเขียนป้ายว่าอะไร */
+export function exportPermission(role: PdpaRole): { allowed: boolean; identified: boolean } {
+  const pol = pdpaPolicy();
+  return {
+    allowed: pol.exportRoles.includes(role),
+    identified: pol.exportIdentifiedRoles.includes(role),
+  };
+}
+
+/**
+ * ส่งออก CSV — ประตูเดียวของทั้งแอป
+ * คืน ok:false พร้อมเหตุผลเป็นภาษาคน เอาไปโชว์ toast ได้เลย (ยังไม่ต้องแปลซ้ำ)
+ */
+export async function exportCsv(req: ExportRequest): Promise<ExportResult> {
+  const perm = exportPermission(req.role);
+  if (!perm.allowed) {
+    return { ok: false, reason: 'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกให้บทบาทนี้' };
+  }
+  const identified = req.wantIdentified && perm.identified;
+  const downgraded = req.wantIdentified && !perm.identified;
+
+  // ① จด audit ก่อนสร้างไฟล์เสมอ — ไฟล์ที่ออกไปแล้วเรียกคืนไม่ได้ แต่แถว audit ที่ยังไม่ได้จดเติมทีหลังไม่ได้เหมือนกัน
+  if (cloudEnabled && supabase) {
+    const { error } = await supabase.rpc('log_export', {
+      p_scope: req.scope,
+      p_row_count: req.works.length,
+      p_identified: identified,
+      p_student_id: req.studentId ?? null,
+      p_group_code: req.groupCode ?? null,
+      p_note: req.filename,
+    });
+    // เซิร์ฟเวอร์เป็นคนตัดสินคนสุดท้าย — ฝั่งแอปเช็คไปแล้วก็จริง แต่ค่าในเครื่องอาจเก่ากว่าของจริง
+    if (error) return { ok: false, reason: error.message };
+  } else {
+    // โหมด local/เดโม: ไม่มีเซิร์ฟเวอร์ให้จด ก็จดในเครื่อง (ข้อมูลเป็นของสมมติทั้งหมด)
+    await logAudit(
+      `ส่งออกข้อมูล (${req.scope}) ${req.works.length} แถว${identified ? ' · มีชื่อและ HN' : ' · ปิดบังชื่อและ HN'}`,
+      req.actor,
+      { studentId: req.studentId },
+    );
+  }
+
+  // ② จดผ่านแล้วค่อยสร้างไฟล์
+  downloadCsv(req.works, req.filename, { identified });
+  return { ok: true, identified, downgraded };
 }

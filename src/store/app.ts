@@ -11,6 +11,7 @@ import { toISODate } from '../lib/date';
 import { isInstalled } from '../lib/install';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
+import type { PdpaRole } from '../data/pdpaSync';
 import { groupShort } from '../domain/group';
 
 /** studentId สำหรับโหมดเดโม/local — ปกติคือนักศึกษาเดโม แต่ถ้าถูกแทนด้วยรุ่นจริง
@@ -98,6 +99,19 @@ interface AppState {
 export function currentActor(): string {
   const st = useApp.getState();
   return st.actorName;
+}
+
+/**
+ * บทบาทสำหรับตัดสินสิทธิ์ PDPA (ส่งออก / ลบตามกำหนดเก็บ)
+ * ต่างจาก session.role ตรงที่แยก "หัวหน้าภาค" ออกมาเป็นบทบาทของตัวเอง
+ *
+ * ⚠️ ค่านี้ใช้ตัดสินใจฝั่งหน้าจอเท่านั้น (ปุ่มกดได้ไหม / เขียนป้ายว่าอะไร)
+ * คนตัดสินจริงคือฟังก์ชัน my_role() บนเซิร์ฟเวอร์ ซึ่งอ่านจาก app_users ที่แอปแก้ไม่ได้
+ */
+export function currentPdpaRole(): PdpaRole {
+  const st = useApp.getState();
+  if (st.cloudUser?.isAdmin) return 'admin';
+  return st.session?.role ?? 'student';
 }
 
 export function useCanSwitchRole(): boolean {

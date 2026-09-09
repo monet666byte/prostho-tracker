@@ -13,7 +13,8 @@ import { saYearNow } from '../../domain/saFeedback';
 import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { ensureAlumniSeeded } from '../../data/seed';
-import { currentActor, useApp } from '../../store/app';
+import { currentActor, currentPdpaRole, useApp } from '../../store/app';
+import { onPdpaPolicy, pdpaPolicy, savePdpaPolicy, type PdpaPolicy, type PdpaRole } from '../../data/pdpaSync';
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
 import { cloudEnabled } from '../../lib/cloud';
 
@@ -75,11 +76,17 @@ export default function Settings() {
       const res = await purgeExpiredCohorts(currentActor());
       setConfirmPurge(false);
       refreshReport();
+      /* เซิร์ฟเวอร์ปฏิเสธ = ยังไม่ได้ลบอะไรเลยทั้งสองฝั่ง (ดูลำดับใน purgeExpiredCohorts)
+         ต้องขึ้นเป็นคำเตือนพร้อมเหตุผลจริง ห้ามขึ้นว่า "ลบแล้ว" */
+      if (res.server === 'failed') {
+        showToast({ message: `${t('ลบไม่สำเร็จ')} — ${res.serverError ?? ''}`, tone: 'warning' });
+        return;
+      }
       showToast({
         message: res.students
           ? t('ลบแล้ว {n} คน จาก {c}', { n: res.students, c: res.cohorts.map((x) => cohortLabel(x)).join(', ') })
-          : t('ไม่มีรุ่นที่ต้องลบ'),
-        tone: 'success',
+          : t(res.serverError ?? 'ไม่มีรุ่นที่ต้องลบ'),
+        tone: res.students ? 'success' : 'warning',
       });
     } finally {
       setPurging(false);
@@ -260,15 +267,30 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* เก็บข้อมูลย้อนหลังตามที่ภาคกำหนด แล้วลบรุ่นที่เกิน (อาจารย์ขอ 1 ก.ย. 69) */}
+            {/* เก็บข้อมูลย้อนหลังตามที่ภาคกำหนด แล้วลบรุ่นที่เกิน (อาจารย์ขอ 1 ก.ย. 69)
+                ⚠️ ปุ่มลบกดได้ต่อเมื่อหัวหน้าภาคเปิดสวิตช์ในแผง PDPA ข้างล่างแล้วเท่านั้น */}
             <div className="panel">
               <h3>{t('ข้อมูลย้อนหลัง')}</h3>
-              <p className="sub">{t('เก็บ {n} รุ่นล่าสุด — รุ่นที่เก่ากว่านั้นลบได้เพื่อไม่ให้ข้อมูลบวม', { n: KEEP_COHORTS })}</p>
+              <p className="sub">
+                {t('เก็บ {n} รุ่นล่าสุด — รุ่นที่เก่ากว่านั้นลบได้เพื่อไม่ให้ข้อมูลบวม', { n: report?.keepCohorts ?? KEEP_COHORTS })}
+              </p>
               {report && (
                 <>
                   <p style={{ margin: '11px 0 0', font: '400 11.5px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
                     {t('รุ่นที่เก็บอยู่')}: <b>{report.keep.map((c) => cohortLabel(c)).join(' · ') || '—'}</b>
                   </p>
+                  {!report.enabled && (
+                    <p style={{ margin: '7px 0 0', font: '400 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+                      {t('ภาควิชายังไม่ได้เปิดใช้การลบตามกำหนดเก็บ — ข้อมูลเก่ายังอยู่ครบ')}
+                    </p>
+                  )}
+                  {/* คนที่ไม่มีรุ่น = ระบบเดาไม่ได้ว่าเก่าแค่ไหน จึงไม่ลบ ต้องบอกให้เห็น
+                      ไม่งั้นจะเข้าใจว่า "ลบครบแล้ว" ทั้งที่ยังมีข้อมูลเก่าค้างอยู่ */}
+                  {report.undated > 0 && (
+                    <p style={{ margin: '7px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+                      {t('มี {n} คนที่ยังไม่ระบุรุ่น — ระบบไม่ลบให้ ต้องเติมรุ่นในหน้ารายชื่อก่อน', { n: report.undated })}
+                    </p>
+                  )}
                   {report.expired.length === 0 ? (
                     <p style={{ margin: '7px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
                       {t('ยังไม่มีรุ่นที่เกินกำหนดเก็บ')}
@@ -286,7 +308,7 @@ export default function Settings() {
                       <button
                         className="btn"
                         style={{ marginTop: 12, height: 42, fontSize: 13 }}
-                        disabled={purging}
+                        disabled={purging || !report.enabled}
                         onClick={() => setConfirmPurge(true)}
                       >
                         <Trash size={15} weight="bold" />
@@ -297,6 +319,8 @@ export default function Settings() {
                 </>
               )}
             </div>
+
+            <PdpaPanel />
 
             <div className="panel">
               <h3>Audit log</h3>
@@ -332,7 +356,10 @@ export default function Settings() {
                 <h3>{t('สิทธิ์การเข้าถึง & PDPA')}</h3>
               </div>
               <p className="pretty" style={{ margin: '7px 0 0', font: '400 11px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('อาจารย์เห็นข้อมูลเฉพาะนักศึกษาในกลุ่มที่ปรึกษา · ชื่อและ HN ผู้ป่วยแสดงตามสิทธิ์ PDPA · ทุกการอนุมัติและการแก้ step ถูกบันทึกใน audit log ที่แก้ย้อนหลังไม่ได้')}
+                {/* ข้อความเดิมเขียนว่า "อาจารย์เห็นเฉพาะกลุ่มที่ปรึกษา" ซึ่งไม่ตรงกับ policy จริง
+                    (migration 0004 ตั้งใจให้อาจารย์เห็นทั้งชั้นปี เพราะอาจารย์เวรต้องเซ็นให้ทุกกลุ่ม)
+                    เขียนผิดในหน้าที่พูดเรื่อง PDPA อันตรายกว่าไม่เขียน — แก้ให้ตรงความจริง 9 ก.ย. 69 */}
+                {t('อาจารย์ในภาคเห็นข้อมูลนักศึกษาได้ทั้งชั้นปี (อาจารย์เวรต้องเซ็นให้ทุกกลุ่ม) · นักศึกษาเห็นเฉพาะของตัวเอง · ตัวคุมฝั่งอาจารย์คือ audit log ที่แก้และลบย้อนหลังไม่ได้ ไม่ใช่การบล็อก')}
               </p>
               <p style={{ margin: '10px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
                 {t('ปัญหา / ข้อสงสัยเรื่องข้อมูลรายวิชา ติดต่อ ผศ.ดร.ทพ.มนตรี')} ·{' '}
@@ -397,5 +424,164 @@ function SettingsSyncNote() {
       {state === 'synced' && t('ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้')}
       {failed && t('ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา')}
     </p>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   แผงนโยบาย PDPA — สวิตช์ที่เปิดได้เฉพาะหัวหน้าภาค (pdpa_policy · migration 0016)
+
+   ทำไมแยกจากแผง "ตั้งค่าเกณฑ์" ข้างบน: เกณฑ์ขั้นต่ำอาจารย์คนไหนก็แก้ได้
+   แต่ "ใครส่งออกข้อมูลผู้ป่วยได้" กับ "ลบข้อมูลจริงได้หรือยัง" ต้องเป็นสิทธิ์ของคนเดียว
+   อาจารย์ทั่วไปยังเห็นแผงนี้ได้ (จะได้รู้ว่าตอนนี้กติกาคืออะไร) แต่กดอะไรไม่ได้
+
+   ค่าตั้งต้นคือ "ปิดหมด" — โครงพร้อมเปิด ไม่ใช่เปิดไว้แล้ว
+   ══════════════════════════════════════════════════════════════════ */
+const EXPORT_ROLE_LABELS: Array<[PdpaRole, string]> = [
+  ['student', t('นักศึกษา — ของตัวเองเท่านั้น')],
+  ['teacher', t('อาจารย์')],
+  ['admin', t('หัวหน้าภาค')],
+];
+
+function PdpaPanel() {
+  const { showToast } = useApp();
+  const [pol, setPol] = useState<PdpaPolicy>(() => pdpaPolicy());
+  const [saving, setSaving] = useState(false);
+  useEffect(() => onPdpaPolicy(() => setPol(pdpaPolicy())), []);
+  const isAdmin = currentPdpaRole() === 'admin';
+
+  async function apply(patch: Partial<PdpaPolicy>) {
+    setSaving(true);
+    try {
+      const res = await savePdpaPolicy(patch, currentActor());
+      // เขียนไม่ผ่านต้องรู้ทันที — ถ้าเงียบ หัวหน้าภาคจะเชื่อว่าปิดสิทธิ์ไปแล้วทั้งที่ยังเปิดอยู่
+      if (res.error) showToast({ message: `${t('บันทึกนโยบายไม่สำเร็จ')} — ${res.error}`, tone: 'warning' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const toggleRole = (list: PdpaRole[], r: PdpaRole) =>
+    list.includes(r) ? list.filter((x) => x !== r) : [...list, r];
+
+  return (
+    <div className="panel">
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <ShieldCheck size={17} color="var(--warning-dark)" />
+        <h3>{t('นโยบาย PDPA')}</h3>
+      </div>
+      <p className="sub">{t('ค่าเริ่มต้นคือปิดทุกข้อ — เปิดได้เมื่อคณะอนุมัติแล้ว และเปิดได้เฉพาะหัวหน้าภาค')}</p>
+      {!isAdmin && (
+        <p style={{ margin: '8px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
+          {t('ดูได้อย่างเดียว — เปลี่ยนได้เฉพาะหัวหน้าภาค')}
+        </p>
+      )}
+
+      <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+        <div>
+          <div style={{ font: '600 12px var(--font-body)' }}>{t('ใครกดส่งออกไฟล์ได้')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+            {EXPORT_ROLE_LABELS.map(([r, label]) => (
+              <button
+                key={r}
+                className="qchip"
+                data-on={pol.exportRoles.includes(r)}
+                disabled={!isAdmin || saving}
+                onClick={() => void apply({
+                  exportRoles: toggleRole(pol.exportRoles, r),
+                  // ถอนสิทธิ์ส่งออก = ถอนสิทธิ์ส่งออกพร้อมชื่อไปด้วยเสมอ
+                  // (เซิร์ฟเวอร์ปฏิเสธค่าที่ขัดกันเองอยู่แล้ว แต่ไม่ควรให้ผู้ใช้เจอ error เพราะเรื่องที่เดาได้)
+                  exportIdentifiedRoles: pol.exportRoles.includes(r)
+                    ? pol.exportIdentifiedRoles.filter((x) => x !== r)
+                    : pol.exportIdentifiedRoles,
+                })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: '6px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+            {pol.exportRoles.length === 0
+              ? t('ยังไม่เปิดให้ใครส่งออก — ปุ่มส่งออกในแอปกดไม่ได้')
+              : t('ทุกครั้งที่มีคนส่งออก ระบบจดลง audit log ว่าใครดึงอะไรออกไปเมื่อไหร่')}
+          </p>
+        </div>
+
+        <div>
+          <div style={{ font: '600 12px var(--font-body)' }}>{t('ใครส่งออกแบบมีชื่อและ HN ผู้ป่วยได้')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+            {EXPORT_ROLE_LABELS.filter(([r]) => pol.exportRoles.includes(r)).map(([r, label]) => (
+              <button
+                key={r}
+                className="qchip"
+                data-on={pol.exportIdentifiedRoles.includes(r)}
+                disabled={!isAdmin || saving}
+                onClick={() => void apply({ exportIdentifiedRoles: toggleRole(pol.exportIdentifiedRoles, r) })}
+              >
+                {label}
+              </button>
+            ))}
+            {pol.exportRoles.length === 0 && (
+              <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
+                {t('ต้องเปิดสิทธิ์ส่งออกก่อน')}
+              </span>
+            )}
+          </div>
+          <p style={{ margin: '6px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+            {t('ที่ไม่ได้ติ๊ก จะได้ไฟล์ที่แสดงรหัสเคสแทนชื่อและ HN')}
+          </p>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--divider)', paddingTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{t('เปิดใช้การลบตามกำหนดเก็บ')}</span>
+              <span style={{ display: 'block', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
+                {t('ปิดอยู่ = ไม่มีใครลบข้อมูลรุ่นเก่าได้ แม้แต่หัวหน้าภาค')}
+              </span>
+            </span>
+            <button
+              className="qchip"
+              data-on={pol.retentionEnabled}
+              disabled={!isAdmin || saving}
+              onClick={() => void apply({ retentionEnabled: !pol.retentionEnabled })}
+            >
+              {pol.retentionEnabled ? t('เปิดอยู่') : t('ปิดอยู่')}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 12 }}>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{t('เก็บย้อนหลังกี่รุ่น')}</span>
+              <span style={{ display: 'block', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
+                {t('ตัวเลขนี้ยังไม่ใช่มติภาค — 5 เป็นค่าตั้งต้นจากที่อาจารย์เคยพูดไว้')}
+              </span>
+            </span>
+            <div className="stepper">
+              <button
+                disabled={!isAdmin || saving || pol.retentionCohorts <= 1}
+                onClick={() => void apply({ retentionCohorts: pol.retentionCohorts - 1 })}
+                aria-label={t('ลด')}
+              >
+                <Minus size={13} weight="bold" />
+              </button>
+              <span>{pol.retentionCohorts}</span>
+              <button
+                disabled={!isAdmin || saving}
+                onClick={() => void apply({ retentionCohorts: pol.retentionCohorts + 1 })}
+                aria-label={t('เพิ่ม')}
+              >
+                <Plus size={13} weight="bold" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!cloudEnabled && (
+        <p style={{ margin: '11px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+          {t('โหมดในเครื่อง/เดโม — ข้อมูลเป็นของสมมติทั้งหมด ค่าที่ตั้งตรงนี้ไม่ถูกส่งไปไหน')}
+        </p>
+      )}
+    </div>
   );
 }

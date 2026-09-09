@@ -1,12 +1,14 @@
 import { ArrowLeft, FileCsv, FilePdf } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
-import { CSV_COLUMNS, PROGRESSION_COLUMNS, downloadCsv, passedProgressions } from '../../lib/export';
+import { CSV_COLUMNS, PROGRESSION_COLUMNS, exportCsv, exportPermission, passedProgressions } from '../../lib/export';
 import { currentProc, isComplete, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { thaiLong, academicYear } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, currentPdpaRole, useApp } from '../../store/app';
+import { onPdpaPolicy } from '../../data/pdpaSync';
 
 export default function ExportScreen() {
   const navigate = useNavigate();
@@ -15,6 +17,39 @@ export default function ExportScreen() {
   const student = useStudent(session?.studentId);
 
   const reportWorks = works.filter((w) => !isComplete(w) || w.minimumRequirement);
+
+  /* สิทธิ์ส่งออกมาจากนโยบายของภาค (pdpa_policy · migration 0016) ไม่ใช่ค่าคงที่ในแอป
+     หัวหน้าภาคเปลี่ยนแล้วต้องมีผลกับหน้าที่เปิดค้างอยู่ด้วย จึงต้องสมัครฟัง */
+  const [perm, setPerm] = useState(() => exportPermission(currentPdpaRole()));
+  useEffect(() => onPdpaPolicy(() => setPerm(exportPermission(currentPdpaRole()))), []);
+  const [busy, setBusy] = useState(false);
+
+  async function doExportCsv() {
+    setBusy(true);
+    try {
+      const res = await exportCsv({
+        scope: 'own-progress',
+        works: reportWorks,
+        filename: `DTPT502-${student?.code ?? 'student'}-progress.csv`,
+        wantIdentified: true,
+        role: currentPdpaRole(),
+        studentId: session?.studentId,
+        actor: currentActor(),
+      });
+      if (!res.ok) {
+        showToast({ message: t(res.reason), tone: 'warning' });
+        return;
+      }
+      showToast({
+        message: res.identified
+          ? t('ส่งออก CSV แล้ว')
+          : t('ส่งออก CSV แล้ว — ไฟล์นี้ปิดบังชื่อและ HN ตามสิทธิ์ที่ภาคกำหนด'),
+        tone: 'success',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <PlainShell>
@@ -106,14 +141,21 @@ export default function ExportScreen() {
         <button
           className="btn btn--sec"
           style={{ height: 48 }}
-          onClick={() => {
-            downloadCsv(reportWorks, `DTPT502-${student?.code ?? 'student'}-progress.csv`);
-            showToast({ message: t('ส่งออก CSV แล้ว'), tone: 'success' });
-          }}
+          disabled={!perm.allowed || busy}
+          onClick={() => void doExportCsv()}
         >
           <FileCsv size={18} />
           {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')}
         </button>
+        {/* บอกตรงๆ ว่าทำไมกดไม่ได้ / ไฟล์ที่ได้จะหน้าตายังไง — ไม่ปล่อยให้ปุ่มเทาเฉยๆ
+            ทุกครั้งที่กดสำเร็จจะมีแถวใน audit log ว่าใครดึงอะไรออกไปเมื่อไหร่ */}
+        <p style={{ margin: '-2px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+          {!perm.allowed
+            ? t('ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกให้บทบาทนี้')
+            : perm.identified
+              ? t('ไฟล์นี้มีชื่อและ HN ผู้ป่วย · การส่งออกทุกครั้งถูกบันทึกใน audit log')
+              : t('ไฟล์นี้แสดงรหัสเคสแทนชื่อและ HN · การส่งออกทุกครั้งถูกบันทึกใน audit log')}
+        </p>
 
         <div className="sectiontitle" style={{ padding: '8px 0 6px' }}>
           <h4>{t('คอลัมน์ใน CSV')}</h4>

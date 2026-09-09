@@ -46,9 +46,13 @@ export function isActiveStudent(s: Pick<Student, 'year' | 'entryYear'>, asOf: Da
   return y >= CLINIC_START_YEAR && y <= CLINIC_LAST_YEAR;
 }
 
-/** รุ่นที่ยังต้องเก็บไว้ในระบบ ณ ปีการศึกษาหนึ่ง (เก่ากว่านี้คือหมดอายุเก็บ) */
-export function isWithinRetention(cohort: number, asOf: Date = new Date()): boolean {
-  return academicYear(asOf) - cohort < KEEP_COHORTS;
+/**
+ * รุ่นที่ยังต้องเก็บไว้ในระบบ ณ ปีการศึกษาหนึ่ง (เก่ากว่านี้คือหมดอายุเก็บ)
+ * `keep` มาจากนโยบายของภาค (pdpa_policy.retention_cohorts · migration 0016)
+ * ค่าใน KEEP_COHORTS เป็นแค่ค่าตั้งต้นตอนยังไม่ได้ต่อเซิร์ฟเวอร์ ไม่ใช่มติภาค
+ */
+export function isWithinRetention(cohort: number, asOf: Date = new Date(), keep: number = KEEP_COHORTS): boolean {
+  return academicYear(asOf) - cohort < keep;
 }
 
 /**

@@ -12,6 +12,7 @@
 import { db, kvGet, kvSet } from './db';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushSettings, pullSettings } from './settingsSync';
+import { loadCachedPolicy, pullPdpaPolicy } from './pdpaSync';
 
 /* ── ตารางที่ sync + กติกาแปลงชื่อคอลัมน์ camelCase ↔ snake_case ── */
 
@@ -275,6 +276,9 @@ export async function pullAll(): Promise<void> {
   if (!supabase) return;
   // ค่าตั้งของภาคอยู่คนละตารางและมีกติกาของตัวเอง (แถวเดียว · เขียนได้เฉพาะอาจารย์)
   await pullSettings();
+  // นโยบาย PDPA ก็แถวเดียวเหมือนกัน แต่เขียนได้เฉพาะหัวหน้าภาค (0016)
+  // ต้องดึงทุกรอบ ไม่ใช่แค่ตอนเปิดแอป — หัวหน้าภาคปิดสิทธิ์ส่งออกแล้วต้องมีผลกับทุกเครื่องภายใน 15 วิ
+  await pullPdpaPolicy();
   for (const def of TABLES) {
     // เช็คก่อนว่าตารางนี้มีอะไรใหม่มั้ย — ส่วนใหญ่ไม่มี จะได้ไม่ต้องดึง/เขียนทับให้เสี่ยง
     const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
@@ -343,6 +347,10 @@ function subscribeRealtime() {
         void pullSettings(); // แถวเดียว ดึงใหม่ทั้งแถวง่ายกว่าแกะ payload
         return;
       }
+      if (payload.table === 'pdpa_policy') {
+        void pullPdpaPolicy();
+        return;
+      }
       const def = byRemote.get(payload.table);
       if (!def) return;
       const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
@@ -406,6 +414,9 @@ async function bindToUser(uid: string): Promise<boolean> {
 export async function initCloudSync(): Promise<void> {
   if (!cloudEnabled || started) return;
   started = true;
+  // สำเนานโยบายรอบก่อนจากเครื่อง — ให้หน้าจอวาดปุ่มส่งออกถูกตั้งแต่วินาทีแรก
+  // ไม่มีสำเนา = ใช้ค่าที่ล็อกไว้ (ส่งออกไม่ได้) ซึ่งเป็นฝั่งที่ถูกต้องที่จะพลาด
+  await loadCachedPolicy();
   try {
     const { data: auth } = await supabase!.auth.getUser();
     if (!auth.user) {
