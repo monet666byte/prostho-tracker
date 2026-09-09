@@ -4,6 +4,9 @@
  * เด็กเลือกจากรายการแทนการเขียนมือ · อาจารย์ให้คะแนน 0–3 แทนการเซ็นสมุด
  */
 
+import type { CheckIn } from './types';
+import { t } from '../lib/i18n';
+
 /** คอลัมน์คะแนนตาม Part B ของสมุดจริง — ข้อละ 0–3 */
 /* short = ป้ายบนกราฟแมงมุม — ใช้อังกฤษทับศัพท์ทั้งสองภาษา (ศัพท์ในสมุดจริงเป็นอังกฤษ ผู้ใช้บอกไม่ต้องแปล) */
 export const CRITERIA = [
@@ -60,4 +63,29 @@ export const ACTIVITY_GROUPS: ReadonlyArray<{ label: string; items: readonly str
 export function totalScore(scores: Record<string, number> | undefined): number | null {
   if (!scores) return null;
   return CRITERIA.reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);
+}
+
+/* ── คะแนนที่ถูกทับ ────────────────────────────────────────────────────────────
+   อาจารย์สองท่านลงคะแนนคาบเดียวกันคนละเครื่องเกิดขึ้นได้จริง: evaluateCheckIn กัน
+   ด้วย status === 'evaluated' แต่กันจาก "สำเนาในเครื่อง" — ทั้งสองเครื่องเห็น pending
+   พร้อมกันก็ผ่านด่านทั้งคู่ แล้วคนที่ sync ทีหลังชนะ
+   ตั้งแต่ migration 0017 ฐานข้อมูลเก็บชุดที่ถูกทับไว้ใน scoreHistory เสมอ
+   สองตัวนี้แปลงมันเป็นข้อความที่อาจารย์อ่านรู้เรื่อง — เพื่อไม่ให้ "หายเงียบ" อีก */
+
+/** ชื่ออาจารย์ที่คะแนนชุดปัจจุบันทับไป (คนล่าสุดที่ถูกแทนที่) — undefined = ไม่มีใครถูกทับ */
+export function supersededBy(c: Pick<CheckIn, 'scoreHistory'>): string | undefined {
+  const last = c.scoreHistory?.[c.scoreHistory.length - 1];
+  return last?.by || undefined;
+}
+
+/** บรรทัดเต็มสำหรับ tooltip / กล่องแก้คะแนน */
+export function supersededTitle(c: Pick<CheckIn, 'scoreHistory'>): string {
+  const h = c.scoreHistory ?? [];
+  if (!h.length) return '';
+  const lines = h.map((e) => {
+    const total = totalScore(e.scores);
+    const who = e.by ? t(e.by) : t('ไม่ทราบผู้ประเมิน');
+    return `${who} ${t('เคยให้')} ${total ?? 0}/${MAX_TOTAL}`;
+  });
+  return `${t('คะแนนชุดก่อนหน้ายังเก็บไว้ครบ')} — ${lines.join(' · ')}`;
 }

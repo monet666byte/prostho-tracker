@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import {
-  getSelfAssessment, listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviews,
+  getSelfAssessment, listAllCheckIns, listAudit, listCheckIns, listPhotos, listQueue, listReviewConflicts, listReviews,
   listSect2, listSect3, listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
@@ -54,6 +54,11 @@ export function useAudit(limit = 12) {
 
 export function useReviews(): Map<string, Review> {
   return useLiveQuery(() => listReviews(), [], new Map<string, Review>()) ?? new Map<string, Review>();
+}
+
+/** ใบตัดสินที่ถูกทับ (ของอาจารย์ท่านอื่น) — ทำป้ายเตือน ไม่ให้คำตัดสินหายเงียบ */
+export function useReviewConflicts(): Map<string, Review[]> {
+  return useLiveQuery(() => listReviewConflicts(), [], new Map<string, Review[]>()) ?? new Map<string, Review[]>();
 }
 
 export function useStudent(id: string | undefined) {

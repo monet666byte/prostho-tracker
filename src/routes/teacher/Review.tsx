@@ -8,7 +8,7 @@ import { setReview, setStudentGate } from '../../data/repo';
 import { TYPES } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
-import { useAllStudents, usePending, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
+import { useAllStudents, usePending, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
@@ -27,6 +27,7 @@ export default function Review() {
   const teacher = useTeacher(session?.teacherId);
   const students = useAllStudents();
   const reviews = useReviews();
+  const reviewConflicts = useReviewConflicts();
   const pending = usePending();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
   const teacherById = useMemo(() => new Map(teachers.map((tc) => [tc.id, tc])), [teachers]);
@@ -212,6 +213,19 @@ export default function Review() {
                     {!!(review?.comment) && (
                       <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
                         <ChatCircleText size={11} weight="fill" style={{ verticalAlign: -1.5, marginRight: 3 }} />{t('คอมเมนต์แล้ว')}
+                      </span>
+                    )}
+                    {/* อาจารย์สองท่านตัดสินชิ้นเดียวกันคนละเครื่องเกิดขึ้นได้จริง — ใบเก่าไม่ถูกลบแล้ว
+                        ต้องมีป้าย ไม่งั้นท่านที่ตัดสินไปก่อนไม่มีทางรู้ว่าของตัวเองถูกแทนที่ */}
+                    {reviewConflicts.has(w.id) && (
+                      <span
+                        className="badge"
+                        style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}
+                        title={reviewConflicts.get(w.id)!
+                          .map((r) => `${t(r.by ?? '')} — ${r.status === 'approved' ? t('อนุมัติ') : r.status === 'returned' ? t('ตีกลับให้แก้') : t('คอมเมนต์')}`)
+                          .join(' · ')}
+                      >
+                        {t('มีคำตัดสินของท่านอื่น')}
                       </span>
                     )}
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', font: '500 11px var(--font-body)', flex: 'none' }}>

@@ -876,6 +876,18 @@ export const DICT: Record<string, string> = {
   'แก้คะแนนคาบนี้': 'Edit this session\u2019s scores',
   'แก้คะแนนของ': 'Edit scores for',
   'ประเมินโดย {who}': 'evaluated by {who}',
+  /* ── คะแนน/คำตัดสินที่ถูกทับ (migration 0017) ── */
+  'ทับของ {who}': 'replaced {who}',
+  'เคยให้': 'gave',
+  'ไม่ทราบผู้ประเมิน': 'unknown evaluator',
+  'คะแนนชุดก่อนหน้ายังเก็บไว้ครบ': 'earlier scores are all kept',
+  '{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้': '{n} items could not be sent to the server',
+  'ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ':
+    'All still saved on this device, but nobody else can see them yet — if retrying does not help, tell the system admin',
+  'ลองส่งใหม่': 'Retry',
+  'มีคำตัดสินของท่านอื่น': 'another decision exists',
+  'คอมเมนต์': 'comment',
+  'ใส่กลับเข้าคิวแล้ว': 'Put back in the queue',
   'เดิม': 'was',
   'ยังไม่ได้แก้อะไร': 'Nothing changed yet',
   'แก้ {n} หัวข้อ': '{n} item(s) changed',

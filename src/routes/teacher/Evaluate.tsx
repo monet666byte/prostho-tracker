@@ -5,7 +5,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
 import type { ProfileAxis } from '../../domain/analytics';
 import { evaluateCheckIn, reviseCheckIn } from '../../data/repo';
-import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, totalScore } from '../../domain/checkin';
+import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, supersededBy, supersededTitle, totalScore } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTeacher } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
@@ -422,7 +422,16 @@ export default function Evaluate() {
                       <CheckCircle size={11} weight="fill" /> {totalScore(c.scores)}/{MAX_TOTAL}
                     </span>
                   </td>
-                  <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>{t(c.evaluatedBy ?? '')}</td>
+                  <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
+                    {t(c.evaluatedBy ?? '')}
+                    {/* คะแนนชุดก่อนหน้ายังอยู่ครบในฐานข้อมูล (0017) — บอกให้เห็นว่ามีคนทับ
+                        ไม่งั้นอาจารย์ที่ลงคะแนนไปก่อนจะไม่มีทางรู้ว่าของตัวเองถูกแทนที่ */}
+                    {supersededBy(c) && (
+                      <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)', marginInlineStart: 4 }} title={supersededTitle(c)}>
+                        <WarningCircle size={10} weight="fill" /> {t('ทับของ {who}', { who: t(supersededBy(c)!) })}
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <button
                       className="revisebtn"
@@ -557,6 +566,11 @@ export default function Evaluate() {
                 <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
                 {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
               </div>
+              {supersededBy(reviseRow) && (
+                <div className="confirmbox__meta" style={{ color: 'var(--warning-dark)' }}>
+                  <WarningCircle size={11} weight="fill" /> {supersededTitle(reviseRow)}
+                </div>
+              )}
 
               <div className="revisegrid">
                 {CRITERIA.map((cr) => {

@@ -183,6 +183,13 @@ export interface CheckIn {
   scores?: Record<string, number>;
   evaluatedBy?: string;
   evaluatedAt?: string;
+  /**
+   * คะแนนชุดก่อนหน้าที่ถูกทับ เรียงเก่า→ใหม่ — ฐานข้อมูลเติมให้เอง (trigger ใน 0017)
+   * มีเพราะอาจารย์สองท่านลงคะแนนคาบเดียวกันคนละเครื่องได้จริง (สำเนาในเครื่องเห็น pending ทั้งคู่)
+   * เดิมชุดแรกหายสนิท — ตอนนี้เก็บไว้เสมอ แล้วหน้าประเมินขึ้นป้ายว่าใครทับของใคร
+   * ฝั่งแอปอ่านอย่างเดียว ห้ามเขียน
+   */
+  scoreHistory?: { scores: Record<string, number>; by?: string; at?: string; replacedAt?: string }[];
   /** ครั้งล่าสุดที่นักศึกษาแก้กิจกรรม/คนไข้/โน้ตหลังเช็คอิน (ISO) — โชว์ป้ายให้อาจารย์เห็นว่าคาบนี้มีการแก้ */
   editedAt?: string;
   createdAt: string;

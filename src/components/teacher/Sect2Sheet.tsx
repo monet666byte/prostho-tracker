@@ -120,15 +120,19 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   }, [grades, f, touch]);
 
 
-  /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
-     เดิมต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
-     ถ้ายังไม่ได้กาอะไรเลยและไม่ได้ตั้งใจกด "ประเมินใหม่" → รับแถวที่มีอยู่มาแก้ต่อ
-     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง) */
+  /* สองเครื่องของ "คนเดียวกัน" (มือถือ+iPad) → รับแถวที่มีอยู่มาแก้ต่อ
+     ไม่งั้นต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
+     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง)
+
+     ⚠️ แต่ต้องเป็นใบของตัวเองเท่านั้น — อาจารย์สองท่านเปิดใบเดียวกันคือคนละเรื่อง
+     เดิมรับใบของท่านอื่นมาแก้ต่อด้วย บวกกับร่างอัตโนมัติที่ยิงทุกครั้งที่กา
+     = คะแนนของอีกท่านถูกทับรัวๆ ตลอดเวลาที่เปิดใบค้างไว้ และนี่คือคะแนนเงื่อนไขจบ
+     เจอใบของท่านอื่น → เริ่มใบใหม่ ทั้งสองใบอยู่ครบ (repo.saveSect2/3 แตกใบให้อีกชั้น) */
   const wantNew = useRef(false);
   useEffect(() => {
     if (editingRef.current || wantNew.current) return;
     if (Object.keys(grades).length) return;
-    const latest = history[0];
+    const latest = history.find((r) => r.by === currentActor());
     if (latest) reset(latest);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
@@ -336,15 +340,19 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   }, [marks, f, approved, touch]);
 
 
-  /* สองเครื่องของคนเดียวกัน (มือถือ+iPad) หรืออาจารย์สองคนเปิดใบเดียวกัน
-     เดิมต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
-     ถ้ายังไม่ได้กาอะไรเลยและไม่ได้ตั้งใจกด "ประเมินใหม่" → รับแถวที่มีอยู่มาแก้ต่อ
-     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง) */
+  /* สองเครื่องของ "คนเดียวกัน" (มือถือ+iPad) → รับแถวที่มีอยู่มาแก้ต่อ
+     ไม่งั้นต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
+     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง)
+
+     ⚠️ แต่ต้องเป็นใบของตัวเองเท่านั้น — อาจารย์สองท่านเปิดใบเดียวกันคือคนละเรื่อง
+     เดิมรับใบของท่านอื่นมาแก้ต่อด้วย บวกกับร่างอัตโนมัติที่ยิงทุกครั้งที่กา
+     = คะแนนของอีกท่านถูกทับรัวๆ ตลอดเวลาที่เปิดใบค้างไว้ และนี่คือคะแนนเงื่อนไขจบ
+     เจอใบของท่านอื่น → เริ่มใบใหม่ ทั้งสองใบอยู่ครบ (repo.saveSect2/3 แตกใบให้อีกชั้น) */
   const wantNew = useRef(false);
   useEffect(() => {
     if (editingRef.current || wantNew.current) return;
     if (Object.keys(marks).length) return;
-    const latest = history[0];
+    const latest = history.find((r) => r.by === currentActor());
     if (latest) reset(latest);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);

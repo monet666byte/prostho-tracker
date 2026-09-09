@@ -13,6 +13,7 @@ import type {
   CheckIn, DentureClass, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { saId } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
+import { byNewestReview, isOthersForm, pickLatestReviews } from '../domain/conflict';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 export { saId };
 import { t } from '../lib/i18n';
@@ -397,10 +398,22 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
   // อ่าน-แล้ว-เขียนต้องอยู่ใน transaction เดียว — กดปุ่มรัวสองทีเคยได้สองแถวซ้ำ (เจอ 1 ก.ย. 69)
   await db.transaction('rw', db.reviews, async () => {
     const rows = await db.reviews.where('workpieceId').equals(workpieceId).toArray();
-    // เก็บกวาดแถวซ้ำที่อาจหลงมาจากบั๊กเดิม — เหลือแถวเดียวต่อชิ้นงานเสมอ
-    for (const extra of rows.slice(1)) await db.reviews.delete(extra.id);
+    /**
+     * ⚠️ ห้ามลบแถวของอาจารย์ท่านอื่นทิ้ง
+     *
+     * เดิมตรงนี้ `for (const extra of rows.slice(1)) delete` เพื่อเก็บกวาด "แถวซ้ำ"
+     * แต่แถวซ้ำไม่ได้มาจากบั๊กอย่างเดียว — อาจารย์สองท่านกดตัดสินชิ้นงานเดียวกัน
+     * คนละเครื่อง ต่างคนต่างไม่เห็นแถวของอีกฝ่าย จึงสร้าง uid คนละตัว ได้สองแถวจริงๆ
+     * แล้วบรรทัดนี้ก็ไปลบคำตัดสินจริงของอีกท่านทิ้งถาวร (โพรบข้อ ④ 9 ก.ย. 69)
+     *
+     * ตอนนี้: ทับได้เฉพาะใบของตัวเอง ของคนอื่นเก็บไว้ทั้งหมด
+     * หน้าจอโชว์ใบล่าสุด + ป้ายบอกว่าเคยมีคำตัดสินอื่น (latestReview / reviewHistory)
+     */
+    const mine = rows
+      .filter((r) => r.by === by)
+      .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))[0];
     const review: Review = {
-      id: rows[0]?.id ?? uid('rv'),
+      id: mine?.id ?? uid('rv'),
       workpieceId,
       status,
       comment,
@@ -415,9 +428,32 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
   await logAudit(`${action} ${w?.detail ?? workpieceId}`, by, { studentId: w?.studentId });
 }
 
+/** ใบที่ถูกทับ (ของอาจารย์ท่านอื่น) — ใช้ทำป้ายเตือน ไม่ได้ลบไปไหน */
+export async function reviewHistory(workpieceId: string): Promise<Review[]> {
+  const rows = await db.reviews.where('workpieceId').equals(workpieceId).toArray();
+  return rows.sort(byNewestReview).slice(1);
+}
+
 export async function listReviews(): Promise<Map<string, Review>> {
-  const all = await db.reviews.toArray();
-  return new Map(all.map((r) => [r.workpieceId, r]));
+  return pickLatestReviews(await db.reviews.toArray());
+}
+
+/**
+ * ชิ้นงานไหนมีคำตัดสินของอาจารย์ท่านอื่นถูกทับอยู่ — workpieceId → ใบที่ถูกทับ (ใหม่→เก่า)
+ * ใช้ทำป้ายในหน้าตรวจงาน ไม่งั้นท่านที่ตัดสินไปก่อนจะไม่มีทางรู้ว่าของตัวเองถูกแทนที่
+ */
+export async function listReviewConflicts(): Promise<Map<string, Review[]>> {
+  const byWork = new Map<string, Review[]>();
+  for (const r of await db.reviews.toArray()) {
+    const list = byWork.get(r.workpieceId);
+    if (list) list.push(r); else byWork.set(r.workpieceId, [r]);
+  }
+  const out = new Map<string, Review[]>();
+  for (const [id, rows] of byWork) {
+    if (rows.length < 2) continue;
+    out.set(id, rows.sort(byNewestReview).slice(1));
+  }
+  return out;
 }
 
 
@@ -1158,6 +1194,7 @@ export interface Sect3Input {
   silent?: boolean;
 }
 
+
 export async function listSect3(studentId?: string, academicYear?: number): Promise<Sect3Record[]> {
   const rows = studentId
     ? await db.sect3.where('studentId').equals(studentId).toArray()
@@ -1169,7 +1206,9 @@ export async function listSect3(studentId?: string, academicYear?: number): Prom
 
 export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3Record> {
   const now = new Date().toISOString();
-  const prev = input.id ? await db.sect3.get(input.id) : undefined;
+  const found = input.id ? await db.sect3.get(input.id) : undefined;
+  // ใบของอาจารย์ท่านอื่น = แตกใบใหม่ ไม่ทับ (ดู isOthersForm)
+  const prev = isOthersForm(found?.by, actor) ? undefined : found;
   const row: Sect3Record = {
     id: prev?.id ?? uid('s3'),
     studentId: input.studentId,
@@ -1279,7 +1318,9 @@ async function syncSect2Gate(studentId: string, formKey: string): Promise<void> 
 
 export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2Record> {
   const now = new Date().toISOString();
-  const prev = input.id ? await db.sect2.get(input.id) : undefined;
+  const found = input.id ? await db.sect2.get(input.id) : undefined;
+  // ใบของอาจารย์ท่านอื่น = แตกใบใหม่ ไม่ทับ (ดู isOthersForm)
+  const prev = isOthersForm(found?.by, actor) ? undefined : found;
   const row: Sect2Record = {
     id: prev?.id ?? uid('s2'),
     studentId: input.studentId,

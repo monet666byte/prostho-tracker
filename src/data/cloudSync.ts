@@ -45,13 +45,23 @@ const byRemote = new Map(TABLES.map((t) => [t.remote, t]));
 
 const toSnake = (s: string) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
 
+/**
+ * แปลงเป็นแถวสำหรับส่งขึ้นตู้กลาง
+ *
+ * ⚠️ ห้ามใส่ updated_at ลงไป — ตราเวลาต้องมาจากนาฬิกาเซิร์ฟเวอร์เท่านั้น (trigger ใน 0017)
+ *
+ * เดิมตรงนี้ประทับ new Date() ของเครื่องผู้ใช้ ซึ่งพังแบบที่มองไม่เห็น:
+ * pullAll ตัดสินใจว่า "จะดึงหรือข้าม" จากค่า updated_at สูงสุดบนตู้กลาง
+ * เครื่องเดียวที่นาฬิกาเดินเร็วชั่วโมงเดียว เขียนแถวเดียว → ค่าสูงสุดค้างอยู่ที่เวลาอนาคต
+ * → เครื่องอื่นทั้งหมดข้ามการดึงตารางนั้นไปเรื่อยๆ อาจารย์เห็นข้อมูลเก่าค้างโดยไม่มีอะไรบอก
+ * (โพรบสองเครื่องจับได้ 9 ก.ย. 69 — ดู scripts/test-conflict.mts ข้อ ③)
+ */
 function toRow(def: TableDef, obj: Record<string, unknown>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (k === 'updated_at') continue;
     row[def.rename?.[k] ?? toSnake(k)] = v === undefined ? null : v;
   }
-  row.updated_at = new Date().toISOString();
   return row;
 }
 
@@ -133,6 +143,47 @@ function markDelete(local: string, keys: unknown[]) {
 const failCount = new Map<string, number>();
 const MAX_PUSH_RETRY = 3;
 
+/* ── ของที่ส่งขึ้นไม่ได้จริงๆ — ต้องบอกผู้ใช้ ห้ามทิ้งเงียบ ─────────────────────
+ *
+ * บั๊กเดิม: upsert ยิงเป็นก้อน ถ้าแถวเดียวถูกฐานข้อมูลปฏิเสธ ทั้งก้อนตก
+ * ครบ 3 ครั้งแล้ว clearSent ล้าง "ทุก id" ในคิว — คาบอื่นของนักศึกษาที่ไม่เกี่ยวข้องเลย
+ * หายไปพร้อมกัน และ failCount ไม่เคยถูกรีเซ็ตหลังยอมแพ้ (n โตขึ้นเรื่อยๆ)
+ * ทำให้หลังจากนั้นตารางนั้นทิ้งคิวทันทีที่พลาดครั้งเดียว = ยิ่งหายเยอะขึ้นเรื่อยๆ
+ *
+ * ตอนนี้: ก้อนตก → ลองรายแถว → กักเฉพาะแถวที่ผิดจริง ที่เหลือขึ้นได้ตามปกติ
+ * แถวที่ถูกกักจะโผล่ในหน้า sync ให้ผู้ใช้เห็นว่า "อันนี้ยังไม่ขึ้น เพราะอะไร"
+ */
+export interface SyncProblem {
+  table: string;
+  key: unknown;
+  reason: string;
+  at: string;
+}
+const quarantine = new Map<string, SyncProblem>();
+const problemListeners = new Set<() => void>();
+
+/** รายการที่ส่งขึ้นตู้กลางไม่สำเร็จและเลิกลองแล้ว — หน้า sync อ่านจากตรงนี้ */
+export const syncProblems = (): SyncProblem[] => [...quarantine.values()];
+
+export function onSyncProblems(fn: () => void): () => void {
+  problemListeners.add(fn);
+  return () => problemListeners.delete(fn);
+}
+
+function quarantineRow(local: string, key: unknown, reason: string) {
+  quarantine.set(keyOf(local, key), { table: local, key, reason, at: new Date().toISOString() });
+  problemListeners.forEach((fn) => fn());
+}
+
+/** ผู้ใช้กด "ลองส่งใหม่" ในหน้า sync — เอาของที่กักไว้กลับเข้าคิว */
+export function retryQuarantined(): void {
+  const items = [...quarantine.values()];
+  quarantine.clear();
+  failCount.clear();
+  problemListeners.forEach((fn) => fn());
+  for (const it of items) markDirty(it.table, [it.key]);
+}
+
 /** ส่งของค้างขึ้นตู้กลาง */
 async function flush(): Promise<void> {
   if (flushTimer) {
@@ -170,20 +221,42 @@ async function flush(): Promise<void> {
     const ids = [...keys];
     if (!ids.length) { dirty.delete(local); continue; }
     const objs = (await db.table(local).bulkGet(ids as never[])).filter(Boolean) as Record<string, unknown>[];
-    if (objs.length) {
-      const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
-      if (error) {
-        const n = (failCount.get(local) ?? 0) + 1;
-        failCount.set(local, n);
-        if (n < MAX_PUSH_RETRY) continue; // เก็บทั้งชุดไว้ลองใหม่รอบหน้า
-        // ครบโควตาแล้วยังไม่ผ่าน = ไม่มีสิทธิ์เขียนตารางนี้จริงๆ ทิ้งคิวไป (ข้อมูลยังอยู่ในเครื่อง)
-      } else {
-        failCount.delete(local);
-      }
+    if (!objs.length) { clearSent(dirty, local, keys, ids); continue; }
+
+    const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
+    if (!error) {
+      failCount.delete(local);
+      clearSent(dirty, local, keys, ids);
+      continue;
     }
-    clearSent(dirty, local, keys, ids);
+
+    const n = (failCount.get(local) ?? 0) + 1;
+    failCount.set(local, n);
+    if (n < MAX_PUSH_RETRY) continue; // เน็ตสะดุดเฉยๆ ก็ได้ — เก็บทั้งชุดไว้ลองใหม่รอบหน้า
+
+    /**
+     * ครบโควตาแล้วยังไม่ผ่าน = น่าจะมีแถวเสียอยู่ในก้อน ไม่ใช่เน็ต
+     * แยกส่งทีละแถวเพื่อหาว่าแถวไหนผิด — ที่เหลือจะได้ขึ้นตามปกติ
+     * (เดิมทิ้งทั้งก้อน ทำให้งานที่ไม่เกี่ยวข้องหายไปด้วยแบบไม่มีใครรู้)
+     */
+    failCount.delete(local);
+    const sent: unknown[] = [];
+    for (const o of objs) {
+      const pk = o[def.pk];
+      const one = await supabase.from(def.remote).upsert([toRow(def, o)]);
+      if (one.error) quarantineRow(local, pk, one.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
+      sent.push(pk); // ผ่านหรือถูกกัก ก็ออกจากคิวทั้งคู่ — ที่ถูกกักไปอยู่ในรายการที่ผู้ใช้เห็น
+    }
+    clearSent(dirty, local, keys, sent);
   }
 }
+
+/**
+ * ส่งของค้างขึ้นเดี๋ยวนี้ — ไม่รอ debounce 1.5 วิ และไม่รอรอบ 15 วิ
+ * ใช้ตอนผู้ใช้กด sync เอง และในเทสต์ (ก้อนที่ตกไปแล้วไม่ได้ตั้งเวลาลองใหม่ให้ตัวเอง
+ * ในแอปจริงรอบ 15 วิ กับ event 'online' เป็นคนพามันกลับมา)
+ */
+export const flushNow = (): Promise<void> => flush();
 
 /* ── ดึงลง / ดันขึ้น ทั้งตู้ ── */
 
@@ -207,7 +280,17 @@ export async function pullAll(): Promise<void> {
     const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
     if (head.error) continue;
     const remoteMax = (head.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? '';
-    if (remoteMax && lastPulled.get(def.remote) === remoteMax) continue;
+    /**
+     * ⚠️ ตราเวลาที่อยู่ "ในอนาคต" ห้ามใช้เป็นเหตุผลข้ามการดึง
+     *
+     * ตั้งแต่ 0017 เซิร์ฟเวอร์เป็นคนประทับเวลา ค่านี้จึงไม่ควรเกินเวลาปัจจุบัน
+     * แต่ถ้ายังไม่ได้รัน 0017 (หรือมีแถวเก่าที่เครื่องนาฬิกาเพี้ยนเขียนไว้)
+     * ค่าสูงสุดจะค้างอยู่ที่อนาคตถาวร แล้วตัวเช็ค "เท่าเดิม = ไม่มีอะไรใหม่" จะเป็นจริงตลอด
+     * ผลคือตารางนั้นหยุดไหลลงเครื่องนี้ไปเลย โดยไม่มี error ให้ใครเห็น
+     * ตรงนี้จึงยอมดึงซ้ำ (เปลืองเน็ตนิดหน่อย) ดีกว่าเงียบแล้วข้อมูลไม่ตรงกัน
+     */
+    const stampIsSane = remoteMax && remoteMax <= new Date().toISOString();
+    if (stampIsSane && lastPulled.get(def.remote) === remoteMax) continue;
 
     // ⚠️ เซิร์ฟเวอร์ตัดผลลัพธ์ที่ 1,000 แถวเสมอ (ไม่ว่าจะขอเท่าไหร่) — ต้องดึงทีละหน้า
     // ไม่งั้นข้อมูลหายเงียบๆ พอโตเกินพัน (เจอตอนทดสอบ: มี 1,215 คาบ ดึงได้ 1,000)
@@ -311,6 +394,7 @@ async function bindToUser(uid: string): Promise<boolean> {
     dirty.clear();
     pendingDeletes.clear();
     lastPulled.clear();
+    quarantine.clear(); // ของที่กักไว้เป็นของบัญชีก่อนหน้า ไม่ใช่ของคนที่เพิ่งล็อกอิน
   } finally {
     setSyncPaused(false);
   }
@@ -378,6 +462,8 @@ export function stopCloudSync(): void {
   dirty.clear();
   pendingDeletes.clear();
   lastPulled.clear();
+  quarantine.clear();
+  problemListeners.forEach((fn) => fn());
   supabase?.removeAllChannels();
 }
 

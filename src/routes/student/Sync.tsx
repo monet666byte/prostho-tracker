@@ -1,12 +1,13 @@
 import {
   ArrowLeft, ArrowsClockwise, ArrowsLeftRight, CloudArrowUp, CloudCheck, CloudSlash, EnvelopeSimple,
-  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate, Palette,
+  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate, Palette, WarningCircle,
 } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
+import { onSyncProblems, retryQuarantined, syncProblems, type SyncProblem } from '../../data/cloudSync';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { lang, setLang, t } from '../../lib/i18n';
@@ -20,6 +21,13 @@ export default function Sync() {
   const queue = useQueue();
   // ธีมเก็บใน localStorage (ไม่ใช่ store) — ถือ state ไว้ให้ปุ่มที่เลือกอยู่รีเฟรชทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
+  /**
+   * ของที่เซิร์ฟเวอร์ปฏิเสธจนเลิกลองแล้ว — ต้องเห็นด้วยตา
+   * เดิมของพวกนี้ถูกทิ้งเงียบๆ พร้อมงานอื่นที่อยู่ในก้อนเดียวกัน (ดู flush() ใน cloudSync.ts)
+   * ผู้ใช้จะรู้ตัวก็ต่อเมื่อเปิดจากอีกเครื่องแล้วของไม่อยู่ ซึ่งสายไปแล้ว
+   */
+  const [problems, setProblems] = useState<SyncProblem[]>(syncProblems);
+  useEffect(() => onSyncProblems(() => setProblems(syncProblems())), []);
 
   return (
     <PlainShell>
@@ -60,6 +68,30 @@ export default function Sync() {
             <i />
           </button>
         </div>
+
+        {problems.length > 0 && (
+          <div className="card" style={{ padding: '12px 13px', borderColor: 'var(--warning-border)', background: 'var(--warning-tint)' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 7 }}>
+              <WarningCircle size={18} weight="fill" color="var(--warning)" style={{ flex: 'none' }} />
+              <h4 style={{ margin: 0, flex: 1, font: '600 12.5px var(--font-head)', color: 'var(--warning-dark)' }}>
+                {t('{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้', { n: problems.length })}
+              </h4>
+            </div>
+            <p style={{ margin: '0 0 9px', font: '400 11px var(--font-body)', color: 'var(--warning-dark)' }}>
+              {t('ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ')}
+            </p>
+            <div style={{ display: 'grid', gap: 5, marginBottom: 9 }}>
+              {problems.slice(0, 5).map((p) => (
+                <span key={p.table + String(p.key)} style={{ font: '400 10px var(--font-mono)', color: 'var(--warning-dark)' }}>
+                  {p.table} · {String(p.key)} — {p.reason}
+                </span>
+              ))}
+            </div>
+            <button className="btn btn--ghost" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>
+              {t('ลองส่งใหม่')}
+            </button>
+          </div>
+        )}
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 9 }}>
