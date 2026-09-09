@@ -6,7 +6,7 @@
 import { lang } from '../lib/i18n';
 import { ORDER, REQ_TYPES, TYPES } from './catalog';
 import {
-  caseCount, completedInYear, isComplete, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
+  caseCount, completedInYear, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { groupShort } from './group';
@@ -330,18 +330,31 @@ export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: 
 
 export interface FunnelRow {
   type: WorkType;
+  /** เคสที่ยังอยู่ในเส้นทาง รับเคส → จบเคส (ไม่รวมเคสที่คืนไปแล้ว) */
   total: number;
   notStarted: number;
   inProgress: number;
   completed: number;
   stale: number;
   completionRate: number;
+  /** เคสที่คืนไปแล้ว — ยกออกจากช่องอื่นทั้งหมด แต่ยังโชว์ไว้ไม่ให้หายเงียบ */
+  returned: number;
 }
 
+/**
+ * สถานะชิ้นงานจำแนกตามประเภท — สามช่อง (ยังไม่เริ่ม + กำลังทำ + จบเคส) ต้องบวกได้เท่า total เสมอ
+ *
+ * เคสที่คืนไปแล้วไม่อยู่ในเส้นทางนี้ จึงถูกยกออกจากทุกช่องรวมทั้งตัวหารของอัตราจบ
+ * (ผู้ใช้เคาะ 9 ก.ย. 69) — เดิมมันอยู่ใน total แต่ไม่อยู่ใน inProgress
+ * ผลคือ (1) ตารางบวกกันไม่ลง และ (2) นักศึกษาที่คืนเคสเพราะคนไข้ย้ายจังหวัด
+ * มีอัตราจบต่ำลงทั้งที่ไม่ใช่ความผิด
+ * แต่ต้องไม่หายเงียบ — นับไว้ในช่อง returned ให้ตารางแสดงได้
+ */
 export function funnelByType(works: Workpiece[], settings: Settings): FunnelRow[] {
   const types = [...new Set(works.map((w) => w.type))].sort((a, b) => ORDER[a] - ORDER[b]);
   return types.map((type) => {
-    const mine = works.filter((w) => w.type === type);
+    const ofType = works.filter((w) => w.type === type);
+    const mine = ofType.filter((w) => !isReturned(w));
     const completed = mine.filter(isComplete).length;
     return {
       type,
@@ -351,6 +364,7 @@ export function funnelByType(works: Workpiece[], settings: Settings): FunnelRow[
       completed,
       stale: mine.filter((w) => isStale(w, settings)).length,
       completionRate: mine.length ? Math.round((completed / mine.length) * 100) : 0,
+      returned: ofType.length - mine.length,
     };
   });
 }
@@ -426,7 +440,19 @@ export interface ProfileAxis {
   counts?: [number, number, number];
 }
 
+/** แกนเกณฑ์: ไม่มีเป้า (ภาคตั้งเป็น 0) = ไม่ติดเงื่อนไขข้อนั้น = ถือว่าครบ */
 const pct = (done: number, need: number) => (need <= 0 ? 100 : Math.min(100, Math.round((done / need) * 100)));
+
+/**
+ * แกนที่ตัวหารคือ "โอกาสที่มีให้ทำ" ไม่ใช่เป้าหมาย — ต้องแยกจาก pct()
+ *
+ * เดิมแกน lab ทำเอง ใช้ pct() ตัวเดียวกัน พอไม่มีโอกาสเลย (ยังไม่มีเคส หรือมีแต่เคส
+ * Recall ที่ไม่มี procedure ติดดาว) จึงได้ 100% → บน heatmap หน้ากลุ่ม นักศึกษาที่ยัง
+ * ไม่เริ่มอะไรเลยมีช่องเขียวเต็มหนึ่งช่องปนกับอีก 5 ช่องที่เป็น 0 (ผู้ใช้เคาะ 9 ก.ย. 69)
+ * ไม่มีโอกาสให้ทำ ≠ ทำครบแล้ว
+ */
+const pctOfAvailable = (done: number, available: number) =>
+  (available <= 0 ? 0 : Math.min(100, Math.round((done / available) * 100)));
 
 /** ทุกแกนเป็น "% ของเป้าหมายที่ทำได้แล้ว" หน่วยเดียวกันทั้งหมด จึงเทียบกันบนรูปเดียวได้ */
 export function profile(works: Workpiece[], settings: Settings, now = new Date()): ProfileAxis[] {
@@ -479,7 +505,7 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
       key: 'year', label: lang === 'en' ? 'Yearly req.' : 'เกณฑ์รายปี', value: pct(thisYear, settings.req.perYear), detail: `${thisYear}/${settings.req.perYear}`,
       partials: partialsFor(() => true, settings.req.perYear - thisYear),
     },
-    { key: 'self', label: lang === 'en' ? 'Self-perf. lab' : 'lab ทำเอง', value: pct(selfDone, selfAvailable), detail: `${selfDone}/${selfAvailable}` },
+    { key: 'self', label: lang === 'en' ? 'Self-perf. lab' : 'lab ทำเอง', value: pctOfAvailable(selfDone, selfAvailable), detail: `${selfDone}/${selfAvailable}` },
   ];
 }
 
@@ -590,8 +616,21 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
   const counts = (w: Workpiece) => countsForBurnup(w, settings);
   const beYear = startYear + 543;
   const carriedOver = carriedOverCount(works, settings, now);
+  /* ต้องกรอง "เฉพาะเคสที่จบในปีการศึกษานี้" ด้วยกติกาเดียวกับ completedInYear ใน rules.ts
+     เดิมกรองแค่ !fromSheet → เคสที่ นศ. ปี 6 จบไว้ตั้งแต่ตอนอยู่ปี 5 ถูกนับเป็นยอดปีนี้
+     ตั้งแต่เดือนแรก (t < monthEnd เป็นจริงทุกเดือน) เส้น actual จึงเริ่มเหนือศูนย์
+     แล้วดูเหมือนทั้งกลุ่มนำแผนอยู่ ทั้งที่ปีนี้ยังไม่จบสักชิ้น
+     ซ้ำร้าย ชิ้นเดียวกันนั้นก็เข้าเงื่อนไข prevRows ข้างล่างด้วย = โผล่สองเส้นบนกราฟเดียว */
+  const thisStart = new Date(startYear, 5, 1).getTime();
+  const thisEnd = new Date(startYear + 1, 5, 1).getTime();
   const completions = works
-    .filter((w) => !w.fromSheet && w.completedAt && counts(w))
+    .filter((w) => {
+      if (w.fromSheet || !w.completedAt || !counts(w)) return false;
+      // ชีตระบุปีมา ก็เชื่อชีต (เหมือน prevRows ข้างล่างและ completedInYear ใน rules.ts)
+      if (w.countsForYear) return w.countsForYear === beYear;
+      const ts = new Date(w.completedAt).getTime();
+      return ts >= thisStart && ts < thisEnd;
+    })
     .map((w) => new Date(w.completedAt!).getTime());
 
   /* ปีที่แล้ว: เคสที่จบในหน้าต่าง มิ.ย.(ปีก่อน) → พ.ค. — ปรับสเกลด้วยจำนวนนักศึกษา

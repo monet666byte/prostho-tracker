@@ -114,6 +114,12 @@ export function detectType(label: string): WorkType | null {
   if (/\bcom\.?\s*a(pd)?\b/.test(v)) return 'CD';
   if (/\bpcc\b/.test(v)) return 'PC';
   if (/post\s*-?\s*core|postcore/.test(v)) return 'PC';
+  /* Co-Cr (โคบอลต์-โครเมียม) = โครง RPD ไม่ใช่ครอบฟัน — ต้องดักก่อนบรรทัดล่าง
+     เพราะ \bcr\b (เพิ่มมาทีหลังเพื่อรับ "Cr 14" ของชีตรุ่น 54) ไปจับ "cr" ใน "co-cr" ได้
+     ผลคือ "Co-Cr RPD" ถูกนำเข้าเป็น Crown/Bridge เงียบๆ ไม่มีข้อความในรายงานสักบรรทัด
+     → เกณฑ์ RPD ของ นศ. ขาดไปหนึ่ง และเกณฑ์ Crown เกินมาหนึ่ง พร้อมกัน
+     (ชื่อเต็มของประเภทในระบบเขียนไว้เองว่า "RPD (Co-Cr or Simple APD)") */
+  if (/co-?cr/.test(v)) return 'RPD';
   // FMC = full metal crown · "Cr 14" = crown ซี่ 14 (เจอในชีตรุ่น 54 — ผู้ใช้ส่งมา 2 ก.ย.)
   if (/crown|bridge|cr\s*,?\s*br|\bpfm\b|\bfmc\b|\bcr\b/.test(v)) return 'CB';
   if (/rpd|co-?cr/.test(v)) return 'RPD';
@@ -149,6 +155,9 @@ function parsePayment(s: string): Payment {
   if (/ยกเว้น|waiv/i.test(v)) return 'ยกเว้น';
   return 'ยังไม่ชำระ';
 }
+
+/** ขั้นสูงสุดของประเภทงาน — Recall จบที่ 3 · ที่เหลือจบที่ 10 (ตรงกับช่องติ๊ก 0–10 ในชีต) */
+const topStepOf = (type: WorkType): number => (type === 'RRM' || type === 'RFX' ? 3 : 10);
 
 /** progression สูงสุดที่ติ๊ก → procIndex (ชีตติ๊กเป็นราย step ไม่มีขั้นย่อย = ถือว่าจบ step นั้นทั้งก้อน) */
 function progressionToProcIndex(type: WorkType, maxProgression: number): number {
@@ -320,8 +329,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
          ทั้งที่ในหน้ารายคนขึ้นว่าจบแล้ว (ผู้ใช้ทัก 3 ก.ย. ว่าขัดกันเอง)
          → ถ้าไม่มีติ๊กเลย ให้ใช้ค่าจาก droplist เป็นหลักฐานแทน แล้วติดธงให้กลับไปติ๊กในชีต */
       if (maxTick < 0 && stepLabel) {
-        const isRecall = type === 'RRM' || type === 'RFX';
-        const topStep = isRecall ? 3 : 10;
+        const topStep = topStepOf(type);
         if (dm) maxTick = Math.min(Number(dm[1]), topStep);
         else if (/completion|ปิดเคส|complete/i.test(stepLabel)) maxTick = topStep;
         if (maxTick >= 0) {
@@ -386,7 +394,11 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
       sect2Fixed: !(type === 'CD' || type === 'RPD' || type === 'APD'),
       procIndex: progressionToProcIndex(type, maxTick),
       lastUpdatedAt: sheetUpdated ? `${sheetUpdated}T00:00:00.000Z` : now,
-      completedAt: maxTick >= 10 ? now : undefined,
+      /* ขั้นสุดท้ายของ Recall คือ 3 ไม่ใช่ 10 (ฟังก์ชันนี้รู้อยู่แล้ว — ดู topStep ตอนอ่าน droplist)
+         เดิมเทียบกับ 10 ตายตัว เคส recall ที่นำเข้ามาจึง "จบแล้วแต่ไม่มีวันจบ"
+         หน้ารายคนขึ้นว่าจบ (คิดจาก progression) แต่ทุกที่ที่นับจากวันจบมองไม่เห็นเลย:
+         เกณฑ์รายปีตอนภาคเปิดให้นับทุกประเภท · กราฟจบเคสต่อเดือน · ระยะเวลาต่อประเภท · เส้นสะสม */
+      completedAt: maxTick >= topStepOf(type) ? now : undefined,
       fromSheet: true,
       countsForYear,
       returned: returned || undefined,

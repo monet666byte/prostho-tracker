@@ -224,6 +224,9 @@ export default function Analytics() {
                   <th style={{ width: 56 }}>{t('ยังไม่เริ่ม')}</th>
                   <th style={{ width: 56 }}>{t('กำลังทำ')}</th>
                   <th style={{ width: 52 }}>{t('จบเคส')}</th>
+                  {/* เคสคืนถูกยกออกจากช่องอื่นและจากตัวหารของอัตราจบ — ต้องมีช่องของตัวเอง
+                      ไม่งั้นมันจะหายไปจากตารางเงียบๆ */}
+                  <th style={{ width: 52 }}>{t('คืนเคส')}</th>
                   <th style={{ width: 130 }}>{t('อัตราจบเคส')}</th>
                 </tr>
               </thead>
@@ -235,6 +238,7 @@ export default function Analytics() {
                     <td className="mono faint">{f.notStarted}</td>
                     <td className="mono">{f.inProgress}</td>
                     <td className="mono" style={{ color: 'var(--success)', fontWeight: 600 }}>{f.completed}</td>
+                    <td className="mono faint">{f.returned || '—'}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span className="bar" style={{ height: 7 }}>

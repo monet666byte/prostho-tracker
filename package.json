@@ -14,8 +14,12 @@
     "build:pages": "tsc -b && vite build --mode pages",
     "test:settings": "npx --yes tsx scripts/test-settings-sync.mts",
     "test:groups": "npx --yes tsx scripts/test-group-year.mts",
-    "test": "npm run test:rules && npm run test:settings && npm run test:groups",
-    "test:rules": "npx --yes tsx scripts/test-rules.mts"
+    "test": "npm run test:rules && npm run test:analytics && npm run test:aggregate && npm run test:forms && npm run test:import && npm run test:settings && npm run test:groups",
+    "test:rules": "npx --yes tsx scripts/test-rules.mts",
+    "test:analytics": "npx --yes tsx scripts/test-analytics.mts",
+    "test:aggregate": "npx --yes tsx scripts/test-aggregate.mts",
+    "test:forms": "npx --yes tsx scripts/test-forms.mts",
+    "test:import": "npx --yes tsx scripts/test-sheet-import.mts"
   },
   "dependencies": {
     "@fontsource/anuphan": "^5.3.0",
