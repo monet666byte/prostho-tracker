@@ -37,6 +37,23 @@ export type RiskLevel = 'high' | 'medium' | 'ok';
  */
 const PERIODS_PER_STEP = 1.5;
 
+/**
+ * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — กติกาเดียวกับ completedInYear() ใน rules.ts
+ * (งาน Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes)
+ *
+ * เดิมความรู้ข้อนี้อยู่ใน completedInYear กับ countsForBurnup คนละที่ ส่วนที่คำนวณ
+ * "เหลืออีกกี่ step ถึงจะครบเกณฑ์" ไม่รู้เรื่องเลย จึงหยิบเคสที่ไม่มีวันนับได้มาเป็นทางไปสู่เกณฑ์
+ */
+export const countsForYearlyReq = (w: Pick<Workpiece, 'type'>, settings: Settings) =>
+  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
+
+/**
+ * วันจบเคสที่ "เชื่อได้จริง" — งานที่นำเข้าจากชีตประทับ completedAt เป็นวันนำเข้า
+ * เพราะชีตไม่มีคอลัมน์วันจบ ตัวเลขไหนที่คำนวณจากวันจบจึงต้องไม่เอางานนำเข้ามาปน
+ * (เส้น burn-up แยกงานนำเข้าออกเป็น "ยอดยกมา" ด้วยเหตุผลเดียวกัน — ดู carriedOverCount)
+ */
+const hasRealCompletionDate = (w: Workpiece) => !!w.completedAt && !w.fromSheet;
+
 export interface RiskRow {
   student: Student;
   completedThisYear: number;
@@ -125,19 +142,27 @@ export function riskRows(
       const yearGap = Math.max(0, settings.req.perYear - completedThisYear);
 
       const active = mine.filter(isActiveWork).sort((a, b) => progression(b) - progression(a));
-      const counted = active.slice(0, yearGap);
+      /* เส้นทางไปสู่เกณฑ์รายปีต้องเป็นเคสที่ "นับเข้าเกณฑ์ได้จริง" เท่านั้น
+         เดิมหยิบเคสที่ใกล้จบที่สุดมาโดยไม่ดูประเภท — นักศึกษาที่ในมือมีแต่ Recall
+         กับ Simple APD (ทั้งคู่ไม่นับเข้าเกณฑ์) จึงถูกอ่านว่า "เหลืออีกไม่กี่ step"
+         แล้วขึ้นสถานะ ok ทั้งที่ยังไม่มีเคสที่นับได้สักชิ้น — คนที่ควรถูกตามก่อนใคร
+         กลายเป็นคนที่หน้าอาจารย์บอกว่าไม่ต้องห่วง */
+      const towardReq = active.filter((w) => countsForYearlyReq(w, settings));
+      const counted = towardReq.slice(0, yearGap);
       const shortPieces = yearGap - counted.length;
       // เคสที่ยังไม่ได้รับ นับเป็นงานอนาคต ~10 step/เคส — รวมในตัวเลขเดียว ไม่แยกป้ายเตือน
       // (เคสไม่ใช่ของที่สั่งรับได้ทันที และต้นปีถือเคสน้อยกว่าเกณฑ์เป็นเรื่องปกติ)
+      // step ที่เหลือของแต่ละเคสต้องวัดจากขั้นสุดท้ายของประเภทนั้น ไม่ใช่ 10 ตายตัว
       const stepsRemaining =
-        counted.reduce((sum, w) => sum + Math.max(0, 10 - progression(w)), 0) + shortPieces * 10;
+        counted.reduce((sum, w) => sum + Math.max(0, maxProgression(w) - progression(w)), 0) + shortPieces * 10;
       const periodsNeeded = Math.ceil(stepsRemaining * PERIODS_PER_STEP);
 
       // มาแต่ step ไม่ขยับ: ไล่เช็คอินล่าสุดถอยหลัง จนเจอคาบที่มี step ผ่าน
       const myCheckins = (checkinsByStudent.get(student.id) ?? []).sort((a, b) => b.date.localeCompare(a.date));
       // step ที่กำลังพยายามผ่าน = step ถัดไปของเคสที่แตะล่าสุด
       const current = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0];
-      const stuckStep = current ? `${TYPES[current.type].prefix}-${Math.min(10, progression(current) + 1)}` : '';
+      // ขั้นสุดท้ายของ Recall คือ 3 ไม่ใช่ 10 — ตรึงที่ 10 จะได้ป้าย step ที่ไม่มีอยู่จริง
+      const stuckStep = current ? `${TYPES[current.type].prefix}-${Math.min(maxProgression(current), progression(current) + 1)}` : '';
       const nextProcOfCurrent = current ? procAt(current, current.procIndex + 1) : null;
       const pieces = [...active]
         .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))
@@ -146,7 +171,7 @@ export function riskRows(
           return {
             id: w.id,
             type: w.type,
-            code: `${TYPES[w.type].prefix}-${Math.min(10, progression(w) + 1)}`,
+            code: `${TYPES[w.type].prefix}-${Math.min(maxProgression(w), progression(w) + 1)}`,
             name: next ? next.name : (lang === 'en' ? 'awaiting case closure' : 'รอปิดเคส'),
             progression: Math.max(0, progression(w)),
             days: Math.max(0, Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)),
@@ -254,8 +279,9 @@ export function throughputByMonth(works: Workpiece[], now = new Date()): MonthPo
   }
   const index = new Map(buckets.map((b, i) => [b.key, i]));
   works.forEach((w) => {
-    if (!w.completedAt) return;
-    const d = new Date(w.completedAt);
+    // วันจบของงานนำเข้า = วันนำเข้า ถ้านับด้วยจะเห็นยอดพุ่งขึ้นกองเดือนเดียว (เหตุผลเดียวกับ burnup)
+    if (!hasRealCompletionDate(w)) return;
+    const d = new Date(w.completedAt!);
     const i = index.get(`${d.getFullYear()}-${d.getMonth()}`);
     if (i !== undefined) buckets[i].count++;
   });
@@ -275,7 +301,11 @@ export interface DurationRow {
 export function durationByType(works: Workpiece[]): DurationRow[] {
   return REQ_TYPES.map((type) => {
     const weeks = works
-      .filter((w) => w.type === type && w.completedAt)
+      /* ต้องเป็นวันจบที่เชื่อได้ — งานนำเข้าจากชีตมี completedAt = วันนำเข้า
+         เคสที่รับไว้ตั้งแต่ปีก่อนจึงกลายเป็น "ใช้เวลา 60+ สัปดาห์" ทั้งแถบ
+         พอภาคนำเข้าชีตจริงทีเดียวหลายร้อยแถว ค่ามัธยฐานจะเพี้ยนทันทีในวันแรก
+         และประโยคสรุปหน้าภาพรวม ("ประเภทที่ช้าที่สุด") ก็อ่านจากค่านี้ตรงๆ */
+      .filter((w) => w.type === type && hasRealCompletionDate(w))
       .map((w) => (new Date(w.completedAt!).getTime() - new Date(w.acceptedDate).getTime()) / (DAY * 7))
       .filter((n) => n > 0)
       .map((n) => Math.round(n));
@@ -503,7 +533,8 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
     },
     {
       key: 'year', label: lang === 'en' ? 'Yearly req.' : 'เกณฑ์รายปี', value: pct(thisYear, settings.req.perYear), detail: `${thisYear}/${settings.req.perYear}`,
-      partials: partialsFor(() => true, settings.req.perYear - thisYear),
+      // ช่องที่เติมไม่เต็มต้องเป็นเคสที่จบแล้วจะนับเข้าเกณฑ์รายปีจริงๆ (เหมือน riskRows)
+      partials: partialsFor((w) => countsForYearlyReq(w, settings), settings.req.perYear - thisYear),
     },
     { key: 'self', label: lang === 'en' ? 'Self-perf. lab' : 'lab ทำเอง', value: pctOfAvailable(selfDone, selfAvailable), detail: `${selfDone}/${selfAvailable}` },
   ];
