@@ -260,6 +260,14 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
   const dataRows = rows.slice(headerIdx + 1);
   let imported = 0;
   let skipped = 0;
+  /* แถวที่ "ปล่อยว่าง" ไม่ใช่แถวที่ "อ่านไม่ออก" — เดิมจึงเงียบสนิท แล้วเติมวันที่นำเข้าให้แทน
+     ซึ่งผิดกติกาของโปรเจกต์ (แถวไหนที่ระบบเดาให้ ต้องขึ้นรายงานเสมอ)
+     เจอตอนลองกับชีตจริง 10 ก.ย. 69: ไฟล์ที่ export คนละทางกัน ช่อง Accepted date ว่างทั้งคอลัมน์
+     วันรับเคสของทุกชิ้นเลยกลายเป็นวันที่นำเข้า โดยไม่มีอะไรบอกสักบรรทัด
+     — และ "รับเคสวันไหน" คือฐานของกราฟ "ใช้เวลากี่สัปดาห์กว่าจะจบ"
+     รายงานเป็นยอดรวมต่อคน ไม่ใช่รายแถว ไม่งั้นรายงานจะท่วมจนกลบปัญหาจริงที่ต้องแก้ */
+  let blankAccepted = 0;
+  let blankUpdated = 0;
 
   dataRows.forEach((r, i) => {
     const rowNo = i + 1;
@@ -313,6 +321,8 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
     if (get(cAccepted) && !accepted) {
       issues.push({ row: rowNo, column: 'Accepted date', value: get(cAccepted), problem: 'อ่านรูปแบบวันที่ไม่ออก (รองรับ d/m/yy พ.ศ. · d/m/yyyy · ISO)' });
     }
+    if (!get(cAccepted)) blankAccepted++;
+    if (!get(cUpdated)) blankUpdated++;
 
     // ช่องติ๊ก 0–10
     let maxTick = -1;
@@ -417,6 +427,19 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
     });
     imported++;
   });
+
+  if (blankAccepted > 0 && imported > 0) {
+    issues.push({
+      row: 0, column: 'Accepted date', value: `${blankAccepted} แถว`,
+      problem: `ไม่ได้กรอกวันรับเคส ${blankAccepted} แถว — ใช้วันที่นำเข้าแทน ทำให้ "ใช้เวลากี่สัปดาห์กว่าจะจบ" เพี้ยน โปรดเติมในชีตแล้วนำเข้าซ้ำ`,
+    });
+  }
+  if (blankUpdated > 0 && imported > 0) {
+    issues.push({
+      row: 0, column: 'วันที่บันทึกข้อมูล', value: `${blankUpdated} แถว`,
+      problem: `ไม่ได้กรอกวันที่บันทึกข้อมูล ${blankUpdated} แถว — ถือว่าเพิ่งอัปเดตวันนี้ ตัวนับ "เคสค้าง" จึงยังไม่เห็นเคสพวกนี้`,
+    });
+  }
 
   return {
     patients: [...patients.values()],

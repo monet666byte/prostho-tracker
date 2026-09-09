@@ -165,7 +165,12 @@ console.log('\nวันที่ — พ.ศ. กับ ค.ศ. ปนกั�
   const dates = r.workpieces.map((w) => w.acceptedDate);
   ok('ทั้งสี่รูปแบบแปลงเป็น ISO ได้ตรงกัน', dates.slice(0, 3).every((d) => d === '2026-06-05'), dates.join(' '));
   ok('ปี 2 หลักต่ำกว่า 60 อ่านเป็น ค.ศ. (9/3/26 → 2026-03-09)', dates[3] === '2026-03-09', dates[3]);
-  ok('ไม่มีแถวไหนขึ้นรายงานเรื่องวันที่', !r.report.issues.some((i) => i.problem.includes('วันที่')));
+  /* เดิมเช็ค "ไม่มีรายงานเรื่องวันที่เลย" — แคบลงเป็นเฉพาะช่อง Accepted date
+     เพราะตั้งแต่ 10 ก.ย. 69 ช่อง "วันที่บันทึกข้อมูล" ที่ปล่อยว่าง (แถวตัวอย่างพวกนี้ว่างหมด)
+     ขึ้นรายงานเป็นยอดรวมด้วย ซึ่งเป็นพฤติกรรมที่ตั้งใจ ดูหัวข้อ "ช่องวันที่ที่ปล่อยว่าง" ท้ายไฟล์ */
+  ok('ทั้งสี่รูปแบบอ่านออกหมด ไม่มีรายงานเรื่องช่องวันรับเคส',
+    !r.report.issues.some((i) => i.column === 'Accepted date'),
+    r.report.issues.filter((i) => i.column === 'Accepted date').map((i) => i.problem).join(' | ') || '(สะอาด)');
 }
 {
   /* เดิมไม่เช็คช่วงเลย — "25/13/69" ผ่านเป็นเดือน 13 และ "31/2/69" ผ่านเป็น 31 ก.พ.
@@ -335,6 +340,41 @@ console.log('\nparseStudentList / parseIntro / sheetIdFromUrl');
       === '1AbCdEfGhIjKlMnOpQrStUvWxYz012345');
   ok('วาง id ตรงๆ ก็ได้', sheetIdFromUrl('1AbCdEfGhIjKlMnOpQrStUvWxYz012345') === '1AbCdEfGhIjKlMnOpQrStUvWxYz012345');
   ok('ลิงก์มั่ว → null ไม่ใช่ id เพี้ยน', sheetIdFromUrl('https://example.com/abc') === null);
+}
+
+/* ── ช่องวันที่ที่ "ปล่อยว่าง" ต้องขึ้นรายงาน ไม่ใช่เดาเงียบ ๆ (10 ก.ย. 69) ─────────
+   เจอตอนลองกับชีตจริงของรุ่น 55: ระบบเติมวันที่นำเข้าให้แทนช่องที่ว่าง
+   โดยไม่มีอะไรบอกสักบรรทัด — วันรับเคสของ 47% ของชิ้นงาน และวันอัปเดตล่าสุดของ 68%
+   กลายเป็น "วันนี้" ทั้งหมด · วันรับเคสคือฐานของกราฟ "ใช้เวลากี่สัปดาห์กว่าจะจบ"
+   ส่วนวันอัปเดตล่าสุดคือฐานของตัวนับ "เคสค้าง" ซึ่งจะขึ้น 0 ทันทีหลังนำเข้า
+   (คนละเรื่องกับ "กรอกมาแล้วอ่านไม่ออก" ที่รายงานอยู่แล้วตั้งแต่แรก) */
+console.log('\nช่องวันที่ที่ปล่อยว่าง');
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const r = importSheetCsv(sheet(
+    `1,นาย ก,66-1,CD/- (Upper),,Yes,,${ticks(3)},ชำระแล้ว,,`,
+    `2,นาย ข,66-2,46 Crown (PFM),,Yes,,${ticks(2)},ชำระแล้ว,,`,
+  ), 'st-1');
+  ok('นำเข้าได้ตามปกติ ไม่ทิ้งแถว', r.report.imported === 2, r.report.imported);
+  ok('วันรับเคสที่ว่าง → ขึ้นรายงานเป็นยอดรวม ไม่ใช่เงียบ',
+    r.report.issues.some((i) => i.column === 'Accepted date' && i.problem.includes('2 แถว')),
+    r.report.issues.map((i) => i.column).join(', ') || '(ไม่มีรายงานเลย)');
+  ok('วันที่บันทึกข้อมูลที่ว่าง → ขึ้นรายงานด้วย',
+    r.report.issues.some((i) => i.column === 'วันที่บันทึกข้อมูล' && i.problem.includes('2 แถว')));
+  ok('รายงานเป็นยอดรวมต่อคน ไม่ใช่รายแถว (ไม่งั้นรายงานท่วมจนกลบปัญหาจริง)',
+    r.report.issues.filter((i) => i.column === 'Accepted date').length === 1);
+  ok('ค่าที่เติมให้คือวันที่นำเข้าจริง ๆ (ยืนยันว่ารายงานตรงกับของที่เกิดขึ้น)',
+    r.workpieces.every((w) => w.acceptedDate === today), r.workpieces.map((w) => w.acceptedDate).join(', '));
+}
+{
+  /* กรอกครบก็ต้องไม่มีรายงานกวน — ไม่งั้นอาจารย์จะเลิกอ่านรายงาน */
+  const r = importSheetCsv(sheet(
+    `1,นาย ก,66-1,CD/- (Upper),18/05/69,Yes,,${ticks(3)},ชำระแล้ว,,20/8/69`,
+  ), 'st-1');
+  ok('กรอกวันที่ครบ → ไม่มีรายงานเรื่องวันที่เลย',
+    !r.report.issues.some((i) => i.column === 'Accepted date' || i.column === 'วันที่บันทึกข้อมูล'),
+    r.report.issues.map((i) => `${i.column}: ${i.problem}`).join(' | ') || '(สะอาด)');
+  ok('วันรับเคส พ.ศ. 2 หลักแปลงถูก', r.workpieces[0].acceptedDate === '2026-05-18', r.workpieces[0].acceptedDate);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');
