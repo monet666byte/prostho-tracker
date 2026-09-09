@@ -9,7 +9,7 @@
  */
 import { t } from '../lib/i18n';
 import { toISODate } from '../lib/date';
-import { currentProc, isComplete, maxProgression, nextProc, progression, yearlyRows } from './rules';
+import { currentProc, isActiveWork, isComplete, maxProgression, nextProc, progression, yearlyRows } from './rules';
 import type { CheckIn, Settings, WorkpieceView } from './types';
 
 const DAY = 86_400_000;
@@ -48,7 +48,11 @@ export function cheerLine(
   now = new Date(),
 ): string {
   const today = toISODate(now);
-  const active = works.filter((w) => !isComplete(w));
+  /* ต้องใช้ isActiveWork ไม่ใช่ !isComplete — เคสที่ "คืนเคส" ไปแล้วก็ยังไม่จบเหมือนกัน
+     ถ้านับรวม หน้าแรกจะขึ้นว่า "เคสของผู้ป่วย X เหลือขั้นเดียวก็จบแล้ว โชคดีกับคาบนี้ครับ"
+     ให้กับเคสที่นักศึกษาคืนไปแล้ว — พูดถึงงานที่ไม่มีอยู่จริง และค้างแบบนั้นตลอดไป
+     (กติกาเดียวกับที่ isStale ใช้อยู่แล้ว) */
+  const active = works.filter(isActiveWork);
   const daysSince = (iso: string) => Math.floor((now.getTime() - new Date(iso).getTime()) / DAY);
 
   // 1–2. มีเคสใกล้จบ — เรื่องน่าตื่นเต้นสุด เช็คก่อน
@@ -96,7 +100,8 @@ export function cheerLine(
   }
 
   // 6. เกณฑ์รายปีครบแล้ว
-  const thisYear = yearlyRows(works, settings).slice(-1)[0];
+  // ส่ง now ต่อด้วย — ไม่งั้นสาขานี้สาขาเดียวอ่านนาฬิกาจริง ผลจึงเปลี่ยนตามเวลาที่เปิดหน้า
+  const thisYear = yearlyRows(works, settings, now).slice(-1)[0];
   if (thisYear?.complete) {
     return t('เก่งมากครับ เกณฑ์ปีนี้ครบแล้ว — ที่เหลือจากนี้คือกำไรล้วนๆ');
   }

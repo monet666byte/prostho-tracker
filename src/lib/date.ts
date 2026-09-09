@@ -29,6 +29,10 @@ export function thaiLong(v: string | Date): string {
 /** "14:32" */
 export function clock(v: string | Date): string {
   const d = asDate(v);
+  /* กันแบบเดียวกับ thaiShort/thaiLong ที่กันไว้ตั้งแต่ 7 ก.ย. — ตัวนี้ตกสำรวจ
+     ที่เจ็บคือหน้า audit log ของอาจารย์ (Settings.tsx) อ่านเวลาจากคอลัมน์ text ในตาราง audit
+     แถวที่ sync มาจากแอปเวอร์ชันอื่นหรือถูกแก้มือ จะขึ้นเป็น "NaN:NaN" คาหน้าจอ */
+  if (Number.isNaN(d.getTime())) return '—';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
