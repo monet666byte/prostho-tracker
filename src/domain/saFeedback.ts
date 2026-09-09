@@ -86,8 +86,16 @@ export interface FeedbackInput {
 /* ── เครื่องยนต์ ────────────────────────────────────────────────────────── */
 
 export function buildFeedback(input: FeedbackInput): FeedbackCard[] {
-  const { sa, works, checkins, updates, settings } = input;
+  const { sa, works, updates, settings } = input;
   const now = input.now ?? new Date();
+
+  /* คาบที่เอามาเทียบ ต้องเป็นคาบของ "ปีการศึกษาที่ใบนี้พูดถึง" เท่านั้น
+     แบบประเมินตนเองมีปีละใบ (saId ผูกกับ academicYear) การ์ดทุกใบพูดในรูป
+     "นักศึกษาประเมินตัวเองว่า X แต่ของจริง Y" — Y ต้องวัดในช่วงเวลาที่เขากำลังมองย้อนกลับไป
+     เดิมกวาดคาบทั้งหมดที่เคยมี พอเป็น นศ. ปี 6 จะลากคาบตอนปี 5 มาปนด้วย
+     คนที่ปี 5 มาสายบ่อยแล้วปี 6 แก้ตัวได้หมดแล้ว ยังโดนป้าย "มาสายบ่อยกว่าที่คิด" อยู่ดี
+     (เกณฑ์สะสมในข้อ ④ ยังใช้ชิ้นงานทั้งหมดเหมือนเดิม — อันนั้นเป็นเกณฑ์ 2 ปีโดยตั้งใจ) */
+  const checkins = input.checkins.filter((c) => academicYear(c.date) === sa.academicYear);
   const a = sa.answers as Record<string, SAValue>;
   const cards: FeedbackCard[] = [];
   const mine = works.filter((w) => !w.returned);
