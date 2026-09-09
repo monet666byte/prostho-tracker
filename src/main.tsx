@@ -1,15 +1,35 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import '@fontsource/anuphan/400.css';
-import '@fontsource/anuphan/600.css';
-import '@fontsource/anuphan/700.css';
-import '@fontsource/noto-sans-thai/400.css';
-import '@fontsource/noto-sans-thai/500.css';
-import '@fontsource/noto-sans-thai/600.css';
-import '@fontsource/ibm-plex-mono/400.css';
-import '@fontsource/ibm-plex-mono/500.css';
-import '@fontsource/ibm-plex-mono/600.css';
+/* ฟอนต์: เรียกทีละซับเซ็ต ไม่เรียก 400.css ที่รวมทุกซับเซ็ตมาให้
+   เพราะไฟล์รวมลาก cyrillic/vietnamese ติดมาด้วย (154 KB) ซึ่งแอปนี้ไม่มีทางแสดงถึง
+   เบราว์เซอร์ไม่โหลดมันอยู่แล้วเพราะติด unicode-range แต่ service worker
+   แคชล่วงหน้าตาม glob — ไฟล์ที่ไม่มีใครใช้เลยกินเน็ตของการเปิดครั้งแรกจริง ๆ
+   และโหมด share ฝังทุกไฟล์เป็น base64 ลง index.html ยิ่งกินหนัก */
+import '@fontsource/anuphan/latin-400.css';
+import '@fontsource/anuphan/latin-ext-400.css';
+import '@fontsource/anuphan/thai-400.css';
+import '@fontsource/anuphan/latin-600.css';
+import '@fontsource/anuphan/latin-ext-600.css';
+import '@fontsource/anuphan/thai-600.css';
+import '@fontsource/anuphan/latin-700.css';
+import '@fontsource/anuphan/latin-ext-700.css';
+import '@fontsource/anuphan/thai-700.css';
+import '@fontsource/noto-sans-thai/latin-400.css';
+import '@fontsource/noto-sans-thai/latin-ext-400.css';
+import '@fontsource/noto-sans-thai/thai-400.css';
+import '@fontsource/noto-sans-thai/latin-500.css';
+import '@fontsource/noto-sans-thai/latin-ext-500.css';
+import '@fontsource/noto-sans-thai/thai-500.css';
+import '@fontsource/noto-sans-thai/latin-600.css';
+import '@fontsource/noto-sans-thai/latin-ext-600.css';
+import '@fontsource/noto-sans-thai/thai-600.css';
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-ext-400.css';
+import '@fontsource/ibm-plex-mono/latin-500.css';
+import '@fontsource/ibm-plex-mono/latin-ext-500.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
+import '@fontsource/ibm-plex-mono/latin-ext-600.css';
 
 import './styles/tokens.css';
 import './styles/base.css';
