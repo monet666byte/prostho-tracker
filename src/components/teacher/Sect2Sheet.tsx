@@ -16,7 +16,7 @@ import {
   rpdDesignPassed, s2Points, sect2Form, sect2Total, type S2Form, type S2Grade,
 } from '../../domain/sect2';
 import { deleteSect2, saveSect2 } from '../../data/repo';
-import { CasePicker } from './CasePicker';
+import { CasePicker, type CaseScope } from './CasePicker';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { currentActor } from '../../store/app';
@@ -40,8 +40,10 @@ function SheetHead({ student, title, code, onClose }: {
 }
 
 /** ช่องหัวฟอร์ม (ชื่อผู้ป่วย · H.N. · ประเภทงาน · วันที่) — มีตัวเลือกเคสอยู่ข้างบน */
-function CaseFields({ studentId, patientName, hn, typeOfWorks, at, set }: {
+function CaseFields({ studentId, scope, patientName, hn, typeOfWorks, at, set }: {
   studentId: string;
+  /** ใบนี้เป็นแบบไหน — ตัวเลือกเคสข้างบนกรองตามนี้ */
+  scope: CaseScope;
   patientName: string; hn: string; typeOfWorks: string; at: string;
   set: (k: 'patientName' | 'hn' | 'typeOfWorks' | 'at', v: string) => void;
 }) {
@@ -49,6 +51,7 @@ function CaseFields({ studentId, patientName, hn, typeOfWorks, at, set }: {
     <>
       <CasePicker
         studentId={studentId}
+        scope={scope}
         patientName={patientName}
         hn={hn}
         onPick={(c) => { set('patientName', c.name); set('hn', c.hn); set('typeOfWorks', c.works.join(', ')); }}
@@ -179,7 +182,7 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
         </div>
       )}
 
-      <CaseFields studentId={student.id} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
+      <CaseFields studentId={student.id} scope={form.key} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
       <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
         {form.criteria.map((c, i) => {
@@ -404,7 +407,7 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
         </div>
       )}
 
-      <CaseFields studentId={student.id} {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
+      <CaseFields studentId={student.id} scope="rpdDesign" {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
       {/* ทางหลัก: ติ๊กว่าสอบแล้ว แล้วอาจารย์กดอนุมัติ — พอสำหรับการใช้งานปกติ (ผู้ใช้ขอ 7 ก.ย. 69) */}
       <div className="card" style={{ padding: 14, marginTop: 14, display: 'grid', gap: 10 }}>

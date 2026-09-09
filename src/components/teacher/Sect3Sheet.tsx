@@ -216,6 +216,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
 
       <CasePicker
         studentId={student.id}
+        scope={form.group}
         patientName={patientName}
         hn={hn}
         onPick={(c) => { setPatientName(c.name); setHn(c.hn); }}
