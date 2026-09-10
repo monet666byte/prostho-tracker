@@ -1,20 +1,35 @@
 /** กฎธุรกิจทั้งหมด — อ้างอิงหัวข้อ "กฎธุรกิจ" ใน handoff */
 
-import { CUM_REQ_TYPES, DENTURE_CLASSES, ORDER, PROCS, RECALL, REQ_TYPES, TYPES, type Proc } from './catalog';
+import { CUM_REQ_TYPES, DENTURE_CLASSES, PROCS, RECALL, REQ_TYPES, TYPES, orderOf, type Proc, typeMeta } from './catalog';
 import { academicYear } from '../lib/date';
 import type { Settings, WorkType, Workpiece, StudentGates, GateKey } from './types';
+
+/** ลิสต์ว่างสำหรับประเภทที่ catalog รุ่นนี้ไม่รู้จัก — คนละ object ทุกครั้งไม่ได้ ต้องคงที่ */
+const NO_PROCS: Proc[] = [];
 
 /** ลิสต์ procedure ของชิ้นงาน — Recall ใช้ลิสต์สั้น, APD ใช้ลิสต์เดียวกับ CD, PC แยกตาม variant */
 export function procList(w: Pick<Workpiece, 'type' | 'variant'>): Proc[] {
   if (w.type === 'RRM' || w.type === 'RFX') return RECALL;
   if (w.type === 'APD') return PROCS.CD;
   if (w.type === 'PC') return w.variant === 'prefab' ? PROCS.PC_PREFAB : PROCS.PC;
-  return PROCS[w.type];
+  /**
+   * ประเภทที่ catalog รุ่นนี้ไม่รู้จัก → ลิสต์ว่าง ห้ามคืน undefined
+   *
+   * เกิดได้จริงสามทาง: แถวที่ sync ลงมาจากแอปรุ่นใหม่กว่า (เครื่องหนึ่งอัปเดตก่อนอีกเครื่อง) ·
+   * แถวที่ถูกแก้มือในตู้กลาง · วันที่ภาคเปลี่ยน catalog แล้วชิ้นงานเก่าอ้างประเภทที่หายไป
+   *
+   * เดิมคืน undefined แล้ว procList(w)[i] ระเบิดทันที — และเพราะไม่มี ErrorBoundary
+   * ทั้งหน้าจอขาวสนิท ไม่มีข้อความ ไม่มีทางออก **และรีโหลดก็ไม่หาย** เพราะแถวยังอยู่ในเครื่อง
+   * (ทดลองแล้ว 10 ก.ย. 69: ใส่ชิ้นงาน type ที่ไม่รู้จักหนึ่งแถว แล้วเปิดหน้าคนไข้ → #root ว่างเปล่า)
+   * ลิสต์ว่างทำให้ทุกฟังก์ชันปลายทางได้คำตอบที่ปลอดภัย: procAt = null · progression = -1
+   * · isComplete = false · percentCompleted = 0 — ชิ้นงานโผล่ในรายการแต่ไม่มีความคืบหน้า
+   */
+  return PROCS[w.type] ?? NO_PROCS;
 }
 
 export function maxProgression(w: Pick<Workpiece, 'type' | 'variant'>): number {
   const list = procList(w);
-  return list[list.length - 1][0];
+  return list.length ? list[list.length - 1][0] : 0;
 }
 
 export interface ProcAt {
@@ -70,7 +85,7 @@ export function isComplete(w: Workpiece): boolean {
 
 /** label ตามรูปแบบ droplist ในชีต: `<prefix>-<progression> <procedure>` เช่น "CD-2 Custom trays" */
 export function procLabel(type: WorkType, p: ProcAt): string {
-  return `${TYPES[type].prefix}-${p.progression} ${p.name}`;
+  return `${typeMeta(type).prefix}-${p.progression} ${p.name}`;
 }
 
 export interface StepGroup {
@@ -127,7 +142,7 @@ export function isStale(w: Workpiece, settings: Settings, now = new Date()): boo
 export function sortWorkpieces<T extends Workpiece>(list: T[]): T[] {
   return [...list].sort((a, b) => {
     if (a.minimumRequirement !== b.minimumRequirement) return a.minimumRequirement ? -1 : 1;
-    if (ORDER[a.type] !== ORDER[b.type]) return ORDER[a.type] - ORDER[b.type];
+    if (orderOf(a.type) !== orderOf(b.type)) return orderOf(a.type) - orderOf(b.type);
     if (a.patientId !== b.patientId) return a.patientId.localeCompare(b.patientId);
     if (a.pairId && b.pairId && a.pairId === b.pairId) {
       return a.arch === 'upper' ? -1 : 1;

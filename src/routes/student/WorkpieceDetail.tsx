@@ -7,7 +7,7 @@ import {
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import {
   maxProgression, nextProc, progression, stepGroups, isReturned } from '../../domain/rules';
 import { usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
@@ -56,7 +56,7 @@ export default function WorkpieceDetail() {
 
 
 
-  const meta = TYPES[w.type];
+  const meta = typeMeta(w.type);
   const groups = stepGroups(w);
   const prog = progression(w);
   const max = maxProgression(w);

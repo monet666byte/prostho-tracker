@@ -16,6 +16,7 @@ import './styles/base.css';
 import './styles/student.css';
 import './styles/teacher.css';
 import App from './App';
+import { AppBoundary } from './components/AppBoundary';
 import { initTextSize } from './components/TextSize';
 import { initTheme } from './lib/theme';
 import { initInstall } from './lib/install';
@@ -27,6 +28,9 @@ initInstall();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {/* ตาข่ายชั้นนอกสุด — ครอบไว้ตรงนี้ ไม่ใช่ใน App เพราะต้องดักตอน App เองพังด้วย */}
+    <AppBoundary>
+      <App />
+    </AppBoundary>
   </StrictMode>,
 );

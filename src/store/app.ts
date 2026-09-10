@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db, kvGet, kvSet } from '../data/db';
+import { db, isBlockedByOtherTab, kvGet, kvSet } from '../data/db';
 import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/repo';
 import { assertSect2 } from '../domain/sect2';
 import { assertSect3 } from '../domain/sect3';
@@ -165,6 +165,24 @@ export const useApp = create<AppState>((set, get) => ({
   revision: 0,
 
   async init() {
+    /**
+     * ตัวจับเวลากันค้างที่จอโหลด — ห้ามมีสภาพ "หมุนอยู่ตลอดกาล" เด็ดขาด
+     *
+     * catch ข้างล่างดักได้แค่กรณีที่ throw · แต่กรณีที่เจ็บที่สุดคือ Dexie ถูกบล็อก
+     * โดยแท็บอื่น ซึ่ง **ไม่ throw และไม่ resolve** มันรอเงียบ ๆ ไปเรื่อย ๆ (ดู db.ts)
+     * ผู้ใช้เห็นแค่ "กำลังเตรียมข้อมูล…" แล้วเดาไม่ออกว่าต้องทำอะไร
+     */
+    const guard = setTimeout(() => {
+      if (get().ready) return;
+      /* Dexie บอกเองว่าถูกบล็อกก็เชื่อได้เต็มร้อย · ถ้าไม่บอกก็ยังไม่รู้สาเหตุแน่
+         **ไม่เดาแทน** — หน้าจอจะเล่าทั้งสองทางที่เป็นไปได้พร้อมวิธีแก้ของแต่ละทาง
+         (เคยลองใช้ BroadcastChannel ถามแท็บอื่น แต่แท็บพื้นหลังถูกเบราว์เซอร์หน่วง
+          คำตอบมาไม่ทัน แล้วเราสรุปผิด — เดาผิดแย่กว่าบอกว่ายังไม่รู้) */
+      set({
+        ready: true,
+        initError: isBlockedByOtherTab() ? 'OTHER_TAB' : 'STUCK',
+      });
+    }, 15_000);
 
     try {
       /* ยามตรวจว่าถอดฟอร์มจากสมุดถูกไหม (ผลรวมต้องได้ 10 และ 70) — รันเฉพาะตอน dev
@@ -185,7 +203,7 @@ export const useApp = create<AppState>((set, get) => ({
           await kvSet('session', session);
           const mine = await findMyGroup(session.teacherId);
           set({
-            ready: true, settings, session, cloudUser: user, cloudUnlinked: false,
+            ready: true, initError: null, settings, session, cloudUser: user, cloudUnlinked: false,
             actorName: await actorNameFor(session),
             myGroup: mine,
             teacherGroup: mine ?? get().teacherGroup,
@@ -203,7 +221,7 @@ export const useApp = create<AppState>((set, get) => ({
         } else {
           // ยังไม่ล็อกอิน (หรือล็อกอินแล้วแต่ไม่ได้ถูกเชิญ) → ค้างที่หน้า login ไม่แตะตู้กลาง
           const signedIn = await hasCloudSession();
-          set({ ready: true, settings, session: null, cloudUser: null, cloudUnlinked: signedIn });
+          set({ ready: true, initError: null, settings, session: null, cloudUser: null, cloudUnlinked: signedIn });
         }
         return;
       }
@@ -219,7 +237,7 @@ export const useApp = create<AppState>((set, get) => ({
       } catch { /* private mode */ }
       const mineLocal = session ? await findMyGroup(session.teacherId) : null;
       set({
-        ready: true, settings, session, installPrompt: invite,
+        ready: true, initError: null, settings, session, installPrompt: invite,
         actorName: session ? await actorNameFor(session) : DEMO_STUDENT_NAME,
         myGroup: mineLocal,
         teacherGroup: mineLocal ?? get().teacherGroup,
@@ -234,6 +252,8 @@ export const useApp = create<AppState>((set, get) => ({
 
       set({ ready: true, initError: String((e as Error)?.message ?? e) });
 
+    } finally {
+      clearTimeout(guard);
     }
 
   },

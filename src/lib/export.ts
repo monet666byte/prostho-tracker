@@ -1,4 +1,4 @@
-import { TYPES } from '../domain/catalog';
+import { typeMeta } from '../domain/catalog';
 import { currentProc, maxProgression, percentCompleted, procLabel, progression } from '../domain/rules';
 import type { WorkpieceView } from '../domain/types';
 import { toSheetDate } from './date';
@@ -117,7 +117,7 @@ function downloadCsv(works: WorkpieceView[], filename: string, opt: CsvOptions):
 }
 
 export function typeLabel(w: WorkpieceView): string {
-  return TYPES[w.type].full;
+  return typeMeta(w.type).full;
 }
 
 /* ══════════════════════════════════════════════════════════════════

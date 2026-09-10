@@ -15,7 +15,7 @@ import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
 import { cohortOfRoster, replaceWithRoster } from '../../data/repo';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
 
 export function ImportSheetBody() {
@@ -230,8 +230,8 @@ export function ImportSheetBody() {
                           <td style={{ font: '500 11.5px var(--font-body)' }}>{p?.name}</td>
                           <td className="mono" style={{ fontSize: 11 }}>{p?.hn}</td>
                           <td>
-                            <span className="badge" style={{ background: TYPES[w.type].tint, color: TYPES[w.type].ink }}>
-                              {TYPES[w.type].short}
+                            <span className="badge" style={{ background: typeMeta(w.type).tint, color: typeMeta(w.type).ink }}>
+                              {typeMeta(w.type).short}
                             </span>
                           </td>
                           <td style={{ font: '400 11.5px var(--font-body)' }}>{w.detail}</td>

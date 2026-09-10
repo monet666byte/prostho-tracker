@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ORDER, TYPES, typesPresent, typeChipLabel } from '../../domain/catalog';
+import { orderOf, typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
 import { t, tText } from '../../lib/i18n';
 
@@ -38,7 +38,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
     items: dots
       .filter((d) => d.progression === i)
       .sort((a, b) => {
-        if (ORDER[a.type] !== ORDER[b.type]) return ORDER[a.type] - ORDER[b.type];
+        if (orderOf(a.type) !== orderOf(b.type)) return orderOf(a.type) - orderOf(b.type);
         return Number(a.stale) - Number(b.stale);
       }),
   }));
@@ -56,7 +56,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
                   key={d.id}
                   data-stale={d.stale}
                   data-on={hover?.id === d.id}
-                  style={{ background: TYPES[d.type].color }}
+                  style={{ background: typeMeta(d.type).color }}
                   title={d.label}
                   onMouseEnter={() => setHover(d)}
                   onMouseLeave={() => setHover(null)}
@@ -83,7 +83,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
 
       <div className="chartlegend">
         {showTypeLegend && typesPresent(dots).map((t) => (
-          <span key={t}><i style={{ background: TYPES[t].color, borderRadius: 99 }} /> {typeChipLabel(t)}</span>
+          <span key={t}><i style={{ background: typeMeta(t).color, borderRadius: 99 }} /> {typeChipLabel(t)}</span>
         ))}
         <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>

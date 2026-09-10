@@ -10,7 +10,7 @@ import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
 import { BetaBadge } from '../../components/BetaBadge';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
@@ -394,7 +394,7 @@ export default function Home() {
 
       {rest.map((w) => {
         const next = nextProc(w);
-        const meta = TYPES[w.type];
+        const meta = typeMeta(w.type);
         return (
           <div key={w.id} className="minirow">
             <Link to={`/app/work/${w.id}`} className="minirow__body">

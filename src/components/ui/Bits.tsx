@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { t } from '../../lib/i18n';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import type { WorkType } from '../../domain/types';
 
 export function TypeBadge({ type, style }: { type: WorkType; style?: CSSProperties }) {
-  const m = TYPES[type];
+  const m = typeMeta(type);
   return (
     <span className="badge" style={{ background: m.tint, color: m.ink, ...style }}>
       {m.short}

@@ -3,14 +3,14 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { createWorkpieces } from '../../data/repo';
-import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, ORDER, TYPES } from '../../domain/catalog';
+import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, TYPES, orderOf, typeMeta } from '../../domain/catalog';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
 import { toISODate } from '../../lib/date';
 import { currentActor, useApp } from '../../store/app';
 
 const KENNEDY: KennedyClass[] = ['Kennedy class I', 'Kennedy class II', 'Kennedy class III', 'Kennedy class IV'];
-const TYPE_KEYS = (Object.keys(TYPES) as WorkType[]).sort((a, b) => ORDER[a] - ORDER[b]);
+const TYPE_KEYS = (Object.keys(TYPES) as WorkType[]).sort((a, b) => orderOf(a) - orderOf(b));
 
 export default function NewWorkpiece() {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export default function NewWorkpiece() {
   const [dentureClass, setDentureClass] = useState<DentureClass>('CD');
   const [designRpd, setDesignRpd] = useState('ยังไม่ออกแบบ');
 
-  const meta = TYPES[type];
+  const meta = typeMeta(type);
   const removable = type === 'CD' || type === 'RPD' || type === 'APD';
   const needsTooth = type === 'PC' || type === 'CB' || type === 'RFX';
 
@@ -113,9 +113,9 @@ export default function NewWorkpiece() {
                   setSect2Removable(isRemovable);
                   setSect2Fixed(!isRemovable);
                 }}
-                style={type === k ? { background: TYPES[k].ink } : undefined}
+                style={type === k ? { background: typeMeta(k).ink } : undefined}
               >
-                {TYPES[k].short}
+                {typeMeta(k).short}
               </button>
             ))}
           </div>

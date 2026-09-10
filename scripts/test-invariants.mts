@@ -21,9 +21,9 @@ import {
 import { summarizeStudent } from '../src/domain/aggregate.ts';
 import {
   caseCountTotals, isActiveWork, isComplete, isReturned, maxProgression,
-  meetsAllRequirements, overallPercent, percentCompleted, procList, progression, yearlyRows,
+  meetsAllRequirements, overallPercent, percentCompleted, procList, progression, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
-import { REQ_TYPES, TYPES } from '../src/domain/catalog.ts';
+import { REQ_TYPES, TYPES, orderOf, typeMeta } from '../src/domain/catalog.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from '../src/domain/types.ts';
 
@@ -109,6 +109,61 @@ console.log('\nA3. เคสที่นับเข้าเกณฑ์รา�
   ok('คนที่มีแต่เคสที่ไม่นับ ต้องไม่ดูปลอดภัยกว่าคนที่มีเคสจริงใกล้จบ', a.stepsRemaining > b.stepsRemaining);
   ok('แกน "เกณฑ์รายปี" บนกราฟแมงมุมก็ไม่เติมช่องด้วยเคสที่ไม่นับ',
     (profile(uncountable, S, NOW).find((x) => x.key === 'year')!.partials ?? []).length === 0);
+}
+
+console.log('\nA4. ชิ้นงานที่มีประเภทซึ่ง catalog ไม่รู้จัก ต้องไม่ทำให้อะไรพัง');
+/* เคยพัง (ทดลองเองด้วยการใส่แถวลงเครื่อง 10 ก.ย. 69): procList คืน undefined
+   → procList(w)[i] ระเบิด → ทั้งหน้าจอขาวสนิท ไม่มีข้อความ ไม่มีทางออก
+   และรีโหลดก็ไม่หายเพราะแถวยังอยู่ใน IndexedDB — แอปตายถาวรจากมุมผู้ใช้
+
+   เกิดได้จริงสามทาง: แถวที่ sync ลงมาจากแอปรุ่นใหม่กว่า (เครื่องหนึ่งอัปเดตก่อนอีกเครื่อง) ·
+   แถวที่ถูกแก้มือในตู้กลาง · วันที่ภาคเปลี่ยน catalog แล้วชิ้นงานเก่าอ้างประเภทที่หายไป */
+{
+  const alien = { ...wp('CD'), type: 'ประเภทที่ยังไม่มีในระบบ' as WorkType, procIndex: 7 };
+  const mixed = [wp('CD'), at('RPD', 4), alien];
+
+  ok('procList คืนลิสต์ว่าง ไม่ใช่ undefined', Array.isArray(procList(alien)) && procList(alien).length === 0);
+  ok('maxProgression ได้ 0 ไม่ใช่ระเบิด', maxProgression(alien) === 0, maxProgression(alien));
+  ok('progression ได้ -1 (ยังไม่เริ่ม) ไม่ใช่ NaN', progression(alien) === -1, progression(alien));
+  ok('percentCompleted ได้ 0', percentCompleted(alien) === 0, percentCompleted(alien));
+  ok('ไม่ถือว่าจบเคส', !isComplete(alien));
+  ok('typeMeta คืนป้ายกลาง ๆ ที่อ่านออก ไม่ใช่ undefined',
+    !!typeMeta(alien.type).short && !!typeMeta(alien.type).color, JSON.stringify(typeMeta(alien.type)));
+  ok('orderOf คืนตัวเลข ไม่ใช่ NaN (ไม่งั้นตัวเรียงรายการเพี้ยน)',
+    Number.isFinite(orderOf(alien.type)), orderOf(alien.type));
+  ok('เรียงรายการได้ ไม่ระเบิด และไม่ทำแถวหาย', sortWorkpieces(mixed).length === 3);
+
+  /* ด่านสำคัญ: ทุกฟังก์ชันที่หน้าจอเรียกต้องผ่านได้ทั้งชุด ไม่ใช่แค่ไม่ throw ทีละตัว */
+  const st = student('s1');
+  const calls: Array<[string, () => unknown]> = [
+    ['caseCountTotals', () => caseCountTotals(mixed, S)],
+    ['yearlyRows', () => yearlyRows(mixed, S, NOW)],
+    ['overallPercent', () => overallPercent(mixed)],
+    ['summarizeStudent', () => summarizeStudent(st, mixed, S)],
+    ['funnelByType', () => funnelByType(mixed, S)],
+    ['bottleneckByStep', () => bottleneckByStep(mixed, S)],
+    ['caseDots', () => caseDots(mixed, [st], S)],
+    ['durationByType', () => durationByType(mixed)],
+    ['riskRows', () => riskRows([st], mixed, S, [], [], NOW)],
+    ['profile', () => profile(mixed, S, NOW)],
+    ['heatmapRows', () => heatmapRows([st], mixed, S, NOW)],
+    ['burnup', () => burnup([st], mixed, S, NOW)],
+    ['selfPerformedRows', () => selfPerformedRows([st], mixed)],
+    ['headline', () => headline([st], mixed, S, [], [], NOW)],
+    ['throughputByMonth', () => throughputByMonth(mixed, NOW)],
+  ];
+  const broke: string[] = [];
+  const nanIn: string[] = [];
+  for (const [name, fn] of calls) {
+    try {
+      const bad = findBadNumber(fn());
+      if (bad) nanIn.push(`${name}: ${bad}`);
+    } catch (e) {
+      broke.push(`${name}: ${(e as Error).message}`);
+    }
+  }
+  ok('ไม่มีฟังก์ชันไหน throw', broke.length === 0, broke.join(' | ') || '(ผ่านหมด)');
+  ok('ไม่มี NaN หลุดออกมา', nanIn.length === 0, nanIn.join(' | ') || '(สะอาด)');
 }
 
 /* ══════════════════════════════════════════════════════════════════

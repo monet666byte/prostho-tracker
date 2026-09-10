@@ -4,7 +4,7 @@
  */
 
 import { lang } from '../lib/i18n';
-import { ORDER, REQ_TYPES, TYPES } from './catalog';
+import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
   caseCount, completedInYear, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
@@ -162,7 +162,7 @@ export function riskRows(
       // step ที่กำลังพยายามผ่าน = step ถัดไปของเคสที่แตะล่าสุด
       const current = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0];
       // ขั้นสุดท้ายของ Recall คือ 3 ไม่ใช่ 10 — ตรึงที่ 10 จะได้ป้าย step ที่ไม่มีอยู่จริง
-      const stuckStep = current ? `${TYPES[current.type].prefix}-${Math.min(maxProgression(current), progression(current) + 1)}` : '';
+      const stuckStep = current ? `${typeMeta(current.type).prefix}-${Math.min(maxProgression(current), progression(current) + 1)}` : '';
       const nextProcOfCurrent = current ? procAt(current, current.procIndex + 1) : null;
       const pieces = [...active]
         .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))
@@ -171,7 +171,7 @@ export function riskRows(
           return {
             id: w.id,
             type: w.type,
-            code: `${TYPES[w.type].prefix}-${Math.min(maxProgression(w), progression(w) + 1)}`,
+            code: `${typeMeta(w.type).prefix}-${Math.min(maxProgression(w), progression(w) + 1)}`,
             name: next ? next.name : (lang === 'en' ? 'awaiting case closure' : 'รอปิดเคส'),
             progression: Math.max(0, progression(w)),
             days: Math.max(0, Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)),
@@ -180,7 +180,7 @@ export function riskRows(
       const currentStepLabel = current
         ? nextProcOfCurrent
           ? `${stuckStep} · ${nextProcOfCurrent.name}`
-          : `${TYPES[current.type].prefix} ${lang === 'en' ? 'awaiting closure' : 'รอปิดเคส'}`
+          : `${typeMeta(current.type).prefix} ${lang === 'en' ? 'awaiting closure' : 'รอปิดเคส'}`
         : lang === 'en' ? 'no active case' : 'ไม่มีเคสในมือ';
       const passed = stepDates.get(student.id) ?? new Set<string>();
       let stuckPeriods = 0;
@@ -381,7 +381,7 @@ export interface FunnelRow {
  * แต่ต้องไม่หายเงียบ — นับไว้ในช่อง returned ให้ตารางแสดงได้
  */
 export function funnelByType(works: Workpiece[], settings: Settings): FunnelRow[] {
-  const types = [...new Set(works.map((w) => w.type))].sort((a, b) => ORDER[a] - ORDER[b]);
+  const types = [...new Set(works.map((w) => w.type))].sort((a, b) => orderOf(a) - orderOf(b));
   return types.map((type) => {
     const ofType = works.filter((w) => w.type === type);
     const mine = ofType.filter((w) => !isReturned(w));
@@ -451,7 +451,7 @@ export function headline(
     busiestStep: worst?.progression ?? 0,
     busiestCount: worst?.count ?? 0,
     busiestLabel: worst?.label ?? '',
-    typeLabel: slowest ? TYPES[slowest.type].short : '',
+    typeLabel: slowest ? typeMeta(slowest.type).short : '',
   };
 }
 

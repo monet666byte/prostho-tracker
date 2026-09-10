@@ -4,7 +4,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
-import { TYPES, typeChipLabel, typesPresent } from '../../domain/catalog';
+import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import {
   bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount } from '../../domain/analytics';
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
@@ -116,7 +116,7 @@ export default function Analytics() {
                   }}
                 >
                   {ty !== 'all' && (
-                    <i style={{ width: 9, height: 9, borderRadius: 99, background: TYPES[ty].color, flex: 'none' }} />
+                    <i style={{ width: 9, height: 9, borderRadius: 99, background: typeMeta(ty).color, flex: 'none' }} />
                   )}
                   {ty === 'all' ? t('ทุกประเภท') : typeChipLabel(ty)}
                   <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{dotCount(ty)}</span>
@@ -166,7 +166,7 @@ export default function Analytics() {
                   <div className="hbar" key={d.type}>
                     <span className="hbar__label">{typeChipLabel(d.type)}</span>
                     <span className="hbar__track">
-                      <i style={{ width: `${(d.medianWeeks / maxDuration) * 100}%`, background: TYPES[d.type].color }} />
+                      <i style={{ width: `${(d.medianWeeks / maxDuration) * 100}%`, background: typeMeta(d.type).color }} />
                     </span>
                     <span className="hbar__value" style={{ width: 52, whiteSpace: 'nowrap' }}>{d.medianWeeks} wk.</span>
                   </div>
@@ -242,7 +242,7 @@ export default function Analytics() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span className="bar" style={{ height: 7 }}>
-                          <i style={{ width: `${f.completionRate}%`, background: TYPES[f.type].color }} />
+                          <i style={{ width: `${f.completionRate}%`, background: typeMeta(f.type).color }} />
                         </span>
                         <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>
                           {f.completionRate}%

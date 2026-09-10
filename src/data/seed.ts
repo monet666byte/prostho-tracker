@@ -6,7 +6,7 @@
  * generate ด้วย seeded RNG เพื่อให้ตัวเลขบน dashboard นิ่งทุกครั้งที่เปิด
  */
 
-import { CATALOG_VERSION, DENTURE_CLASSES_FOR, TYPES, dentureLabel } from '../domain/catalog';
+import { CATALOG_VERSION, DENTURE_CLASSES_FOR, dentureLabel, typeMeta } from '../domain/catalog';
 import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
 import { isAlumni, studentYear } from '../domain/cohort';
@@ -240,7 +240,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
     const arch = removable ? (n % 2 === 0 ? 'upper' : 'lower') : undefined;
     const dentureClass = removable ? pick(DENTURE_CLASSES_FOR[type] ?? []) : undefined;
     const tooth = removable ? undefined : type === 'CB' && rand() < 0.25 ? pick(BRIDGE_POOL) : pick(TOOTH_POOL);
-    const label = TYPES[type].short;
+    const label = typeMeta(type).short;
     const touched = daysAgo(
       complete ? completedDaysAgo : stale ? 15 + Math.floor(rand() * 24) : Math.floor(rand() * 13),
     );

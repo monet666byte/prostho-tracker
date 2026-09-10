@@ -5,7 +5,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { DivergingBars } from '../../components/charts/Diverging';
 import { Heatmap } from '../../components/charts/Heatmap';
 import { averageProfile, heatmapRows, riskRows } from '../../domain/analytics';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces,
 } from '../../hooks/data';
@@ -214,8 +214,8 @@ export default function MyGroup() {
                             <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: main.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
                               <i style={{ width: `${(main.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                             </span>
-                            <span className="badge" style={{ background: TYPES[main.type].tint, color: TYPES[main.type].ink, flex: 'none' }}>
-                              {TYPES[main.type].prefix}
+                            <span className="badge" style={{ background: typeMeta(main.type).tint, color: typeMeta(main.type).ink, flex: 'none' }}>
+                              {typeMeta(main.type).prefix}
                             </span>
                             <span className="worknow__name">
                               {t('กำลังทำขั้น {n}', { n: Math.min(10, main.progression + 1) })} · {main.name}
@@ -257,8 +257,8 @@ export default function MyGroup() {
                               <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: pc.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
                                 <i style={{ width: `${(pc.progression / 10) * 100}%`, background: 'var(--accent)' }} />
                               </span>
-                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
-                                {TYPES[pc.type].prefix}
+                              <span className="badge" style={{ background: typeMeta(pc.type).tint, color: typeMeta(pc.type).ink, flex: 'none' }}>
+                                {typeMeta(pc.type).prefix}
                               </span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>
                                 {t('กำลังทำขั้น {n}', { n: Math.min(10, pc.progression + 1) })} · {pc.name}
@@ -277,8 +277,8 @@ export default function MyGroup() {
                               <span className="bar" style={{ height: 6, width: 90, flex: 'none' }}>
                                 <i style={{ width: '100%', background: 'var(--success)' }} />
                               </span>
-                              <span className="badge" style={{ background: TYPES[pc.type].tint, color: TYPES[pc.type].ink, flex: 'none' }}>
-                                {TYPES[pc.type].prefix}
+                              <span className="badge" style={{ background: typeMeta(pc.type).tint, color: typeMeta(pc.type).ink, flex: 'none' }}>
+                                {typeMeta(pc.type).prefix}
                               </span>
                               <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{t('จบเคสแล้ว')} ✓</span>
                               <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>

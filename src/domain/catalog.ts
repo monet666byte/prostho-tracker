@@ -34,8 +34,31 @@ export const TYPES: Record<WorkType, TypeMeta> = {
   RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5', ink: '#475569' },
 };
 
+/**
+ * ป้าย/สีของประเภทงาน แบบที่ไม่ระเบิดถ้าเจอประเภทที่ catalog รุ่นนี้ไม่รู้จัก
+ *
+ * ทำไมต้องมี (ทดลองแล้ว 10 ก.ย. 69): ใส่ชิ้นงาน `type` ที่ไม่รู้จักลงเครื่องหนึ่งแถว
+ * แล้วเปิดหน้าคนไข้ → `TYPES[w.type].color` ระเบิด → ทั้งหน้าไม่ขึ้น
+ * แถวรูปแบบแปลกเกิดได้จริง: sync ลงมาจากแอปรุ่นใหม่กว่า · แถวที่ถูกแก้มือในตู้กลาง
+ * · วันที่ภาคเปลี่ยน catalog แล้วชิ้นงานเก่าอ้างประเภทที่หายไป
+ *
+ * คืนป้ายกลาง ๆ ที่อ่านออกว่า "ไม่รู้จัก" ดีกว่าทั้งหน้าหาย — ผู้ใช้เห็นข้อมูลที่เหลือครบ
+ * และเห็นว่าแถวไหนมีปัญหา · สีเทากลาง ไม่ชนสีสถานะ (เขียว/แดง)
+ */
+const UNKNOWN_TYPE: TypeMeta = {
+  short: '?', full: 'ประเภทที่ระบบไม่รู้จัก', prefix: '?',
+  color: '#94A3B8', tint: '#F1F5F9', ink: '#64748B',
+};
+
+export const typeMeta = (type: string | undefined): TypeMeta =>
+  (type && (TYPES as Record<string, TypeMeta>)[type]) || UNKNOWN_TYPE;
+
 /** ลำดับการแสดงรายการตาม INTRO ของชีต */
 export const ORDER: Record<WorkType, number> = { CD: 0, RPD: 1, APD: 2, PC: 3, CB: 4, RRM: 5, RFX: 6 };
+
+/** ลำดับแบบปลอดภัย — ประเภทที่ไม่รู้จักไปอยู่ท้ายสุด ไม่ทำให้ตัวเรียงได้ NaN */
+export const orderOf = (type: string | undefined): number =>
+  (type && (ORDER as Record<string, number>)[type] !== undefined ? (ORDER as Record<string, number>)[type] : 99);
 
 /** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — 4 ประเภทหลักตามที่ผู้ใช้ยืนยัน 2 ก.ย. */
 export const REQ_TYPES = ['CD', 'RPD', 'PC', 'CB'] as const;

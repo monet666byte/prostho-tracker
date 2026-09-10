@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bar, TypeBadge } from '../../components/ui/Bits';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { currentProc, maxProgression, procLabel, progression } from '../../domain/rules';
 import { useWorkpieces } from '../../hooks/data';
 import { t, tText } from '../../lib/i18n';
@@ -23,7 +23,7 @@ export default function Search() {
    * พอใช้จริง HN "DEMO-0307" ไม่มีทางตรงกับใคร กดแล้วได้ 0 ผลลัพธ์เสมอ
    */
   const quick = useMemo(() => {
-    const types = [...new Set(works.map((w) => TYPES[w.type].short))].slice(0, 4);
+    const types = [...new Set(works.map((w) => typeMeta(w.type).short))].slice(0, 4);
     const teeth = [...new Set(works.map((w) => w.tooth).filter(Boolean) as string[])].slice(0, 2);
     return [...types, ...teeth];
   }, [works]);
@@ -32,7 +32,7 @@ export default function Search() {
     const q = query.trim().toLowerCase();
     if (!q) return works;
     return works.filter((w) =>
-      [w.patient.name, w.patient.hn, w.detail, w.tooth ?? '', TYPES[w.type].full, TYPES[w.type].short]
+      [w.patient.name, w.patient.hn, w.detail, w.tooth ?? '', typeMeta(w.type).full, typeMeta(w.type).short]
         .join(' ')
         .toLowerCase()
         .includes(q),
@@ -86,7 +86,7 @@ export default function Search() {
       ) : (
         results.map((w) => {
           const cur = currentProc(w);
-          const meta = TYPES[w.type];
+          const meta = typeMeta(w.type);
           return (
             <Link key={w.id} to={`/app/work/${w.id}`} className="casecard" style={{ display: 'block' }}>
               <div className="casecard__top">

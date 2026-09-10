@@ -119,6 +119,28 @@ export class ProsthoDB extends Dexie {
 
 export const db = new ProsthoDB();
 
+/**
+ * อีกแท็บถือ DB รุ่นก่อนไว้ → เปิด/อัปเกรด/ลบ ไม่ผ่าน
+ *
+ * ⚠️ Dexie **ไม่ reject** ให้ในกรณีนี้ มันรอเงียบ ๆ ไปตลอด (สเปก IndexedDB เป็นแบบนั้น)
+ * ผลคือแอปค้างที่หน้า "กำลังเตรียมข้อมูล…" ไม่มีข้อความ ไม่มีทางออก **และรีโหลดก็ไม่หาย**
+ * จนกว่าจะปิดแท็บอื่น (ทดลองแล้ว 10 ก.ย. 69 — ค้าง 8 วินาทีแล้วยังไม่ไปไหน)
+ *
+ * เกิดได้จริงสองทาง:
+ *   · เปิดเดโมไว้สองแท็บ แล้วกด "รีเซ็ตข้อมูล" ในแท็บหนึ่ง → อีกแท็บตาย
+ *   · publish เดโมรุ่นใหม่ที่ schema ขยับ แล้วคนมีแท็บรุ่นเก่าเปิดค้างอยู่
+ *     แท็บใหม่จะอัปเกรดไม่ผ่านเพราะแท็บเก่าถือไว้
+ *
+ * ตรงนี้แค่จำว่าเกิดขึ้นแล้ว — คนตัดสินใจว่าจะทำอะไรคือ store/app.ts (ดูตัวจับเวลาใน init)
+ */
+let blockedByOtherTab = false;
+db.on('blocked', () => {
+  blockedByOtherTab = true;
+  console.warn('[db] เปิดฐานข้อมูลไม่ได้ เพราะมีแท็บอื่นถือรุ่นก่อนไว้');
+});
+export const isBlockedByOtherTab = () => blockedByOtherTab;
+
+
 export async function kvGet<T>(key: string, fallback: T): Promise<T> {
   const row = await db.kv.get(key);
   return row ? (row.value as T) : fallback;

@@ -5,7 +5,7 @@ import { Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bi
 import { Shell } from '../../components/student/Shell';
 import { usePending, useWorkpieces } from '../../hooks/data';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
@@ -16,7 +16,7 @@ function MiniRow({
 }: {
   w: WorkpieceView; pending: boolean; stale: boolean; editing: boolean; onDelete: (w: WorkpieceView) => void;
 }) {
-  const meta = TYPES[w.type];
+  const meta = typeMeta(w.type);
   const prog = progression(w);
   const max = maxProgression(w);
   const cur = currentProc(w);
@@ -233,7 +233,7 @@ export default function Patients() {
                   <div key={first.pairId} className={`pairbox t-${first.type}`}>
                     <div className="pairlabel">
                       <LinkSimple size={13} weight="bold" />
-                      {t('คู่ upper/lower · รับเคสพร้อมกัน')} · {TYPES[first.type].short}
+                      {t('คู่ upper/lower · รับเคสพร้อมกัน')} · {typeMeta(first.type).short}
                     </div>
                     {pair.map((w) => (
                       <MiniRow
@@ -264,7 +264,7 @@ export default function Patients() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
                       <Bar
                         value={(Math.max(progression(w), 0) / maxProgression(w)) * 100}
-                        color={TYPES[w.type].color}
+                        color={typeMeta(w.type).color}
                         height={5}
                       />
                       <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)', flex: 'none' }}>

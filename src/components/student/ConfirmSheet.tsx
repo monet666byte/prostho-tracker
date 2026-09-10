@@ -1,6 +1,6 @@
 import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@phosphor-icons/react';
 import { advanceStep } from '../../data/repo';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { caseCount, nextProc } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
@@ -24,7 +24,7 @@ export function ConfirmSheet() {
 
   const next = nextProc(w);
   if (!next) return null;
-  const meta = TYPES[w.type];
+  const meta = typeMeta(w.type);
 
   async function confirm() {
     if (!sheet || !w || !next) return;

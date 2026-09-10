@@ -42,8 +42,8 @@ const swap = (needle: string, replacement: string) => {
 };
 
 swap(
-  "import { TYPES } from '../domain/catalog';",
-  `import { TYPES } from '${abs('domain/catalog.ts')}';`,
+  "import { typeMeta } from '../domain/catalog';",
+  `import { typeMeta } from '${abs('domain/catalog.ts')}';`,
 );
 swap(
   "import { currentProc, maxProgression, percentCompleted, procLabel, progression } from '../domain/rules';",

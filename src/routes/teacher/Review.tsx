@@ -5,7 +5,7 @@ import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview, setStudentGate } from '../../data/repo';
-import { TYPES } from '../../domain/catalog';
+import { typeMeta } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
 import { useAllStudents, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
@@ -184,7 +184,7 @@ export default function Review() {
           )}
           {list.map((w) => {
             const startsReturnedBlock = w.id === firstReturnedId;
-            const meta = TYPES[w.type];
+            const meta = typeMeta(w.type);
             const cur = currentProc(w);
             const review = reviews.get(w.id);
             const opened = expanded === w.id;

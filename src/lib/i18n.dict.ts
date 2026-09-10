@@ -956,6 +956,23 @@ export const DICT: Record<string, string> = {
   'นักศึกษายังไม่ได้แนบรูปของชิ้นงานนี้': 'The student has not attached photos for this piece',
   'บันทึกครบแล้วในเครื่องนี้': 'Everything is saved on this device',
   'ข้อมูล ณ': 'as of',
+  'หน้านี้เปิดไม่ขึ้น': 'This page failed to open',
+  'ข้อมูลที่ทำให้พังยังอยู่ในเครื่อง โหลดใหม่แล้วอาจเจอหน้าเดิมอีก — ถ้าเป็นแบบนั้นให้ล้างข้อมูลในเครื่องแล้วเริ่มใหม่':
+    'The data that caused this is still on this device, so reloading may hit the same error. If so, clear the local data and start over.',
+  'โหลดใหม่': 'Reload',
+  'ยังเปิดไม่ได้ — ล้างข้อมูลในเครื่อง': 'Still broken — clear local data',
+  'ของที่ยังไม่ได้ขึ้นเซิร์ฟเวอร์จะหายไปด้วย ถ้ายังกดได้อยู่ ให้ลอง sync ก่อน':
+    'Anything not yet uploaded will be lost too. If the app still responds, try syncing first.',
+  'กำลังล้าง…': 'Clearing…',
+  'ยืนยัน ล้างข้อมูลในเครื่องแล้วเริ่มใหม่': 'Confirm — clear local data and start over',
+  'ถ้าเจอซ้ำ ๆ ช่วยถ่ายหน้าจอนี้ส่งให้ผู้พัฒนาด้วยครับ': 'If this keeps happening, please screenshot this page and send it to the developer.',
+  'เตรียมข้อมูลไม่เสร็จ': 'Still preparing data',
+  'รอนานเกินปกติแล้วยังไม่เสร็จ ลองตามลำดับนี้': 'This is taking longer than it should. Try these in order.',
+  'มีแอปนี้เปิดอยู่อีกแท็บ': 'This app is already open in another tab',
+  'แท็บที่เปิดอยู่ถือฐานข้อมูลรุ่นก่อนไว้ ทำให้แท็บนี้เตรียมข้อมูลไม่เสร็จ':
+    'That tab is holding an older version of the local database, so this tab cannot finish loading.',
+  'ปิดแท็บอื่นที่เปิดแอปนี้ไว้ แล้วกดโหลดใหม่': 'Close the other tab with this app open, then press Reload',
+  'ถ้าไม่แน่ใจว่าเปิดไว้ที่ไหน ปิดเบราว์เซอร์แล้วเปิดใหม่ก็ได้': 'If you are not sure where, quitting and reopening the browser also works',
   'เปิดแอปไม่ได้ในเบราว์เซอร์นี้': 'This browser cannot run the app',
   'แอปต้องเก็บข้อมูลไว้ในเครื่องเพื่อให้ใช้ตอนเน็ตหลุดได้ แต่เบราว์เซอร์นี้ไม่ยอมให้เก็บ': 'The app stores data on your device so it works offline, but this browser is blocking storage',
   'ถ้าเปิดใน "หน้าต่างส่วนตัว" ให้ลองเปิดในหน้าต่างปกติแทน': 'If you are in a Private window, try a normal window instead',

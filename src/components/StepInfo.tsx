@@ -1,5 +1,5 @@
 import { HandTap, X } from '@phosphor-icons/react';
-import { REQ_TYPES, TYPES } from '../domain/catalog';
+import { REQ_TYPES, typeMeta } from '../domain/catalog';
 import { procList } from '../domain/rules';
 import { t } from '../lib/i18n';
 import type { WorkType } from '../domain/types';
@@ -12,7 +12,7 @@ export function proceduresAt(type: WorkType, progression: number, variant?: 'cas
 }
 
 function TypeBlock({ type, progression }: { type: WorkType; progression: number }) {
-  const meta = TYPES[type];
+  const meta = typeMeta(type);
   const cast = proceduresAt(type, progression, 'cast');
   const prefab = type === 'PC' ? proceduresAt(type, progression, 'prefab') : [];
   const differs = type === 'PC' && JSON.stringify(cast) !== JSON.stringify(prefab);
@@ -82,7 +82,7 @@ export function StepInfo({
         <div style={{ flex: 1 }}>
           <div style={{ font: '600 13px var(--font-head)' }}>
             Step {progression}
-            {type && <span className="faint" style={{ fontWeight: 400 }}> · {TYPES[type].full}</span>}
+            {type && <span className="faint" style={{ fontWeight: 400 }}> · {typeMeta(type).full}</span>}
           </div>
           {meta && (
             <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>{meta}</div>

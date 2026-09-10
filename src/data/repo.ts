@@ -3,7 +3,7 @@
  * ตอนนี้อ่าน/เขียน IndexedDB; ถ้าย้ายไปเซิร์ฟเวอร์กลาง แก้เฉพาะไฟล์นี้
  */
 
-import { CATALOG_VERSION, TYPES, dentureLabel } from '../domain/catalog';
+import { CATALOG_VERSION, dentureLabel, typeMeta } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
 import { pdpaPolicy } from './pdpaSync';
@@ -279,7 +279,7 @@ export interface NewWorkpieceInput {
 }
 
 export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpiece[]> {
-  const meta = TYPES[input.type];
+  const meta = typeMeta(input.type);
   const removable = input.type === 'CD' || input.type === 'RPD' || input.type === 'APD';
   const now = new Date().toISOString();
 
@@ -473,7 +473,7 @@ export async function addPhoto(
     id: uid('ph'),
     workpieceId,
     progression: cur?.progression ?? 0,
-    stepLabel: cur ? procLabel(w.type, cur) : TYPES[w.type].prefix,
+    stepLabel: cur ? procLabel(w.type, cur) : typeMeta(w.type).prefix,
     sizeLabel: formatBytes(image.bytes),
     status: initialPhotoStatus(),
     createdAt: new Date().toISOString(),

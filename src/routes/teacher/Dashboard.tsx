@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
-import { TYPES, typesPresent, typeChipLabel } from '../../domain/catalog';
+import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
@@ -443,9 +443,9 @@ export default function Dashboard() {
                   <div style={{ marginTop: 10 }}>
                     {typeCounts.map((tc) => (
                       <div className="hbar" key={tc.type}>
-                        <span className="hbar__label">{TYPES[tc.type].short}</span>
+                        <span className="hbar__label">{typeMeta(tc.type).short}</span>
                         <span className="hbar__track">
-                          <i style={{ width: `${(tc.count / maxTypeCount) * 100}%`, background: TYPES[tc.type].color }} />
+                          <i style={{ width: `${(tc.count / maxTypeCount) * 100}%`, background: typeMeta(tc.type).color }} />
                         </span>
                         <span className="hbar__value">{tc.count}</span>
                       </div>
@@ -480,7 +480,7 @@ export default function Dashboard() {
                           className="bar-v"
                           style={{
                             height: Math.max(2, (b.count / maxStepBucket) * 92),
-                            background: b.count === maxStepBucket && b.count > 0 ? 'var(--danger-chart)' : TYPES[stepType].color,
+                            background: b.count === maxStepBucket && b.count > 0 ? 'var(--danger-chart)' : typeMeta(stepType).color,
                           }}
                         />
                         <span className="tick">{b.progression}</span>
@@ -502,7 +502,7 @@ export default function Dashboard() {
                     <Info size={15} weight="fill" color="var(--text-faint)" style={{ flex: 'none', marginTop: 1 }} />
                     <span className="pretty" style={{ font: '500 11px/1.55 var(--font-body)', color: 'var(--text-muted)' }}>
                       {busiest.count > 0
-                        ? t('งาน {s} กองอยู่ที่ step {p} มากที่สุด ({c} ชิ้น) — {l}', { s: TYPES[stepType].short, p: busiest.progression, c: busiest.count, l: busiest.label })
+                        ? t('งาน {s} กองอยู่ที่ step {p} มากที่สุด ({c} ชิ้น) — {l}', { s: typeMeta(stepType).short, p: busiest.progression, c: busiest.count, l: busiest.label })
                         : t('ยังไม่มีชิ้นงานที่กำลังทำในประเภทนี้')}
                       {' · '}{t('ดูวิเคราะห์เชิงลึกได้ที่เมนู “วิเคราะห์”')}
                     </span>

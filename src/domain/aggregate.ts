@@ -1,6 +1,6 @@
 /** สรุปข้อมูลระดับกลุ่ม / ชั้นปี สำหรับ dashboard อาจารย์ */
 
-import { ORDER } from './catalog';
+import { orderOf } from './catalog';
 import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork, gatesDone, GATE_KEYS } from './rules';
 import { academicYear } from '../lib/date';
 import { studentYear } from './cohort';
@@ -97,7 +97,7 @@ export function countByType(works: Workpiece[]): Array<{ type: WorkType; count: 
   works.forEach((w) => map.set(w.type, (map.get(w.type) ?? 0) + 1));
   return [...map.entries()]
     .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => ORDER[a.type] - ORDER[b.type]);
+    .sort((a, b) => orderOf(a.type) - orderOf(b.type));
 }
 
 /** case count เทียบเกณฑ์ทั้ง cohort — แท่ง stacked 3 สี */
