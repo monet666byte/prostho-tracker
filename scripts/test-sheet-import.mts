@@ -377,5 +377,59 @@ console.log('\nช่องวันที่ที่ปล่อยว่า�
   ok('วันรับเคส พ.ศ. 2 หลักแปลงถูก', r.workpieces[0].acceptedDate === '2026-05-18', r.workpieces[0].acceptedDate);
 }
 
+/* ── แถวที่ก๊อปซ้ำในชีต ต้องขึ้นรายงาน ไม่ใช่เงียบ ─────────────────────────────
+   ชีตจริงมี 12 แท็บที่คนกรอกมือ การก๊อปแถวเกิดได้ง่าย
+   ตั้งใจเก็บทั้งสองแถว (ยุบแล้วถ้าเป็นสองเคสจริงข้อมูลหาย) แต่ต้องบอกให้คนตัดสิน
+   เพราะถ้าติ๊ก Minimum Req ไว้ มันจะกลายเป็น "อีกหนึ่งเคส" ที่นับเข้าเกณฑ์ให้ฟรี ๆ
+   วัดกับชีตจริงรุ่น 55: เจอ 2 แถว (ไม่มีแถวไหนติ๊กเกณฑ์ จึงยังไม่กระทบตัวเลข) */
+console.log('\nแถวที่ซ้ำกันเป๊ะ');
+{
+  const dupRow = `1,นาย ก,66-1,CD/- (Upper),18/05/69,Yes,,${ticks(3)},ชำระแล้ว,,20/8/69`;
+  const r = importSheetCsv(sheet(dupRow, dupRow), 'st-1');
+  ok('เก็บไว้ทั้งสองแถว ไม่ยุบรวม (ยุบแล้วข้อมูลหายถ้าเป็นสองเคสจริง)',
+    r.workpieces.length === 2, r.workpieces.length);
+  ok('id ไม่ชนกัน (ไม่งั้นแถวหลังทับแถวหน้าเงียบ ๆ)',
+    r.workpieces[0].id !== r.workpieces[1].id);
+  ok('ขึ้นรายงานว่าซ้ำ',
+    r.report.issues.some((i) => i.problem.startsWith('ซ้ำกับแถวก่อนหน้า')),
+    r.report.issues.map((i) => i.problem.slice(0, 24)).join(' | ') || '(ไม่มีรายงาน)');
+  ok('รายงานชี้แถวที่ซ้ำ ไม่ใช่แถวแรก',
+    r.report.issues.find((i) => i.problem.startsWith('ซ้ำ'))?.row === 2,
+    r.report.issues.find((i) => i.problem.startsWith('ซ้ำ'))?.row);
+
+  const twoRealCases = importSheetCsv(sheet(
+    `1,นาย ก,66-1,46 Crown (PFM),18/05/69,Yes,,${ticks(3)},ชำระแล้ว,,20/8/69`,
+    `2,นาย ก,66-1,26 Crown (PFM),18/05/69,Yes,,${ticks(3)},ชำระแล้ว,,20/8/69`,
+  ), 'st-1');
+  ok('ผู้ป่วยเดียวกันแต่คนละซี่ ไม่ถือว่าซ้ำ',
+    !twoRealCases.report.issues.some((i) => i.problem.startsWith('ซ้ำ')),
+    twoRealCases.report.issues.map((i) => i.problem.slice(0, 24)).join(' | ') || '(สะอาด)');
+}
+
+/* ── export มาผิดทาง ต้องบอกให้รู้ ────────────────────────────────────────────
+   ชีตเดียวกันของภาค export ได้สองทาง แล้วได้ผลไม่เท่ากัน (วัดกับชีตจริงรุ่น 55 · 12 แท็บ):
+     Google Sheets → CSV : 431 ชิ้นงาน · ไม่มีวันรับเคส 203 (47%) · อ่านประเภทไม่ออก 0
+     แปลงผ่าน .xlsx ก่อน : 396 ชิ้นงาน · ไม่มีวันรับเคส 395 (99.7%) · อ่านประเภทไม่ออก 5
+   ทาง .xlsx ทำคอลัมน์วันรับเคสหายทั้งคอลัมน์ แต่ตัวนำเข้ายังทำงานต่อได้
+   อาจารย์จึงเห็นแค่ "ไม่ได้กรอกวันรับเคส 395 แถว" ซึ่งอ่านแล้วเข้าใจผิดว่าชีตกรอกไม่ครบ */
+console.log('\nไฟล์ที่ export มาผิดทาง');
+{
+  const good = `6500001 นาย ข,1,นาย ก,66-1,CD/- (Upper),18/05/69,Yes,,${ticks(3)},ชำระแล้ว,,20/8/69`;
+  const gHeader = `Name-Surname and student ID,${HEADER}`;
+  const clean = importGroupCsv([gHeader, good].join('\n'), () => 'st-1', 2568);
+  ok('ไฟล์จาก Google (หัวช่องติ๊ก 0–10) → ไม่มีคำเตือน',
+    clean.fileIssues.length === 0, clean.fileIssues.map((i) => i.problem.slice(0, 30)).join(' | '));
+
+  // หัวช่องติ๊กแบบทศนิยม = ร่องรอยของไฟล์ที่แปลงผ่าน .xlsx
+  const xlsxHeader = gHeader.replace(',0,1,2,3,4,5,6,7,8,9,10,', ',0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,');
+  const converted = importGroupCsv([xlsxHeader, good].join('\n'), () => 'st-1', 2568);
+  ok('ไฟล์ที่แปลงผ่าน .xlsx → เตือนให้ export ใหม่จาก Google Sheets',
+    converted.fileIssues.some((i) => i.problem.includes('.xlsx')),
+    converted.fileIssues.map((i) => i.problem.slice(0, 40)).join(' | ') || '(ไม่เตือน)');
+  ok('คำเตือนบอกทางแก้ ไม่ใช่บอกแค่ว่าผิด',
+    converted.fileIssues.some((i) => i.problem.includes('ดาวน์โหลด')));
+  ok('เตือนครั้งเดียวต่อไฟล์ ไม่ใช่ต่อคน', converted.fileIssues.length === 1, converted.fileIssues.length);
+}
+
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(bad ? 1 : 0);
