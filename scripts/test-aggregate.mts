@@ -58,8 +58,10 @@ const student = (over: Partial<Student> = {}): Student => {
   return { id: `s${n}`, code: `650400${n}`, name: `นศ. ${n}`, group: 'TH-PT7', year: 5, entryYear: 2569, advisorIds: ['t1', 't2'], ...over };
 };
 /** ชุดชิ้นงานที่ครบเกณฑ์สะสมพอดี ของนักศึกษาคนที่ระบุ */
+/* ครบเกณฑ์สะสมทุกกลุ่ม — CD 2 · RPD 2 · Crown 2 (มี Post-core 1)
+   · Recall ถอดได้ 1 · Recall ติดแน่น 1 (สองแถวหลังเพิ่ม 10 ก.ย. 69) */
 const fullSet = (studentId: string) =>
-  (['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC'] as WorkType[]).map((t) => finished(t, { studentId }));
+  (['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC', 'RRM', 'RFX'] as WorkType[]).map((t) => finished(t, { studentId }));
 
 /* ── 1. summarizeStudent — คนที่ยังไม่มีงานเลย ───────────────────────────── */
 console.log('\nsummarizeStudent — นักศึกษาที่ยังไม่มีงานสักชิ้น');
@@ -69,7 +71,8 @@ console.log('\nsummarizeStudent — นักศึกษาที่ยัง�
   ok('% รวม = 0 ไม่ใช่ NaN', s.percent === 0);
   ok('ทุกตัวนับเป็น 0', s.pieces === 0 && s.active === 0 && s.stale === 0 && s.reqDone === 0);
   ok('ยอดเกณฑ์ที่ต้องทำยังโชว์เต็มจำนวน (ไม่ใช่ 0/0)',
-    s.reqTotal === S.req.cd + S.req.rpd + S.req.crown, s.reqTotal);
+    s.reqTotal === S.req.cd + S.req.rpd + S.req.crown + S.req.recallRemovable + S.req.recallFixed,
+    s.reqTotal);
   ok('ยังไม่ครบเกณฑ์จบ', !s.allComplete);
   ok('ไม่มีข้อมูลด่านสอบเลย → gatesDone = null ไม่ใช่ 0 (คนละความหมาย)',
     s.gatesDone === null, String(s.gatesDone));
@@ -88,7 +91,7 @@ console.log('\nsummarizeStudent — นักศึกษาที่ยัง�
      จะพองขึ้นเรื่อยๆ และไม่มีวันลดลง (กติกาเดียวกับ isStale ใน rules.ts) */
   ok('เคสที่คืนแล้วไม่นับเป็นเคสค้าง', s.stale === 0, s.stale);
   ok('เคสที่คืนแล้วไม่นับเป็นงานที่ทำอยู่', s.active === 0, s.active);
-  ok('แต่ยังนับอยู่ในจำนวนชิ้นงานทั้งหมด', s.pieces === 7, s.pieces);
+  ok('แต่ยังนับอยู่ในจำนวนชิ้นงานทั้งหมด', s.pieces === 9, s.pieces);
   ok('ทำครบเกณฑ์สะสม+รายปี → ครบเกณฑ์', s.allComplete);
   ok('เกณฑ์ที่ทำได้ไม่เกินเพดาน (การ์ดต้องไม่ขึ้น 8/6)', s.reqDone <= s.reqTotal, `${s.reqDone}/${s.reqTotal}`);
 }
@@ -135,7 +138,7 @@ ok('ไม่มีสรุปรายคน → ไม่มีกลุ่�
     ...fullSet('a'),
     finished('CD', { studentId: 'ไม่มีคนนี้ในระบบ' }), // งานกำพร้า เช่น นศ. ถูกลบไปแล้ว
   ], S);
-  ok('งานของคนที่ไม่อยู่ในลิสต์ ไม่ไปบวกให้คนอื่น', rows[0].pieces === 6, rows[0].pieces);
+  ok('งานของคนที่ไม่อยู่ในลิสต์ ไม่ไปบวกให้คนอื่น', rows[0].pieces === fullSet('a').length, rows[0].pieces);
 }
 
 /* ── 3. cohortRequirement — แท่ง stacked ต้องบวกกลับได้ ──────────────────── */
@@ -149,14 +152,19 @@ ok('ไม่มีนักศึกษา → ลิสต์ว่าง ไ�
     // c ไม่มีงานเลย
   ];
   const rows = cohortRequirement(st, works, S);
-  ok('ได้ครบ 3 กลุ่มเกณฑ์', rows.length === 3, rows.map((r) => r.group).join(','));
+  ok('ได้ครบ 5 กลุ่มเกณฑ์ (รวม Recall สองแถว)', rows.length === 5, rows.map((r) => r.group).join(','));
   ok('ทุกแถว complete + oneShort + twoPlus = จำนวนคนทั้งหมด',
     rows.every((r) => r.complete + r.oneShort + r.twoPlus === r.total && r.total === st.length),
     rows.map((r) => `${r.group}:${r.complete}/${r.oneShort}/${r.twoPlus}`).join(' '));
   const cd = rows.find((r) => r.group === 'CD')!;
   ok('CD: ครบ 1 คน · ขาด 1 ชิ้น 1 คน · ขาด 2+ 1 คน',
     cd.complete === 1 && cd.oneShort === 1 && cd.twoPlus === 1);
-  ok('นับคนที่ไม่มีงานเลยด้วย (ไม่หายไปจากแท่ง)', rows.every((r) => r.twoPlus >= 1));
+  /* คนที่ไม่มีงานเลย (c) ต้องไม่หายไปจากแท่ง — ข้อข้างบนคุมยอดรวมอยู่แล้ว
+     ข้อนี้เจาะกลุ่มที่เกณฑ์ ≥ 2 ซึ่ง c ต้องตกถัง "ขาด 2 ชิ้นขึ้นไป"
+     (กลุ่ม Recall เกณฑ์ 1 ชิ้น ขาด 1 = oneShort ไม่ใช่ twoPlus — คนละถังแต่ยังถูกนับ) */
+  ok('คนที่ไม่มีงานเลยตกถัง "ขาด 2+" ในกลุ่มที่เกณฑ์ ≥ 2',
+    rows.filter((r) => r.required >= 2).every((r) => r.twoPlus >= 1),
+    rows.map((r) => `${r.group}:req${r.required}/twoPlus${r.twoPlus}`).join(' '));
 }
 {
   /* กลุ่ม Crown ครบจำนวนแล้วแต่ไม่มี Post-core = ยังไม่ครบ และต้องนับเป็น "ขาด 1"

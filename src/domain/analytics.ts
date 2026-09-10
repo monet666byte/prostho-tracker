@@ -490,6 +490,8 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
   const cd = rows.find((r) => r.group === 'CD')!;
   const rpd = rows.find((r) => r.group === 'RPD')!;
   const crown = rows.find((r) => r.group === 'CROWN')!;
+  const recallRem = rows.find((r) => r.group === 'RRM')!;
+  const recallFix = rows.find((r) => r.group === 'RFX')!;
   const thisYear = completedInYear(works, academicYear(now), settings).length;
 
   let selfDone = 0;
@@ -530,6 +532,18 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
       value: pct(crown.postCoreDone ?? 0, crown.postCoreRequired ?? 0),
       detail: `${crown.postCoreDone ?? 0}/${crown.postCoreRequired ?? 0}`,
       partials: partialsFor((w) => w.type === 'PC', (crown.postCoreRequired ?? 0) - (crown.postCoreDone ?? 0)),
+    },
+    /* Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 จึงต้องมีแกนของตัวเองบน heatmap ด้วย
+       ไม่งั้นช่อง "ครบเกณฑ์ไหม" รายคนจะไม่ครบตามที่หน้าเกณฑ์บอก */
+    {
+      key: 'recallRem', label: lang === 'en' ? 'Recall Rem.' : 'Recall ถอดได้',
+      value: pct(recallRem.done, recallRem.required), detail: `${recallRem.done}/${recallRem.required}`,
+      partials: partialsFor((w) => w.type === 'RRM', recallRem.required - recallRem.done),
+    },
+    {
+      key: 'recallFix', label: lang === 'en' ? 'Recall Fixed' : 'Recall ติดแน่น',
+      value: pct(recallFix.done, recallFix.required), detail: `${recallFix.done}/${recallFix.required}`,
+      partials: partialsFor((w) => w.type === 'RFX', recallFix.required - recallFix.done),
     },
     {
       key: 'year', label: lang === 'en' ? 'Yearly req.' : 'เกณฑ์รายปี', value: pct(thisYear, settings.req.perYear), detail: `${thisYear}/${settings.req.perYear}`,

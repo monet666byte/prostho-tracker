@@ -118,6 +118,16 @@ export function RequirementSlots({
         }
       />
       <Row
+        title="Recall Removable (CD/RPD)"
+        color={TYPES.RRM.color}
+        slots={slotsFor(works.filter((w) => w.type === 'RRM'), settings.req.recallRemovable)}
+      />
+      <Row
+        title="Recall Fixed (FDP)"
+        color={TYPES.RFX.color}
+        slots={slotsFor(works.filter((w) => w.type === 'RFX'), settings.req.recallFixed)}
+      />
+      <Row
         title={`เกณฑ์รายปี · ปีการศึกษา ${year}`}
         color="var(--accent)"
         slots={yearSlots}

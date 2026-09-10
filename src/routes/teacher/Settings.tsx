@@ -23,6 +23,8 @@ const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['rpd', 'RPD (Co-Cr or Simple APD)', TYPES.RPD.color, t('จำนวนเคส RPD ที่ต้องทำให้ครบ')],
   ['crown', t('Crown / Bridge (รวม Post-core)'), TYPES.CB.color, t('นับ Crown, Bridge และ Post-core รวมกัน')],
   ['postCoreMin', t('↳ ในนั้นต้องเป็น Post-core'), TYPES.PC.color, t('เงื่อนไขซ้อนในโควตา Crown ด้านบน')],
+  ['recallRemovable', 'Recall Removable (CD/RPD)', TYPES.RRM.color, t('นัดตรวจงานถอดได้ที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี')],
+  ['recallFixed', 'Recall Fixed (FDP)', TYPES.RFX.color, t('นัดตรวจงานติดแน่นที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี')],
   ['perYear', t('ทุกปีต้องจบอย่างน้อย'), 'var(--accent)', t('เกณฑ์รายปี แยกจากเกณฑ์สะสม')],
   ['years', t('เกณฑ์สะสมกี่ปี'), 'var(--text-muted)', t('ปกติ 2 ปี (ชั้นปีที่ 5 และ 6)')],
 ];
@@ -109,7 +111,8 @@ export default function Settings() {
               <h3>{t('เกณฑ์ขั้นต่ำ')}</h3>
               <p className="sub">
                 {t('สะสมตลอดหลักสูตร {y} ปี — ปัจจุบัน', { y: settings.req.years })} CD {settings.req.cd} · RPD {settings.req.rpd} ·
-                Crown {settings.req.crown} (Post-core {settings.req.postCoreMin}) · {t('รายปี')} {settings.req.perYear}
+                Crown {settings.req.crown} (Post-core {settings.req.postCoreMin}) ·
+                Recall {settings.req.recallRemovable}+{settings.req.recallFixed} · {t('รายปี')} {settings.req.perYear}
               </p>
 
               <div style={{ marginTop: 12 }}>

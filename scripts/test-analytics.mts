@@ -280,11 +280,17 @@ ok('ไม่มีงานเลย → ลิสต์ว่าง ไม่�
   ok('ยังนับเคสค้างได้ถูกต้อง', rows[0].stale === 1, rows[0].stale);
 }
 
-/* ── 6. profile / heatmap — 6 แกนบนหน้ากลุ่ม ─────────────────────────────── */
+/* ── 6. profile / heatmap — แกนบนหน้ากลุ่ม ────────────────────────────────── */
 console.log('\nprofile — ทุกแกนเป็น % ของเป้าหมาย');
 {
   const axes = profile([], S, NOW);
-  ok('นศ. ที่ไม่มีงานเลย → ยังได้ครบ 6 แกน', axes.length === 6, axes.length);
+  /* 8 แกน: cd · rpd · crown · postcore · recallRem · recallFix · year · self
+     (Recall สองแกนเพิ่มเข้ามา 10 ก.ย. 69 พร้อมเกณฑ์ใหม่ — heatmap ต้องมีช่องให้ครบ
+     ไม่งั้นช่อง "ครบเกณฑ์ไหม" รายคนจะไม่ตรงกับหน้าเกณฑ์ของนักศึกษา) */
+  ok('นศ. ที่ไม่มีงานเลย → ยังได้ครบทุกแกน', axes.length === 8, axes.length);
+  ok('มีแกน Recall ทั้งสองแบบ',
+    axes.some((a) => a.key === 'recallRem') && axes.some((a) => a.key === 'recallFix'),
+    axes.map((a) => a.key).join(','));
   ok('ทุกแกนเป็นตัวเลข 0–100 ไม่ใช่ NaN',
     axes.every((a) => Number.isFinite(a.value) && a.value >= 0 && a.value <= 100),
     axes.map((a) => `${a.key}=${a.value}`).join(' '));
@@ -329,7 +335,8 @@ console.log('\nprofile — ทุกแกนเป็น % ของเป้�
     averageProfile([], [], S, NOW).every((a) => Number.isFinite(a.value)));
   const heat = heatmapRows([student({ id: 'x' }), student({ id: 'y' })], [], S, NOW);
   ok('heatmap ให้ทุกคนครบแม้ไม่มีงานสักชิ้น',
-    heat.length === 2 && heat.every((h) => h.cells.length === 6));
+    heat.length === 2 && heat.every((h) => h.cells.length === 8),
+    heat.map((h) => h.cells.length).join(','));
 }
 
 /* ── 7. burn-up + ยอดยกมา ────────────────────────────────────────────────── */

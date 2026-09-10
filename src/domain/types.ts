@@ -272,6 +272,10 @@ export interface Requirement {
   rpd: number;
   crown: number; // Crown/Bridge + Post-core รวมกัน
   postCoreMin: number; // ในจำนวน crown ต้องเป็น Post-core อย่างน้อยกี่ชิ้น
+  /** Recall งานถอดได้ (CD/RPD) — ผู้ใช้เพิ่ม 10 ก.ย. 69 */
+  recallRemovable: number;
+  /** Recall งานติดแน่น (FDP) — ผู้ใช้เพิ่ม 10 ก.ย. 69 */
+  recallFixed: number;
   perYear: number; // ทุกปีต้องจบอย่างน้อยกี่ชิ้นงาน
   years: number; // เกณฑ์สะสมกี่ปี
 }

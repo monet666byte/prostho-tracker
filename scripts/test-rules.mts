@@ -92,8 +92,12 @@ ok('อาจารย์ยังไม่ตรวจรับ (pendingQualifi
   !countsTowardRequirement(finished('CD', { pendingQualification: true })));
 ok('ไม่ได้ติดธง minimumRequirement → ไม่นับ',
   !countsTowardRequirement(finished('CD', { minimumRequirement: false })));
-ok('APD ไม่อยู่ใน 4 ประเภทหลัก → ไม่นับ', !countsTowardRequirement(finished('APD')));
-ok('Recall ไม่อยู่ใน 4 ประเภทหลัก → ไม่นับ', !countsTowardRequirement(finished('RRM')));
+ok('Simple APD ไม่อยู่ในชุดที่นับเข้าเกณฑ์สะสม → ไม่นับ', !countsTowardRequirement(finished('APD')));
+/* Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 (ผู้ใช้เพิ่ม: งานถอดได้ 1 · งานติดแน่น 1)
+   แต่ยัง **ไม่** เข้าเกณฑ์รายปี — สองชุดนี้ต่างกัน ดู CUM_REQ_TYPES กับ REQ_TYPES ใน catalog.ts
+   (ข้อที่ยืนยันว่ารายปีไม่นับ อยู่ในหัวข้อ "เกณฑ์รายปี" ข้างล่าง) */
+ok('Recall งานถอดได้ นับเข้าเกณฑ์สะสม', countsTowardRequirement(finished('RRM')));
+ok('Recall งานติดแน่น นับเข้าเกณฑ์สะสม', countsTowardRequirement(finished('RFX')));
 
 /* ── 5. Count CDA ──────────────────────────────────────────────────────────── */
 console.log('\nCount CDA — นับเฉพาะ arch ที่เป็น CD หรืองาน Complicated');
@@ -177,7 +181,7 @@ console.log('\nเกณฑ์รายปี — ทุกปีต้องจ
      → นศ. ที่ปี 2568 จบ 0 แล้วไปเร่งจบทีเดียวในปี 2569 ระบบสรุปว่า "ครบเกณฑ์" */
   const list = [
     wp('CD', { acceptedDate: '2025-08-01' }), // รับเคสปี 2568 แต่ไม่จบสักชิ้นในปีนั้น
-    ...['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC'].map((tp) => finished(tp as WorkType, { completedAt: '2026-09-01' })),
+    ...['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC', 'RRM', 'RFX'].map((tp) => finished(tp as WorkType, { completedAt: '2026-09-01' })),
   ];
   const rows = yearlyRows(list, S, NOW);
   ok('ปีที่จบ 0 ชิ้นต้องยังอยู่ในรายการตรวจ', rows.some((r) => r.year === 2568), rows.map((r) => r.year).join(','));
@@ -189,7 +193,9 @@ console.log('\nเกณฑ์รายปี — ทุกปีต้องจ
 
 /* ── 8. ครบเกณฑ์จบ + ข้อสอบ/ใบประเมิน ─────────────────────────────────────── */
 console.log('\nครบเกณฑ์จบ');
-const fullSet = ['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC'].map((tp) =>
+/* ครบเกณฑ์สะสมทุกกลุ่ม = CD 2 · RPD 2 · Crown 2 (มี Post-core 1) · Recall ถอดได้ 1 · Recall ติดแน่น 1
+   Recall สองชิ้นเพิ่มเข้ามา 10 ก.ย. 69 — ไม่ใส่ก็จะไม่ครบเกณฑ์อีกต่อไป */
+const fullSet = ['CD', 'CD', 'RPD', 'RPD', 'CB', 'PC', 'RRM', 'RFX'].map((tp) =>
   finished(tp as WorkType, { acceptedDate: '2026-08-01', completedAt: '2026-09-01' }));
 ok('ชิ้นงานครบทั้งสะสมและรายปี → ครบเกณฑ์', meetsAllRequirements(fullSet, S, NOW));
 ok('ไม่มีข้อมูล gate เลย → ไม่บล็อก', meetsAllRequirements(fullSet, S, NOW, {}));

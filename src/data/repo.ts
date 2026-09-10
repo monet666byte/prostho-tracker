@@ -51,6 +51,10 @@ export async function getWorkpiece(id: string): Promise<WorkpieceView | null> {
  * ปรับค่าเริ่มต้นที่แก้ทีหลังให้มีผลกับเครื่องที่ตั้งค่าไว้แล้ว — รันครั้งเดียวตอนเปิดแอป
  * v2: เกณฑ์ CD 1 → 2 (นับต่อ arch · ผู้ใช้ยืนยัน 2 ก.ย.) — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
  * v3: saOpen (เปิด/ปิดรวม) → saOpenYears (แยกชั้นปี) — ที่เคยเปิดไว้ ให้เปิดทั้งสองชั้นปีเหมือนเดิม
+ * v4: เพิ่มเกณฑ์ Recall สองแถว (งานถอดได้ 1 · งานติดแน่น 1 · ผู้ใช้เพิ่ม 10 ก.ย. 69)
+ *     เขียนค่าลงเครื่องที่ยังไม่มีช่องนี้ ให้ค่าที่เก็บไว้ตรงกับที่หน้าจออ่านจริง
+ *     (getSettings เติม default ให้อยู่แล้ว แต่ถ้าไม่เขียนลง อาจารย์กดปรับเลขอื่นแล้ว
+ *      ค่าใหม่จะถูกบันทึกทับด้วยก้อนที่ยังไม่มีสองช่องนี้)
  * ถ้าอาจารย์ตั้งเลขอื่นไว้เอง จะไม่ถูกเขียนทับ
  */
 export async function migrateSettings(): Promise<void> {
@@ -68,11 +72,29 @@ export async function migrateSettings(): Promise<void> {
       await saveSettings({ saOpenYears: stored.saOpen ? [5, 6] : [] });
     }
   }
+  if (ver < 4) {
+    const stored = (await kvGet<Partial<Settings>>('settings', {})) ?? {};
+    const req = stored.req as Partial<typeof DEFAULT_SETTINGS.req> | undefined;
+    if (req && (req.recallRemovable === undefined || req.recallFixed === undefined)) {
+      await saveSettings({
+        req: {
+          ...DEFAULT_SETTINGS.req,
+          ...req,
+          recallRemovable: req.recallRemovable ?? DEFAULT_SETTINGS.req.recallRemovable,
+          recallFixed: req.recallFixed ?? DEFAULT_SETTINGS.req.recallFixed,
+        },
+      });
+    }
+  }
   await kvSet('settingsVersion', SETTINGS_VERSION);
 }
 
 export async function getSettings(): Promise<Settings> {
-  return { ...DEFAULT_SETTINGS, ...(await kvGet('settings', DEFAULT_SETTINGS)) };
+  const stored = (await kvGet('settings', DEFAULT_SETTINGS)) as Settings;
+  /* ⚠️ ต้อง merge `req` ลึกอีกชั้น — spread ชั้นเดียวจะเอา req ที่เก็บไว้มาแทนทั้งก้อน
+     วันที่เพิ่มช่องใหม่ในเกณฑ์ (เช่น recallRemovable 10 ก.ย. 69) เครื่องที่ตั้งค่าไว้แล้ว
+     จะได้ค่า undefined ในช่องใหม่ → เกณฑ์กลายเป็น NaN บนหน้าจอโดยไม่มีอะไรฟ้อง */
+  return { ...DEFAULT_SETTINGS, ...stored, req: { ...DEFAULT_SETTINGS.req, ...(stored?.req ?? {}) } };
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {

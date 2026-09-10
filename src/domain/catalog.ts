@@ -37,9 +37,20 @@ export const TYPES: Record<WorkType, TypeMeta> = {
 /** ลำดับการแสดงรายการตาม INTRO ของชีต */
 export const ORDER: Record<WorkType, number> = { CD: 0, RPD: 1, APD: 2, PC: 3, CB: 4, RRM: 5, RFX: 6 };
 
-/** ประเภทที่นับเข้าเกณฑ์ขั้นต่ำ (จำนวนที่ต้องการอยู่ใน Settings.req) */
+/** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — 4 ประเภทหลักตามที่ผู้ใช้ยืนยัน 2 ก.ย. */
 export const REQ_TYPES = ['CD', 'RPD', 'PC', 'CB'] as const;
 export type ReqType = (typeof REQ_TYPES)[number];
+
+/**
+ * ประเภทที่นับเข้า **เกณฑ์สะสม** — 4 ประเภทหลัก + Recall สองแบบ (ผู้ใช้เพิ่ม 10 ก.ย. 69:
+ * Recall งานถอดได้ (CD/RPD) 1 เคส · Recall งานติดแน่น (FDP) 1 เคส)
+ *
+ * ⚠️ ตั้งใจแยกจาก REQ_TYPES — Recall เข้าเกณฑ์สะสมแต่ **ไม่** เข้าเกณฑ์รายปี
+ * (เกณฑ์รายปีคือ "ปีนี้จบเคสใหม่กี่ชิ้น" ซึ่ง Recall ไม่ใช่การรับเคสใหม่)
+ * ถ้าวันหน้าภาคขอให้ Recall นับรายปีด้วย มีสวิตช์ perYearCountsAllTypes อยู่แล้ว
+ * Simple APD ยังไม่นับทั้งสองเกณฑ์
+ */
+export const CUM_REQ_TYPES = ['CD', 'RPD', 'PC', 'CB', 'RRM', 'RFX'] as const;
 
 export type Proc = [progression: number, name: string, self?: 1];
 

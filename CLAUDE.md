@@ -41,6 +41,13 @@ PWA ติดตามความคืบหน้าเคสทันตก�
   ถ้าต้องนับอะไรใหม่ ให้เพิ่มฟังก์ชันใน `domain/` แล้วให้หน้าจอเรียก ไม่งั้นอีกหน้าจะนับคนละแบบ
 - **`domain/catalog.ts` คือ source of truth** ของรายการ procedure ห้าม hard-code ชื่อ step หรือจำนวนขั้น
 - **ห้าม hard-code เลข 10** เป็นขั้นสุดท้าย — งาน Recall จบที่ขั้น **3** ใช้ `maxProgression(w)` เสมอ
+- **เกณฑ์มีสองชุด ห้ามสลับกัน** (`domain/catalog.ts`)
+  `CUM_REQ_TYPES` = เกณฑ์สะสม (CD · RPD · PC · CB · **RRM · RFX**) · `REQ_TYPES` = เกณฑ์รายปี (4 ตัวแรก)
+  Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 แต่ไม่เข้าเกณฑ์รายปี — `countsTowardRequirement` อ่านชุดสะสม
+  ส่วน `completedInYear` / `countsForYearlyReq` อ่านชุดรายปี
+- **เพิ่มช่องใน `Settings.req` ต้องทำสามที่พร้อมกัน** — `DEFAULT_SETTINGS`, bump `SETTINGS_VERSION`,
+  และเพิ่มบล็อก `if (ver < N)` ใน `migrateSettings` · `getSettings()` merge `req` ลึกอีกชั้นเป็นตาข่ายกันไว้แล้ว
+  (spread ชั้นเดียวจะเอา req ที่เก็บไว้มาแทนทั้งก้อน → ช่องใหม่เป็น `undefined` แล้วเกณฑ์กลายเป็น NaN)
 - ทุกครั้งที่แตะ `domain/` หรือ `data/cloudSync.ts` ให้รัน `npm test` (10 ชุด ~2,400 ข้อ)
 
 ### คำที่สับสนกันบ่อย

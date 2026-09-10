@@ -321,6 +321,12 @@ export const DICT: Record<string, string> = {
   'ครบเกณฑ์แล้ว': 'Requirement met',
   'เหลืออีก {n} ชิ้น': '{n} more to go',
   'Simple APD และ Recall ไม่นับเข้าเกณฑ์': 'Simple APD and Recall do not count toward the requirement',
+  'Simple APD ไม่นับเข้าเกณฑ์ · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี':
+    'Simple APD does not count · Recall counts toward the cumulative requirement only, not the yearly one',
+  'นัดตรวจงานถอดได้ที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี':
+    'Follow-up on a delivered removable case — counts toward the cumulative requirement only',
+  'นัดตรวจงานติดแน่นที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี':
+    'Follow-up on a delivered fixed case — counts toward the cumulative requirement only',
 
   /* ── หน้าคนไข้ ── */
   'ลบ': 'Delete',

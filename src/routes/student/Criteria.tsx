@@ -166,7 +166,7 @@ export default function Criteria() {
         </article>
 
         <p style={{ margin: '2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('Simple APD และ Recall ไม่นับเข้าเกณฑ์')}
+          {t('Simple APD ไม่นับเข้าเกณฑ์ · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี')}
         </p>
 
       </div>

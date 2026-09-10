@@ -127,9 +127,14 @@ src/
 
 1. **Upper/lower เป็นคู่** — `pairId` + `acceptedDate` เดียวกัน แต่ `procIndex` แยกกันเด็ดขาด
 2. **% completed** = `(progression + 1) / (maxProgression + 1)` ตรงกับคอลัมน์ `% Completed` ในชีต
-3. **เกณฑ์ขั้นต่ำ (แก้ล่าสุด 2 ก.ย. 2026)** — สะสม 2 ปี: CD 2 (นับต่อ arch) · RPD 2 · Crown/Bridge 2 โดยในนั้นต้องเป็น Post-core อย่างน้อย 1
-   (Post-core นับรวมอยู่ในโควตา Crown ไม่ได้แยก) **บวกเงื่อนไขรายปี**: ทุกปีการศึกษาต้องจบอย่างน้อย 3 ชิ้นงาน
-   นับเมื่อ `progression === 10` และ `minimumRequirement === true`; Simple APD และ Recall ไม่นับ
+3. **เกณฑ์ขั้นต่ำ (แก้ล่าสุด 10 ก.ย. 2026)** — สะสม 2 ปี: CD 2 (นับต่อ arch) · RPD 2 · Crown/Bridge 2 โดยในนั้นต้องเป็น Post-core อย่างน้อย 1
+   (Post-core นับรวมอยู่ในโควตา Crown ไม่ได้แยก) · **Recall Removable (CD/RPD) 1** · **Recall Fixed (FDP) 1**
+   รวมเป็น 8 เคส **บวกเงื่อนไขรายปี**: ทุกปีการศึกษาต้องจบอย่างน้อย 3 ชิ้นงาน
+   นับเมื่อชิ้นงานจบเคสและ `minimumRequirement === true`
+   · **Simple APD ไม่นับทั้งสองเกณฑ์**
+   · **Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี** — เกณฑ์รายปีคือ "ปีนี้จบเคสใหม่กี่ชิ้น"
+     ซึ่ง recall ไม่ใช่การรับเคสใหม่ (ถ้าภาคขอให้นับด้วย มีสวิตช์ `perYearCountsAllTypes` อยู่แล้ว)
+   · โค้ดแยกสองชุดไว้ที่ `domain/catalog.ts`: `CUM_REQ_TYPES` (สะสม) กับ `REQ_TYPES` (รายปี)
    อาจารย์แก้ค่าทั้งหมดได้จาก rail ขวาของหน้าตรวจงาน
 4. **ลำดับการแสดงรายการ** — minimum requirement ก่อน → CD → RPD → APD → Post-core → Crown/Bridge → Recall Rem. → Recall Fixed และผู้ป่วยคนเดียวกันอยู่ติดกัน
 5. **เคสค้าง** — ไม่อัปเดตเกิน N วัน (ตั้งได้ 7/14/21/30) flag ทั้งสองฝั่ง

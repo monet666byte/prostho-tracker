@@ -1,6 +1,6 @@
 /** กฎธุรกิจทั้งหมด — อ้างอิงหัวข้อ "กฎธุรกิจ" ใน handoff */
 
-import { DENTURE_CLASSES, ORDER, PROCS, RECALL, REQ_TYPES, TYPES, type Proc } from './catalog';
+import { CUM_REQ_TYPES, DENTURE_CLASSES, ORDER, PROCS, RECALL, REQ_TYPES, TYPES, type Proc } from './catalog';
 import { academicYear } from '../lib/date';
 import type { Settings, WorkType, Workpiece, StudentGates, GateKey } from './types';
 
@@ -142,7 +142,9 @@ export function sortWorkpieces<T extends Workpiece>(list: T[]): T[] {
  */
 export function countsTowardRequirement(w: Workpiece): boolean {
   if (w.pendingQualification) return false;
-  return w.minimumRequirement && isComplete(w) && (REQ_TYPES as readonly string[]).includes(w.type);
+  /* ใช้ CUM_REQ_TYPES (เกณฑ์สะสม) ไม่ใช่ REQ_TYPES (เกณฑ์รายปี) — สองชุดนี้ต่างกันตั้งแต่
+     10 ก.ย. 69 ที่เพิ่ม Recall เข้าเกณฑ์สะสม · เกณฑ์รายปียังอ่าน REQ_TYPES ผ่าน completedInYear */
+  return w.minimumRequirement && isComplete(w) && (CUM_REQ_TYPES as readonly string[]).includes(w.type);
 }
 
 /**
@@ -175,11 +177,16 @@ function countRemovable(list: Workpiece[], type: WorkType, settings: Settings): 
   return donePairs + singles.filter(countsTowardRequirement).length;
 }
 
-export type ReqGroup = 'CD' | 'RPD' | 'CROWN';
+/* ชื่อกลุ่มของ Recall ตั้งให้ตรงกับ WorkType ('RRM' / 'RFX') ตั้งใจ —
+   หน้าจอหลายที่หาแถวด้วย `rows.find((r) => r.group === w.type)` อยู่แล้ว (ดู ConfirmSheet) */
+export type ReqGroup = 'CD' | 'RPD' | 'CROWN' | 'RRM' | 'RFX';
 
 export interface ReqRow {
   group: ReqGroup;
   label: string;
+  /** ป้ายสั้นสำหรับบรรทัดสรุปที่ใส่ชื่อเต็มไม่พอ — อาจารย์อ่านบรรทัดนี้ ห้ามโชว์รหัสกลุ่มดิบ
+   *  (เคยขึ้นเป็น "RRM 0/1 · RFX 0/1" ในหน้าตรวจงาน ซึ่งไม่มีใครนอกโค้ดเข้าใจ) */
+  short: string;
   color: string;
   done: number;
   required: number;
@@ -193,6 +200,7 @@ export interface ReqRow {
 /** เกณฑ์สะสมตลอดหลักสูตร — CD · RPD · Crown/Bridge (โดยต้องมี Post-core อย่างน้อย N) */
 export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
   const { req } = settings;
+  const recallDone = (type: WorkType) => list.filter((w) => w.type === type && countsTowardRequirement(w)).length;
   const crownDone = list.filter((w) => (w.type === 'CB' || w.type === 'PC') && countsTowardRequirement(w)).length;
   const postCoreDone = list.filter((w) => w.type === 'PC' && countsTowardRequirement(w)).length;
 
@@ -200,6 +208,7 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
     {
       group: 'CD',
       label: TYPES.CD.full,
+      short: 'CD',
       color: TYPES.CD.color,
       done: countRemovable(list, 'CD', settings),
       required: req.cd,
@@ -208,6 +217,7 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
     {
       group: 'RPD',
       label: TYPES.RPD.full,
+      short: 'RPD',
       color: TYPES.RPD.color,
       done: countRemovable(list, 'RPD', settings),
       required: req.rpd,
@@ -216,6 +226,7 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
     {
       group: 'CROWN',
       label: 'Crown / Bridge (รวม Post-core)',
+      short: 'Crown',
       color: TYPES.CB.color,
       done: crownDone,
       required: req.crown,
@@ -223,6 +234,26 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
       postCoreDone,
       postCoreRequired: req.postCoreMin,
       postCoreComplete: postCoreDone >= req.postCoreMin,
+    },
+    /* Recall สองแถว (ผู้ใช้เพิ่ม 10 ก.ย. 69) — นับรายชิ้นตรง ๆ ไม่ยุบคู่ upper/lower
+       เพราะ recall คือการนัดตรวจชิ้นงานที่ใส่ไปแล้ว ไม่ใช่การรับเคสมาเป็นคู่ */
+    {
+      group: 'RRM',
+      label: 'Recall Removable (CD/RPD)',
+      short: TYPES.RRM.short,
+      color: TYPES.RRM.color,
+      done: recallDone('RRM'),
+      required: req.recallRemovable,
+      complete: recallDone('RRM') >= req.recallRemovable,
+    },
+    {
+      group: 'RFX',
+      label: 'Recall Fixed (FDP)',
+      short: TYPES.RFX.short,
+      color: TYPES.RFX.color,
+      done: recallDone('RFX'),
+      required: req.recallFixed,
+      complete: recallDone('RFX') >= req.recallFixed,
     },
   ];
 }
