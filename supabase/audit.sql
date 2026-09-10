@@ -196,6 +196,9 @@ findings as (
               where n.nspname='public' and p.proname='touch_updated_at')
     union all select '0018 คลังรูปบนเซิร์ฟเวอร์',
       exists (select 1 from storage.buckets where id = 'case-photos')
+    union all select '0019 ปิดช่องในตัวลบตามกำหนดเก็บ',
+      exists (select 1 from pg_proc where proname = 'purge_expired_cohorts'
+              and pg_get_functiondef(oid) like '%accounts_left%')
   ) x
 )
 

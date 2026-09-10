@@ -55,3 +55,30 @@ select count(*) filter (where entry_year is null) as "ยังไม่มี�
        count(*) filter (where entry_year is not null) as "มีรุ่นแล้ว",
        count(*) as "ทั้งหมด"
 from students;
+
+
+-- ⑤ แถวกำพร้า — ชี้ไปหาของที่ไม่มีอยู่แล้ว
+--    ไม่มี foreign key ระหว่างตารางพวกนี้ (ดู 0001) การลบจึงไม่มีอะไรเตือน
+--    ปกติควรเป็น 0 ทุกช่อง · ไม่เป็น 0 = มีการลบที่ไม่ครบสาย เช่นลบผู้ป่วยทิ้งแต่ชิ้นงานยังอยู่
+select
+  (select count(*) from workpieces w where not exists (select 1 from patients p where p.id = w.patient_id))
+    as "ชิ้นงานที่ชี้ไปหาผู้ป่วยที่ไม่มีแล้ว",
+  (select count(*) from workpieces w where not exists (select 1 from students s where s.id = w.student_id))
+    as "ชิ้นงานที่ชี้ไปหา นศ. ที่ไม่มีแล้ว",
+  (select count(*) from patients p where not exists (select 1 from students s where s.id = p.owner_student_id))
+    as "ผู้ป่วยที่เจ้าของไม่มีแล้ว",
+  (select count(*) from updates u where not exists (select 1 from workpieces w where w.id = u.workpiece_id))
+    as "ประวัติ step ที่ชิ้นงานไม่มีแล้ว",
+  (select count(*) from photos ph where not exists (select 1 from workpieces w where w.id = ph.workpiece_id))
+    as "รูปที่ชิ้นงานไม่มีแล้ว";
+
+
+-- ⑥ บัญชีล็อกอินที่ไม่มีนักศึกษาอยู่ในระบบแล้ว
+--    เกิดหลังลบตามกำหนดเก็บ — purge ลบแถว students แต่ไม่ลบบัญชี (ตั้งใจ ดู 0019 ②)
+--    ตาราง app_users เก็บ "อีเมล" ไว้ ซึ่งเป็นข้อมูลส่วนบุคคล
+--    ต้องเอารายชื่อนี้ไปลบเองที่ Authentication → Users (ลบที่นั่นแล้ว app_users หายตามเอง)
+select u.email, u.role, u.student_id, u.created_at
+from app_users u
+where u.student_id is not null
+  and not exists (select 1 from students s where s.id = u.student_id)
+order by u.created_at;
