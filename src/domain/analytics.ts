@@ -9,6 +9,7 @@ import {
   caseCount, completedInYear, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
+import { isUpcoming } from './cohort';
 import { groupShort } from './group';
 
 const DAY = 86_400_000;
@@ -227,6 +228,19 @@ export function riskRows(
           risk = 'medium';
           reason = EN ? `Stuck at ${stuckStep} for 2 periods — keep an eye on it` : `ติด ${stuckStep} มา 2 คาบ — จับตาว่าติดอะไร`;
         }
+      }
+
+      /**
+       * รุ่นที่รับรายชื่อไว้ล่วงหน้ายังไม่ขึ้นคลินิก — "ไม่มีเคส" คือเรื่องปกติของเขา
+       *
+       * หน้ารายชื่อรองรับการนำเข้ารุ่นถัดไปก่อนวันที่ 1 มิ.ย. ไว้ตั้งแต่ต้น
+       * เดิมทุกคนในรุ่นนั้นเข้าเงื่อนไข active.length === 0 → เสี่ยงสูงทั้งกลุ่ม
+       * อาจารย์เปิดหน้ากลุ่มของรุ่นใหม่จะเจอแดงหมดทั้งกลุ่มโดยไม่มีใครทำอะไรผิด
+       * (ทดลองนำเข้า DTMU56 แล้วเจอ 10 ก.ย. 69)
+       */
+      if (isUpcoming(student, now)) {
+        risk = 'ok';
+        reason = EN ? 'Cohort has not started the clinic year yet' : 'ยังไม่ถึงปีที่ขึ้นคลินิก';
       }
 
       return {

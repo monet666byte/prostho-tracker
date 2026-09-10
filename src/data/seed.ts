@@ -301,15 +301,20 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 36; // 36: รุ่นจบทำครบเกณฑ์จริง (เดิมได้ 3 ชิ้นจาก 6 เพราะติดเพดาน)
+export const SEED_VERSION = 37; // 37: เวลาเช็คอินตรงกับป้าย "มาสาย" (เดิมขึ้น "08:56 · มาสาย")
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
   const rows: CheckIn[] = [];
+  /* เวลาเช็คอินกับป้าย "มาสาย" ต้องเล่าเรื่องเดียวกัน
+     เดิมค่าตั้งต้น checkinAt = '08:56' อยู่คนละที่กับ punctual ที่แถวต่างๆ ตั้งเอง
+     ผลคือหน้าประเมินของอาจารย์ขึ้น "08:56 น. · มาสาย" ข้างแถวที่ "08:56 น." เฉยๆ
+     อาจารย์ที่เปิดเดโมอ่านว่าแอปคิดเวลาผิด (เจอ 10 ก.ย. 69)
+     เกณฑ์จริงอยู่ที่ CheckIn.tsx: เช้าสายเมื่อเกิน 09:15 — เวลาสายที่ใช้ตรงนี้ต้องผ่านเกณฑ์นั้น */
   const mk = (over: Partial<CheckIn> & { studentId: string; date: string }): CheckIn => ({
     id: `ci-${over.studentId}-${over.date}`,
     punctual: true,
-    checkinAt: '08:56',
+    checkinAt: over.punctual === false ? '09:31' : '08:56',
     noPatient: false,
     activities: [],
     status: 'pending',

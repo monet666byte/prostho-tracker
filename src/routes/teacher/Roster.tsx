@@ -17,7 +17,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { importRoster, parseRoster } from '../../data/repo';
 import { ImportSheetBody } from './ImportSheet';
-import { entryYearFromDtmu } from '../../domain/cohort';
+import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
+import { groupShort } from '../../domain/group';
+import type { Student } from '../../domain/types';
 import { academicYear } from '../../lib/date';
 
 interface Invite {
@@ -97,11 +99,27 @@ export default function Roster() {
     return real.length ? real : teachers;
   }, [teachers]);
 
-  const people = role === 'student' ? students : activeTeachers;
-  const sortedPeople = useMemo(
-    () => [...people].sort((a, b) => a.name.localeCompare(b.name, 'th')),
-    [people],
-  );
+  /**
+   * ตัวเลือก "คือใคร" ต้องหาคนได้จริง
+   *
+   * เดิมยัดนักศึกษาทุกคนทุกรุ่นลง <select> เดียว = 481 บรรทัดในเดโม (96 คน × 5 รุ่น)
+   * เรียงตามชื่อ จึงมี "นศ. ก" ซ้ำกัน 60 บรรทัดติดกันโดยแยกไม่ออกว่ารุ่นไหน
+   * และ native select ไม่มีช่องค้นหา (เจอ 10 ก.ย. 69)
+   *
+   * สองอย่างที่แก้: ① ตัดรุ่นที่จบไปแล้วออก — คนจบแล้วไม่ต้องให้สิทธิ์เข้าระบบใหม่
+   * ② จัดเป็น optgroup ตามรุ่น+กลุ่ม เบราว์เซอร์จะโชว์หัวข้อคั่นให้ กระโดดหาได้
+   */
+  const people = role === 'student' ? students.filter((st) => !isAlumni(st)) : activeTeachers;
+  const peopleGroups = useMemo(() => {
+    const buckets = new Map<string, typeof people>();
+    for (const p of [...people].sort((a, b) => a.name.localeCompare(b.name, 'th'))) {
+      const key = 'group' in p && 'entryYear' in p
+        ? `${studentCohortLabel(p as Student)} · ${groupShort((p as Student).group)}`
+        : t('อาจารย์');
+      buckets.set(key, [...(buckets.get(key) ?? []), p]);
+    }
+    return [...buckets.entries()].sort((a, b) => a[0].localeCompare(b[0], 'th'));
+  }, [people]);
 
   async function addInvite() {
     if (!supabase || !email.trim() || !personId) return;
@@ -190,9 +208,15 @@ export default function Roster() {
                 placeholder="56"
               />
             </label>
+            {/* ยังไม่กรอกเลขรุ่น แล้วโชว์ "ในปีการศึกษา —" อ่านเหมือนระบบคำนวณไม่ได้
+                บอกตรงๆ ว่ายังต้องกรอกอะไรดีกว่า (เจอ 10 ก.ย. 69) */}
             <p style={{ flex: 1, margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-              {t('รุ่นนี้จะเริ่มเป็นชั้นปี 5 ในปีการศึกษา')} <b>{dtmu ? entryYearFromDtmu(Number(dtmu)) : '—'}</b>
-              {' · '}{t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}
+              {dtmu ? (
+                <>
+                  {t('รุ่นนี้จะเริ่มเป็นชั้นปี 5 ในปีการศึกษา')} <b>{entryYearFromDtmu(Number(dtmu))}</b>
+                  {' · '}{t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}
+                </>
+              ) : t('กรอกเลขรุ่น DTMU ก่อน แล้วระบบจะบอกว่ารุ่นนี้ขึ้นปี 5 ปีการศึกษาไหน')}
             </p>
           </div>
 
@@ -249,10 +273,14 @@ export default function Roster() {
               <span>{t('คือใคร')}</span>
               <select className="input" value={personId} onChange={(e) => setPersonId(e.target.value)}>
                 <option value="">{t('— เลือก —')}</option>
-                {sortedPeople.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{'code' in p ? ` · ${(p as { code: string }).code}` : ''}
-                  </option>
+                {peopleGroups.map(([label, list]) => (
+                  <optgroup key={label} label={label}>
+                    {list.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{'code' in p ? ` · ${(p as { code: string }).code}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>

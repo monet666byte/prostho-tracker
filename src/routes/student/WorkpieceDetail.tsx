@@ -75,7 +75,9 @@ export default function WorkpieceDetail() {
             onClick={() => openSheet(w.id)}
           >
             <CheckCircle size={20} weight="fill" />
-            {next.progression >= max ? t('ปิดเคส · Completion of case') : t('ทำขั้นนี้เสร็จแล้ว')}
+            {/* ชื่อขั้นสุดท้ายไม่ใช่ "Completion of case" ทุกประเภท — Recall จบที่ "Completion of recall"
+                เขียนชื่อขั้นจริงต่อท้าย ปุ่มจะตรงกับบรรทัดที่อยู่เหนือมันเสมอ */}
+            {next.progression >= max ? `${t('ปิดเคส')} · ${next.name}` : t('ทำขั้นนี้เสร็จแล้ว')}
           </button>
         </>
       ) : (

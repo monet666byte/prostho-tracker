@@ -18,6 +18,7 @@ import {
   selfPerformedRows, throughputByMonth,
 } from '../src/domain/analytics.ts';
 import { procList } from '../src/domain/rules.ts';
+import { RECALL } from '../src/domain/catalog.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from '../src/domain/types.ts';
 
@@ -232,8 +233,9 @@ console.log('\nbottleneckByStep — ชิ้นงานกองอยู่�
 }
 {
   const rr = bottleneckByStep([at('RRM', 2)], S, 'RRM');
+  // เทียบกับ RECALL ตรงๆ ไม่ใช่ข้อความตายตัว — ประเด็นคือ "มาจากลิสต์ไหน" ไม่ใช่ "เขียนว่าอะไร"
   ok('ชื่อขั้นของ Recall มาจากลิสต์ Recall ไม่ใช่ของ CD',
-    rr[2].count === 1 && rr[2].label.includes('บันทึกผล'), rr[2].label);
+    rr[2].count === 1 && rr[2].label === RECALL[2][1], rr[2].label);
 }
 
 /* ── 5. funnelByType — อัตราจบเคส ────────────────────────────────────────── */

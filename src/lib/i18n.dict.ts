@@ -3,6 +3,12 @@
  * คีย์ = ข้อความไทยเป๊ะๆ ตามที่เขียนในโค้ด (มีตัวแปรใช้ {ชื่อ})
  */
 export const DICT: Record<string, string> = {
+  // ── ฟอร์มเปิดชิ้นงาน: บอกว่าขาดช่องไหน (เพิ่ม 10 ก.ย. 69) ────────────────
+  'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
+  'กรอกเลขรุ่น DTMU ก่อน แล้วระบบจะบอกว่ารุ่นนี้ขึ้นปี 5 ปีการศึกษาไหน': 'Enter the DTMU cohort number first and the system will show which academic year they start year 5',
+  'ชิ้นงาน จากทั้งหมด {n} ชิ้นของรุ่นที่กำลังเรียน': 'workpieces, out of {n} belonging to cohorts currently enrolled',
+  'ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}': 'Stuck on the same step {a} · silent over {b} days {c} · no case yet {e} · behind plan {d}',
+
   /* ── แถบเดโม ── */
   'มุมมอง': 'View as',
   'นักศึกษา': 'Student',
@@ -348,7 +354,7 @@ export const DICT: Record<string, string> = {
   /* ── หน้ารายละเอียดชิ้นงาน ── */
   'ไม่พบชิ้นงานนี้': 'Workpiece not found',
   'ถัดไป': 'Next',
-  'ปิดเคส · Completion of case': 'Completion of case',
+  'ปิดเคส': 'Complete',
   'จบเคสแล้ว · นับเข้าเกณฑ์': 'Case completed · counts toward requirement',
   'เก็บรูปในเครื่อง · รอ sync': 'Photo saved locally · pending sync',
   'แนบรูปแล้ว': 'Photo attached',
@@ -449,7 +455,6 @@ export const DICT: Record<string, string> = {
   '{n} คน': '{n} students',
   '= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)': '= procedure stage per case (0 primary impression → 10 completion)',
   'ต้องตาม': 'Needs follow-up',
-  'ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ช้ากว่าแผน {d}': 'stuck on a step {a} · silent >{b} d {c} · behind plan {d}',
   'คน': 'people',
   '{n} รายการ · ': '{n} items · ',
   'เช็คอินแล้ว รออาจารย์ให้คะแนน': 'checked in, awaiting your scores',
@@ -513,7 +518,9 @@ export const DICT: Record<string, string> = {
 
   /* ── วิเคราะห์รวม ── */
   'วิเคราะห์รวมทั้งชั้นปี': 'Cohort Analytics',
-  'เหลือ {n} เดือนก่อนจบปีการศึกษา': '{n} months left in this academic year',
+  /* ตัวเลขนี้นับถึงปลาย มี.ค. ซึ่งเป็นคาบคลินิกสุดท้าย ไม่ใช่วันสิ้นปีการศึกษา (31 พ.ค.)
+     ป้ายเดิมเขียนว่า "จบปีการศึกษา" คนอ่านจึงคิดว่าเลขผิดไปสองเดือนกว่า */
+  'เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี': '{n} months until the last clinic period of the year',
   'การกระจายชิ้นงานตามขั้นงาน (ทั้งชั้นปี)': 'Workpiece distribution by step (cohort)',
   'หนึ่งจุด = หนึ่งชิ้นงาน วางตาม step ที่ทำถึง (0 เริ่ม → 10 ปิดเคส) · เปิดขั้นตอนของ step ที่กองมากสุดไว้ให้ กดเลขใต้กราฟเพื่อสลับ':
     'One dot = one workpiece, placed at its current step (0 start → 10 completion) · busiest step opened for you, click a number under the chart to switch',
@@ -640,7 +647,6 @@ export const DICT: Record<string, string> = {
   'ชิ้นงานที่ไม่มีการอัปเดตนานเกินกำหนด จะถูก flag ทั้งฝั่งนักศึกษาและ dashboard':
     'Workpieces with no update beyond this window are flagged on both the student side and the dashboard',
   'ตอนนี้เข้าเงื่อนไข': 'Currently matching:',
-  'ชิ้นงาน จากทั้งหมด {n} ชิ้นในชั้นปี': 'workpieces of {n} in the cohort',
   'ใครแก้อะไร เมื่อไหร่ — ย้อนดูได้ทุกการเปลี่ยน step และการอนุมัติ': 'Who changed what, when — every step change and approval is traceable',
   'ยังไม่มีรายการ': 'No entries yet',
   'สิทธิ์การเข้าถึง & PDPA': 'Access control & PDPA',

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { CSV_COLUMNS, PROGRESSION_COLUMNS, exportCsv, exportPermission, passedProgressions } from '../../lib/export';
-import { currentProc, isComplete, percentCompleted, procLabel } from '../../domain/rules';
+import { currentProc, isComplete, maxProgression, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { thaiLong, academicYear } from '../../lib/date';
 import { t, tText } from '../../lib/i18n';
@@ -108,8 +108,13 @@ export default function ExportScreen() {
                       </div>
                     </td>
                     <td className="mono">{w.patient.hn}</td>
+                    {/* ช่องที่เกินขั้นสุดท้ายของประเภทนั้นต้องอ่านออกว่า "ไม่มีขั้นนี้"
+                        ไม่ใช่ "ยังไม่ทำ" — เคส Recall จบที่ 3 เดิมขึ้น ✓✓✓✓ แล้วเว้นว่าง 7 ช่อง
+                        คู่กับ 100% อาจารย์ที่เซ็นกระดาษอ่านว่าขัดกันเอง (เจอ 10 ก.ย. 69) */}
                     {passedProgressions(w).map((on, j) => (
-                      <td key={j} className="tick">{on ? '✓' : ''}</td>
+                      <td key={j} className="tick">
+                        {on ? '✓' : j > maxProgression(w) ? <span style={{ color: '#C7CDD6' }}>–</span> : ''}
+                      </td>
                     ))}
                     <td className="mono">{percentCompleted(w)}%</td>
                     <td style={{ textAlign: 'center' }}>{w.minimumRequirement ? '✓' : ''}</td>

@@ -6,7 +6,7 @@ import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
 import { useAllStudents, useAllWorkpieces, useAudit, useSelfAssessments } from '../../hooks/data';
 import { clock } from '../../lib/date';
-import { t, tText } from '../../lib/i18n';
+import { t } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { cohortLabel, isActiveStudent, KEEP_COHORTS, studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
@@ -49,10 +49,20 @@ export default function Settings() {
   const students = useAllStudents();
   const works = useAllWorkpieces();
   const audit = useAudit(14);
-  const staleCount = staleRows(students, works, settings).length;
+  const activeStudents = students.filter((st) => isActiveStudent(st));
+  /**
+   * ตัวอย่างผลของนิยาม "เคสค้าง" ต้องนับจากประชากรเดียวกับที่หน้าภาพรวมนับ
+   *
+   * เดิมส่ง students/works ทั้งฐาน จึงรวมรุ่นที่จบไปแล้วด้วย: หน้านี้ขึ้น
+   * "30 ชิ้นงาน จากทั้งหมด 2180 ชิ้นในชั้นปี" ขณะที่หน้าภาพรวมขึ้น "เคสค้าง 15 · จาก 226 ชิ้น"
+   * ทั้งสองหน้าใช้คำเดียวกันแต่ได้เลขไม่เท่ากัน (เจอ 10 ก.ย. 69)
+   * และเคสของรุ่นที่จบแล้วไม่มีใครไปตามต่อได้อยู่แล้ว — นับไปก็ไม่มีความหมาย
+   */
+  const activeIds = new Set(activeStudents.map((st) => st.id));
+  const activeWorks = works.filter((w) => activeIds.has(w.studentId));
+  const staleCount = staleRows(activeStudents, activeWorks, settings).length;
   // ยอดส่งแบบประเมินตนเองของปีการศึกษานี้ — ให้อาจารย์เห็นว่าเปิดไปแล้วมีคนตอบไหม
   const saRows = useSelfAssessments(saYearNow());
-  const activeStudents = students.filter((st) => isActiveStudent(st));
   const saSubmittedIds = new Set(saRows.filter((r) => r.status === 'submitted').map((r) => r.studentId));
   /* นับแยกชั้นปี เพราะเปิดทีละชั้นปีได้ — ตัวหารต้องเป็นคนของชั้นปีนั้น ไม่ใช่ทั้งภาค */
   const saStat = ([5, 6] as const).map((y) => {
@@ -246,7 +256,7 @@ export default function Settings() {
                 ))}
               </div>
               <p style={{ margin: '11px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('ตอนนี้เข้าเงื่อนไข')} <b>{staleCount}</b> {t('ชิ้นงาน จากทั้งหมด {n} ชิ้นในชั้นปี', { n: works.length })}
+                {t('ตอนนี้เข้าเงื่อนไข')} <b>{staleCount}</b> {t('ชิ้นงาน จากทั้งหมด {n} ชิ้นของรุ่นที่กำลังเรียน', { n: activeWorks.length })}
               </p>
 
             </div>
@@ -341,8 +351,14 @@ export default function Settings() {
                       {clock(a.at)}
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
+                      {/* ข้อความ audit แสดง "ตามที่บันทึกไว้" ห้ามแปล
+                          tText() แทนที่ท่อนไทยที่รู้จักทีละท่อน ซึ่งเหมาะกับ detail ของชิ้นงาน
+                          แต่ข้อความ audit เป็นประโยคอิสระ ผลคือได้ข้อความปนภาษาที่อ่านไม่ออก:
+                          "ผ่านขั้น Recall-Fix-2 Saveผลและนัดครั้งNext" · "Increase 5 คน · อัปเดต 0 คน"
+                          (เจอ 10 ก.ย. 69 ในโหมดอังกฤษ) — และ audit เป็นหลักฐาน ของที่เก็บไว้
+                          ต้องอ่านได้ตรงกับที่เก็บ ไม่ใช่ฉบับที่ระบบดัดแปลงให้ */}
                       <span className="pretty" style={{ display: 'block', font: '500 11.5px/1.45 var(--font-body)', color: 'var(--text-secondary)' }}>
-                        {tText(a.text)}
+                        {a.text}
                       </span>
                       <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 1 }}>
                         {t(a.who)}

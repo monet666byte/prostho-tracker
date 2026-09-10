@@ -16,7 +16,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { procList } from '../src/domain/rules.ts';
+import { maxProgression, percentCompleted, procList } from '../src/domain/rules.ts';
 import type { Patient, WorkpieceView, WorkType } from '../src/domain/types.ts';
 
 let bad = 0;
@@ -141,6 +141,22 @@ console.log('\n① รูปแบบไฟล์ต้องตรงกับ�
   const recall = m.passedProgressions(work('RRM', 2));
   ok('งาน Recall จบที่ขั้น 3 — ช่อง 4–10 ต้องไม่ติ๊ก (ไม่มีขั้นพวกนั้นอยู่จริง)',
     recall.slice(0, 3).every(Boolean) && recall.slice(4).every((x: boolean) => !x), recall.map(Number).join(''));
+
+  /* ── ใบรายงาน A4 ที่อาจารย์เซ็น: "ไม่มีขั้นนี้" ต้องอ่านต่างจาก "ยังไม่ทำ" ──
+     เจอ 10 ก.ย. 69: เคส Recall ที่ปิดแล้วขึ้น ✓✓✓✓ แล้วเว้นว่าง 7 ช่อง คู่กับ 100%
+     อาจารย์ที่เซ็นกระดาษอ่านว่าขัดกันเอง — หน้าจอจึงต้องแยกสองสภาพนี้ได้
+     ตัวชี้ที่ Export.tsx ใช้คือ j > maxProgression(w) ปักหมุดไว้ว่ามันแยกได้จริง */
+  const rfxDone = work('RFX', maxProgression({ type: 'RFX' }));
+  const rfxTicks = m.passedProgressions(rfxDone);
+  const rfxMax = maxProgression({ type: 'RFX' });
+  ok('เคส Recall ที่ปิดแล้ว = 100% (ไม่ใช่ 4/11)',
+    percentCompleted(rfxDone) === 100, `${percentCompleted(rfxDone)}%`);
+  ok('ตารางยังมี 11 ช่องเหมือนชีตเดิม แต่ช่องที่เกินขั้นสุดท้ายแยกออกได้',
+    rfxTicks.length === 11 && rfxTicks.length > rfxMax + 1
+    && rfxTicks.every((on: boolean, j: number) => (j <= rfxMax ? on : !on)),
+    `max ${rfxMax} · ${rfxTicks.map(Number).join('')}`);
+  ok('เคส CD ที่ปิดแล้ว ติ๊กครบ 11 ช่อง ไม่มีช่อง "ไม่มีขั้นนี้"',
+    m.passedProgressions(work('CD', 10)).every(Boolean));
 }
 
 console.log('\n② ไฟล์แบบปิดบัง ต้องไม่มีชื่อ/HN หลุดแม้แต่ที่เดียว');

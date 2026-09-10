@@ -77,11 +77,24 @@ export const CUM_REQ_TYPES = ['CD', 'RPD', 'PC', 'CB', 'RRM', 'RFX'] as const;
 
 export type Proc = [progression: number, name: string, self?: 1];
 
+/**
+ * ขั้นตอนของเคส Recall — ใช้ร่วมกันทั้ง RRM (ถอดได้) และ RFX (ติดแน่น)
+ *
+ * ชื่อขั้นเป็นภาษาอังกฤษเหมือนทุกประเภทในไฟล์นี้ ไม่ใช่ความชอบเรื่องภาษา:
+ * ชื่อขั้นถูกเก็บลง audit log และไหลผ่าน tText() ซึ่งแทนที่ท่อนไทยที่รู้จักทีละท่อน
+ * ชื่อไทยจึงกลายเป็นข้อความปนภาษาในโหมดอังกฤษ ("ตรวจสภาพPieces / เนื้อเยื่อรองรับ"
+ * — เจอจริง 10 ก.ย. 69 ในหน้าตรวจงานและ audit log)
+ *
+ * ⚠️ คำว่า "reline" เดิมอยู่ในขั้นที่ 1 ซึ่งเป็นงานของฟันเทียมถอดได้เท่านั้น
+ * เคส Recall Fixed (FDP) ไม่มีการ reline — เปลี่ยนเป็นคำที่จริงกับทั้งสองแบบ
+ * รอภาควิชาเคาะชื่อขั้นจริงของ recall แต่ละแบบ ถ้าภาคขอแยก ให้ทำเป็นสองลิสต์
+ * แล้วให้ procList() เลือกตาม type (RRM / RFX) — จุดแยกอยู่ที่นั่นที่เดียว
+ */
 export const RECALL: Proc[] = [
-  [0, 'ตรวจสภาพชิ้นงาน / เนื้อเยื่อรองรับ'],
-  [1, 'ปรับแก้ / reline ตามข้อบ่งชี้'],
-  [2, 'บันทึกผลและนัดครั้งถัดไป'],
-  [3, 'ปิดเคส recall'],
+  [0, 'Recall examination'],
+  [1, 'Adjustment as indicated'],
+  [2, 'Record findings and schedule next visit'],
+  [3, 'Completion of recall'],
 ];
 
 export const PROCS: Record<string, Proc[]> = {

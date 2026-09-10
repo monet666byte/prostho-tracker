@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { createWorkpieces } from '../../data/repo';
 import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, TYPES, orderOf, typeMeta } from '../../domain/catalog';
+import { maxProgression } from '../../domain/rules';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
 import { toISODate } from '../../lib/date';
@@ -31,7 +32,6 @@ export default function NewWorkpiece() {
   const [name, setName] = useState('');
   const [hn, setHn] = useState('');
   // ชื่อกับ HN เป็นตัวระบุผู้ป่วย ขาดไม่ได้ — ตัวนำเข้าจากชีตก็ตีแถวที่ไม่มี HN เป็นใช้ไม่ได้เหมือนกัน
-  const canSave = name.trim().length > 0 && hn.trim().length > 0;
   const [sexAge, setSexAge] = useState('');
   const [payment, setPayment] = useState<Payment>('ยังไม่ชำระ');
   const [sect2Removable, setSect2Removable] = useState(true);
@@ -42,6 +42,11 @@ export default function NewWorkpiece() {
   const meta = typeMeta(type);
   const removable = type === 'CD' || type === 'RPD' || type === 'APD';
   const needsTooth = type === 'PC' || type === 'CB' || type === 'RFX';
+  /* ซี่ฟันขาดไม่ได้สำหรับงานที่ผูกกับซี่ — ฟอร์มเขียนไว้เองว่า "ต้องระบุให้ชัดเจน"
+     แต่เดิมไม่ได้บังคับ ผลคือได้แถวที่ชื่อเคสขึ้นว่า "— Recall Fixed" / "— Crown (PFM)"
+     ทั้งในหน้าคนไข้ หน้าตรวจงานของอาจารย์ และใบรายงาน A4 ที่เอาไปลงนาม
+     (เจอ 10 ก.ย. 69) — ไม่มีใครรู้ว่าเคสนั้นคือฟันซี่ไหน */
+  const canSave = name.trim().length > 0 && hn.trim().length > 0 && (!needsTooth || tooth.trim().length > 0);
 
   async function submit() {
     // กันกดรัว — เดิมกด 3 ที ได้ผู้ป่วย 3 คน ชิ้นงาน 6 ชิ้น แล้วนับเข้าเกณฑ์เกินจริง
@@ -81,6 +86,24 @@ export default function NewWorkpiece() {
     <PlainShell
       footer={
         <div className="footer">
+          {/* ปุ่มเทาโดยไม่บอกเหตุผล = ทางตัน — ช่องชื่อ/HN อยู่ไกลขึ้นไปบนหน้า
+              บนมือถือมองไม่เห็นพร้อมกันกับปุ่ม คนกดแล้วไม่เกิดอะไรจะไม่รู้ว่าต้องทำอะไร (เจอ 10 ก.ย. 69) */}
+          {!canSave && !saving && (
+            <div style={{
+              font: '500 11px/1.5 var(--font-body)', color: 'var(--text-muted)',
+              textAlign: 'center', marginBottom: 7,
+            }}>
+              {t('ยังกรอกไม่ครบ: {what}', {
+                /* ต่อด้วยจุลภาคเท่านั้น — คำเชื่อมภาษาไทยอย่าง " และ " ถ้าใส่ลงพจนานุกรม
+                   tText() จะไปแทนที่มันในข้อความอื่นทั้งแอปด้วย */
+                what: [
+                  !name.trim() && t('ชื่อผู้ป่วย'),
+                  !hn.trim() && t('HN'),
+                  needsTooth && !tooth.trim() && t('ซี่ฟัน'),
+                ].filter(Boolean).join(t(', ')),
+              })}
+            </div>
+          )}
           <button className="btn" style={{ height: 56, borderRadius: 16 }} disabled={saving || !canSave} onClick={submit}>
             <PlusCircle size={19} weight="fill" />
             {saving ? t('กำลังสร้าง…') : <>{t('สร้างชิ้นงาน')}{removable && pair ? t(' (2 ชิ้น)') : ''}</>}
@@ -127,7 +150,9 @@ export default function NewWorkpiece() {
         >
           <div style={{ font: '600 12.5px var(--font-head)', color: meta.ink }}>{meta.full}</div>
           <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
-            <span className="mono">{meta.prefix}</span>-0 {t('ถึง')} {meta.prefix}-10
+            {/* ขั้นสุดท้ายของแต่ละประเภทไม่เท่ากัน — Recall จบที่ 3 ไม่ใช่ 10
+                เดิมตรึง 10 ไว้ตายตัว คนเปิดเคส Recall จึงถูกบอกว่าจะมี 11 ขั้น แล้วเจอ 4 ขั้น (เจอ 10 ก.ย. 69) */}
+            <span className="mono">{meta.prefix}</span>-0 {t('ถึง')} {meta.prefix}-{maxProgression({ type, variant })}
           </div>
         </div>
 

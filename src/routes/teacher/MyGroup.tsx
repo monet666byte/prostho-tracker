@@ -42,7 +42,13 @@ export default function MyGroup() {
   const gHigh = flagged.filter((r) => r.risk === 'high').length;
   const gWatch = flagged.filter((r) => r.risk === 'medium').length;
   const gStuck = groupRisks.filter((r) => r.stuckPeriods >= 2).length;
-  const gSilent = groupRisks.filter((r) => r.silentDays >= settings.stale && r.stuckPeriods < 2).length;
+  /* คนที่ยังไม่มีเคสเลยต้องแยกเป็นสาเหตุของตัวเอง
+     silentDays ของคนที่ไม่มีเคสและไม่เคยเช็คอินคือค่าตั้งต้น 999 จึงเข้าช่อง "เงียบเกิน N วัน"
+     ทั้งที่ยังไม่เคยเริ่ม — อาจารย์อ่านว่า "หายไป" แล้วไปตามผิดเรื่อง (เจอ 10 ก.ย. 69) */
+  const gNoCase = flagged.filter((r) => r.piecesTotal === 0).length;
+  const gSilent = groupRisks.filter(
+    (r) => r.piecesTotal > 0 && r.silentDays >= settings.stale && r.stuckPeriods < 2,
+  ).length;
 
   const studentGroupById = useMemo(() => new Map(students.map((st) => [st.id, st.group])), [students]);
   const pendingList = checkinsAll.filter(
@@ -90,7 +96,10 @@ export default function MyGroup() {
               <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {t('{n} คน', { n: groupRisks.length })}</span>
             </div>
             <div className="kpi__hint">
-              {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ช้ากว่าแผน {d}', { a: gStuck, b: settings.stale, c: gSilent, d: Math.max(0, gHigh + gWatch - gStuck - gSilent) })}
+              {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}', {
+                a: gStuck, b: settings.stale, c: gSilent, e: gNoCase,
+                d: Math.max(0, gHigh + gWatch - gStuck - gSilent - gNoCase),
+              })}
             </div>
           </div>
           {/* รอประเมินอยู่กลาง — งานที่ต้องทำวันนี้สำคัญสุด มีจุดแดงเตือนแบบ noti เมื่อมีคิวค้าง */}

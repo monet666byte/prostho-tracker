@@ -10,7 +10,7 @@ import { pdpaPolicy } from './pdpaSync';
 import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushNow, pendingPushCount } from './cloudSync';
-import { toISODate } from '../lib/date';
+import { clampPerformedAt, toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
@@ -155,10 +155,11 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
   const next = procAt(w, w.procIndex + 1);
   if (!next) return null;
 
+  const performedAt = clampPerformedAt(input.performedAt, w.acceptedDate);
   const now = new Date().toISOString();
   const updated: Workpiece = { ...w, procIndex: next.index, lastUpdatedAt: now };
   // จบเคสเมื่อไหร่ ใช้ตัดสินเกณฑ์รายปี จึงต้องเก็บเวลาไว้
-  if (isComplete(updated)) updated.completedAt = input.performedAt;
+  if (isComplete(updated)) updated.completedAt = performedAt;
   const label = procLabel(w.type, next);
 
   const update: ProgressUpdate = {
@@ -166,7 +167,7 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
     workpieceId: w.id,
     procIndex: next.index,
     progression: next.progression,
-    performedAt: input.performedAt,
+    performedAt,
     selfPerformed: next.selfPerformed,
     photoIds: [],
     createdBy: input.actor,
@@ -1030,66 +1031,11 @@ export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): 
    ผู้ใช้ยืนยัน 1 ก.ย. 69: "DTMU56 และต่อๆ ไปเดี๋ยวมี roster ให้"
    ══════════════════════════════════════════════════════════════════ */
 
-export interface RosterRow {
-  code: string;   // รหัสนักศึกษา เช่น 6604001
-  name: string;
-  group: string;  // PT1–PT12 (ใส่มาแบบสั้นก็ได้)
-  /** เลขรุ่น DTMU เช่น 56 — ไม่ใส่ก็ใช้ค่าที่เลือกไว้ตอนนำเข้า */
-  dtmu?: number;
-}
-
-export interface RosterParseResult {
-  rows: RosterRow[];
-  /** บรรทัดที่อ่านไม่ออก พร้อมเหตุผล — โชว์ให้เห็นก่อนกดนำเข้า */
-  errors: Array<{ line: number; text: string; reason: string }>;
-}
-
-/**
- * อ่านรายชื่อจากข้อความที่วางมา — รองรับทั้ง CSV, TSV และวางจาก Excel
- * รูปแบบ: รหัส, ชื่อ, กลุ่ม[, เลขรุ่น]  ·  บรรทัดหัวตารางข้ามให้อัตโนมัติ
- */
-export function parseRoster(text: string): RosterParseResult {
-  const rows: RosterRow[] = [];
-  const errors: RosterParseResult['errors'] = [];
-  const seen = new Set<string>();
-
-  text.split(/\r?\n/).forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line) return;
-    const cells = line.split(/\t|,|\s{2,}/).map((c) => c.trim()).filter(Boolean);
-    // ข้ามหัวตาราง: ไม่มีเซลล์ไหนขึ้นต้นด้วยตัวเลข 7 หลัก
-    const code = cells.find((c) => /^\d{7}$/.test(c));
-    if (!code) {
-      // หัวตารางต้องอยู่บรรทัดแรกเท่านั้น — บรรทัดอื่นที่ไม่มีรหัสถือว่าผิดจริง
-      if (i === 0 && /รหัส|code|ชื่อ|name|กลุ่ม|group/i.test(line)) return;
-      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบรหัสนักศึกษา 7 หลัก' });
-      return;
-    }
-    if (seen.has(code)) {
-      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'รหัสซ้ำกับบรรทัดก่อนหน้า' });
-      return;
-    }
-    const group = cells.find((c) => /^(TH\d*-)?PT\d{1,2}$/i.test(c));
-    if (!group) {
-      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบกลุ่ม (PT1–PT12)' });
-      return;
-    }
-    const dtmuCell = cells.find((c) => /^(DTMU)?\d{2}$/i.test(c) && c !== code);
-    const name = cells.find((c) => c !== code && c !== group && c !== dtmuCell) ?? '';
-    if (!name) {
-      errors.push({ line: i + 1, text: line.slice(0, 40), reason: 'ไม่พบชื่อ' });
-      return;
-    }
-    seen.add(code);
-    rows.push({
-      code,
-      name,
-      group: group.toUpperCase().replace(/^TH\d*-/, ''),
-      dtmu: dtmuCell ? Number(dtmuCell.replace(/\D/g, '')) : undefined,
-    });
-  });
-  return { rows, errors };
-}
+/* ตัวอ่านข้อความรายชื่อย้ายไป lib/rosterParse.ts — เป็นการแปลงข้อความล้วน ไม่แตะฐานข้อมูล
+   จึงเทสต์ได้ตรงๆ โดยไม่ต้องมี IndexedDB · ยังส่งต่อชื่อเดิมออกไปให้หน้าจอที่ import จากที่นี่ */
+export { parseRoster } from '../lib/rosterParse';
+export type { RosterRow, RosterParseResult } from '../lib/rosterParse';
+import type { RosterRow } from '../lib/rosterParse';
 
 export interface RosterImportResult {
   added: number;
@@ -1101,6 +1047,8 @@ export interface RosterImportResult {
  * บันทึกรายชื่อเข้าระบบ — รหัสที่มีอยู่แล้วจะอัปเดต (ย้ายกลุ่ม/แก้ชื่อ) ไม่สร้างซ้ำ
  * @param dtmu เลขรุ่นของรายชื่อชุดนี้ (ใช้เมื่อแถวไม่ได้ระบุมาเอง)
  */
+
+
 export async function importRoster(rows: RosterRow[], dtmu: number, by: string): Promise<RosterImportResult> {
   const existing = await db.students.toArray();
   const byCode = new Map(existing.map((s) => [s.code, s]));

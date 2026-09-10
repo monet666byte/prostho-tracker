@@ -9,14 +9,14 @@ import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { BetaBadge } from '../BetaBadge';
-import { groupShort } from '../../domain/group';
+import { groupShort, sortGroupCodes } from '../../domain/group';
 /* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
    เดิมเป็น `${BASE_URL}logo-mark.svg` = ไฟล์แยกที่ต้องวางข้าง index.html
    แต่ build:share ส่งออกไฟล์เดียว และ artifact host รับแค่ index.html
    รูปเลยขึ้นเป็น "?" ในลิงก์เดโมทุกครั้ง (ผู้ใช้ทัก 8 ก.ย. 69) — ในเครื่อง dev ไม่เจอเพราะ public/ ถูกเสิร์ฟอยู่
    พอ import แบบนี้ assetsInlineLimit ของโหมด share จะฝังเป็น data URI ให้เอง ไม่ว่าไฟล์จะใหญ่แค่ไหน */
 import logoMark from '../../assets/logo-mark.svg';
-import { studentYear } from '../../domain/cohort';
+import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'exams' | 'settings' | 'roster' | 'import' | 'alumni';
@@ -79,16 +79,28 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
   /* ปีของกลุ่ม = ชั้นปีของนักศึกษาในกลุ่มนั้น (คำนวณจากรุ่น) — ห้ามอ่านจากเลขในรหัสกลุ่ม
      เพราะรหัสใหม่คือ TH54-PT1 ที่ 54 = เลขรุ่น เดิมแปลเป็น "ปี 54" แล้วโชว์ "จบแล้ว" ทุกกลุ่ม
      (ผู้ใช้เจอ 2 ก.ย. หลังนำเข้าชีตรุ่น 54) */
-  const yearOfGroup = (code: string): string => {
+  /**
+   * ป้ายกลุ่มในตัวเลือก — ต้องแยกออกจากกันได้ทุกบรรทัด
+   *
+   * เดิมเขียนแค่ "PT1 · จบแล้ว" ทุกรุ่นที่จบ ผลคือในเดโมมี 27 บรรทัดที่ข้อความเหมือนกันเป๊ะ
+   * (TH7-PT1 / TH8-PT1 / TH9-PT1 …) อาจารย์เลือกไม่ได้ว่าอันไหนรุ่นไหน (เจอ 10 ก.ย. 69)
+   * → รุ่นที่จบแล้วและรุ่นที่ยังไม่เริ่มต้องมีเลขรุ่นกำกับ
+   *
+   * และรุ่นที่รับรายชื่อไว้ล่วงหน้า (ยังไม่ถึง 1 มิ.ย.) ห้ามเขียน "ปี 4"
+   * — หลักสูตรนี้ไม่มีปี 4 คนอ่านจะคิดว่าระบบคิดชั้นปีผิด
+   */
+  const labelOfGroup = (code: string): string => {
     const st = students.find((s) => s.group === code);
     if (!st) return '—';
     const y = studentYear(st);
-    return y > 6 ? t('จบแล้ว') : `${t('ปี')} ${y}`;
+    if (y > CLINIC_LAST_YEAR) return `${t('จบแล้ว')} ${studentCohortLabel(st)}`;
+    if (y < CLINIC_START_YEAR) return `${t('ยังไม่เริ่ม')} ${studentCohortLabel(st)}`;
+    return `${t('ปี')} ${y}`;
   };
 
-  const groupCodes = [...new Set(students.map((s) => s.group))].sort(
-    (a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10),
-  );
+  /* ตัวเรียงอยู่ใน domain/group.ts (sortGroupCodes) เพราะเป็นกฎ ไม่ใช่การจัดหน้า —
+     และเทสต์ได้ตรง ๆ · เหตุผลว่าเรียงแบบนี้ทำไม อยู่ที่นั่น */
+  const groupCodes = sortGroupCodes([...new Set(students.map((s) => s.group))], students);
 
   return (
     <div className="deskwrap">
@@ -115,7 +127,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               {groupCodes.map((code) => (
                 /* ชั้นปีเกิน 6 = รุ่นที่เรียนจบไปแล้ว — เขียน "จบแล้ว" ไม่ใช่ "ปี 7" ซึ่งไม่มีจริง */
                 <option key={code} value={code}>
-                  {`${groupShort(code)} · ${yearOfGroup(code)}`}
+                  {`${groupShort(code)} · ${labelOfGroup(code)}`}
                 </option>
               ))}
             </select>

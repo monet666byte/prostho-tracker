@@ -212,8 +212,11 @@ export function buildFeedback(input: FeedbackInput): FeedbackCard[] {
   const conf = num(a.courseConfidence);
   const req = caseCount(mine, settings);
   const shortRows = req.filter((r) => !r.complete);
+  /* ป้ายสั้นที่คนอ่านออก ไม่ใช่รหัสกลุ่มดิบ — บรรทัดนี้อาจารย์อ่านตอนคุยกับนักศึกษา
+     เดิมใช้ r.group จึงขึ้นเป็น "CROWN 0/2 · RRM 0/1 · RFX 1/1" (เจอ 10 ก.ย. 69)
+     ReqRow มีช่อง short ไว้ให้อยู่แล้วด้วยเหตุผลนี้ */
   const reqEvidence = req
-    .map((r) => `${r.group} ${r.done}/${r.required}`)
+    .map((r) => `${r.short} ${r.done}/${r.required}`)
     .join(' · ');
   if (conf !== null) {
     if (conf <= 1 && shortRows.length === 0) {

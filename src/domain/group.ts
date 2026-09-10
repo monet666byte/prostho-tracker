@@ -12,7 +12,7 @@
  * ต่างจากรหัสกลุ่มที่แช่แข็งอยู่กับที่ตอนสร้าง — กลุ่มเดิมจะมีสมาชิกเป็นปี 6 ทั้งกลุ่มเมื่อขึ้นปีใหม่
  */
 import type { Student } from './types';
-import { studentYear } from './cohort';
+import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, cohortOf, studentYear } from './cohort';
 
 /** 'TH-PT7' / 'TH6-PT7' / 'TH55-PT7' → 'PT7' — ใช้ทุกจุดที่โชว์ชื่อกลุ่ม (ครอบทั้งสองแบบ) */
 export function groupShort(code: string | undefined): string {
@@ -59,4 +59,45 @@ export function firstNameOnly(name: string): string {
   const [first] = splitPersonName(name);
   const stripped = first.replace(/^(นางสาว|น\.ส\.|นส\.|นาย|นาง|นศ\.|อ\.)\s*/, '').trim();
   return stripped || first;
+}
+
+/**
+ * เลขกลุ่มจากรหัส — ต้องอ่านจากท่อน "PT<n>" เท่านั้น
+ *
+ * เดิมหน้าอาจารย์เรียงด้วย parseInt(code.replace(/\D/g,'')) ซึ่งรวมเลขรุ่นเข้าไปด้วย:
+ * 'TH6-PT10' → 610 จึงไปอยู่หลัง 'TH9-PT9' → 99 ผลคือ PT10–PT12 ของทุกรุ่น
+ * ตกไปกองท้ายลิสต์ (เห็นในเดโม 10 ก.ย. 69) · ไม่รู้จักรูปแบบ = 999 ไปท้ายสุดเสมอ
+ */
+export function groupNumberOf(code: string): number {
+  const m = /PT(\d{1,2})$/i.exec(code);
+  return m ? Number(m[1]) : 999;
+}
+
+/**
+ * ลำดับของกลุ่มในตัวเลือก "กลุ่มที่ดูแล" — ปี 5 → ปี 6 → รุ่นที่ยังไม่เริ่ม → รุ่นที่จบแล้ว
+ * ในแต่ละกอง: รุ่นใหม่ก่อน แล้วเรียงเลขกลุ่ม PT1 → PT12
+ * (กองที่จบแล้วมีหลายรุ่นซ้อนกัน การเรียงรุ่นใหม่ก่อนช่วยให้รุ่นที่เพิ่งจบอยู่ใกล้มือ)
+ */
+export function sortGroupCodes(
+  codes: readonly string[],
+  students: ReadonlyArray<Pick<Student, 'group' | 'year' | 'entryYear'>>,
+  asOf: Date = new Date(),
+): string[] {
+  const bucketOf = (y: number) =>
+    y > CLINIC_LAST_YEAR ? 3 : y < CLINIC_START_YEAR ? 2 : y - CLINIC_START_YEAR;
+  return [...codes]
+    .map((code) => {
+      const st = students.find((s) => s.group === code);
+      return {
+        code,
+        bucket: st ? bucketOf(studentYear(st, asOf)) : 9,
+        cohort: st ? cohortOf(st, asOf) : 0,
+        n: groupNumberOf(code),
+      };
+    })
+    .sort((a, b) =>
+      a.bucket !== b.bucket ? a.bucket - b.bucket
+      : a.cohort !== b.cohort ? b.cohort - a.cohort
+      : a.n - b.n)
+    .map((g) => g.code);
 }

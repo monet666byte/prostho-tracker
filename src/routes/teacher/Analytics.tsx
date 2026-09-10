@@ -83,7 +83,7 @@ export default function Analytics() {
           <div style={{ flex: 1 }}>
             <h1>{yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}</h1>
             <p>
-              {t('เหลือ {n} เดือนก่อนจบปีการศึกษา', { n: head.monthsLeft })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
+              {t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
             </p>
           </div>
           <YearSeg view={yearView} onChange={setYearView} />
