@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { phosphorWeights } from './vite/phosphor-weights.js';
+import { woff2Only } from './vite/woff2-only.js';
+import { fontSubsets } from './vite/font-subsets.js';
 
 // โหมด share: แพ็คทั้งแอป (JS/CSS/ฟอนต์) เป็น index.html ไฟล์เดียว เอาไปวางที่ไหนก็เปิดได้
 // ไม่ใส่ service worker เพราะปลายทาง (artifact host) จัดการ cache เองไม่ได้
@@ -19,6 +22,9 @@ export default defineConfig(({ mode }) => ({
       ? { outDir: 'dist-share', assetsInlineLimit: 100_000_000, chunkSizeWarningLimit: 8000 }
       : undefined,
   plugins: [
+    phosphorWeights(),
+    woff2Only(),
+    fontSubsets(),
     react(),
     ...(mode === 'share' ? [viteSingleFile()] : []),
     VitePWA({
