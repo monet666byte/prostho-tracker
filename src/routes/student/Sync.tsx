@@ -129,9 +129,24 @@ export default function Sync() {
             style={{ marginTop: 11 }}
             disabled={offline}
             onClick={async () => {
-              const n = await syncNow(currentActor());
+              const r = await syncNow(currentActor());
               touch();
-              showToast({ message: n ? t('sync สำเร็จ {n} รายการ', { n }) : t('ไม่มีรายการค้าง'), tone: n ? 'success' : 'default' });
+              /* ข้อความต้องตรงกับของจริง — เน็ตที่ต่อติดแต่ยิงไม่ถึงเซิร์ฟเวอร์ทำให้ปุ่มนี้
+                 กดได้ทั้งที่ส่งไม่ขึ้น เดิมขึ้นว่า "sync สำเร็จ" ทุกครั้ง (ดู syncNow ใน repo.ts) */
+              if (r.stillPending || r.photosFailed) {
+                showToast({
+                  message: t('ส่งขึ้นไม่ครบ — เหลือค้าง {n} รายการ ระบบจะลองใหม่ให้เอง', {
+                    n: r.stillPending + r.photosFailed,
+                  }),
+                  tone: 'warning',
+                });
+                return;
+              }
+              const done = r.cleared + r.photos;
+              showToast({
+                message: done ? t('sync สำเร็จ {n} รายการ', { n: done }) : t('ไม่มีรายการค้าง'),
+                tone: done ? 'success' : 'default',
+              });
             }}
           >
             <ArrowsClockwise size={18} weight="bold" />

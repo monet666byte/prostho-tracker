@@ -9,6 +9,7 @@ import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../dom
 import { pdpaPolicy } from './pdpaSync';
 import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
+import { flushNow, pendingPushCount } from './cloudSync';
 import { toISODate } from '../lib/date';
 import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
@@ -154,11 +155,19 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
   await db.transaction('rw', [db.workpieces, db.updates, db.queue, db.photos, db.audit], async () => {
     await db.workpieces.put(updated);
     await db.updates.add(update);
-    // เดิมตรงนี้สร้าง "รูป" เปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมา ทั้งที่ไม่มีไฟล์รูปอยู่จริง
-    // ตอนนี้รูปถูกแนบจริงผ่าน usePhotoAttach ตั้งแต่ก่อนกดยืนยัน — แค่ผูกเข้ากับ update นี้
+    /* เดิมตรงนี้สร้าง "รูป" เปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมา ทั้งที่ไม่มีไฟล์รูปอยู่จริง
+       ตอนนี้รูปถูกแนบจริงผ่าน usePhotoAttach ตั้งแต่ก่อนกดยืนยัน — แค่ผูกเข้ากับ update นี้
+
+       ⚠️ ต้องเอาเฉพาะรูปที่ยังไม่มี step ไหนจับจองไว้ (เจอ 10 ก.ย. 69)
+       เดิมกวาดรูป "ทุกใบของชิ้นงานนี้" ทำให้รูปของ step 3 ถูกผูกซ้ำเข้ากับ step 4, 5, 6 …
+       ต่อไปเรื่อย ๆ · หนึ่งรูปจึงโผล่อยู่ใต้หลาย step และจำนวนรูปต่อ step เฟ้อขึ้นทุกครั้ง
+       ตอนนี้ยังไม่มีหน้าไหนอ่าน photoIds จึงไม่มีใครเห็น แต่แถวพวกนี้ sync ขึ้นตู้กลางไปแล้ว
+       ใครเขียนหน้า "รูปของ step นี้" วันหน้าจะได้ตัวเลขผิดโดยไม่รู้ว่าผิดที่ไหน */
     if (input.withPhoto) {
-      const recent = await db.photos.where('workpieceId').equals(w.id).toArray();
-      const ids = recent.map((ph) => ph.id);
+      const all = await db.photos.where('workpieceId').equals(w.id).toArray();
+      const past = await db.updates.where('workpieceId').equals(w.id).toArray();
+      const claimed = new Set(past.flatMap((u) => u.photoIds ?? []));
+      const ids = all.map((ph) => ph.id).filter((id) => !claimed.has(id));
       if (ids.length) {
         update.photoIds.push(...ids);
         await db.updates.put(update);
@@ -328,32 +337,74 @@ export async function listQueue(): Promise<QueueItem[]> {
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export interface SyncNowResult {
+  /** รายการ "รอส่ง" ที่หายออกจากรายการเพราะขึ้นครบจริง */
+  cleared: number;
+  /** รูปที่ขึ้นเซิร์ฟเวอร์สำเร็จรอบนี้ */
+  photos: number;
+  /** รูปที่ส่งไม่ผ่านรอบนี้ */
+  photosFailed: number;
+  /** แถวที่ยังค้างอยู่ในเครื่องหลังกดแล้ว — มากกว่า 0 คือ "ยังไม่ครบ" */
+  stillPending: number;
+}
+
 /**
  * ผู้ใช้กด "sync ทันที"
  *
- * ⚠️ เดิมตรงนี้ตั้ง status='ok' ให้รูปที่ค้างคิว "ทุกใบ" โดยไม่ได้ส่งอะไรขึ้นไปเลย
- *    เป็นป้ายหลอกแบบเดียวกับที่ addPhoto รุ่นแรกเคยทำ ผู้ใช้จะรู้ตัวก็ตอนเปิดจากอีกเครื่อง
- *    แล้วรูปไม่อยู่ ซึ่งสายไปแล้ว — ตอนนี้ส่งของจริงแล้วให้ photoStore เป็นคนตั้งสถานะเอง
+ * ⚠️ ป้ายหลอกตัวที่สาม (เจอ 10 ก.ย. 69) — สองตัวแรกคือ addPhoto รุ่นแรกกับ syncNow ที่ตั้ง
+ *    status='ok' ให้รูปทุกใบโดยไม่ส่งอะไร รอบนี้เป็นทีของ "แถวข้อมูล" เอง:
+ *
+ *    ① ปุ่มนี้ **ไม่เคยเรียกตัวส่งข้อมูลจริงเลย** — `flushNow()` ใน cloudSync.ts
+ *       เขียนคอมเมนต์กำกับตัวเองไว้ว่า "ใช้ตอนผู้ใช้กด sync เอง" แต่ไม่มีใครเรียก
+ *       แถวจึงขึ้นตอนรอบ 15 วิ ถัดไปเท่านั้น กดปุ่มแล้วไม่เกิดอะไรขึ้นทันที
+ *    ② แล้วมันประทับ syncedAt ให้ทุกแถว + ล้างรายการ "รอส่ง" + จด audit ว่าสำเร็จ
+ *       **โดยไม่รู้ผลจริง** navigator.onLine เป็น true ได้ทั้งที่ยิงไม่ถึงเซิร์ฟเวอร์
+ *       (เน็ตคลินิกที่ต่อติดแต่ไม่ออกเน็ต · captive portal · เซิร์ฟเวอร์ล่ม)
+ *       ผู้ใช้จึงเสียสัญญาณเดียวที่บอกว่างานยังไม่ปลอดภัย แล้วไปรู้ตัวตอนเปิดจากอีกเครื่อง
+ *
+ *    ตอนนี้: ส่งจริงก่อน → ถามว่าเหลือค้างกี่แถว → **ล้างรายการเฉพาะตอนขึ้นครบจริง**
+ *    ยังไม่ครบก็คงรายการไว้และบอกตรง ๆ ว่าเหลือเท่าไร
  *
  * การอัปโหลดต้องอยู่นอก transaction — ยิงเน็ตในระหว่างที่ถือ transaction ของ Dexie ค้างไว้
  * ทำให้ธุรกรรมค้างยาวเป็นวินาทีบนเน็ตคลินิก แล้วการเขียนอื่นทั้งแอปรอตาม
  */
-export async function syncNow(actor: string): Promise<number> {
-  const photos = await uploadPendingPhotos();
+export async function syncNow(actor: string): Promise<SyncNowResult> {
   const items = await db.queue.toArray();
-  if (!items.length && !photos.uploaded) return 0;
+  const photos = await uploadPendingPhotos();
+  // ส่งแถวข้อมูลขึ้นเดี๋ยวนี้ (และปลุก pump hook ที่เหลือ) — ขั้นที่เคยหายไป
+  await flushNow();
+
+  const stillPending = pendingPushCount();
+  /* ขึ้นครบ = ไม่มีแถวค้าง และไม่มีรูปที่ส่งไม่ผ่านรอบนี้
+     โหมด local/เดโมไม่ได้ติดตั้ง middleware จึงได้ 0 เสมอ — พฤติกรรมเดโมคงเดิม */
+  const drained = stillPending === 0 && photos.failed === 0;
+
+  if (!items.length && !photos.uploaded && !photos.failed && !stillPending) {
+    return { cleared: 0, photos: 0, photosFailed: 0, stillPending: 0 };
+  }
+
   await db.transaction('rw', [db.queue, db.updates, db.audit], async () => {
-    const unsynced = await db.updates.filter((u) => u.syncedAt === null).toArray();
-    await db.updates.bulkPut(unsynced.map((u) => ({ ...u, syncedAt: new Date().toISOString() })));
-    await db.queue.clear();
+    if (drained) {
+      const unsynced = await db.updates.filter((u) => u.syncedAt === null).toArray();
+      await db.updates.bulkPut(unsynced.map((u) => ({ ...u, syncedAt: new Date().toISOString() })));
+      await db.queue.clear();
+    }
     await db.audit.add({
       id: uid('a'),
-      text: `sync ข้อมูลค้าง ${items.length} รายการ · รูป ${photos.uploaded} ใบขึ้นเซิร์ฟเวอร์`,
+      text: drained
+        ? `sync ข้อมูลค้าง ${items.length} รายการ · รูป ${photos.uploaded} ใบขึ้นเซิร์ฟเวอร์`
+        : `sync ยังไม่ครบ — เหลือค้าง ${stillPending} แถว · รูปส่งไม่ผ่าน ${photos.failed} ใบ`,
       who: actor,
       at: new Date().toISOString(),
     });
   });
-  return items.length + photos.uploaded;
+
+  return {
+    cleared: drained ? items.length : 0,
+    photos: photos.uploaded,
+    photosFailed: photos.failed,
+    stillPending,
+  };
 }
 
 /** workpieceId ที่ยังมีรายการค้างในคิว */

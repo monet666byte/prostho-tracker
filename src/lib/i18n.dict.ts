@@ -407,6 +407,7 @@ export const DICT: Record<string, string> = {
   'ไม่มีรูป': 'no photo',
   'รอส่ง': 'Queued',
   'sync สำเร็จ {n} รายการ': 'Synced {n} item(s)',
+  'ส่งขึ้นไม่ครบ — เหลือค้าง {n} รายการ ระบบจะลองใหม่ให้เอง': 'Not fully uploaded — {n} item(s) still pending, the app will keep retrying',
   'ต้องออนไลน์ก่อนจึงจะ sync ได้': 'Go online to sync',
   'sync ทันที': 'Sync now',
   'การแจ้งเตือน': 'Notifications',

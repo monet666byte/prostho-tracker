@@ -163,6 +163,23 @@ export interface SyncProblem {
 const quarantine = new Map<string, SyncProblem>();
 const problemListeners = new Set<() => void>();
 
+/**
+ * จำนวนแถวที่ยัง "ค้างส่ง" อยู่ในเครื่องนี้ ณ วินาทีนี้ (นับทั้งของที่จะ upsert และที่จะลบ)
+ *
+ * มีเพราะปุ่ม "sync ทันที" ต้องบอกความจริงได้ว่าของขึ้นครบหรือยัง
+ * เดิมปุ่มนั้นล้างรายการ "รอส่ง" กับประทับ syncedAt ให้ทุกแถวโดยไม่รู้ผลจริง
+ * ถ้าเน็ตคลินิกต่อติดแต่ยิงไม่ถึง (captive portal / เซิร์ฟเวอร์ล่ม) navigator.onLine ยังเป็น true
+ * ปุ่มจึงกดได้ แล้วขึ้นว่าสำเร็จ ทั้งที่ไม่มีอะไรออกจากเครื่อง — ผู้ใช้เสียสัญญาณเดียวที่มี
+ *
+ * โหมด local/เดโมไม่ได้ติดตั้ง middleware (initCloudSync คืนก่อน) จึงได้ 0 เสมอ ซึ่งถูกต้อง
+ */
+export function pendingPushCount(): number {
+  let n = 0;
+  for (const keys of dirty.values()) n += keys.size;
+  for (const keys of pendingDeletes.values()) n += keys.size;
+  return n;
+}
+
 /** รายการที่ส่งขึ้นตู้กลางไม่สำเร็จและเลิกลองแล้ว — หน้า sync อ่านจากตรงนี้ */
 export const syncProblems = (): SyncProblem[] => [...quarantine.values()];
 
