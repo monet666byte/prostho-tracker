@@ -305,8 +305,10 @@ export default function Home() {
 
             {!askNoPatient && (
               <>
+                {/* ป้ายเป็น div ที่ไม่ได้ผูกกับ select — โปรแกรมอ่านหน้าจอจะอ่านแค่ "กล่องรายการ"
+                    ไม่บอกว่ากล่องนี้คือช่องอะไร (WCAG 1.3.1 · 3.3.2) */}
                 <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('ผู้ป่วยที่นัด')}</div>
-                <select className="input" value={askPatient} onChange={(e) => setAskPatient(e.target.value)} style={{ marginBottom: 14 }}>
+                <select className="input" aria-label={t('ผู้ป่วยที่นัด')} value={askPatient} onChange={(e) => setAskPatient(e.target.value)} style={{ marginBottom: 14 }}>
                   <option value="">{t('— ไม่ระบุ —')}</option>
                   {askPatients.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                 </select>
@@ -332,9 +334,10 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>" (ผู้ใช้ขอ 2 ก.ย.)
                 ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
-            <span style={{ font: '700 19px var(--font-head)' }}>
+            {/* หัวเรื่องของหน้าแรก = ชื่อเจ้าของหน้า · ต้องเป็น h1 หนึ่งตัวต่อหน้า (WCAG 1.3.1) */}
+            <h1 style={{ margin: 0, font: '700 19px var(--font-head)' }}>
               {t('นศ.')} {firstNameOnly(t(student?.name ?? 'นศ. Liv'))}
-            </span>
+            </h1>
             <span className="groupchip">{groupShort((student?.group ?? '')) || '—'}</span>
             <BetaBadge compact />
           </div>

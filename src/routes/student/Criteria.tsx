@@ -27,9 +27,11 @@ export default function Criteria() {
             / {totals.required} {t('เคสตามเกณฑ์สะสม {y} ปี', { y: settings.req.years })}
           </span>
         </div>
-        <p style={{ margin: '6px 0 12px', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
+        {/* หัวเรื่องของหน้าคือคำว่า "เกณฑ์สะสม…" ไม่ใช่ตัวเลขใหญ่ข้างบน (ตัวเลขคือค่า)
+            ทำเป็น h1 โดยคงหน้าตาเดิมไว้ทุกอย่าง (WCAG 1.3.1) */}
+        <h1 style={{ margin: '6px 0 12px', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
           {t('เกณฑ์สะสมปี 5–6')}
-        </p>
+        </h1>
         <span className="bar" style={{ height: 10, display: 'block' }}>
           <i
             style={{

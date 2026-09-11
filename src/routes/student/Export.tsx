@@ -58,7 +58,7 @@ export default function ExportScreen() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>{t('ส่งออก')}</h2>
+          <h1 className="h2" style={{ flex: 1 }}>{t('ส่งออก')}</h1>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
           {t('พิมพ์ → อาจารย์ลงนาม → ส่งเลขาภาควิชา ชั้น 15')}
@@ -71,7 +71,9 @@ export default function ExportScreen() {
         </p>
         <div className="a4wrap">
         <div className="a4">
-          <h1>{t('รายงานความก้าวหน้าเคส Prosthodontics · DTPT502')}</h1>
+          {/* หัวของใบรายงาน A4 เป็นหัวข้อ "ส่วนหนึ่งในหน้า" ไม่ใช่หัวเรื่องของหน้า
+              หนึ่งหน้าควรมี h1 ตัวเดียว ไม่งั้นคนที่กระโดดหาหัวเรื่องจะเจอสองจุด */}
+          <h2 style={{ font: 'inherit', margin: 0 }}>{t('รายงานความก้าวหน้าเคส Prosthodontics · DTPT502')}</h2>
           <div className="sub">
             {/* ห้ามใส่ค่าเดโมเป็น fallback — เอกสารนี้พิมพ์ออกไปให้อาจารย์ลงนาม
                 ถ้าดึงข้อมูลไม่ได้ ต้องเห็นว่าว่าง ไม่ใช่เห็นรหัสของคนอื่นที่ดูสมจริง */}

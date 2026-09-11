@@ -186,7 +186,7 @@ export default function CheckInPage() {
   return (
     <Shell overlay={overlay}>
       <header className="s-header">
-        <h2 className="h2">{t('คาบคลินิก')}</h2>
+        <h1 className="h2">{t('คาบคลินิก')}</h1>
         <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
           {t('{n} คาบ · ประเมินแล้ว {e} · ไม่มีผู้ป่วย {p}', { n: checkins.length, e: evaluated.length, p: noPatientCount })}
         </p>

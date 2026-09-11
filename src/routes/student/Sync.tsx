@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
+import { wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { onSyncProblems, retryQuarantined, syncProblems, type SyncProblem } from '../../data/cloudSync';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
@@ -48,7 +49,7 @@ export default function Sync() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>{t('การเชื่อมต่อ & sync')}</h2>
+          <h1 className="h2" style={{ flex: 1 }}>{t('การเชื่อมต่อ & sync')}</h1>
         </div>
       </header>
 
@@ -275,7 +276,19 @@ export default function Sync() {
           className="card"
           style={{ padding: '13px 14px', display: 'flex', gap: 11, alignItems: 'center', textAlign: 'left' }}
           onClick={async () => {
+            /* ล้างข้อมูลในเครื่องด้วย — ข้อมูลที่ต้องล็อกอินถึงจะเห็น ไม่ควรค้างอยู่หลังออกจากระบบ
+               (ASVS V14.3.1) · ล้างเฉพาะตอนของขึ้นเซิร์ฟเวอร์ครบแล้ว ถ้ายังมีค้างต้องบอกตรง ๆ
+               ⚠️ "ปิดแอป" ไม่เข้าทางนี้ — ปิดแท็บไม่ล้างอะไรเลย ไม่งั้นออฟไลน์ใช้ไม่ได้ */
+            const res = await wipeLocalDataOnSignOut();
             await signOut();
+            if (res.wiped) {
+              showToast({ message: t('ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย'), tone: 'success' });
+            } else if (res.reason === 'pending') {
+              showToast({
+                message: t('ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ', { n: res.pending }),
+                tone: 'warning',
+              });
+            }
             navigate('/login');
           }}
         >
@@ -283,7 +296,9 @@ export default function Sync() {
           <span style={{ flex: 1 }}>
             <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{t('ออกจากระบบ')}</span>
             <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-              {t('เปลี่ยนบทบาท')}
+              {cloudEnabled
+                ? t('ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง')
+                : t('เปลี่ยนบทบาท')}
             </span>
           </span>
         </button>

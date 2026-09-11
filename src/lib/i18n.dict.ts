@@ -7,6 +7,14 @@ export const DICT: Record<string, string> = {
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล (เพิ่ม 11 ก.ย. 69) ────────────────────────────────────
   'สำรองข้อมูล': 'Backup',
+  // ── ออกจากระบบแล้วล้างข้อมูลในเครื่อง (เพิ่ม 12 ก.ย. 69 · ASVS V14.3.1) ─────
+  'ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย': 'Signed out · this device’s copy was cleared too',
+  'ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ':
+    'Signed out, but this device’s copy was kept — {n} item(s) still waiting to upload',
+  'ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง':
+    'Also clears this device’s copy (when everything is synced) · closing the app clears nothing',
+  'ค้นหาเคส': 'Search cases',
+  'Accepted date': 'Accepted date',
   // ── แก้ป้ายตรงต่อเวลา (เพิ่ม 11 ก.ย. 69 · ผู้ใช้เคาะ) ─────────────────────
   'ตรงเวลา': 'On time',
   'อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log':

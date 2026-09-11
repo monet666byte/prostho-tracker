@@ -140,7 +140,7 @@ export default function Patients() {
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 className="h2">{t('คนไข้ + ชิ้นงาน')}</h2>
+          <h1 className="h2">{t('คนไข้ + ชิ้นงาน')}</h1>
           <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
             {t('{a} คน · {b} ชิ้นงาน', { a: byPatient.size, b: works.length })}{editing ? t(' · แตะถังขยะเพื่อลบ') : ''}
           </p>

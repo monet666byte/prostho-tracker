@@ -42,7 +42,7 @@ export default function Photos() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>{t('รูปต่อ step')}</h2>
+          <h1 className="h2" style={{ flex: 1 }}>{t('รูปต่อ step')}</h1>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
           {t('ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง')}

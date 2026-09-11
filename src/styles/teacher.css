@@ -258,10 +258,11 @@
   white-space: nowrap;
   width: 1%;
 }
+/* หัวแถวของ heatmap บอกว่าแถวนี้คือใคร — ต้องอ่านออก ไม่ใช่สีของปุ่มที่กดไม่ได้ */
 .heat th[scope='row'] span {
   display: block;
   font: 400 9px var(--font-mono);
-  color: var(--text-disabled);
+  color: var(--text-faint);
 }
 .heat td { padding: 0; min-width: 58px; }
 .heat__cell {

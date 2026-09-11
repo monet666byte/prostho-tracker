@@ -85,7 +85,10 @@ export default function Achievements() {
             <ArrowLeft size={17} />
           </button>
           <div style={{ flex: 1 }}>
-            <h2 className="h2">{t('เส้นทางของคุณ')}</h2>
+            {/* หัวเรื่องของหน้าต้องเป็น h1 — คนที่ใช้โปรแกรมอ่านหน้าจอกดข้ามไปหา "หัวเรื่องของหน้า"
+                ได้จาก h1 เท่านั้น · ฝั่งนักศึกษาเดิมเริ่มที่ h2 ทุกหน้า จึงไม่มีจุดกระโดดเลย (WCAG 1.3.1 · 2.4.6)
+                class .h2 คงไว้เพื่อให้หน้าตาเหมือนเดิมเป๊ะ */}
+            <h1 className="h2">{t('เส้นทางของคุณ')}</h1>
           </div>
           <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>MOCK</span>
         </div>

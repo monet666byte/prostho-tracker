@@ -237,7 +237,7 @@ export default function SelfAssess() {
       <PlainShell>
         <header className="s-header s-header--row">
           <button className="iconbtn" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}><CaretLeft size={18} /></button>
-          <h2 className="h2">{t('ประเมินตนเอง')}</h2>
+          <h1 className="h2">{t('ประเมินตนเอง')}</h1>
         </header>
         <div style={{ padding: '16px' }}>
           <Empty
@@ -257,7 +257,7 @@ export default function SelfAssess() {
         <header className="s-header s-header--row">
           <button className="iconbtn" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}><CaretLeft size={18} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 className="h2">{t('ประเมินตนเอง')}</h2>
+            <h1 className="h2">{t('ประเมินตนเอง')}</h1>
             <p style={{ margin: '2px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
               {t('ส่งแล้วเมื่อ {d}', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })}
             </p>
@@ -364,7 +364,7 @@ export default function SelfAssess() {
       <header className="s-header s-header--row">
         <button className="iconbtn" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}><CaretLeft size={18} /></button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 className="h2">{t('ประเมินตนเอง')}</h2>
+          <h1 className="h2">{t('ประเมินตนเอง')}</h1>
           <p style={{ margin: '2px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
             {t('ปีการศึกษา {y} · ตอบแล้ว {a}/{b} ข้อ', { y: year, a: progress.done, b: progress.total })}
             {settings.saDue ? ` · ${t('ส่งภายใน {d}', { d: thaiShort(settings.saDue) })}` : ''}

@@ -8,6 +8,8 @@ import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { wipeLocalDataOnSignOut } from '../../data/localWipe';
+import { cloudEnabled } from '../../lib/cloud';
 import { BetaBadge } from '../BetaBadge';
 import { groupShort, sortGroupCodes } from '../../domain/group';
 /* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
@@ -63,7 +65,7 @@ const COHORT_NAV: NavItem[] = [
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup, showToast } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   const offGroup = !!myGroup && teacherGroup !== myGroup;
   const teacher = useTeacher(session?.teacherId);
@@ -167,13 +169,25 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
                 {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')} · TH-PT7
               </div>
+              {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
+                  ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
               <button
                 onClick={async () => {
+                  const res = await wipeLocalDataOnSignOut();
                   await signOut();
+                  if (res.wiped) {
+                    showToast({ message: t('ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย'), tone: 'success' });
+                  } else if (res.reason === 'pending') {
+                    showToast({
+                      message: t('ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ', { n: res.pending }),
+                      tone: 'warning',
+                    });
+                  }
                   navigate('/login');
                 }}
                 className="linkbtn"
                 style={{ marginTop: 4, font: '500 10.5px var(--font-body)', color: 'var(--text-faint)' }}
+                title={cloudEnabled ? t('ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง') : undefined}
               >
                 {t('ออกจากระบบ')}
               </button>

@@ -181,7 +181,7 @@ export default function WorkpieceDetail() {
 
         {/* V1 เก็บกวาด (ผู้ใช้เลือก 1 ก.ย.): ชิปบอกประเภทอยู่แล้ว — หัวย่อลง ตัดบรรทัด detail
             และตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ 5/10 ชวนงง) เหลือ bar + x/y ที่เดียว */}
-        <h2 className="h2" style={{ marginTop: 10, font: '600 17.5px/1.3 var(--font-head)' }}>{meta.full}</h2>
+        <h1 className="h2" style={{ marginTop: 10, font: '600 17.5px/1.3 var(--font-head)' }}>{meta.full}</h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={8} />

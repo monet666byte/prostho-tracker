@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { phosphorWeights } from './vite/phosphor-weights.js';
 import { woff2Only } from './vite/woff2-only.js';
+import { cspMeta } from './vite/csp.js';
 import { fontSubsets } from './vite/font-subsets.js';
 
 // โหมด share: แพ็คทั้งแอป (JS/CSS/ฟอนต์) เป็น index.html ไฟล์เดียว เอาไปวางที่ไหนก็เปิดได้
@@ -24,6 +25,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     phosphorWeights(),
     woff2Only(),
+    // โหมด share รวมเป็นไฟล์เดียว สคริปต์เป็น inline — ใส่ CSP ที่นั่นต้องเปิด unsafe-inline
+    cspMeta({ skip: mode === 'share' }),
     fontSubsets(),
     react(),
     ...(mode === 'share' ? [viteSingleFile()] : []),

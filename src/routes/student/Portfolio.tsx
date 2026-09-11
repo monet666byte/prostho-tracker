@@ -95,16 +95,21 @@ function Row({ code, title, score, open, onToggle, children }: {
           </span>
         </span>
         <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+          {/* "ยังไม่ได้ประเมิน" เป็นสถานะที่นักศึกษาต้องอ่าน ไม่ใช่ข้อความของปุ่มที่กดไม่ได้
+              จึงห้ามใช้ --text-disabled (#c6cdd8 บนพื้นขาว = คอนทราสต์ 1.60 : 1)
+              WCAG 1.4.3 ต้องการ 4.5 : 1 · --text-faint ได้ 4.97 (วัดแล้ว 12 ก.ย. 69)
+              ที่ 1.60 บนจอมือถือในคลินิกคือแทบมองไม่เห็น — ไม่ใช่เรื่องมาตรฐานอย่างเดียว */}
           <span style={{
             font: graded ? '700 13px var(--font-head)' : '400 11px var(--font-body)',
-            color: graded ? 'var(--text)' : 'var(--text-disabled)',
+            color: graded ? 'var(--text)' : 'var(--text-faint)',
           }}>
             {graded ? score : t('ยังไม่ได้ประเมิน')}
           </span>
           {graded && (
             <CaretDown
               size={13}
-              color="var(--text-disabled)"
+              /* ลูกศรบอกว่ากดขยายได้ = ส่วนที่สื่อความหมาย ต้องได้ 3:1 ตาม WCAG 1.4.11 */
+              color="var(--text-faint)"
               style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .18s' }}
             />
           )}
@@ -307,7 +312,7 @@ export default function Portfolio() {
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <BookOpen size={18} weight="fill" color="var(--accent)" />
-          <span style={{ font: '700 15px var(--font-head)' }}>{t('สมุดของฉัน')}</span>
+          <h1 style={{ margin: 0, font: '700 15px var(--font-head)' }}>{t('สมุดของฉัน')}</h1>
         </div>
         <p style={{ margin: '5px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
           Clinical Performance Portfolio · {saCourseCode(classYear)} · {t('ปีการศึกษา')} {year}

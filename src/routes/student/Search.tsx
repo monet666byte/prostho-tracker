@@ -46,10 +46,14 @@ export default function Search() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
+          {/* หน้านี้ไม่มีหัวเรื่องที่มองเห็น (ช่องค้นคือตัวหน้า) — ใส่หัวเรื่องที่มีแต่เสียง
+              ให้คนที่ใช้โปรแกรมอ่านหน้าจอกระโดดมาถึงได้ · .sronly ซ่อนจากตาแต่ไม่ซ่อนจากเสียง */}
+          <h1 className="sronly">{t('ค้นหาเคส')}</h1>
           <div style={{ flex: 1, position: 'relative' }}>
             <MagnifyingGlass size={17} style={{ position: 'absolute', left: 13, top: 15, color: 'var(--text-faint)' }} />
             <input
               autoFocus
+              aria-label={t('ค้นหาเคส')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('ค้นชื่อผู้ป่วย · HN · ซี่ฟัน · ประเภทงาน')}

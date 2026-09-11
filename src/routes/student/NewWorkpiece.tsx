@@ -116,7 +116,7 @@ export default function NewWorkpiece() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h2 className="h2" style={{ flex: 1 }}>{t('เปิดชิ้นงานใหม่')}</h2>
+          <h1 className="h2" style={{ flex: 1 }}>{t('เปิดชิ้นงานใหม่')}</h1>
         </div>
       </header>
 
@@ -233,14 +233,14 @@ export default function NewWorkpiece() {
         {needsTooth && (
           <label className="field">
             <span>{t('ซี่ฟัน')} <span className="faint" style={{ fontWeight: 400 }}>{t('— ต้องระบุให้ชัดเจน')}</span></span>
-            <input className="input mono" value={tooth} onChange={(e) => setTooth(e.target.value)} placeholder={t('เช่น 46 หรือ 34–36')} />
+            <input className="input mono" aria-label={t('ซี่ฟัน')} value={tooth} onChange={(e) => setTooth(e.target.value)} placeholder={t('เช่น 46 หรือ 34–36')} />
           </label>
         )}
 
         <div style={{ display: 'flex', gap: 10 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>Accepted date</span>
-            <input className="input mono" type="date" value={acceptedDate} max={toISODate(new Date())} onChange={(e) => setAcceptedDate(e.target.value)} />
+            <input className="input mono" type="date" aria-label={t('Accepted date')} value={acceptedDate} max={toISODate(new Date())} onChange={(e) => setAcceptedDate(e.target.value)} />
           </label>
           <button
             onClick={() => setMin(!min)}
@@ -261,10 +261,12 @@ export default function NewWorkpiece() {
 
         <div className="field">
           <label>{t('ผู้ป่วย')}</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('ชื่อผู้ป่วย (สมมติ เช่น ผู้ป่วย E)')} />
+          {/* aria-label ทุกช่อง — placeholder หายทันทีที่เริ่มพิมพ์ และโปรแกรมอ่านหน้าจอไม่อ่านให้
+              คนที่กลับมากรอกต่อจะไม่รู้ว่าช่องไหนคืออะไร (WCAG 1.3.1 · 3.3.2) */}
+          <input className="input" aria-label={t('ชื่อผู้ป่วย')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('ชื่อผู้ป่วย (สมมติ เช่น ผู้ป่วย E)')} />
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            <input className="input mono" value={hn} onChange={(e) => setHn(e.target.value)} placeholder="HN" />
-            <input className="input" value={sexAge} onChange={(e) => setSexAge(e.target.value)} placeholder={t('เพศ/อายุ')} />
+            <input className="input mono" aria-label="HN" value={hn} onChange={(e) => setHn(e.target.value)} placeholder="HN" />
+            <input className="input" aria-label={t('เพศ/อายุ')} value={sexAge} onChange={(e) => setSexAge(e.target.value)} placeholder={t('เพศ/อายุ')} />
           </div>
         </div>
 
@@ -318,7 +320,7 @@ export default function NewWorkpiece() {
               {type === 'RPD' && (
                 <label className="field">
                   <span>Design RPD</span>
-                  <input className="input" value={designRpd} onChange={(e) => setDesignRpd(e.target.value)} />
+                  <input className="input" aria-label={t('Design RPD')} value={designRpd} onChange={(e) => setDesignRpd(e.target.value)} />
                 </label>
               )}
             </div>
