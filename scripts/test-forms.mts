@@ -12,7 +12,7 @@
  */
 import {
   assertSect2, RPD_DESIGN_GROUPS, RPD_DESIGN_TOPICS, rpdDesignPassed, S2_FULL_SCORE, S2_GRADES,
-  s2Points, sect2Form, sect2Total, SECT2_FORMS,
+  s2Points, sect2Form, sect2GateValue, sect2Total, SECT2_FORMS, SECT2_GATE_OF,
 } from '../src/domain/sect2.ts';
 import {
   assertSect3, S3_FULL_SCORE, s3Points, sect3Form, sect3FormsFor, sect3Total, SECT3_FORMS,
@@ -143,6 +143,54 @@ console.log('\nSection III — Outstanding เต็ม · Satisfactory คร�
   ok('คีย์ข้อไม่ซ้ำกันข้ามทั้ง 15 ใบ', new Set(keys).size === keys.length, `${new Set(keys).size}/${keys.length}`);
   ok('ทุกข้อมีข้อความกำกับ (ใบเปล่าไม่มีทางให้คะแนนถูก)',
     SECT3_FORMS.every((f) => f.topics.every((t) => t.label.trim().length > 0)));
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   ธงเงื่อนไขจบที่คิดจากใบประเมิน — ผู้ใช้ยืนยัน 12 ก.ย. 69
+
+   "ประเมินก็ส่วนประเมิน · ที่ติ๊กผ่าน/ไม่ผ่านเองคือ OSCE กับ RPD design"
+   แปลว่า Sect II ต้องอ่านจากใบ ห้ามให้อาจารย์ติ๊กซ้ำอีกที่ — สองแหล่งจะพูดไม่ตรงกัน
+   ทั้ง repo.ts (ตอนบันทึกใบ) และ seed.ts (ข้อมูลตัวอย่าง) ต้องใช้ฟังก์ชันนี้ตัวเดียวกัน
+   ไม่งั้นเดโมจะขัดกับของจริง — เคยขัดมาแล้ว (ผู้ใช้ทัก 11 ก.ย. 69)
+   ═══════════════════════════════════════════════════════════════════════════ */
+console.log('\nsect2GateValue — ธงที่คิดจากใบ ไม่ใช่ที่ติ๊กเอง');
+{
+  ok('ไม่มีใบเลย → ยังไม่มีข้อมูล (ไม่ใช่ "ไม่ผ่าน" — นี่คือเงื่อนไขจบ)',
+    sect2GateValue('fixed', []) === undefined);
+
+  ok('ใบร่างที่ยังกาไม่ครบ (total = null) → ยังไม่มีข้อมูล',
+    sect2GateValue('fixed', [{ formKey: 'fixed', total: null }]) === undefined);
+
+  ok('ใบที่มีคะแนนรวมแล้ว → ผ่าน (ฟอร์มกระดาษไม่ได้เขียนเกณฑ์ผ่าน จึงไม่เดาแทนภาค)',
+    sect2GateValue('fixed', [{ formKey: 'fixed', total: 58 }]) === true);
+
+  ok('คะแนน 0 ก็ถือว่า "ประเมินแล้ว" — ตัดสินจากการกาครบ ไม่ใช่จากคะแนนสูงต่ำ',
+    sect2GateValue('fixed', [{ formKey: 'fixed', total: 0 }]) === true);
+
+  ok('ใบของอีกฟอร์มไม่ปนกัน (Removable ไม่ทำให้ Fixed ผ่าน)',
+    sect2GateValue('fixed', [{ formKey: 'removable', total: 60 }]) === undefined);
+
+  // ใบ RPD design มีเกณฑ์ผ่านชัดเจนในเล่ม จึงใช้ผลจริง ไม่ใช่ "กาครบ = ผ่าน"
+  ok('RPD design: ไม่มีใบตัดสิน → ยังไม่มีข้อมูล',
+    sect2GateValue('rpdDesign', [{ formKey: 'rpdDesign' }]) === undefined);
+  ok('RPD design: ตก → ไม่ผ่าน (ไม่ใช่ "ยังไม่มีข้อมูล")',
+    sect2GateValue('rpdDesign', [{ formKey: 'rpdDesign', passed: false }]) === false);
+  ok('RPD design: สอบซ่อมผ่าน → ผ่าน (มีใบตกอยู่ด้วยก็ยังผ่าน)',
+    sect2GateValue('rpdDesign', [
+      { formKey: 'rpdDesign', passed: false }, { formKey: 'rpdDesign', passed: true },
+    ]) === true);
+
+  /* ลบใบที่กรอกผิดทิ้ง ธงต้องกลับเป็นยังไม่มีข้อมูล ไม่ค้างเป็นผ่าน (บั๊กที่เจอ 7 ก.ย. 69)
+     ฟังก์ชันนี้คิดใหม่จากใบที่เหลือทุกครั้ง จึงครอบกรณีนั้นโดยไม่ต้องมีโค้ดพิเศษ */
+  ok('ลบใบทิ้งหมด → ธงกลับเป็นยังไม่มีข้อมูล ไม่ค้างเป็นผ่าน',
+    sect2GateValue('fixed', []) === undefined);
+
+  ok('OSCE ไม่มีในตารางนี้ — ไม่มีฟอร์มในแอป อาจารย์ติ๊กเองในหน้า "การสอบ"',
+    SECT2_GATE_OF.osce === undefined && !Object.values(SECT2_GATE_OF).includes('osce' as never),
+    Object.keys(SECT2_GATE_OF).join(','));
+
+  ok('ทุกใบที่มีธง แมปไปที่ธงคนละอัน (ไม่มีสองใบชี้ธงเดียวกัน)',
+    new Set(Object.values(SECT2_GATE_OF)).size === Object.keys(SECT2_GATE_OF).length);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

@@ -245,3 +245,45 @@ export function assertSect2(): string[] {
   }
   return errs;
 }
+
+/**
+ * ธงเงื่อนไขจบที่ "คิดจากใบประเมิน" ไม่ใช่ที่อาจารย์ติ๊กเอง
+ *
+ * ผู้ใช้ยืนยันอีกครั้ง 12 ก.ย. 69: **ประเมินก็ส่วนประเมิน · ที่ติ๊กผ่าน/ไม่ผ่านเองคือ
+ * OSCE กับ RPD design** — สองอันนั้นไม่มีฟอร์มในแอป (สอบบนกระดาษ) ส่วน Sect II
+ * มีใบจริงอยู่ในระบบแล้ว จึงต้องอ่านจากใบ ห้ามให้อาจารย์มาติ๊กซ้ำอีกที่
+ * (ไม่งั้นจะมีสองแหล่งที่พูดไม่ตรงกัน แล้วนักศึกษาเห็น "ยังไม่มีข้อมูล" ทั้งที่อาจารย์ให้คะแนนแล้ว)
+ *
+ * สามสถานะ ไม่ใช่สองสถานะ:
+ *   `undefined` = ยังไม่มีใบที่ตัดสินแล้ว (ใบร่างที่เพิ่งเปิดยังไม่นับ)
+ *   `true` / `false` = ตัดสินแล้ว
+ * แยก "ยังไม่มีข้อมูล" ออกจาก "ไม่ผ่าน" เพราะนี่คือเงื่อนไขจบ — มัดรวมกันคือกล่าวหาคน
+ *
+ * ⚠️ คิดใหม่จากใบที่ "เหลืออยู่" ทุกครั้ง ไม่ใช่ตั้งเป็นจริงแล้วจบ —
+ * อาจารย์ลบใบที่กรอกผิดทิ้ง ธงต้องกลับเป็นยังไม่ผ่านด้วย ไม่งั้นโปรไฟล์บอกว่าผ่าน
+ * ทั้งที่ไม่มีหลักฐานอะไรเหลือ (เจอ 7 ก.ย. 69)
+ *
+ * ใบให้คะแนน (removable/fixed) ถือว่าผ่านเมื่อกาครบทุกหัวข้อจนมีคะแนนรวม —
+ * ฟอร์มกระดาษของภาคไม่ได้เขียนเกณฑ์ผ่านไว้ จึงไม่เดาเกณฑ์แทนภาค
+ * ส่วนใบ RPD design มีเกณฑ์ชัดว่าต้องผ่านทุกข้อ จึงใช้ผลจริง
+ */
+export function sect2GateValue(
+  formKey: string,
+  rows: ReadonlyArray<{ formKey: string; total?: number | null; passed?: boolean }>,
+): boolean | undefined {
+  const mine = rows.filter((r) => r.formKey === formKey);
+  if (formKey === 'rpdDesign') {
+    const decided = mine.filter((r) => r.passed === true || r.passed === false);
+    return decided.length === 0 ? undefined : decided.some((r) => r.passed === true);
+  }
+  const decided = mine.filter((r) => r.total !== null && r.total !== undefined);
+  return decided.length === 0 ? undefined : true;
+}
+
+/** ธงทั้งสามที่คิดจากใบได้ — คีย์ในใบ → คีย์ธงใน Student.gates
+ *  คีย์ที่ไม่รู้จักคืน undefined (ไม่ใช่ทุก formKey จะมีธง) ผู้เรียกต้องเช็คก่อนใช้ */
+export const SECT2_GATE_OF: Partial<Record<string, 'sect2Removable' | 'sect2Fixed' | 'designRpd'>> = {
+  removable: 'sect2Removable',
+  fixed: 'sect2Fixed',
+  rpdDesign: 'designRpd',
+};

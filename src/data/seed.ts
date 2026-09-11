@@ -10,14 +10,16 @@ import { CATALOG_VERSION, DENTURE_CLASSES_FOR, dentureLabel, typeMeta } from '..
 import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
 import { isAlumni, studentYear } from '../domain/cohort';
-import { RPD_DESIGN_TOPICS, rpdDesignPassed, s2Points, sect2Form } from '../domain/sect2';
+import {
+  RPD_DESIGN_TOPICS, SECT2_GATE_OF, rpdDesignPassed, s2Points, sect2Form, sect2GateValue,
+} from '../domain/sect2';
 import { s3Points, sect3FormsFor } from '../domain/sect3';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, saId, saSectionsFor, type SAValue,
 } from '../domain/selfAssessment';
 import type {
   CheckIn, ClinicGroup, DentureClass, Patient, ProgressUpdate, Sect2Record, Sect3Record,
-  SelfAssessment, Settings, Student, Teacher, WorkType, Workpiece,
+  SelfAssessment, Settings, Student, StudentGates, Teacher, WorkType, Workpiece,
 } from '../domain/types';
 import { cloudEnabled } from '../lib/cloud';
 import { db, kvGet, kvSet } from './db';
@@ -301,7 +303,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 37; // 37: เวลาเช็คอินตรงกับป้าย "มาสาย" (เดิมขึ้น "08:56 · มาสาย")
+export const SEED_VERSION = 38; // 38: ธง Sect II/Design RPD คิดจากใบประเมินในเดโมด้วย
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -562,6 +564,27 @@ async function seedIfEmptyInner(): Promise<void> {
   );
   const portfolio = buildPortfolio(students, teacherOfGroup);
   const selfAssessments = buildSelfAssessments(students);
+
+  /* ธงเงื่อนไขจบของ Sect II / Design RPD ต้องคิดจากใบที่เพิ่งสร้างด้วยกติกาเดียวกับของจริง
+     (`domain/sect2.ts → sect2GateValue`) ไม่ใช่ปล่อยว่างไว้
+     เดิมเดโมเขียนใบ Sect II Fixed ไว้ 58/70 แต่ไม่เคยคิดธง หน้าเกณฑ์ของนักศึกษาจึงขึ้น
+     "0/4 · ยังไม่มีข้อมูลในระบบ" ทั้งที่หน้าอาจารย์โชว์คะแนนอยู่ — อาจารย์ที่เปิดเดโมอ่านว่า
+     ระบบไม่เชื่อมกัน (ผู้ใช้ทัก 11 ก.ย. 69) · OSCE ไม่มีในนี้เพราะไม่มีฟอร์ม อาจารย์ติ๊กเอง */
+  const sect2ByStudent = new Map<string, typeof portfolio.sect2>();
+  for (const r of portfolio.sect2) {
+    sect2ByStudent.set(r.studentId, [...(sect2ByStudent.get(r.studentId) ?? []), r]);
+  }
+  for (const st of students) {
+    const rows = sect2ByStudent.get(st.id) ?? [];
+    if (!rows.length) continue;
+    const gates: StudentGates = { ...(st.gates ?? {}) };
+    for (const [formKey, gateKey] of Object.entries(SECT2_GATE_OF)) {
+      if (!gateKey) continue;
+      const v = sect2GateValue(formKey, rows);
+      if (v === undefined) delete gates[gateKey]; else gates[gateKey] = v;
+    }
+    if (Object.keys(gates).length) st.gates = gates;
+  }
 
   await db.transaction('rw', [db.teachers, db.students, db.groups, db.patients, db.workpieces, db.checkins, db.updates, db.sect2, db.sect3, db.selfAssessments, db.kv], async () => {
     await db.teachers.bulkPut(teachers);

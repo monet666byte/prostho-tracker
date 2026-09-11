@@ -98,6 +98,7 @@ for (const [needle, rel] of [
   ["from '../lib/i18n'", 'lib/i18n.ts'],
   ["from '../lib/image'", 'lib/image.ts'],
   ["from '../lib/rosterParse'", 'lib/rosterParse.ts'],
+  ["from '../domain/sect2'", 'domain/sect2.ts'],
 ] as const) {
   swap(needle, `from '${abs(rel)}'`);
 }

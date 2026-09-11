@@ -15,6 +15,7 @@ import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
   CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+import { SECT2_GATE_OF, sect2GateValue } from '../domain/sect2';
 import { saId } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
 import { byNewestReview, isOthersForm, pickLatestReviews } from '../domain/conflict';
@@ -1489,43 +1490,21 @@ export async function listSect2(studentId?: string, academicYear?: number): Prom
 }
 
 /**
- * ธง 3 อันในโปรไฟล์ นศ. (Sect II Removable/Fixed · Design RPD) เดิมอาจารย์ติ๊กเอง
- * พอมีใบจริงแล้วให้คิดจากใบเสมอ จะได้ไม่ต้องจำไปติ๊กซ้ำอีกที่
+ * ธง 3 อันในโปรไฟล์ นศ. (Sect II Removable/Fixed · Design RPD) — คิดจากใบประเมินเสมอ
  *
- * คิดใหม่จากใบที่เหลือทุกครั้ง ไม่ใช่ "ตั้งเป็นจริงแล้วจบ" —
- * เพราะถ้าอาจารย์ลบใบที่กรอกผิดทิ้ง ธงต้องกลับเป็นยังไม่ผ่านด้วย
- * ไม่งั้นโปรไฟล์จะบอกว่าผ่านทั้งที่ไม่มีหลักฐานอะไรเหลือ และมันไปมีผลกับ "ครบเกณฑ์จบ"
- * (เจอตอนไล่บั๊ก 7 ก.ย. 69 — ลบใบแล้วธงค้างเป็นผ่าน)
- *
- * ใบให้คะแนนถือว่าผ่านเมื่อกาครบทุกหัวข้อ (ฟอร์มกระดาษไม่ได้เขียนเกณฑ์ผ่านไว้)
- * ส่วนใบ RPD design มีเกณฑ์ชัดว่าต้องผ่านทุกข้อ จึงใช้ผลจริง
+ * กติกาอยู่ที่ `domain/sect2.ts → sect2GateValue()` ที่เดียว เพราะตัวสร้างข้อมูลตัวอย่าง
+ * (`data/seed.ts`) ต้องใช้กติกาเดียวกัน ไม่งั้นเดโมจะขัดกับของจริง — เคยขัดมาแล้ว:
+ * เดโมเขียนใบ Sect II Fixed ไว้ 58/70 แต่ธงไม่เคยถูกคิด หน้าเกณฑ์ของ นศ. จึงขึ้น
+ * "0/4 · ยังไม่มีข้อมูลในระบบ" ทั้งที่หน้าอาจารย์โชว์คะแนนอยู่ (ผู้ใช้ทัก 11 ก.ย. 69)
  */
 async function syncSect2Gate(studentId: string, formKey: string): Promise<void> {
   const st = await db.students.get(studentId);
   if (!st) return;
-  const key = formKey === 'removable' ? 'sect2Removable'
-    : formKey === 'fixed' ? 'sect2Fixed'
-      : formKey === 'rpdDesign' ? 'designRpd' : null;
+  const key = SECT2_GATE_OF[formKey];
   if (!key) return;
 
-  const rows = (await db.sect2.where('studentId').equals(studentId).toArray())
-    .filter((r) => r.formKey === formKey);
-  /**
-   * แยก "ยังไม่มีข้อมูล" ออกจาก "ไม่ผ่าน" — สามสถานะ ไม่ใช่สองสถานะ
-   *
-   * ใบที่เพิ่งเปิดแล้วยังไม่ตัดสิน (autosave เก็บหัวฟอร์มไว้เฉยๆ) ไม่ใช่ใบที่ตก
-   * ถ้ามัดรวมเป็น false นักศึกษาจะเห็นหน้าเกณฑ์ตัวเองขึ้น "ยังไม่ผ่าน"
-   * ทั้งที่อาจารย์ยังไม่ได้ตัดสินอะไรเลย — และนี่คือเงื่อนไขจบ (เจอตอนไล่เช็ค 8 ก.ย. 69)
-   *
-   * ไม่มีใบที่ตัดสินแล้วเลย = ลบธงทิ้ง (กลับไปเป็น "ยังไม่มีข้อมูล")
-   * ซึ่งครอบกรณีลบใบทิ้งหมดด้วย — ธงต้องไม่ค้างเป็นผ่าน (บั๊กที่แก้ไปรอบไล่บั๊ก 4)
-   */
-  const decided = formKey === 'rpdDesign'
-    ? rows.filter((r) => r.passed === true || r.passed === false)
-    : rows.filter((r) => r.total !== null && r.total !== undefined);
-  const next = decided.length === 0
-    ? undefined
-    : formKey === 'rpdDesign' ? decided.some((r) => r.passed === true) : true;
+  const rows = await db.sect2.where('studentId').equals(studentId).toArray();
+  const next = sect2GateValue(formKey, rows);
 
   const gates = { ...(st.gates ?? {}) };
   if (gates[key] === next) return;   // ไม่มีอะไรเปลี่ยน อย่าเขียนซ้ำให้ sync ทำงานเปล่า
