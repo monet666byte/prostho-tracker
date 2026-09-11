@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
 import type { ProfileAxis } from '../../domain/analytics';
-import { evaluateCheckIn, reviseCheckIn } from '../../data/repo';
+import { evaluateCheckIn, reviseCheckIn, setCheckInPunctual } from '../../data/repo';
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, supersededBy, supersededTitle, totalScore } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
-import { useAllCheckIns, useAllPatients, useAllStudents, useStepsOnDates, useTeacher } from '../../hooks/data';
+import {
+  useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, useStepsOnDates, useTeacher,
+} from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
+import { patientLabel } from '../../lib/privacy';
 import type { CheckIn } from '../../domain/types';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
@@ -71,6 +74,7 @@ export default function Evaluate() {
   const teacher = useTeacher(session?.teacherId);
   const students = useAllStudents();
   const patients = useAllPatients();
+  const idLevel = useIdentityLevel('session-eval');
   const checkins = useAllCheckIns();
 
   const group = useApp((st) => st.teacherGroup);
@@ -111,6 +115,9 @@ export default function Evaluate() {
   const stepsByKey = useStepsOnDates(inGroup.map((c) => ({ studentId: c.studentId, date: c.date })));
   // ชั้นที่ 3 — ยืนยันโดยระบุชื่อ: ต่อให้หน้าจอขยับ ก่อนบันทึกจะมีกล่องบอกชื่อ นศ. เสมอ
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  /* คาบที่กำลังแก้ป้ายตรงต่อเวลา + เหตุผลที่อาจารย์พิมพ์ (ไม่บังคับ แต่ลงไปใน audit ถ้าพิมพ์) */
+  const [punctualId, setPunctualId] = useState<string | null>(null);
+  const [punctualNote, setPunctualNote] = useState('');
   const signing = useRef(false);
   // แก้คะแนนที่ลงไปแล้ว — คาบที่กำลังแก้ และคะแนนชุดใหม่ที่กำลังกรอก
   const [reviseId, setReviseId] = useState<string | null>(null);
@@ -163,6 +170,31 @@ export default function Evaluate() {
 
   const confirmRow = confirmId ? pendingAll.find((c) => c.id === confirmId) ?? null : null;
   const confirmStudent = confirmRow ? studentById.get(confirmRow.studentId) : undefined;
+  /* หาได้จากทั้งคิวที่รอประเมินและประวัติที่ประเมินแล้ว — ป้ายนี้แก้ได้ทั้งก่อนและหลังลงคะแนน
+     (เวลาที่มาถึงไม่เกี่ยวกับว่าให้คะแนนไปแล้วหรือยัง) */
+  const punctualRow = punctualId ? inGroup.find((c) => c.id === punctualId) ?? null : null;
+  const punctualStudent = punctualRow ? studentById.get(punctualRow.studentId) : undefined;
+
+  const closePunctual = () => { setPunctualId(null); setPunctualNote(''); };
+
+  async function savePunctual(id: string, next: boolean) {
+    const res = await setCheckInPunctual(id, next, teacher?.name ?? currentActor(), punctualNote);
+    closePunctual();
+    if (res.ok) {
+      showToast({
+        message: next
+          ? t('แก้เป็น "ตรงเวลา" แล้ว — บันทึกใน audit log')
+          : t('แก้เป็น "มาสาย" แล้ว — บันทึกใน audit log'),
+        tone: 'success',
+      });
+    } else if (res.reason === 'graduated') {
+      showToast({ message: t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้'), tone: 'warning' });
+    } else if (res.reason === 'nochange') {
+      showToast({ message: t('ค่าเดิมอยู่แล้ว ไม่มีอะไรเปลี่ยน'), tone: 'warning' });
+    } else {
+      showToast({ message: t('ไม่พบคาบนี้แล้ว (อาจถูกลบไป)'), tone: 'warning' });
+    }
+  }
   const shown = new Set(snapshot);
   const pending = pendingAll.filter((c) => shown.has(c.id));
   const incoming = pendingAll.filter((c) => !shown.has(c.id));
@@ -300,9 +332,24 @@ export default function Evaluate() {
                       <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
                         <CalendarCheck size={12} weight="fill" /> {thaiShort(c.date)}{c.checkinAt ? ` · ${t('{time} น.', { time: c.checkinAt })}` : ''}
                       </span>
-                      {!c.punctual && (
-                        <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('มาสาย')}</span>
-                      )}
+                      {/* ป้ายตรงต่อเวลา — กดเพื่อแก้ได้ทั้งสองทาง
+                          `punctual` คิดครั้งเดียวตอนกดเช็คอินจากเวลาเครื่อง แล้วเดิมแก้ไม่ได้เลย
+                          คนที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนเย็นจะถูกบันทึกว่าสายถาวร
+                          แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน (ผู้ใช้เคาะ 11 ก.ย. 69)
+                          ต้องกดได้ทั้งสองสถานะ — ทางเดียวแปลว่าแก้พลาดแล้วแก้กลับไม่ได้ */}
+                      <button
+                        className="badge"
+                        style={{
+                          border: 0, cursor: 'pointer', font: 'inherit',
+                          ...(c.punctual
+                            ? { background: 'var(--fill)', color: 'var(--text-muted)' }
+                            : { background: 'var(--warning-tint)', color: 'var(--warning-dark)' }),
+                        }}
+                        title={t('อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log')}
+                        onClick={() => setPunctualId(c.id)}
+                      >
+                        {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
+                      </button>
                       {c.noPatient && (
                         <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>{t('ไม่มีผู้ป่วย')}</span>
                       )}
@@ -315,7 +362,16 @@ export default function Evaluate() {
                     </div>
                     <div style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-body)', marginTop: 6 }}>
                       {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)' }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
-                      {patient && <span className="mono" style={{ color: 'var(--text-faint)' }}> · {t(patient.name)} (HN {patient.hn})</span>}
+                      {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
+                          ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
+                      {patient && (() => {
+                        const lb = patientLabel(patient, idLevel);
+                        return (
+                          <span className="mono" style={{ color: 'var(--text-faint)' }}>
+                            {' · '}{t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}
+                          </span>
+                        );
+                      })()}
                     </div>
                     {c.note && (
                       <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3, overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
@@ -529,6 +585,42 @@ export default function Evaluate() {
           )}
         </div>
         {/* กล่องยืนยันก่อนลงนาม — ชั้นสุดท้ายกันประเมินผิดคน โชว์ชื่อ+รหัส+วันที่+คะแนนตัวใหญ่ */}
+        {/* แก้ป้ายตรงต่อเวลา — โชว์เวลาที่ระบบจับได้คู่กับเกณฑ์ ให้อาจารย์ตัดสินบนข้อเท็จจริง
+            ไม่ใช่กดเปลี่ยนลอยๆ · เวลาที่ระบบจับได้เป็นข้อเท็จจริง ตรงนี้แก้แค่ "คำตัดสิน" */}
+        {punctualRow && (
+          <div className="confirmwrap" onClick={closePunctual}>
+            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
+              <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
+              <div className="confirmbox__who">{t(punctualStudent?.name ?? '')}</div>
+              <div className="confirmbox__meta">
+                <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
+                {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
+              </div>
+              <p className="confirmbox__note" style={{ textAlign: 'left' }}>
+                {t('ตอนนี้ระบบบันทึกว่า')} <b>{punctualRow.punctual ? t('ตรงเวลา') : t('มาสาย')}</b>
+                {' — '}{t('เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย')}
+                <br />
+                {t('เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม')}
+              </p>
+              <label className="field" style={{ marginTop: 4 }}>
+                <span>{t('เหตุผล (ไม่บังคับ · ลงใน audit log)')}</span>
+                <input
+                  className="input"
+                  value={punctualNote}
+                  onChange={(e) => setPunctualNote(e.target.value)}
+                  placeholder={t('เช่น มาทันแต่ลืมเช็คอิน')}
+                />
+              </label>
+              <div className="confirmbox__actions">
+                <button className="btn btn--sec" onClick={closePunctual}>{t('ยกเลิก')}</button>
+                <button className="btn" onClick={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
+                  {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {confirmRow && (
           <div className="confirmwrap" onClick={() => setConfirmId(null)}>
             <div className="confirmbox" onClick={(e) => e.stopPropagation()}>

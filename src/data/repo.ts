@@ -850,6 +850,54 @@ export async function reviseCheckIn(
   return { ok: true, changed: diffs.length };
 }
 
+/**
+ * แก้ป้าย "มาสาย" ของคาบที่เช็คอินไปแล้ว — อาจารย์เท่านั้น
+ *
+ * ทำไมต้องมี (ผู้ใช้เคาะ 11 ก.ย. 69): `punctual` คิดครั้งเดียวตอนกดเช็คอิน
+ * จากเวลาเครื่อง (เช้าเกิน 09:15 / บ่ายเกิน 13:15 = สาย) แล้วแก้ไม่ได้อีกเลย
+ * นักศึกษาที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนตอนเย็น จะถูกบันทึกว่า "มาสาย" ถาวร
+ * แล้วหน้าประเมินตนเองขึ้นการ์ด "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน (`domain/saFeedback.ts`)
+ * = ระบบกล่าวหาเขาด้วยข้อมูลที่ผิด และไม่มีใครมีทางแก้ให้เลย
+ *
+ * หลักเดียวกับ `reviseCheckIn`: **แก้ได้ แต่ทุกครั้งทิ้งร่องรอย** — audit บันทึกค่าเดิม→ค่าใหม่
+ * พร้อมเวลาเช็คอินจริงที่ใช้ตัดสิน และเหตุผลที่อาจารย์พิมพ์ · แถว audit ลบไม่ได้
+ *
+ * ⚠️ **ไม่แตะ `checkinAt`** — เวลาที่ระบบจับได้เป็นข้อเท็จจริง ห้ามเขียนทับ
+ * ที่แก้คือ "คำตัดสิน" ว่านับเป็นสายไหม ไม่ใช่ "เวลาที่เขามาถึง"
+ * (ฝั่งเซิร์ฟเวอร์ trigger ของ 0006 ก็ยอมให้อาจารย์เท่านั้นเขียนช่องนี้)
+ */
+export type PunctualResult =
+  | { ok: true }
+  | { ok: false; reason: 'missing' }
+  /** นักศึกษาเรียนจบไปแล้ว — แก้ย้อนหลังไม่ได้ (ด่านเดียวกับการแก้คะแนน) */
+  | { ok: false; reason: 'graduated' }
+  | { ok: false; reason: 'nochange' };
+
+export async function setCheckInPunctual(
+  id: string,
+  punctual: boolean,
+  by: string,
+  note?: string,
+): Promise<PunctualResult> {
+  const row = await db.checkins.get(id);
+  if (!row) return { ok: false, reason: 'missing' };
+  if (row.punctual === punctual) return { ok: false, reason: 'nochange' };
+  if (await isGraduatedStudent(row.studentId)) return { ok: false, reason: 'graduated' };
+
+  await db.checkins.put({ ...row, punctual });
+
+  const student = await db.students.get(row.studentId);
+  await logAudit(
+    `แก้ป้ายตรงต่อเวลาคาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId}`
+      + ` · ${row.punctual ? 'ตรงเวลา' : 'มาสาย'}→${punctual ? 'ตรงเวลา' : 'มาสาย'}`
+      + (row.checkinAt ? ` · เวลาที่ระบบจับได้ ${row.checkinAt}` : '')
+      + (note?.trim() ? ` · เหตุผล: ${note.trim()}` : ''),
+    by,
+    { studentId: row.studentId },
+  );
+  return { ok: true };
+}
+
 export async function deleteCheckIn(id: string, actor: string): Promise<void> {
   const row = await db.checkins.get(id);
   if (!row) return;
@@ -1261,7 +1309,9 @@ export async function setWorkpieceReturned(
   });
   await logAudit(
     returned
-      ? `คืนเคส ${w.detail} (${w.patientId})${clean ? ` · ${clean}` : ''}`
+      /* รหัสเคส ไม่ใช่ id ภายใน — id ของผู้ป่วยที่นำเข้าจากชีตคือ hash(รหัสนักศึกษา|HN)
+         ใส่ลงแถว audit ที่ลบไม่ได้ = เก็บค่าที่ไล่ย้อนไปหา HN ได้ไว้ถาวร (กฎข้อ 2 ของโปรเจกต์) */
+      ? `คืนเคส ${w.detail} (${caseCode(w.patientId)})${clean ? ` · ${clean}` : ''}`
       : `ยกเลิกการคืนเคส ${w.detail} — กลับมาเป็นงานที่ทำอยู่`,
     actor,
     { studentId: w.studentId },

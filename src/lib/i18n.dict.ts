@@ -7,6 +7,24 @@ export const DICT: Record<string, string> = {
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล (เพิ่ม 11 ก.ย. 69) ────────────────────────────────────
   'สำรองข้อมูล': 'Backup',
+  // ── แก้ป้ายตรงต่อเวลา (เพิ่ม 11 ก.ย. 69 · ผู้ใช้เคาะ) ─────────────────────
+  'ตรงเวลา': 'On time',
+  'อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log':
+    'Instructors can change this — every change is recorded in the audit log',
+  'แก้ป้ายตรงต่อเวลาของ': 'Change the punctuality mark for',
+  'เช็คอิน {time} น.': 'checked in {time}',
+  'ตอนนี้ระบบบันทึกว่า': 'The system currently records this as',
+  'เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย':
+    'the rule used: after 09:15 for a morning session, after 13:15 for an afternoon one counts as late',
+  'เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม':
+    'The recorded check-in time is not altered — only the judgement of whether it counts as late',
+  'เหตุผล (ไม่บังคับ · ลงใน audit log)': 'Reason (optional · goes into the audit log)',
+  'เช่น มาทันแต่ลืมเช็คอิน': 'e.g. arrived on time but forgot to check in',
+  'เปลี่ยนเป็น "มาสาย"': 'Change to "late"',
+  'เปลี่ยนเป็น "ตรงเวลา"': 'Change to "on time"',
+  'แก้เป็น "ตรงเวลา" แล้ว — บันทึกใน audit log': 'Changed to "on time" — recorded in the audit log',
+  'แก้เป็น "มาสาย" แล้ว — บันทึกใน audit log': 'Changed to "late" — recorded in the audit log',
+  'ค่าเดิมอยู่แล้ว ไม่มีอะไรเปลี่ยน': 'Already set to that — nothing changed',
   // ── ความถาวรของที่เก็บในเครื่อง (เพิ่ม 11 ก.ย. 69) ─────────────────────────
   'ข้อมูลในเครื่องนี้': 'Data stored on this device',
   'เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง': 'The browser has promised not to evict it',

@@ -11,7 +11,8 @@
  *   · cheer.ts    — ข้อความบนหน้าแรกของนักศึกษา พูดผิดคือพูดถึงเคสที่เขาคืนไปแล้ว
  */
 import {
-  caseCode, maskedHn, maskedName, patientLabel, type PatientLike,
+  caseCode, identityLevelFor, maskedHn, maskedName, patientLabel,
+  type IdentitySurface, type PatientLike,
 } from '../src/lib/privacy.ts';
 import {
   academicYear, clock, daysUntil, relative, thaiLong, thaiShort, toISODate, toSheetDate, weekMonday,
@@ -273,6 +274,48 @@ ok('วันเปิดตัว 1 ก.ย. 69 ได้ประโยคแ�
 ok('ย้อนก่อนวันเปิดตัวก็ยังได้ประโยค ไม่ใช่ undefined',
   typeof dailyQuote(new Date('2026-08-01T09:00')) === 'string' && !!dailyQuote(new Date('2026-08-01T09:00')),
   dailyQuote(new Date('2026-08-01T09:00')));
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   หน้าไหนเห็นตัวตนผู้ป่วยได้แค่ไหน — ต่อเข้าหน้าจอแล้ว 11 ก.ย. 69 (ผู้ใช้สั่ง "เปิดเลย")
+   ตารางนี้เป็นข้อเสนอที่ยังรอภาควิชาเคาะ · เทสต์คุมสองทางพร้อมกัน:
+   ของที่ต้องเห็นห้ามถูกปิดบัง (ไม่งั้นคนทำงานไม่ได้) · ของที่ไม่ต้องเห็นห้ามหลุด
+   ═══════════════════════════════════════════════════════════════════════════ */
+console.log('\nidentityLevelFor — หน้าไหนเห็นอะไร');
+{
+  const MASK = true;
+  const OFF = false;
+
+  ok('นักศึกษาดูเคสของตัวเอง → เห็นเต็ม แม้เปิดสวิตช์ปิดบัง (เขาเป็นคนตรวจคนไข้คนนั้นเอง)',
+    identityLevelFor('own-case', MASK) === 'full');
+
+  ok('อาจารย์ตรวจงานรายเคส → เห็นเต็ม (ต้องจับคู่กับแฟ้มคนไข้จริงเพื่อเซ็นรับงาน)',
+    identityLevelFor('teacher-case-review', MASK) === 'full');
+
+  ok('หน้านำเข้าชีต → เห็นเต็ม (เห็นไม่ครบ = ตรวจไม่ได้ว่าอ่านถูก)',
+    identityLevelFor('sheet-import', MASK) === 'full');
+
+  /* ใบ Section II/III พิมพ์ออกไปลงนาม ชื่อ+HN เป็นเนื้อหาของใบ
+     ปิดบังตรงนี้จะได้ "ชิปเขียน PT-XXXXX แต่ชื่อจริงโผล่ในช่อง" = ปิดบังหลอกตา */
+  ok('ใบประเมิน Section II/III → เห็นเต็ม (เป็นเอกสารของผู้ป่วยรายนั้น)',
+    identityLevelFor('case-form', MASK) === 'full');
+
+  ok('⭐ ให้คะแนนรายคาบ → ปิดบัง (ให้คะแนนนักศึกษา คนไข้เป็นแค่บริบท)',
+    identityLevelFor('session-eval', MASK) === 'initials');
+
+  ok('ปิดสวิตช์แล้วกลับไปพฤติกรรมเดิมทุกหน้า — ภาคเลือกได้ ไม่ใช่บังคับ',
+    (['own-case', 'teacher-case-review', 'sheet-import', 'case-form', 'session-eval'] as IdentitySurface[])
+      .every((sf) => identityLevelFor(sf, OFF) === 'full'));
+
+  // ระดับ initials ต้องยังแยกคนสองคนออกจากกันได้จริง ไม่ใช่กลายเป็นก้อนเดียวกันหมด
+  const pa: PatientLike = { id: 'p-1', name: 'สมชาย ใจดี', hn: 'HN-111' };
+  const pb: PatientLike = { id: 'p-2', name: 'สมหญิง ใจงาม', hn: 'HN-222' };
+  const la = patientLabel(pa, identityLevelFor('session-eval', MASK));
+  const lb = patientLabel(pb, identityLevelFor('session-eval', MASK));
+  ok('ป้ายของคนละคนไม่เหมือนกัน (อาจารย์ต้องแยกคาบออกจากกันได้)',
+    la.name !== lb.name, `${la.name} / ${lb.name}`);
+  ok('ป้ายที่ปิดบังแล้วไม่มีชื่อเต็มและไม่มี HN หลุด',
+    !la.name.includes('สมชาย') && !la.hn.includes('111'), `${la.name} · ${la.hn}`);
+}
 
 console.log(bad ? `\n❌ ไม่ผ่าน ${bad} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(bad ? 1 : 0);

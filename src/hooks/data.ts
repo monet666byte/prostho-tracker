@@ -1,3 +1,6 @@
+import { useSyncExternalStore } from 'react';
+import { onPdpaPolicy, pdpaPolicy } from '../data/pdpaSync';
+import { identityLevelFor, type IdentityLevel, type IdentitySurface } from '../lib/privacy';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
@@ -177,4 +180,16 @@ export function useSect2(studentId?: string, academicYear?: number) {
     [studentId, academicYear],
     [],
   ) ?? [];
+}
+
+/**
+ * ระดับที่หน้านี้ได้เห็นตัวตนผู้ป่วย — เปลี่ยนตามนโยบายของภาคแบบสด ๆ
+ *
+ * หัวหน้าภาคสลับสวิตช์ `maskByDefault` แล้วทุกเครื่องต้องเปลี่ยนตามภายในรอบ sync
+ * ไม่ใช่ต้องปิดแอปเปิดใหม่ — หน้าจอที่ยังเปิดค้างอยู่คือหน้าจอที่กำลังมีคนดูข้อมูลอยู่
+ * ตารางว่าหน้าไหนได้ระดับไหน อยู่ที่ `lib/privacy.ts → identityLevelFor()` ที่เดียว
+ */
+export function useIdentityLevel(surface: IdentitySurface): IdentityLevel {
+  const pol = useSyncExternalStore(onPdpaPolicy, pdpaPolicy, pdpaPolicy);
+  return identityLevelFor(surface, pol.maskByDefault);
 }
