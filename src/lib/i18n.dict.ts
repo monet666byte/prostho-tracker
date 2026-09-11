@@ -5,6 +5,21 @@
 export const DICT: Record<string, string> = {
   // ── ฟอร์มเปิดชิ้นงาน: บอกว่าขาดช่องไหน (เพิ่ม 10 ก.ย. 69) ────────────────
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
+  // ── แผงสำรองข้อมูล (เพิ่ม 11 ก.ย. 69) ────────────────────────────────────
+  'สำรองข้อมูล': 'Backup',
+  'ดาวน์โหลดข้อมูลทั้งระบบเป็นไฟล์เดียวเก็บไว้ — Supabase แผนที่ใช้อยู่ไม่มีสำเนาอัตโนมัติ':
+    'Download the whole system as a single file — the current Supabase plan has no automatic backups',
+  'ไฟล์นี้มีชื่อและ HN ผู้ป่วยครบทุกแถว · ทุกครั้งที่กดถูกบันทึกใน audit log':
+    "This file contains every patient's name and HN · each download is recorded in the audit log",
+  '⚠️ ไม่รวมไฟล์รูปงาน (รูปอยู่คนละที่) — รูปต้องสำรองด้วยคำสั่ง npm run backup':
+    '⚠️ Case photos are not included (stored separately) — back those up with npm run backup',
+  'ดาวน์โหลดไฟล์สำรองข้อมูล': 'Download backup file',
+  'กำลังรวบรวม…': 'Collecting…',
+  'สำรองแล้ว {n} แถว — ยังไม่รวมรูป {p} ใบ': 'Backed up {n} rows — {p} photos not included',
+  'สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค': 'Only the department head can back up the whole system',
+  'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกแบบมีชื่อและ HN ให้หัวหน้าภาค':
+    'The department has not enabled identified export for the department head',
+  'สำรองข้อมูลไม่สำเร็จ': 'Backup failed',
   'กรอกเลขรุ่น DTMU ก่อน แล้วระบบจะบอกว่ารุ่นนี้ขึ้นปี 5 ปีการศึกษาไหน': 'Enter the DTMU cohort number first and the system will show which academic year they start year 5',
   'ชิ้นงาน จากทั้งหมด {n} ชิ้นของรุ่นที่กำลังเรียน': 'workpieces, out of {n} belonging to cohorts currently enrolled',
   'ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}': 'Stuck on the same step {a} · silent over {b} days {c} · no case yet {e} · behind plan {d}',

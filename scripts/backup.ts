@@ -12,15 +12,33 @@
  *   BACKUP_EMAIL, BACKUP_PASSWORD              ← บัญชีที่เป็นหัวหน้าภาค (เห็นข้อมูลครบ)
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
-/** ตาราง → คอลัมน์ที่ใช้เรียงตอนดึงทีละหน้า (ต้องเรียงคงที่ ไม่งั้นแถวซ้ำ/ตกหล่น) */
+/**
+ * ตาราง → คอลัมน์ที่ใช้เรียงตอนดึงทีละหน้า (ต้องเรียงคงที่ ไม่งั้นแถวซ้ำ/ตกหล่น)
+ *
+ * ⚠️ **รายการนี้ต้องครบเท่ากับ `TABLES` ใน `src/data/cloudSync.ts` เสมอ**
+ * เพิ่มตารางใหม่ในแอปแล้วลืมมาเพิ่มที่นี่ = ตารางนั้นไม่เคยถูกสำรอง และไม่มี error ให้ใครเห็น
+ * เจอจริง 11 ก.ย. 69: ขาด `self_assessments` · `sect2_records` · `sect3_records` ·
+ * `settings` · `pdpa_policy` — ทั้งหมดเป็นของที่เพิ่มใน migration 0010/0012/0014/0016
+ * แปลว่าคำตอบแบบประเมินตนเองกับสมุด Section II/III ทั้งเล่ม "ไม่เคยมีสำเนา" มาตลอด
+ * `test:offline` ข้อ ⑦ เทียบสองรายการให้ทุกครั้งที่รัน npm test — ลืมแล้วเทสต์ฟ้องเอง
+ */
 const TABLES: Array<[table: string, orderBy: string]> = [
   ['teachers', 'id'], ['students', 'id'], ['groups', 'code'], ['patients', 'id'],
   ['workpieces', 'id'], ['updates', 'id'], ['photos', 'id'], ['checkins', 'id'],
   ['reviews', 'id'], ['submissions', 'id'], ['issues', 'student_id'], ['audit', 'id'],
   ['invites', 'email'], ['app_users', 'uid'],
+  // เพิ่ม 11 ก.ย. 69 — ของที่หายไปจากสำเนาทุกชุดก่อนหน้านี้
+  ['self_assessments', 'id'], ['sect2_records', 'id'], ['sect3_records', 'id'],
+  /* แถวเดียวทั้งคู่ แต่เป็น "กติกาของภาค" ที่ถ้าหายแล้วตั้งใหม่เองไม่ได้ว่าเคยตั้งไว้เท่าไหร่
+     ⚠️ ตารางค่าตั้งชื่อ `app_settings` ไม่ใช่ `settings` (0014) — เขียนผิดจะได้ 404
+     แล้วสคริปต์เตือนแล้วข้ามไป คือได้ไฟล์เปล่าโดยไม่มีใครรู้ */
+  ['app_settings', 'id'], ['pdpa_policy', 'id'],
 ];
+
+/** บักเก็ตรูปงาน — ไบต์รูปอยู่ที่นี่ ไม่ได้อยู่ในตาราง (migration 0018) */
+const PHOTO_BUCKET = 'case-photos';
 
 /** เก็บย้อนหลังกี่วัน — เกินนี้ลบทิ้งอัตโนมัติ กันดิสก์เต็ม */
 const KEEP_DAYS = 30;
@@ -100,15 +118,57 @@ async function main() {
     total += rows.length;
   }
 
+  /* ── ไบต์รูปงาน ────────────────────────────────────────────────────────────
+     ตาราง `photos` เก็บแค่ `storage_path` — ตัวไฟล์อยู่ในบักเก็ต ถ้าไม่ดึงมาด้วย
+     สำเนาที่ได้คือ "รายการว่ามีรูปอยู่" ไม่ใช่ตัวรูป · รูปในปากคนไข้ถ่ายซ้ำไม่ได้
+     จึงเป็นของชิ้นเดียวในระบบที่หายแล้วไม่มีทางสร้างใหม่ (เพิ่ม 11 ก.ย. 69)
+
+     เก็บชื่อไฟล์ตาม storage_path เดิมทั้งเส้นทาง (ขึ้นต้นด้วย student_id ตาม RLS ของ 0018)
+     เพื่อให้กู้กลับได้ตรงตำแหน่ง และตัว path ไม่มีชื่อ/HN คนไข้อยู่แล้วตามกฎของโปรเจกต์ */
+  let photoOk = 0;
+  let photoFail = 0;
+  let photoBytes = 0;
+  const photoRows = JSON.parse(readFileSync(join(dir, 'photos.json'), 'utf8')) as
+    Array<{ id?: string; storage_path?: string | null }>;
+  const paths = photoRows.map((r) => r.storage_path).filter((p): p is string => !!p);
+  const missingPath = photoRows.length - paths.length;
+  if (paths.length) {
+    console.log(`   (กำลังดึงไฟล์รูป ${paths.length} ใบ…)`);
+    for (const path of paths) {
+      const res = await fetch(
+        `${url}/storage/v1/object/${PHOTO_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`,
+        { headers },
+      );
+      if (!res.ok) {
+        console.warn(`  ⚠ รูป ${path}: ${res.status}`);
+        photoFail++;
+        continue;
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      const dest = join(dir, 'photos', path);
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, buf);
+      photoBytes += buf.length;
+      photoOk++;
+    }
+  }
+
   writeFileSync(
     join(dir, '_meta.json'),
-    JSON.stringify({ takenAt: new Date().toISOString(), url, tables: summary, total }, null, 1),
+    JSON.stringify({
+      takenAt: new Date().toISOString(), url, tables: summary, total,
+      photos: { files: photoOk, failed: photoFail, rowsWithoutPath: missingPath, bytes: photoBytes },
+    }, null, 1),
     'utf8',
   );
 
   console.log(`✓ สำรองข้อมูลแล้ว → ${dir}`);
   for (const [t, n] of Object.entries(summary)) console.log(`   ${t.padEnd(12)} ${n}`);
   console.log(`   รวม ${total} แถว`);
+  console.log(`   รูปงาน       ${photoOk} ใบ (${(photoBytes / 1048576).toFixed(1)} MB)`);
+  /* ต้องบอกให้รู้เสมอว่าสำเนานี้ "ไม่ครบ" — สำเนาที่ขาดโดยไม่มีใครรู้แย่กว่าไม่มีสำเนา */
+  if (photoFail) console.warn(`   ⚠ ดึงรูปไม่ได้ ${photoFail} ใบ — สำเนาชุดนี้ยังไม่ครบ`);
+  if (missingPath) console.warn(`   ⚠ มีแถวรูป ${missingPath} แถวที่ยังไม่มี storage_path (ยังไม่ได้อัปขึ้นคลาวด์)`);
 
   // ลบชุดเก่าเกิน KEEP_DAYS
   const all = existsSync('backups') ? readdirSync('backups').filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort() : [];

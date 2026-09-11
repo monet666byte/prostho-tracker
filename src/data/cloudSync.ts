@@ -60,7 +60,12 @@ const toSnake = (s: string) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
 function toRow(def: TableDef, obj: Record<string, unknown>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
-    if (k === 'updated_at') continue;
+    /* ต้องตัดทั้งสองสะกด — แถวที่ pullAll ดึงลงมาผ่าน fromRow() จะมีช่องชื่อ `updatedAt`
+       ติดมาด้วย ถ้าตัดแค่ `updated_at` มันจะถูกแปลงกลับเป็น updated_at ตอนส่งขึ้น
+       = เอาตราเวลาฝั่ง client ยัดกลับเข้าตู้กลาง ซึ่งเป็นต้นทางของบั๊ก
+       "เครื่องนาฬิกาเพี้ยนทำให้ทุกเครื่องหยุดดึงข้อมูล" ที่เจอ 9 ก.ย. 69
+       (ตอนนี้ trigger ของ 0017 เขียนทับให้ แต่ห้ามพึ่งด่านเดียว) */
+    if (k === 'updated_at' || k === 'updatedAt') continue;
     row[def.rename?.[k] ?? toSnake(k)] = v === undefined ? null : v;
   }
   return row;
@@ -99,6 +104,7 @@ function markDirty(local: string, keys: unknown[]) {
   let set = dirty.get(local);
   if (!set) dirty.set(local, (set = new Set()));
   keys.forEach((k) => k !== undefined && !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  persistOutboxSoon();
   if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }
 
@@ -137,7 +143,97 @@ function markDelete(local: string, keys: unknown[]) {
   let set = pendingDeletes.get(local);
   if (!set) pendingDeletes.set(local, (set = new Set()));
   keys.forEach((k) => !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  persistOutboxSoon();
   if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   คิวรอส่งต้องทนการปิดแท็บ — ไม่ใช่อยู่แค่ในหน่วยความจำ
+
+   บั๊กที่พิสูจน์ได้ 11 ก.ย. 69 (ดู scripts/test-offline.mts ข้อ ①):
+   `dirty` / `pendingDeletes` เป็น Map ธรรมดา หายไปพร้อมแท็บ · ไม่มีตัว flush ตอน pagehide
+   พอเปิดแอปรอบหน้า `pullAll()` ทำงานก่อนแล้ว bulkPut ทับแถวท้องถิ่นด้วยฉบับบนเซิร์ฟเวอร์
+   (ตัวกัน `skip` อ่านจาก `dirty` ที่ตอนนี้ว่างเปล่า)
+
+   ผลที่เกิดจริง: นักศึกษากด step ตอนออฟไลน์ในคลินิก → ปิดแท็บ/iOS เก็บแท็บพื้นหลัง →
+   เปิดใหม่ตอนมีเน็ต → step หายไปเฉยๆ **แต่แถว `updates` เป็นแถวใหม่จึงรอด**
+   จึงได้สภาพที่แย่กว่าข้อมูลหายเฉยๆ คือ "ประวัติบอกว่าทำแล้ว แต่เคสบอกว่ายังไม่ทำ"
+   และหน้าต่างของปัญหาไม่ใช่ 1.5 วิ แต่คือ **ทั้งช่วงที่ออฟไลน์** เพราะ flush ที่ล้ม
+   จะคาคิวไว้ลองใหม่ทุก 15 วิ
+
+   กติกาที่ยึดตอนนี้: **คิวคือของที่ต้องอยู่รอดเท่ากับข้อมูล** จึงเขียนลง IndexedDB (ตาราง kv)
+   ทุกครั้งที่คิวขยับ แล้วอ่านกลับมา *ก่อน* pullAll รอบแรกเสมอ
+
+   ⚠️ เขียนแบบเลื่อนไป macrotask ถัดไป (setTimeout 0) ไม่เขียนใน mutate ตรงๆ —
+   ตอน mutate ยังอยู่ใน transaction ของ Dexie การเปิดเขียนตารางอื่นซ้อนเข้าไปจะค้าง
+   ⚠️ ตาราง kv ไม่อยู่ใน TABLES จึงไม่ถูก middleware ดัก (ไม่เกิดวงวนคิวเขียนคิว)
+   ══════════════════════════════════════════════════════════════════════════════ */
+const OUTBOX_KEY = 'syncOutbox';
+
+interface OutboxSnapshot {
+  dirty: Array<[string, unknown[]]>;
+  deletes: Array<[string, unknown[]]>;
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let outboxRestored = false;
+
+/** เก็บเฉพาะตารางที่มีคีย์จริง — markDirty ทิ้ง Set ว่างไว้ใน map เป็นปกติ
+ *  ถ้าเก็บด้วยจะได้ snapshot ที่ "ไม่ว่าง" ทั้งที่ไม่มีอะไรค้าง คนอ่านโค้ดต่อจะเข้าใจผิด */
+function snapshotOutbox(): OutboxSnapshot {
+  const pick = (m: Map<string, Set<unknown>>): Array<[string, unknown[]]> =>
+    [...m].filter(([, keys]) => keys.size > 0).map(([t, keys]) => [t, [...keys]]);
+  return { dirty: pick(dirty), deletes: pick(pendingDeletes) };
+}
+
+/** เขียนคิวลงเครื่องเดี๋ยวนี้ — ใช้ตอน pagehide ที่ไม่มีเวลาให้รอ macrotask */
+export async function persistOutboxNow(): Promise<void> {
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  try {
+    await kvSet(OUTBOX_KEY, snapshotOutbox());
+  } catch {
+    /* เขียนไม่ได้ (ดิสก์เต็ม/หน้าต่างส่วนตัว) — คิวในหน่วยความจำยังทำงานต่อได้ */
+  }
+}
+
+function persistOutboxSoon(): void {
+  if (persistTimer || !outboxRestored) return;
+  persistTimer = setTimeout(() => { persistTimer = null; void persistOutboxNow(); }, 0);
+}
+
+/**
+ * อ่านคิวของเซสชันก่อนกลับเข้าหน่วยความจำ — **ต้องเรียกก่อน pullAll ครั้งแรก**
+ * ไม่ใช่แค่เพื่อส่งของค้าง แต่เพราะ `skip` ของ pullAll อ่านจากคิวนี้
+ * ถ้าอ่านทีหลัง pull รอบแรกจะทับของที่ยังไม่ได้ส่งไปแล้ว
+ */
+export async function restoreOutbox(): Promise<void> {
+  if (outboxRestored) return;
+  try {
+    const snap = await kvGet<OutboxSnapshot | null>(OUTBOX_KEY, null);
+    if (snap) {
+      for (const [t, keys] of snap.dirty ?? []) {
+        if (!byLocal.has(t) || !keys.length) continue;
+        dirty.set(t, new Set([...(dirty.get(t) ?? []), ...keys]));
+      }
+      for (const [t, keys] of snap.deletes ?? []) {
+        if (!byLocal.has(t) || !keys.length) continue;
+        pendingDeletes.set(t, new Set([...(pendingDeletes.get(t) ?? []), ...keys]));
+      }
+    }
+  } catch {
+    /* อ่านไม่ได้ = เริ่มด้วยคิวว่าง ซึ่งเป็นสภาพเดิมก่อนมีไฟล์นี้ */
+  }
+  outboxRestored = true;
+}
+
+/** ล้างคิวทั้งในหน่วยความจำและในเครื่อง — ใช้ตอนผูกบัญชีใหม่/รีเซ็ต ที่ลิ้นชักถูกล้างไปด้วย */
+async function clearOutbox(): Promise<void> {
+  dirty.clear();
+  pendingDeletes.clear();
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  try {
+    await kvSet(OUTBOX_KEY, { dirty: [], deletes: [] });
+  } catch { /* ไม่เป็นไร */ }
 }
 
 /** ตารางไหนส่งไม่ผ่านซ้ำๆ (ยามปฏิเสธถาวร) — เลิกลองหลังครบโควตา ไม่วนรบกวนเน็ตทุก 15 วิ */
@@ -270,6 +366,8 @@ async function flush(): Promise<void> {
     sent.forEach((k) => keys.delete(k));
     if (!keys.size) map.delete(local);
     else if (!flushTimer) flushTimer = setTimeout(() => void flush(), 1500); // ของที่เข้าคิวระหว่างทาง ส่งต่อรอบหน้า
+    // คิวหดก็ต้องบันทึก ไม่ใช่บันทึกแค่ตอนโต — ไม่งั้นเปิดใหม่จะส่งของที่ขึ้นไปแล้วซ้ำ
+    persistOutboxSoon();
   };
 
   // ลบก่อน (แถวที่ถูกลบ local)
@@ -466,8 +564,9 @@ async function bindToUser(uid: string): Promise<boolean> {
   setSyncPaused(true);
   try {
     for (const def of TABLES) await db.table(def.local).clear();
-    dirty.clear();
-    pendingDeletes.clear();
+    // บัญชีใหม่ = ลิ้นชักถูกล้าง คิวของบัญชีก่อนหน้าจึงชี้ไปที่แถวที่ไม่มีอยู่แล้ว
+    // ต้องล้างสำเนาในเครื่องด้วย ไม่ใช่แค่ในหน่วยความจำ ไม่งั้นรอบหน้าอ่านกลับมาแล้วส่งของคนอื่น
+    await clearOutbox();
     lastPulled.clear();
     quarantine.clear(); // ของที่กักไว้เป็นของบัญชีก่อนหน้า ไม่ใช่ของคนที่เพิ่งล็อกอิน
   } finally {
@@ -491,6 +590,9 @@ export async function initCloudSync(): Promise<void> {
       return; // ยังไม่ล็อกอิน — ไม่แตะตู้กลาง
     }
     const freshBind = await bindToUser(auth.user.id);
+    /* อ่านคิวของเซสชันก่อนกลับมา **ก่อน** pullAll รอบแรกเสมอ
+       (bindToUser ล้างคิวให้แล้วถ้าเป็นบัญชีใหม่ — ตรงนี้จึงอ่านเฉพาะของบัญชีเดิม) */
+    await restoreOutbox();
 
     const { count, error } = await supabase!.from('students').select('*', { count: 'exact', head: true });
     if (error) {
@@ -502,6 +604,10 @@ export async function initCloudSync(): Promise<void> {
       // ตู้กลางยังว่างจริงๆ (ครั้งแรกสุดของทั้งระบบ) → เอา fixture ในเครื่องขึ้นไปตั้งต้น
       await pushAll();
     } else {
+      /* ⚠️ ลำดับสำคัญ: ส่งของค้างขึ้นก่อน แล้วค่อยดึงลง — เหมือนรอบ 15 วิ
+         ถ้าดึงก่อน ฉบับเก่าบนตู้จะทับงานที่ทำไว้ตอนออฟไลน์ (ซึ่ง pullAll กันไว้ด้วย skip
+         แต่ส่งขึ้นก่อนได้ผลตรงกว่า: เซิร์ฟเวอร์ได้ของใหม่ แถวที่ดึงลงมาก็เป็นฉบับที่ถูกแล้ว) */
+      if (!freshBind) await flush();
       await pullAll();
       // เพิ่งผูกบัญชีใหม่ = ลิ้นชักเพิ่งล้าง ไม่มีอะไรต้องดันขึ้น (และกันดัน fixture ของคนอื่น)
       if (!freshBind) await pushAll(); // ดันของท้องถิ่นที่ตู้ยังไม่มี (กันงานหายช่วงออฟไลน์)
@@ -530,7 +636,18 @@ export async function initCloudSync(): Promise<void> {
           await runPumpHooks();
           await pullAll();
         })();
+      } else {
+        // ซ่อนจอ = จังหวะที่มือถืออาจไม่กลับมาอีกเลย เขียนคิวลงเครื่องให้เสร็จก่อน
+        void persistOutboxNow();
+        void flush();
       }
+    });
+    /* ปิดแท็บ/สลับแอปบน iOS — pagehide คือ event สุดท้ายที่เชื่อถือได้
+       (beforeunload ไม่ยิงบน iOS · unload ถูก browser รุ่นใหม่เลิกรองรับ)
+       เขียนคิวลงเครื่องเป็นงานแรก แล้วค่อยพยายามส่ง — ถ้าแท็บตายกลางทางอย่างน้อยคิวอยู่รอด */
+    window.addEventListener('pagehide', () => {
+      void persistOutboxNow();
+      void flush();
     });
   } catch {
     // ต่อตู้กลางไม่ได้ (เน็ตล่ม ฯลฯ) — แอปทำงาน local ต่อได้ปกติ
@@ -540,8 +657,13 @@ export async function initCloudSync(): Promise<void> {
 /** ออกจากระบบ — ปลดสถานะ sync ให้ล็อกอินรอบหน้าเริ่มใหม่สะอาดๆ */
 export function stopCloudSync(): void {
   started = false;
+  /* ล้างเฉพาะในหน่วยความจำ — **ห้ามล้างสำเนาในเครื่อง**
+     ออกจากระบบแล้วเข้าใหม่ด้วยบัญชีเดิม งานที่ยังไม่ขึ้นต้องยังได้ส่ง
+     (ถ้าเป็นบัญชีอื่น bindToUser จะล้างทั้งลิ้นชักและคิวให้เองตอนผูกใหม่)
+     และต้องปลดธง restored ไม่งั้น init รอบหน้าจะคิดว่าอ่านคิวมาแล้วทั้งที่ยังไม่ได้อ่าน */
   dirty.clear();
   pendingDeletes.clear();
+  outboxRestored = false;
   lastPulled.clear();
   quarantine.clear();
   problemListeners.forEach((fn) => fn());
@@ -553,6 +675,8 @@ export async function cloudReset(): Promise<void> {
   setSyncPaused(true);
   try {
     for (const def of TABLES) await db.table(def.local).clear();
+    // ลิ้นชักว่างแล้ว คิวที่ชี้ไปที่แถวที่ไม่มีอยู่จึงต้องหายไปด้วย (ทั้งในเครื่อง)
+    await clearOutbox();
     lastPulled.clear(); // ไม่งั้นตัวเช็ค "ไม่มีอะไรใหม่" จะข้ามการดึงกลับ
   } finally {
     setSyncPaused(false);

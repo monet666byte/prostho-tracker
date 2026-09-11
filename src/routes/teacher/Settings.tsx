@@ -1,4 +1,4 @@
-import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
+import { DownloadSimple, Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
@@ -13,6 +13,7 @@ import { saYearNow } from '../../domain/saFeedback';
 import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { ensureAlumniSeeded } from '../../data/seed';
+import { downloadFullBackup } from '../../data/fullBackup';
 import { currentActor, currentPdpaRole, useApp } from '../../store/app';
 import { onPdpaPolicy, pdpaPolicy, savePdpaPolicy, type PdpaPolicy, type PdpaRole } from '../../data/pdpaSync';
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
@@ -333,6 +334,8 @@ export default function Settings() {
               )}
             </div>
 
+            <BackupPanel />
+
             <PdpaPanel />
 
             <div className="panel">
@@ -460,6 +463,68 @@ const EXPORT_ROLE_LABELS: Array<[PdpaRole, string]> = [
   ['teacher', t('อาจารย์')],
   ['admin', t('หัวหน้าภาค')],
 ];
+
+/**
+ * สำรองข้อมูลทั้งระบบเป็นไฟล์ — ทางออกที่กดได้เองโดยไม่ต้องเปิด terminal
+ *
+ * ทำไมต้องอยู่ในแอป: ตัวสำรองข้อมูลที่มีอยู่คือ `npm run backup` ซึ่งต้องมี terminal
+ * + `.env.local` + บัญชีหัวหน้าภาค — ไม่มีใครในภาครันได้ · สำเนาชุดล่าสุดตอนตรวจ (11 ก.ย. 69)
+ * คือ 29 ส.ค. ครั้งเดียว และ Supabase แผนฟรีไม่มี backup อัตโนมัติ
+ *
+ * ⚠️ ต้องบอกข้อจำกัดไว้บนหน้าจอตรงๆ ว่า "ไม่รวมไบต์รูป" — สำเนาที่ไม่ครบโดยคนกดไม่รู้
+ * แย่กว่าไม่มีสำเนา เพราะวันที่ต้องกู้จริงถึงจะรู้
+ */
+function BackupPanel() {
+  const { showToast } = useApp();
+  const [busy, setBusy] = useState(false);
+  const isAdmin = currentPdpaRole() === 'admin';
+
+  return (
+    <div className="panel">
+      <h3><DownloadSimple size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('สำรองข้อมูล')}</h3>
+      <p className="sub">
+        {t('ดาวน์โหลดข้อมูลทั้งระบบเป็นไฟล์เดียวเก็บไว้ — Supabase แผนที่ใช้อยู่ไม่มีสำเนาอัตโนมัติ')}
+      </p>
+      <p style={{ margin: '8px 0 0', font: '400 11px/1.7 var(--font-body)', color: 'var(--text-faint)' }}>
+        {t('ไฟล์นี้มีชื่อและ HN ผู้ป่วยครบทุกแถว · ทุกครั้งที่กดถูกบันทึกใน audit log')}
+        <br />
+        {t('⚠️ ไม่รวมไฟล์รูปงาน (รูปอยู่คนละที่) — รูปต้องสำรองด้วยคำสั่ง npm run backup')}
+      </p>
+      {/* ปุ่มเทาโดยไม่บอกเหตุผลคือทางตัน — tooltip ไม่พอ บนมือถือไม่มี hover
+          (บทเรียนเดียวกับปุ่ม "สร้างชิ้นงาน" ที่แก้ไป 10 ก.ย. 69) */}
+      {!isAdmin && (
+        <p style={{ margin: '10px 0 0', font: '500 11.5px var(--font-body)', color: 'var(--text-muted)' }}>
+          {t('สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค')}
+        </p>
+      )}
+      <button
+        className="btn"
+        style={{ marginTop: 12, height: 42, fontSize: 13, width: 'auto', padding: '0 18px' }}
+        disabled={busy || !isAdmin}
+        onClick={() => {
+          setBusy(true);
+          void downloadFullBackup(currentActor())
+            .then((res) => {
+              if (!res.ok) {
+                showToast({ message: t(res.reason ?? 'สำรองข้อมูลไม่สำเร็จ'), tone: 'warning' });
+                return;
+              }
+              showToast({
+                message: t('สำรองแล้ว {n} แถว — ยังไม่รวมรูป {p} ใบ', {
+                  n: res.rows ?? 0, p: res.photosNotIncluded ?? 0,
+                }),
+                tone: 'success',
+              });
+            })
+            .finally(() => setBusy(false));
+        }}
+      >
+        <DownloadSimple size={15} weight="bold" />
+        {busy ? t('กำลังรวบรวม…') : t('ดาวน์โหลดไฟล์สำรองข้อมูล')}
+      </button>
+    </div>
+  );
+}
 
 function PdpaPanel() {
   const { showToast } = useApp();
