@@ -7,6 +7,13 @@ export const DICT: Record<string, string> = {
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล (เพิ่ม 11 ก.ย. 69) ────────────────────────────────────
   'สำรองข้อมูล': 'Backup',
+  // ── ความถาวรของที่เก็บในเครื่อง (เพิ่ม 11 ก.ย. 69) ─────────────────────────
+  'ข้อมูลในเครื่องนี้': 'Data stored on this device',
+  'เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง': 'The browser has promised not to evict it',
+  'เบราว์เซอร์อาจลบทิ้งได้ถ้าเครื่องพื้นที่ไม่พอ — เพิ่มแอปลงหน้าจอโฮมช่วยได้':
+    'The browser may evict it if the device runs low on space — adding the app to your home screen helps',
+  'เบราว์เซอร์นี้ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน (Safari/iPhone) — เพิ่มแอปลงหน้าจอโฮมจะไม่ถูกลบ':
+    'This browser clears site data untouched for 7 days (Safari/iPhone) — adding the app to your home screen exempts it',
   'ดาวน์โหลดข้อมูลทั้งระบบเป็นไฟล์เดียวเก็บไว้ — Supabase แผนที่ใช้อยู่ไม่มีสำเนาอัตโนมัติ':
     'Download the whole system as a single file — the current Supabase plan has no automatic backups',
   'ไฟล์นี้มีชื่อและ HN ผู้ป่วยครบทุกแถว · ทุกครั้งที่กดถูกบันทึกใน audit log':

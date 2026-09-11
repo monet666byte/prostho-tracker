@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty }
 import { cloudEnabled } from '../lib/cloud';
 import { toISODate } from '../lib/date';
 import { isInstalled } from '../lib/install';
+import { requestPersistentStorage } from '../lib/storagePersist';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
 import type { PdpaRole } from '../data/pdpaSync';
@@ -183,6 +184,11 @@ export const useApp = create<AppState>((set, get) => ({
         initError: isBlockedByOtherTab() ? 'OTHER_TAB' : 'STUCK',
       });
     }, 15_000);
+
+    /* ขอให้เบราว์เซอร์ไม่ลบที่เก็บของเราทิ้งเอง — ยิงแล้วไม่รอ (ไม่ใช่เงื่อนไขของการเปิดแอป)
+       Safari/iOS ลบที่เก็บของเว็บที่ไม่ได้เปิดใน 7 วัน · Chromium ลบตอนดิสก์ใกล้เต็ม
+       ข้อมูลที่ยังไม่ได้ขึ้นตู้กลางอยู่ในนั้นทั้งหมด (ดู lib/storagePersist.ts) */
+    void requestPersistentStorage();
 
     try {
       /* ยามตรวจว่าถอดฟอร์มจากสมุดถูกไหม (ผลรวมต้องได้ 10 และ 70) — รันเฉพาะตอน dev

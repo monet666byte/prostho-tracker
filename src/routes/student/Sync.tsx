@@ -1,6 +1,7 @@
 import {
   ArrowLeft, ArrowsClockwise, ArrowsLeftRight, CloudArrowUp, CloudCheck, CloudSlash, EnvelopeSimple,
   ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate, Palette, WarningCircle,
+  HardDrives,
 } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +15,9 @@ import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { currentActor, useApp } from '../../store/app';
+import {
+  onPersistState, persistState, requestPersistentStorage, type PersistState,
+} from '../../lib/storagePersist';
 
 export default function Sync() {
   const navigate = useNavigate();
@@ -28,6 +32,14 @@ export default function Sync() {
    */
   const [problems, setProblems] = useState<SyncProblem[]>(syncProblems);
   useEffect(() => onSyncProblems(() => setProblems(syncProblems())), []);
+  /* สถานะความถาวรของที่เก็บในเครื่อง — init() ยิงคำขอไว้แล้ว ตรงนี้แค่ฟังผล
+     (ถามอีกรอบเผื่อผู้ใช้เปิดหน้านี้ก่อนคำตอบรอบแรกมาถึง) */
+  const [persist, setPersist] = useState<PersistState>(persistState);
+  useEffect(() => {
+    const off = onPersistState(() => setPersist(persistState()));
+    void requestPersistentStorage().then(setPersist);
+    return off;
+  }, []);
 
   return (
     <PlainShell>
@@ -92,6 +104,36 @@ export default function Sync() {
             </button>
           </div>
         )}
+
+        {/* ที่เก็บข้อมูลในเครื่องนี้ถาวรแค่ไหน — เบราว์เซอร์มีสิทธิ์ลบเองได้
+            Safari/iOS ลบที่เก็บของเว็บที่ไม่ได้เปิดใน 7 วัน (ยกเว้นที่เพิ่มลงหน้าจอโฮม)
+            ข้อมูลที่ยังไม่ได้ขึ้นตู้กลางอยู่ในนั้นทั้งหมด ผู้ใช้ควรรู้ ไม่ใช่ให้หายแล้วค่อยรู้
+            ⚠️ ห้ามเขียนว่า "ปลอดภัยแล้ว" — ของที่ปลอดภัยจริงคือของที่ขึ้นตู้กลางแล้ว */}
+        <div
+          className="card"
+          style={{
+            padding: '11px 13px',
+            ...(persist === 'persisted' ? {} : {
+              borderColor: 'var(--warning-border)', background: 'var(--warning-tint)',
+            }),
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <HardDrives size={17} weight={persist === 'persisted' ? 'fill' : 'regular'} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>
+                {t('ข้อมูลในเครื่องนี้')}
+              </span>
+              <span className="pretty" style={{ display: 'block', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
+                {persist === 'persisted'
+                  ? t('เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง')
+                  : persist === 'best-effort'
+                    ? t('เบราว์เซอร์อาจลบทิ้งได้ถ้าเครื่องพื้นที่ไม่พอ — เพิ่มแอปลงหน้าจอโฮมช่วยได้')
+                    : t('เบราว์เซอร์นี้ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน (Safari/iPhone) — เพิ่มแอปลงหน้าจอโฮมจะไม่ถูกลบ')}
+              </span>
+            </span>
+          </div>
+        </div>
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 9 }}>
