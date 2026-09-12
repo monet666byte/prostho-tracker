@@ -11,6 +11,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "backup": "npx --yes tsx scripts/backup.ts",
+    "restore": "npx --yes tsx scripts/restore.ts",
     "build:pages": "tsc -b && vite build --mode pages",
     "test:settings": "npx --yes tsx scripts/test-settings-sync.mts",
     "test:groups": "npx --yes tsx scripts/test-group-year.mts",
@@ -22,13 +23,14 @@
     "test:sync-button": "npx --yes tsx scripts/test-sync-button.mts",
     "test:user-round": "npx --yes tsx scripts/test-user-round.mts",
     "test:offline": "npx --yes tsx scripts/test-offline.mts",
-    "test": "npm run test:rules && npm run test:analytics && npm run test:aggregate && npm run test:forms && npm run test:import && npm run test:settings && npm run test:groups && npm run test:conflict && npm run test:invariants && npm run test:photos && npm run test:core && npm run test:export && npm run test:sa && npm run test:sync-button && npm run test:user-round && npm run test:offline",
+    "test": "npm run test:rules && npm run test:analytics && npm run test:aggregate && npm run test:forms && npm run test:import && npm run test:settings && npm run test:groups && npm run test:conflict && npm run test:invariants && npm run test:photos && npm run test:core && npm run test:export && npm run test:sa && npm run test:sync-button && npm run test:user-round && npm run test:offline && npm run test:restore",
     "test:rules": "npx --yes tsx scripts/test-rules.mts",
     "test:analytics": "npx --yes tsx scripts/test-analytics.mts",
     "test:aggregate": "npx --yes tsx scripts/test-aggregate.mts",
     "test:forms": "npx --yes tsx scripts/test-forms.mts",
     "test:import": "npx --yes tsx scripts/test-sheet-import.mts",
-    "test:photos": "npx --yes tsx scripts/test-photo-storage.mts"
+    "test:photos": "npx --yes tsx scripts/test-photo-storage.mts",
+    "test:restore": "npx --yes tsx scripts/test-restore.mts"
   },
   "dependencies": {
     "@fontsource/anuphan": "^5.3.0",
