@@ -1,4 +1,4 @@
-import { ChalkboardTeacher, GoogleLogo, LockSimple, SignIn, Student, Tooth, WarningCircle } from '@phosphor-icons/react';
+import { ChalkboardTeacher, CheckCircle, GoogleLogo, LockSimple, SignIn, Student, Tooth, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
@@ -7,6 +7,7 @@ import { useApp } from '../store/app';
 import { PhoneFrame } from '../components/student/Shell';
 import { canInstall, isAppleSafari, isInstalled, onInstallChange, promptInstall } from '../lib/install';
 import type { Role } from '../domain/types';
+import { takeSignOutNotice } from '../data/localWipe';
 
 export default function Login() {
   const [role, setRole] = useState<Role | null>(null);
@@ -21,6 +22,10 @@ export default function Login() {
   /* ── ติดตั้งลงหน้าจอโฮม ──
      เบราว์เซอร์ยิง beforeinstallprompt ตอนไหนก็ได้ (บางทีหลังหน้าโหลดไปแล้วหลายวินาที)
      จึงต้องรับแจ้งเปลี่ยนแปลง ไม่ใช่อ่านค่าครั้งเดียวตอน render */
+  /* ผลของการออกจากระบบครั้งก่อน — อ่านครั้งเดียวตอน mount แล้วมันลบตัวเองทิ้ง
+     ต้องมาโผล่ที่นี่ ไม่ใช่เป็น toast: ToastView อยู่ในเชลล์ที่ถูกถอดไปแล้วตอน navigate
+     และข้อความ "ข้อมูลยังอยู่ในเครื่องนี้" เป็นเรื่องที่ต้องอ่านให้ทัน ไม่ใช่แถบที่หายเอง */
+  const [signOutNotice] = useState(takeSignOutNotice);
   const [installable, setInstallable] = useState(canInstall());
   const [installing, setInstalling] = useState(false);
   useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
@@ -85,6 +90,31 @@ export default function Login() {
               {t('ตัวอย่างช่วงเริ่มต้น (~10%) · ข้อมูลสมมติทั้งหมด')}
             </span>
           </div>
+
+          {signOutNotice && (
+            <div
+              role="status"
+              style={{
+                marginTop: 12, borderRadius: 12, padding: '10px 12px', display: 'flex', gap: 8,
+                alignItems: 'flex-start', textAlign: 'left',
+                background: signOutNotice.tone === 'ok' ? 'var(--success-tint)' : 'var(--warning-tint)',
+                border: `1px solid ${signOutNotice.tone === 'ok' ? 'var(--success-mid)' : 'var(--warning-border)'}`,
+              }}
+            >
+              {signOutNotice.tone === 'ok'
+                ? <CheckCircle size={16} weight="fill" style={{ flex: 'none', marginTop: 1, color: 'var(--success)' }} />
+                : <WarningCircle size={16} weight="fill" style={{ flex: 'none', marginTop: 1, color: 'var(--warning-dark)' }} />}
+              <span
+                className="pretty"
+                style={{
+                  font: '500 11px/1.6 var(--font-body)',
+                  color: signOutNotice.tone === 'ok' ? 'var(--success-dark)' : 'var(--warning-dark)',
+                }}
+              >
+                {signOutNotice.message}
+              </span>
+            </div>
+          )}
 
           {cloudEnabled ? (
             <form onSubmit={goCloud} style={{ display: 'grid', gap: 10, marginTop: 20 }}>

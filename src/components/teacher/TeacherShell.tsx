@@ -8,7 +8,7 @@ import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
-import { wipeLocalDataOnSignOut } from '../../data/localWipe';
+import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
 import { BetaBadge } from '../BetaBadge';
 import { groupShort, sortGroupCodes } from '../../domain/group';
@@ -65,7 +65,7 @@ const COHORT_NAV: NavItem[] = [
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup, myGroup, showToast } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   const offGroup = !!myGroup && teacherGroup !== myGroup;
   const teacher = useTeacher(session?.teacherId);
@@ -175,14 +175,10 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 onClick={async () => {
                   const res = await wipeLocalDataOnSignOut();
                   await signOut();
-                  if (res.wiped) {
-                    showToast({ message: t('ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย'), tone: 'success' });
-                  } else if (res.reason === 'pending') {
-                    showToast({
-                      message: t('ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ', { n: res.pending }),
-                      tone: 'warning',
-                    });
-                  }
+                  /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน TeacherShell ตัวนี้เอง
+                     พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
+                     ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
+                  noteSignOutOutcome(res);
                   navigate('/login');
                 }}
                 className="linkbtn"

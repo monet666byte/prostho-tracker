@@ -9,8 +9,10 @@ export const DICT: Record<string, string> = {
   'สำรองข้อมูล': 'Backup',
   // ── ออกจากระบบแล้วล้างข้อมูลในเครื่อง (เพิ่ม 12 ก.ย. 69 · ASVS V14.3.1) ─────
   'ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย': 'Signed out · this device’s copy was cleared too',
-  'ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ':
-    'Signed out, but this device’s copy was kept — {n} item(s) still waiting to upload',
+  /* ข้อความเดิมเคยเป็น toast ซึ่งไม่มีทางถึงตาผู้ใช้ (ToastView อยู่ในเชลล์ที่ถูกถอดตอน navigate)
+     ตอนนี้ไปโผล่บนหน้าเข้าระบบ จึงเขียนบอกทางออกได้ยาวขึ้น — คนอ่านมีเวลาอ่าน */
+  'ออกจากระบบแล้ว แต่ข้อมูลยังอยู่ในเครื่องนี้ — เหลืองานค้างส่ง {n} รายการ ต่อเน็ตแล้วเข้าระบบอีกครั้งเพื่อส่งขึ้นให้ครบ':
+    'Signed out, but this device still holds your data — {n} item(s) never reached the server. Reconnect and sign in again to finish uploading.',
   'ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง':
     'Also clears this device’s copy (when everything is synced) · closing the app clears nothing',
   'ค้นหาเคส': 'Search cases',

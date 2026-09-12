@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
-import { wipeLocalDataOnSignOut } from '../../data/localWipe';
+import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { onSyncProblems, retryQuarantined, syncProblems, type SyncProblem } from '../../data/cloudSync';
 import { useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
@@ -281,14 +281,10 @@ export default function Sync() {
                ⚠️ "ปิดแอป" ไม่เข้าทางนี้ — ปิดแท็บไม่ล้างอะไรเลย ไม่งั้นออฟไลน์ใช้ไม่ได้ */
             const res = await wipeLocalDataOnSignOut();
             await signOut();
-            if (res.wiped) {
-              showToast({ message: t('ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย'), tone: 'success' });
-            } else if (res.reason === 'pending') {
-              showToast({
-                message: t('ออกจากระบบแล้ว แต่ยังไม่ล้างข้อมูลในเครื่อง — เหลืองานค้างส่ง {n} รายการ', { n: res.pending }),
-                tone: 'warning',
-              });
-            }
+            /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน student/Shell.tsx
+               พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
+               ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
+            noteSignOutOutcome(res);
             navigate('/login');
           }}
         >

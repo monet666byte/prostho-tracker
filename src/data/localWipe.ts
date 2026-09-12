@@ -18,6 +18,7 @@
  */
 import { db } from './db';
 import { pendingPushCount } from './cloudSync';
+import { t } from '../lib/i18n';
 import { cloudEnabled } from '../lib/cloud';
 
 /** ตารางที่ถือข้อมูลของผู้ใช้ — `kv` ไม่อยู่ในนี้ (ถือค่าตั้งของเครื่อง ไม่ใช่ข้อมูลผู้ป่วย) */
@@ -47,4 +48,59 @@ export async function wipeLocalDataOnSignOut(): Promise<WipeResult> {
     for (const t of USER_TABLES) await db.table(t).clear();
   });
   return { wiped: true };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ผลของการออกจากระบบต้องไปโผล่ที่ "หน้าเข้าระบบ" ไม่ใช่ toast
+
+   บั๊กที่พิสูจน์ได้ 13 ก.ย. 69 จากการกดจริง:
+   ตัวจัดการปุ่มออกจากระบบทั้งสองฝั่งเขียนว่า `showToast(...)` แล้ว `navigate('/login')`
+   แต่ `ToastView` ถูกเรนเดอร์อยู่ **ข้างใน** `student/Shell.tsx` กับ `teacher/TeacherShell.tsx`
+   เท่านั้น · หน้า `/login` ไม่ได้อยู่ในเชลล์ไหนเลย (ตรวจแล้ว: ไม่มี toast host บนหน้านั้น)
+   → เชลล์ถูกถอด toast ตายไปพร้อมกัน **ข้อความจึงไม่มีทางถึงตาผู้ใช้เลยแม้แต่ครั้งเดียว**
+   (คลาสเดียวกับบั๊กเก่าสองตัวที่จดไว้แล้ว: ToastView อยู่แค่ฝั่งนักศึกษา · ป้ายหลอก)
+
+   และข้อความนี้ **ไม่ควรเป็น toast อยู่แล้ว** — "ข้อมูลยังอยู่ในเครื่องนี้" คือเรื่องที่
+   คนยืมไอแพดต้องอ่านให้ทัน แล้วตัดสินใจ ไม่ใช่แถบที่หายไปเองใน 3 วินาที
+
+   เก็บใน `sessionStorage` โดยเจตนา: อยู่รอดข้ามการเปลี่ยนหน้า แต่ตายไปพร้อมแท็บ
+   ตรงกับขอบเขตของเรื่อง ("คุณเพิ่งออกจากระบบบนเครื่องนี้") · อ่านแล้วลบทิ้งทันที
+   จะได้ไม่ค้างไปโผล่รอบหน้า
+   ══════════════════════════════════════════════════════════════════════════════ */
+const NOTICE_KEY = 'pt-signout-notice';
+
+export interface SignOutNotice {
+  tone: 'ok' | 'warn';
+  message: string;
+}
+
+/** จดผลไว้ให้หน้าเข้าระบบอ่าน — เรียกก่อน navigate ได้เลย ไม่ต้องรอ */
+export function noteSignOutOutcome(res: WipeResult): void {
+  /* โหมด local ไม่มีอะไรต้องบอก: ข้อมูลไม่มีที่อื่นอยู่ ล้างไม่ได้อยู่แล้ว
+     พูดถึงมันจะกลายเป็นคำเตือนที่ผู้ใช้ทำอะไรไม่ได้ */
+  if (!res.wiped && res.reason === 'local-only') return;
+  const notice: SignOutNotice = res.wiped
+    ? { tone: 'ok', message: t('ออกจากระบบแล้ว · ล้างข้อมูลออกจากเครื่องนี้ด้วย') }
+    : {
+        tone: 'warn',
+        message: t('ออกจากระบบแล้ว แต่ข้อมูลยังอยู่ในเครื่องนี้ — เหลืองานค้างส่ง {n} รายการ ต่อเน็ตแล้วเข้าระบบอีกครั้งเพื่อส่งขึ้นให้ครบ', { n: res.pending }),
+      };
+  try {
+    sessionStorage.setItem(NOTICE_KEY, JSON.stringify(notice));
+  } catch {
+    /* หน้าต่างส่วนตัว/ที่เก็บถูกปิด — ไม่มีข้อความก็ยังออกจากระบบได้ปกติ */
+  }
+}
+
+/** อ่านแล้วลบ — หน้าเข้าระบบเรียกครั้งเดียวตอน mount */
+export function takeSignOutNotice(): SignOutNotice | null {
+  try {
+    const raw = sessionStorage.getItem(NOTICE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(NOTICE_KEY);
+    const n = JSON.parse(raw) as SignOutNotice;
+    return n && typeof n.message === 'string' ? n : null;
+  } catch {
+    return null;
+  }
 }
