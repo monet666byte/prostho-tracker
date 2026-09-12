@@ -153,6 +153,18 @@ function applyTriggers(table, incoming) {
       return row;
     }
     if (table === 'checkins') {
+      /* 0020 · ทิศกลับ — ช่องของนักศึกษา อาจารย์เขียนทับไม่ได้
+         (ค่าที่อาจารย์ส่งมาคือฉบับที่เครื่องเผอิญถืออยู่ ไม่ใช่เจตนาจะแก้) */
+      row.note = old.note;
+      row.activities = old.activities;
+      row.patient_id = old.patient_id;
+      row.no_patient = old.no_patient;
+      row.photo_count = old.photo_count;
+      row.created_at = old.created_at;
+      row.edited_at = old.edited_at;
+      row.student_id = old.student_id;
+      row.date = old.date;
+
       row.score_history = old.score_history ?? [];
       if (old.status === 'evaluated' && old.scores
           && JSON.stringify(row.scores) !== JSON.stringify(old.scores)) {
