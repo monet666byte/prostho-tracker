@@ -361,6 +361,39 @@ async function clearOutbox(): Promise<void> {
 /** ตารางไหนส่งไม่ผ่านซ้ำๆ (ยามปฏิเสธถาวร) — เลิกลองหลังครบโควตา ไม่วนรบกวนเน็ตทุก 15 วิ */
 const failCount = new Map<string, number>();
 const MAX_PUSH_RETRY = 3;
+/**
+ * ตัวนับของทางส่งแบบ PATCH รายช่อง — นับ **รายแถว** (คีย์ `ตาราง|pk`) ไม่ใช่รายตาราง
+ *
+ * บั๊กที่ผมใส่เองตอนทำคิวรายช่อง แล้วจับได้ด้วย `test:clinic` ข้อ ⑫ ในวันเดียวกัน (13 ก.ย. 69):
+ * ทางส่ง PATCH เดิมเขียนว่า `if (res.error) continue` เฉยๆ ไม่นับ ไม่กัก
+ * แถวที่ตู้ปฏิเสธถาวร (trigger raise · WITH CHECK ของ RLS) จึงวนส่งทุก 15 วิ ไปตลอดกาล
+ * ไม่ขึ้นรายการปัญหาในหน้า sync · ป้ายค้างส่งไม่หาย · ปุ่มออกจากระบบไม่ยอมล้างเครื่อง
+ * และไม่มีอะไรบอกผู้ใช้ว่าทำไม — ทางส่งทั้งแถวมีกติกา "ตกครบ 3 รอบ → กัก" มาตั้งนานแล้ว
+ * ทางใหม่ต้องได้กติกาเดียวกัน
+ */
+const patchFail = new Map<string, number>();
+
+/**
+ * ตู้กลาง "ตอบกลับมาแล้วปฏิเสธ" จริงไหม — ต่างจาก "เน็ตหลุดส่งไม่ถึง" โดยสิ้นเชิง
+ *
+ * บั๊กที่พิสูจน์ได้ 13 ก.ย. 69 (`test:offline` "เน็ตหลุดนานกว่า 3 รอบ"):
+ * ทั้งสองทางส่งนับ error ทุกแบบรวมกัน · ไวไฟห้องคลินิกหลุด ~45 วิ = ล้ม 3 รอบ = ถูกกัก
+ * แล้วของที่ถูกกักถูกเอาออกจากคิว → **เคสใหม่ที่เปิดตอนเน็ตหลุดไม่ขึ้นตู้กลางเลย**
+ * แม้เน็ตจะกลับมาแล้ว และหน้าจอขึ้นว่า "ส่งไม่ได้" ทั้งที่ไม่ใช่ความผิดของแถว
+ * ซ้ำร้าย pull ไม่ได้ข้ามแถวที่ถูกกัก → ฉบับบนตู้ทับฉบับในเครื่องที่ยังไม่ได้ส่ง
+ *
+ * กติกา: **กักได้เฉพาะเมื่อตู้ตอบรหัสปฏิเสธมา** (SQLSTATE 5 ตัว เช่น 42501 RLS / P0001
+ * trigger raise / 23505 ซ้ำ · หรือรหัสของ PostgREST เอง PGRSTxxx)
+ * error ที่ไม่มีรหัส = ส่งไม่ถึง (supabase-js ห่อ fetch ที่ล้มเป็น code ว่าง) → **รอส่งต่อไป
+ * เรื่อยๆ ไม่มีกำหนด** ซึ่งคือคำสัญญาของแอปออฟไลน์
+ *
+ * ถ้าเดาผิดทาง "ไม่ใช่การปฏิเสธ" = แถวค้างคิวให้เห็นเป็นตัวเลข เสียแค่เน็ต
+ * ถ้าเดาผิดทาง "ปฏิเสธ" = งานของผู้ใช้หาย · จึงเลือกทางแรกเสมอเมื่อไม่แน่ใจ
+ */
+export function isRefusal(err: { code?: string | null } | null | undefined): boolean {
+  const c = err?.code ?? '';
+  return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\d+$/.test(c);
+}
 
 /* ── ของที่ส่งขึ้นไม่ได้จริงๆ — ต้องบอกผู้ใช้ ห้ามทิ้งเงียบ ─────────────────────
  *
@@ -427,6 +460,7 @@ export function retryQuarantined(): void {
   const items = [...quarantine.values()];
   quarantine.clear();
   failCount.clear();
+  patchFail.clear(); // ไม่ล้าง = กด "ลองส่งใหม่" แล้วถูกกักกลับทันทีในรอบแรก
   problemListeners.forEach((fn) => fn());
   /* ของที่ถูกกักไว้ไม่รู้แล้วว่าตอนนั้นแก้ช่องไหน — ส่งทั้งแถว (null)
      ปลอดภัยกว่าเดาช่อง และของที่ถูกกักมีไม่กี่แถวอยู่แล้ว */
@@ -557,14 +591,30 @@ async function flush(): Promise<void> {
       if (!Object.keys(patch).length) { patched.push([pk, fields]); continue; }
 
       const res = await supabase.from(def.remote).update(patch).eq(remotePk, pk).select(remotePk);
-      if (res.error) continue; // เน็ตสะดุด/ถูกปฏิเสธ — คาคิวไว้ลองใหม่รอบหน้า
+      if (res.error) {
+        /* เน็ตหลุด → รอส่งต่อ ไม่นับ ไม่กัก (ดู isRefusal)
+           ตู้ปฏิเสธจริง → ให้โอกาสเท่าทางส่งทั้งแถว แล้วกักไว้ให้ผู้ใช้เห็น ห้ามวนเงียบๆ ตลอดกาล */
+        if (!isRefusal(res.error)) continue;
+        const fk = keyOf(local, pk);
+        const n = (patchFail.get(fk) ?? 0) + 1;
+        if (n < MAX_PUSH_RETRY) { patchFail.set(fk, n); continue; }
+        patchFail.delete(fk);
+        quarantineRow(local, pk, res.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
+        patched.push([pk, fields]); // ออกจากคิว — ไปอยู่ในรายการที่ผู้ใช้เห็นแทน
+        continue;
+      }
+      patchFail.delete(keyOf(local, pk));
       if ((res.data?.length ?? 0) > 0) { patched.push([pk, fields]); continue; }
 
       /* PATCH ไม่โดนแถวไหนเลย = ตู้กลางไม่มีแถวนี้ (ยังไม่เคยขึ้น หรือถูกลบไป)
          ต้องส่งทั้งแถวเพื่อสร้างใหม่ ไม่ใช่ปล่อยให้งานของผู้ใช้หายเงียบ */
       const up = await supabase.from(def.remote).upsert([toRow(def, obj)]);
       if (!up.error) patched.push([pk, null]);
-      else quarantineRow(local, pk, up.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
+      else if (isRefusal(up.error)) {
+        quarantineRow(local, pk, up.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
+        patched.push([pk, fields]);
+      }
+      // เน็ตหลุดกลางทาง → คาไว้ในคิว รอบหน้าลองใหม่
     }
     if (patched.length) clearSentFields(local, fieldMap, patched);
 
@@ -581,9 +631,12 @@ async function flush(): Promise<void> {
       continue;
     }
 
+    /* เน็ตหลุด → ไม่นับรอบ รอส่งต่อไปเรื่อยๆ (ดู isRefusal)
+       เดิมนับทุก error รวมกัน ไวไฟหลุดครึ่งนาทีก็พอให้ทั้งก้อนถูกกัก */
+    if (!isRefusal(error)) continue;
     const n = (failCount.get(local) ?? 0) + 1;
     failCount.set(local, n);
-    if (n < MAX_PUSH_RETRY) continue; // เน็ตสะดุดเฉยๆ ก็ได้ — เก็บทั้งชุดไว้ลองใหม่รอบหน้า
+    if (n < MAX_PUSH_RETRY) continue; // ปฏิเสธรอบเดียวอาจเป็นจังหวะชน — เก็บทั้งชุดไว้ลองใหม่รอบหน้า
 
     /**
      * ครบโควตาแล้วยังไม่ผ่าน = น่าจะมีแถวเสียอยู่ในก้อน ไม่ใช่เน็ต
@@ -595,6 +648,7 @@ async function flush(): Promise<void> {
     for (const o of objs) {
       const pk = o[def.pk];
       const one = await supabase.from(def.remote).upsert([toRow(def, o)]);
+      if (one.error && !isRefusal(one.error)) continue; // เน็ตหลุดกลางทาง — แถวนี้รอรอบหน้า
       if (one.error) quarantineRow(local, pk, one.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
       sent.push(pk); // ผ่านหรือถูกกัก ก็ออกจากคิวทั้งคู่ — ที่ถูกกักไปอยู่ในรายการที่ผู้ใช้เห็น
     }
@@ -674,6 +728,10 @@ export async function pullAll(): Promise<void> {
     const skip = new Set([
       ...(dirty.get(def.local)?.keys() ?? []),
       ...(pendingDeletes.get(def.local) ?? []),
+      /* แถวที่ถูกกัก = ฉบับในเครื่องที่ยังไม่เคยขึ้นตู้ · ถ้า pull ทับ ผู้ใช้กด
+         "ลองส่งใหม่" แล้วจะส่งฉบับบนตู้กลับขึ้นไปแทนงานของตัวเอง (พิสูจน์ 13 ก.ย. 69)
+         ยอมให้แถวนั้นไม่ได้ของใหม่จนกว่าจะแก้ปัญหา ดีกว่าลบงานทิ้งเงียบๆ */
+      ...[...quarantine.values()].filter((q) => q.table === def.local).map((q) => q.key),
     ]);
     const rows = data.filter((r) => !skip.has(r[remotePkCol]));
     await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
@@ -724,6 +782,8 @@ function subscribeRealtime() {
        * ปล่อยให้ flush ส่งของเราขึ้นก่อน แล้วค่อยรับของใหม่จากรอบถัดไป
        */
       if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;
+      // แถวที่ถูกกักคือฉบับในเครื่องที่ยังไม่ได้ขึ้นตู้ — เหตุผลเดียวกับตัวกัน skip ของ pullAll
+      if (quarantine.has(keyOf(def.local, key))) return;
       void applyRemote(def.local, [key], async () => {
         if (payload.eventType === 'DELETE') await db.table(def.local).delete(key as never);
         else await db.table(def.local).put(fromRow(def, payload.new as Record<string, unknown>) as never);
@@ -763,6 +823,7 @@ async function bindToUser(uid: string): Promise<boolean> {
     await clearOutbox();
     lastPulled.clear();
     quarantine.clear(); // ของที่กักไว้เป็นของบัญชีก่อนหน้า ไม่ใช่ของคนที่เพิ่งล็อกอิน
+    patchFail.clear();  // ตัวนับชี้ไปแถวของบัญชีก่อนหน้าเหมือนกัน
   } finally {
     setSyncPaused(false);
   }
@@ -860,6 +921,7 @@ export function stopCloudSync(): void {
   outboxRestored = false;
   lastPulled.clear();
   quarantine.clear();
+  patchFail.clear();
   problemListeners.forEach((fn) => fn());
   supabase?.removeAllChannels();
 }

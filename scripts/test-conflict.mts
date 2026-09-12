@@ -193,7 +193,9 @@ export const supabase = {
         const arr = Array.isArray(rows) ? rows : [rows];
         // จำลอง "ทั้งก้อนตก" แบบ Postgres: statement เดียว แถวเดียวผิดก็ตกทั้งหมด
         if (arr.some((r) => SRV.reject.has(t + '|' + r[SRV.pkcol[t]]))) {
-          return Promise.resolve({ error: { message: 'ถูกปฏิเสธ (RLS/trigger)' } });
+          /* การปฏิเสธจริงของ PostgREST มีรหัส SQLSTATE เสมอ (42501 = RLS)
+             ไม่ใส่รหัส = cloudSync อ่านว่าเน็ตหลุด แล้วรอส่งต่อไปเรื่อยๆ ไม่กัก (ดู isRefusal) */
+          return Promise.resolve({ error: { message: 'ถูกปฏิเสธ (RLS/trigger)', code: '42501' } });
         }
         arr.forEach((r) => srvTbl(t).set(r[SRV.pkcol[t]], applyTriggers(t, r)));
         return Promise.resolve({ error: null });

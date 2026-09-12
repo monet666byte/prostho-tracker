@@ -226,6 +226,7 @@ interface AppSession {
   rawKv: (k: string) => unknown;
   firePagehide: () => Promise<void>;
   stopCloudSync: () => void;
+  syncProblems: () => Array<{ table: string; key: unknown; reason: string }>;
 }
 
 let nth = 0;
@@ -716,6 +717,57 @@ console.log('\nสำเนาคิวรูปเก่าบนดิสก�
   check('ส่งขึ้นแบบทั้งแถว (รูปเก่าไม่รู้ว่าแก้ช่องไหน)',
     row.note === 'พิมพ์ไว้ตอนออฟไลน์', String(row.note));
   check('คิวว่างหลังส่งเสร็จ', outboxKeys(old) === 0, JSON.stringify(old.rawKv('syncOutbox')));
+}
+
+/* ══ ⑩ เน็ตหลุดนานกว่า 3 รอบ แล้วกลับมา — งานต้องไม่หาย ════════════════════
+   ห้องคลินิกชั้นใต้ดิน ไวไฟหลุดครึ่งนาทีเป็นเรื่องปกติ = ตัว sync ล้มหลายรอบติดกัน
+   เจอ 13 ก.ย. 69 จากการอ่านโค้ด แล้วพิสูจน์ด้วยข้อนี้:
+   · ตกครบ 3 รอบ → แถวถูก "กัก" และถูกเอาออกจากคิว
+   · แต่ตัวกัน skip ของ pullAll อ่านจากคิวเท่านั้น ไม่ได้ดูรายการที่กัก
+   · เน็ตกลับมา → pull ทับฉบับในเครื่องด้วยฉบับบนตู้ → **งานที่ผู้ใช้ทำหายไป**
+     ทั้งที่หน้าจอบอกว่า "กักไว้ให้ลองส่งใหม่" · กดลองส่งใหม่ก็ส่งฉบับที่ถูกทับแล้ว
+   เน็ตหลุดไม่ใช่ "ตู้ปฏิเสธ" — ต้องรอส่งต่อไปเรื่อยๆ นั่นคือคำสัญญาของแอปออฟไลน์ */
+console.log('\nเน็ตหลุดนานกว่า 3 รอบ แล้วกลับมา');
+{
+  resetAll();
+  seedServerRoster();
+  srvTbl('workpieces').set('w3', {
+    id: 'w3', patient_id: 'p3', student_id: 'st1', type: 'CD', arch: 'upper',
+    detail: 'CD/- (Upper)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 2, note: '',
+    updated_at: '2026-09-01T00:00:00.000Z',
+  });
+
+  const a = await openApp('dev-basement');
+  await a.initCloudSync();
+  await settle();
+
+  // ทั้งแถวใหม่ (ส่งทั้งแถว) และแถวเดิมที่แก้ช่องเดียว (ส่งแบบรายช่อง) — ครบทั้งสองทาง
+  SRV.offline = true;
+  await a.db.table('workpieces').put({ ...a.peek('workpieces', 'w3')!, procIndex: 8 });
+  await a.db.table('workpieces').put({
+    id: 'w4', patientId: 'p4', studentId: 'st1', type: 'RPD', arch: 'lower',
+    detail: 'RPD (Lower)', acceptedDate: '2026-09-11', minimumRequirement: true,
+    pendingQualification: false, procIndex: 1,
+  });
+  await settle();
+  for (let i = 0; i < 6; i++) await a.flushNow();   // ไวไฟหลุด ~90 วิ = รอบ 15 วิ หกรอบ
+
+  check('เน็ตหลุดไม่ใช่ความผิดของแถว — ไม่ต้องกักไว้เป็นปัญหา',
+    a.syncProblems().length === 0, JSON.stringify(a.syncProblems()));
+  check('ของยังอยู่ในคิวรอส่ง', a.pendingPushCount() === 2, String(a.pendingPushCount()));
+
+  SRV.offline = false;                               // เน็ตกลับมา
+  await a.pullAll();                                 // รอบ 15 วิ ดึงก่อนก็ได้
+  await a.flushNow();
+  await settle();
+
+  check('step ที่กดตอนเน็ตหลุดยังอยู่ในเครื่อง (ไม่ถูก pull ทับ)',
+    a.peek('workpieces', 'w3')?.procIndex === 8, String(a.peek('workpieces', 'w3')?.procIndex));
+  check('step นั้นขึ้นตู้กลางแล้ว', srvTbl('workpieces').get('w3')!.proc_index === 8,
+    String(srvTbl('workpieces').get('w3')!.proc_index));
+  check('เคสใหม่ที่เปิดตอนเน็ตหลุดขึ้นตู้กลาง', srvTbl('workpieces').has('w4'),
+    srvTbl('workpieces').has('w4') ? 'มี' : 'หาย');
 }
 
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');

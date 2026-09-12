@@ -45,6 +45,10 @@ interface Srv {
   pageReads: Map<string, number>;
   /** ให้ทำงานนี้ทุกครั้งที่มีการดึงหน้าแรกของตารางนี้ — จำลอง "มีคนเขียนระหว่างเราดึง" */
   duringPull: Map<string, () => void>;
+  /** "ตาราง|pk" ที่ตู้ปฏิเสธ UPDATE ถาวร — จำลอง trigger ที่ raise หรือ WITH CHECK ของ RLS */
+  rejectUpdate: Set<string>;
+  /** "ตาราง|pk" ที่ส่ง UPDATE ไม่ถึงตู้ (เน็ตหลุด) — error ไม่มีรหัส */
+  netDownUpdate: Set<string>;
 }
 const SRV: Srv = {
   tables: new Map(),
@@ -57,6 +61,8 @@ const SRV: Srv = {
   clock: Date.parse('2026-09-12T02:00:00.000Z'),
   pageReads: new Map(),
   duringPull: new Map(),
+  rejectUpdate: new Set(),
+  netDownUpdate: new Set(),
 };
 (globalThis as never as { __SRV__: Srv }).__SRV__ = SRV;
 
@@ -69,6 +75,8 @@ const resetServer = () => {
   SRV.tables.clear();
   SRV.pageReads.clear();
   SRV.duringPull.clear();
+  SRV.rejectUpdate.clear();
+  SRV.netDownUpdate.clear();
 };
 
 /* ── ของปลอมที่ยัดแทน import ของ cloudSync.ts ─────────────────────────────── */
@@ -208,6 +216,14 @@ export const supabase = {
         return {
           eq(_col, val) {
             const run = () => {
+              if (SRV.rejectUpdate.has(t + '|' + val)) {
+                // P0001 = raise exception จาก trigger · มีรหัสเสมอเพราะตู้ตอบกลับมาจริง
+                return Promise.resolve({ data: null, error: { message: 'ถูกปฏิเสธถาวร (trigger/RLS)', code: 'P0001' } });
+              }
+              if (SRV.netDownUpdate.has(t + '|' + val)) {
+                // supabase-js ห่อ fetch ที่ล้มเป็น error ที่ code ว่าง
+                return Promise.resolve({ data: null, error: { message: 'TypeError: Failed to fetch', code: '' } });
+              }
               const m = srvTbl(t);
               const old = m.get(val);
               if (!old) return Promise.resolve({ data: [], error: null });
@@ -561,6 +577,66 @@ console.log('\n⑦ ทั้งกลุ่มกดพร้อมกัน แ
     teacher.dump('workpieces').length === N && teacher.dump('checkins').length === N
       && teacher.dump('updates').length === N,
     { w: teacher.dump('workpieces').length, c: teacher.dump('checkins').length, u: teacher.dump('updates').length });
+}
+
+/* ══ ⑫ ตู้กลางปฏิเสธการแก้ช่องถาวร — ต้องขึ้นให้ผู้ใช้เห็น ไม่ใช่ค้างคิวเงียบๆ ════
+   ทางส่งแบบ upsert ทั้งแถวมีกติกาอยู่แล้ว: ตกครบ 3 รอบ → แยกหาแถวเสีย → กักไว้
+   แล้วขึ้นรายการในหน้า sync ให้ผู้ใช้เห็น · ทางส่งแบบ PATCH รายช่องที่เพิ่มวันนี้
+   ต้องได้กติกาเดียวกัน ไม่งั้นแถวที่ตู้ปฏิเสธถาวร (trigger raise · WITH CHECK ของ RLS)
+   จะวนส่งทุก 15 วิ ไปตลอดกาล · ป้าย "ค้างส่ง" ไม่มีวันหาย · ปุ่มออกจากระบบไม่ยอมล้าง
+   และไม่มีอะไรบอกผู้ใช้ว่าทำไม */
+console.log('\n⑫ ตู้กลางปฏิเสธการแก้ช่องถาวร');
+{
+  resetServer();
+  seedServerRoster();
+  srvTbl('workpieces').set('w12', {
+    id: 'w12', patient_id: 'p12', student_id: 'st8', type: 'CD', arch: 'lower',
+    detail: 'CD (Lower)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 2, note: '',
+    updated_at: '2026-09-12T02:00:00.000Z',
+  });
+  srvTbl('workpieces').set('w13', {
+    id: 'w13', patient_id: 'p13', student_id: 'st8', type: 'RPD', arch: 'upper',
+    detail: 'RPD (Upper)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 0, note: '',
+    updated_at: '2026-09-12T02:00:00.000Z',
+  });
+  const d = await device('phone-st8');
+  await d.pullAll();
+
+  SRV.rejectUpdate.add('workpieces|w12');       // แถวนี้ตู้ไม่ยอมให้แก้ ไม่ว่ากี่รอบ
+  await d.db.table('workpieces').put({ ...d.peek('workpieces', 'w12')!, note: 'ถูกปฏิเสธ' });
+  await d.db.table('workpieces').put({ ...d.peek('workpieces', 'w13')!, procIndex: 3 });
+  await settle();
+  for (let i = 0; i < 5; i++) await d.flushNow();  // เท่ากับรอบ 15 วิ ห้ารอบ
+
+  check('แถวที่ดีข้างๆ ยังขึ้นได้ ไม่ถูกลากตกไปด้วย',
+    srvTbl('workpieces').get('w13')!.proc_index === 3, srvTbl('workpieces').get('w13')!.proc_index);
+  check('แถวที่ถูกปฏิเสธถาวร ขึ้นรายการปัญหาให้ผู้ใช้เห็น',
+    d.syncProblems().some((p) => p.key === 'w12'), d.syncProblems());
+  check('ไม่ค้างคิววนส่งตลอดกาล', d.pendingPushCount() === 0, d.pendingPushCount());
+
+  /* แถวที่ถูกกักคือฉบับในเครื่องที่ยังไม่เคยขึ้นตู้ — pull รอบถัดไปห้ามทับ
+     ไม่งั้นกด "ลองส่งใหม่" แล้วจะส่งฉบับของตู้กลับขึ้นไปแทนงานของผู้ใช้ */
+  await d.pullAll();
+  check('pull ไม่ทับแถวที่ถูกกัก (งานของผู้ใช้ยังอยู่ในเครื่อง)',
+    d.peek('workpieces', 'w12')?.note === 'ถูกปฏิเสธ', d.peek('workpieces', 'w12')?.note);
+
+  /* ทิศกลับ: เน็ตสะดุดสองรอบแล้วกลับมา ต้อง **ไม่** ถูกกัก
+     ถ้ากักเร็วเกิน งานของผู้ใช้จะไปค้างอยู่ในรายการปัญหาทั้งที่ส่งได้ปกติ */
+  SRV.rejectUpdate.clear();
+  const e = await device('ipad-st8');
+  await e.pullAll();
+  SRV.netDownUpdate.add('workpieces|w13');
+  await e.db.table('workpieces').put({ ...e.peek('workpieces', 'w13')!, note: 'เน็ตสะดุดแล้วกลับมา' });
+  await settle();
+  for (let i = 0; i < 6; i++) await e.flushNow();   // เน็ตหลุดนานเกินโควตา 3 รอบไปมาก
+  check('ระหว่างเน็ตหลุด ของยังรอส่งอยู่ในคิว', e.pendingPushCount() === 1, e.pendingPushCount());
+  SRV.netDownUpdate.clear();                          // เน็ตกลับมา
+  await e.flushNow();
+  check('เน็ตสะดุดชั่วคราวไม่ถูกกัก', e.syncProblems().length === 0, e.syncProblems());
+  check('ของขึ้นตู้กลางเมื่อเน็ตกลับมา',
+    srvTbl('workpieces').get('w13')!.note === 'เน็ตสะดุดแล้วกลับมา', srvTbl('workpieces').get('w13')!.note);
 }
 
 /* ══ ⑧ ตู้กลางปลอมต้องตรงกับ SQL จริง ═════════════════════════════════════
