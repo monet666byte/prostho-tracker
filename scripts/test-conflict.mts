@@ -93,6 +93,13 @@ export const seedLocal = (n, rows) => rows.forEach((r) => tbl(n).set(r[PK[n]], s
 
 let mw = null;
 const downCore = { table: (name) => ({
+  /* DBCore จริงมี getMany — middleware ของ cloudSync ใช้อ่านฉบับเดิมก่อนเขียน
+     เพื่อรู้ว่าแก้ช่องไหน (คิวรายช่อง 13 ก.ย. 69) · ถ้าตู้ปลอมไม่มี
+     middleware จะ fallback เป็น "ทั้งแถว" แล้วเทสต์จะวัดพฤติกรรมเก่าโดยไม่รู้ตัว */
+  async getMany(req) {
+    const m = tbl(name);
+    return req.keys.map((k) => m.get(k));
+  },
   async mutate(req) {
     const m = tbl(name);
     if (req.type === 'add' || req.type === 'put') req.values.forEach((v) => m.set(v[PK[name]], v));
@@ -106,6 +113,7 @@ export const db = {
     const m = tbl(name);
     const mutate = (req) => (mw ? mw.table(name) : downCore.table(name)).mutate(req);
     return {
+      async get(id) { return m.get(id); },
       async bulkGet(ids) { return ids.map((i) => m.get(i)); },
       async bulkPut(objs) { return mutate({ type: 'put', values: objs }); },
       async put(o) { return mutate({ type: 'put', values: [o] }); },
@@ -189,6 +197,25 @@ export const supabase = {
         }
         arr.forEach((r) => srvTbl(t).set(r[SRV.pkcol[t]], applyTriggers(t, r)));
         return Promise.resolve({ error: null });
+      },
+      /* PATCH เฉพาะคอลัมน์ — คิวรายช่องใช้ทางนี้ (13 ก.ย. 69)
+         ผสานกับของเดิมบนตู้แล้วส่งผ่าน trigger ชุดเดียวกับ upsert
+         ถ้าไม่มีแถวนี้บนตู้ ต้องคืน data ว่าง เพื่อให้ฝั่งแอปรู้ว่า "ไม่โดนอะไรเลย"
+         แล้วมันจะ fallback ไปสร้างแถวใหม่ — ห้ามแกล้งว่าสำเร็จ */
+      update(patch) {
+        return {
+          eq(_col, val) {
+            const run = () => {
+              const m = srvTbl(t);
+              const old = m.get(val);
+              if (!old) return Promise.resolve({ data: [], error: null });
+              m.set(val, applyTriggers(t, { ...old, ...patch }));
+              return Promise.resolve({ data: [{ [_col]: val }], error: null });
+            };
+            const self2 = { select: run, then: (r) => run().then(r) };
+            return self2;
+          },
+        };
       },
       delete() {
         return { in(_col, ids) { ids.forEach((i) => srvTbl(t).delete(i)); return Promise.resolve({ error: null }); } };

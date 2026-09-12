@@ -94,6 +94,13 @@ export const rawKv = (k) => kvStore.get(k);
 
 let mw = null;
 const downCore = { table: (name) => ({
+  /* DBCore จริงมี getMany — middleware ของ cloudSync ใช้อ่านฉบับเดิมก่อนเขียน
+     เพื่อรู้ว่าแก้ช่องไหน (คิวรายช่อง 13 ก.ย. 69) · ถ้าตู้ปลอมไม่มี
+     middleware จะ fallback เป็น "ทั้งแถว" แล้วเทสต์จะวัดพฤติกรรมเก่าโดยไม่รู้ตัว */
+  async getMany(req) {
+    const m = tbl(name);
+    return req.keys.map((k) => m.get(k));
+  },
   async mutate(req) {
     const m = tbl(name);
     if (req.type === 'add' || req.type === 'put') req.values.forEach((v) => m.set(v[PK[name]], structuredClone(v)));
@@ -107,6 +114,7 @@ export const db = {
     const m = tbl(name);
     const mutate = (req) => (mw ? mw.table(name) : downCore.table(name)).mutate(req);
     return {
+      async get(id) { return m.get(id); },
       async bulkGet(ids) { return ids.map((i) => m.get(i)); },
       async bulkPut(objs) { return mutate({ type: 'put', values: objs }); },
       async put(o) { return mutate({ type: 'put', values: [o] }); },
@@ -150,6 +158,23 @@ export const supabase = {
           srvTbl(t).set(r[pk], { ...r, updated_at: serverStamp() });
         });
         return Promise.resolve({ error: null });
+      },
+      /* PATCH เฉพาะคอลัมน์ — คิวรายช่อง (13 ก.ย. 69) · เคารพสวิตช์ออฟไลน์ด้วย */
+      update(patch) {
+        return {
+          eq(_col, val) {
+            const run = () => {
+              if (SRV.offline) return Promise.resolve({ data: null, error: netErr.error });
+              const m = srvTbl(t);
+              const old = m.get(val);
+              if (!old) return Promise.resolve({ data: [], error: null });
+              m.set(val, { ...old, ...patch, updated_at: serverStamp() });
+              return Promise.resolve({ data: [{ [_col]: val }], error: null });
+            };
+            const self2 = { select: run, then: (r) => run().then(r) };
+            return self2;
+          },
+        };
       },
       delete() {
         return { in(_col, ids) {
@@ -599,6 +624,98 @@ globalThis.document = { createElement: () => ({ click() {} }) };
     check('บอกจำนวนรูปที่ไม่ได้อยู่ในไฟล์ กลับไปให้หน้าจอโชว์',
       res.photosNotIncluded === 1, String(res.photosNotIncluded));
   }
+}
+
+/* ══ ⑨ สำเนาคิวรูปใหม่ (รายช่อง) ต้องทนการปิดแท็บ และรูปเก่าต้องยังอ่านออก ════
+   คิวเปลี่ยนรูปเมื่อ 13 ก.ย. 69: เดิมเก็บแค่ pk ตอนนี้เก็บ `[pk, ช่องที่แก้]` (v: 2)
+   สองความเสี่ยงที่ต้องปิด:
+   ① สำเนารูปใหม่อ่านกลับไม่ได้ = งานที่ทำตอนออฟไลน์หายหมด (บั๊กเดิมที่แก้ไป 11 ก.ย.)
+   ② ผู้ใช้ที่อัปเดตแอปกลางคาบมีสำเนา **รูปเก่า** ค้างในเครื่อง — ถ้าอ่านไม่ออก
+      ของที่ค้างส่งอยู่ก็หายไปพร้อมกัน · รูปเก่าไม่บอกว่าแก้ช่องไหน จึงต้องถือว่า
+      "ทั้งแถว" ซึ่งเป็นพฤติกรรมเดิม (ปลอดภัย แค่เปลืองเน็ต) */
+console.log('\nสำเนาคิวรายช่อง — ปิดแท็บแล้วเปิดใหม่');
+{
+  resetAll();
+  seedServerRoster();
+  srvTbl('workpieces').set('w1', {
+    id: 'w1', patient_id: 'p1', student_id: 'st1', type: 'CD', arch: 'upper',
+    detail: 'CD/- (Upper)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 3, note: 'โน้ตเดิมบนตู้',
+    updated_at: '2026-09-01T00:00:00.000Z',
+  });
+
+  const a = await openApp('dev-a');
+  await a.initCloudSync();
+  await settle();
+
+  SRV.offline = true;                                   // เน็ตหายกลางคลินิก
+  const w = a.peek('workpieces', 'w1')!;
+  await a.db.table('workpieces').put({ ...w, procIndex: 7 });   // กด step ตอนออฟไลน์
+  await settle();
+
+  const snap = a.rawKv('syncOutbox') as { v?: number; dirty?: unknown[] } | undefined;
+  check('สำเนาคิวเป็นรุ่น 2', snap?.v === 2, JSON.stringify(snap).slice(0, 140));
+  check('สำเนาคิวจดว่าแก้ช่อง procIndex',
+    JSON.stringify(snap ?? {}).includes('procIndex'), JSON.stringify(snap ?? {}).slice(0, 180));
+
+  await closeTab(a);                                    // ปิดแท็บทั้งที่ยังส่งไม่ได้
+
+  SRV.offline = false;
+  const b = await openApp('dev-a');                     // เปิดใหม่ตอนมีเน็ต
+  await b.initCloudSync();
+  await settle();
+  await b.flushNow();
+  await settle();
+
+  const onServer = srvTbl('workpieces').get('w1')!;
+  check('step ที่กดตอนออฟไลน์ขึ้นตู้กลางแล้ว', onServer.proc_index === 7, String(onServer.proc_index));
+  check('ช่องที่เราไม่ได้แตะยังเป็นของตู้กลาง (ไม่ถูกฉบับเก่าในเครื่องทับ)',
+    onServer.note === 'โน้ตเดิมบนตู้', String(onServer.note));
+  check('คิวว่างแล้ว', outboxKeys(b) === 0, JSON.stringify(b.rawKv('syncOutbox')));
+}
+
+/* ── สำเนารูปเก่า (v1) ที่ค้างในเครื่องของผู้ใช้ที่เพิ่งอัปเดตแอป ── */
+console.log('\nสำเนาคิวรูปเก่าบนดิสก์ ต้องยังอ่านออก');
+{
+  resetAll();
+  seedServerRoster();
+  srvTbl('workpieces').set('w2', {
+    id: 'w2', patient_id: 'p2', student_id: 'st1', type: 'RPD', arch: 'lower',
+    detail: 'RPD (Lower)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 0, note: '',
+    updated_at: '2026-09-01T00:00:00.000Z',
+  });
+
+  // วางสำเนารูปเก่าลงดิสก์ตรงๆ: dirty เป็นรายการ pk เดี่ยวๆ ไม่มี v
+  const disk = (globalThis as never as { __DISK__: Map<string, unknown> }).__DISK__;
+  const kvKey = 'kv|dev-old';
+  /* ⚠️ ต้องใส่ `cloudBoundUid` ด้วย ไม่ใช่แค่คิว — ไม่งั้น `bindToUser` อ่านว่า
+     "บัญชีใหม่" แล้วล้างลิ้นชัก+คิวทิ้งตามการออกแบบ แล้วเทสต์จะตกเพราะ fixture
+     ไม่ใช่เพราะโค้ดผิด (บทเรียนเดิมจาก 11 ก.ย.: เทสต์ตกแล้วอย่ารีบสรุปว่าโค้ดผิด)
+     ค่าคือ `${uid}@${POLICY_VERSION}` — auth ปลอมคืน uid 'u1' และ POLICY_VERSION คือ 'v2' */
+  disk.set(kvKey, new Map<string, unknown>([
+    ['cloudBoundUid', 'u1@v2'],
+    ['syncOutbox', { dirty: [['workpieces', ['w2']]], deletes: [] }],
+  ]));
+  // และมีแถวฉบับท้องถิ่นที่ยังไม่ได้ส่งอยู่ในลิ้นชักด้วย
+  const tablesKey = 'tables|dev-old';
+  disk.set(tablesKey, new Map([['workpieces', new Map([['w2', {
+    id: 'w2', patientId: 'p2', studentId: 'st1', type: 'RPD', arch: 'lower',
+    detail: 'RPD (Lower)', acceptedDate: '2026-06-03', minimumRequirement: true,
+    pendingQualification: false, procIndex: 9, note: 'พิมพ์ไว้ตอนออฟไลน์',
+  }]])]]));
+
+  const old = await openApp('dev-old');
+  await old.initCloudSync();
+  await settle();
+  await old.flushNow();
+  await settle();
+
+  const row = srvTbl('workpieces').get('w2')!;
+  check('งานที่ค้างในสำเนารูปเก่าถูกส่งขึ้นจริง', row.proc_index === 9, String(row.proc_index));
+  check('ส่งขึ้นแบบทั้งแถว (รูปเก่าไม่รู้ว่าแก้ช่องไหน)',
+    row.note === 'พิมพ์ไว้ตอนออฟไลน์', String(row.note));
+  check('คิวว่างหลังส่งเสร็จ', outboxKeys(old) === 0, JSON.stringify(old.rawKv('syncOutbox')));
 }
 
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');

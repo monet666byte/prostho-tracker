@@ -71,6 +71,26 @@ function toRow(def: TableDef, obj: Record<string, unknown>): Record<string, unkn
   return row;
 }
 
+/**
+ * แปลงเฉพาะ "ช่องที่แก้" เป็นคอลัมน์สำหรับ PATCH — ไม่ใช่ทั้งแถว
+ *
+ * ทำไมต้องมี (13 ก.ย. 69): คิวเดิมจำแค่ว่าแถวไหนแก้ แล้วส่งขึ้นทั้งแถว
+ * เครื่องที่ถือฉบับเก่าของช่องที่ตัวเองไม่ได้แตะ จึงเขียนค่าเก่านั้นทับของใหม่
+ * (พิสูจน์ด้วย `test:clinic` ข้อ ④ — นักศึกษาคนเดียวเปิดมือถือ+ไอแพด แล้ว step ถูกย้อน)
+ */
+function toRowFields(
+  def: TableDef, obj: Record<string, unknown>, fields: ReadonlySet<string>,
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const k of fields) {
+    /* เหตุผลเดียวกับ toRow — ตราเวลาต้องมาจากนาฬิกาเซิร์ฟเวอร์เท่านั้น */
+    if (k === 'updated_at' || k === 'updatedAt') continue;
+    const v = obj[k];
+    row[def.rename?.[k] ?? toSnake(k)] = v === undefined ? null : v;
+  }
+  return row;
+}
+
 function fromRow(def: TableDef, row: Record<string, unknown>): Record<string, unknown> {
   const back = new Map(Object.entries(def.rename ?? {}).map(([l, r]) => [r, l]));
   const obj: Record<string, unknown> = {};
@@ -92,20 +112,79 @@ let paused = false; // ปิดชั่วคราวระหว่าง se
 // (เคยใช้ธงคลุมทั้งระบบ → งานที่ผู้ใช้กดระหว่างจังหวะ apply หายไปเฉยๆ — บั๊กคืนแรก)
 const applyingKeys = new Set<string>();
 const keyOf = (local: string, pk: unknown) => local + '|' + String(pk);
-const dirty = new Map<string, Set<unknown>>(); // local table → set ของ pk ที่ค้างส่ง
+/* ══════════════════════════════════════════════════════════════════════════════
+   คิวจำ "ช่องที่แก้" ไม่ใช่แค่ "แถวที่แก้"
+
+   บั๊กที่พิสูจน์ได้ 12 ก.ย. 69 (`test:clinic` ข้อ ④ · ก่อนแก้ข้อนั้นตก):
+   คิวเดิมเก็บแค่ pk แล้วตอนส่งจริงอ่านแถวล่าสุดจากลิ้นชักมา upsert **ทั้งแถว**
+   นักศึกษาคนเดียวเปิดมือถือ + ไอแพดค้างทั้งคู่ · กด step บนไอแพด → ขึ้นตู้กลาง
+   แล้วพิมพ์โน้ตบนมือถือที่ยังถือ procIndex เก่า → มือถือเขียน procIndex เก่าทับ
+   = step ที่เพิ่งกดหายไปโดยไม่มี error ไม่มีป้าย
+
+   `0020` ปิดช่องนี้ได้เฉพาะตาราง `checkins` เพราะที่นั่นมีเจ้าของช่องแยกตามบทบาท
+   แต่ `workpieces` ทุกช่องเป็นของนักศึกษา กฎฝั่งเซิร์ฟเวอร์ช่วยไม่ได้
+   (ทั้งสองเครื่องคือคนเดียวกัน) — ต้องแก้ที่คิว
+
+   ค่าใน map ชั้นใน:
+     · `Set<string>` = แก้เฉพาะช่องพวกนี้ → ส่งแบบ PATCH เฉพาะคอลัมน์นั้น
+     · `null`        = **ส่งทั้งแถว** ใช้เมื่อเป็นแถวใหม่ (ตอนเขียนยังไม่มีของเดิม)
+                       หรือเมื่อไม่รู้ว่าแก้ช่องไหน (คิวที่กู้มาจากสำเนารุ่นเก่า)
+                       การส่งทั้งแถวยังจำเป็น เพราะ PATCH สร้างแถวใหม่ไม่ได้
+   ══════════════════════════════════════════════════════════════════════════════ */
+type FieldSet = Set<string> | null;
+const dirty = new Map<string, Map<unknown, FieldSet>>(); // local table → pk → ช่องที่แก้
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function setSyncPaused(v: boolean) {
   paused = v;
 }
 
-function markDirty(local: string, keys: unknown[]) {
+/** รวมของเดิมกับของใหม่ — ถ้าฝ่ายใดฝ่ายหนึ่งเป็น "ทั้งแถว" ผลคือทั้งแถว */
+function mergeFields(prev: FieldSet | undefined, next: FieldSet): FieldSet {
+  if (prev === undefined) return next;
+  if (prev === null || next === null) return null;
+  const out = new Set(prev);
+  for (const f of next) out.add(f);
+  return out;
+}
+
+/**
+ * ช่องที่ต่างกันระหว่างฉบับเดิมในเครื่องกับฉบับที่กำลังเขียน
+ *
+ * เทียบด้วย JSON เพราะช่องหลายตัวเป็น object/array (`scores`, `activities`, `gates`)
+ * ช่องที่ "หายไป" จากฉบับใหม่ก็นับว่าแก้ — ต้องส่ง null ขึ้นไปลบค่าบนตู้กลางด้วย
+ */
+function changedFields(
+  before: Record<string, unknown> | undefined, after: Record<string, unknown>,
+): FieldSet {
+  if (!before) return null; // แถวใหม่ — PATCH สร้างแถวไม่ได้ ต้องส่งทั้งแถว
+  const out = new Set<string>();
+  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (k === 'updated_at' || k === 'updatedAt') continue;
+    let same: boolean;
+    try {
+      same = JSON.stringify(before[k]) === JSON.stringify(after[k]);
+    } catch {
+      same = false; // มีของที่ stringify ไม่ได้ (Blob ฯลฯ) — ถือว่าต่าง ปลอดภัยกว่าเดา
+    }
+    if (!same) out.add(k);
+  }
+  return out;
+}
+
+function markDirty(local: string, entries: Array<[pk: unknown, fields: FieldSet]>) {
   if (!cloudEnabled || paused || !byLocal.has(local)) return;
-  let set = dirty.get(local);
-  if (!set) dirty.set(local, (set = new Set()));
-  keys.forEach((k) => k !== undefined && !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  let m = dirty.get(local);
+  if (!m) dirty.set(local, (m = new Map()));
+  for (const [k, fields] of entries) {
+    if (k === undefined || applyingKeys.has(keyOf(local, k))) continue;
+    /* ช่องว่างเปล่า = เขียนทับด้วยของเดิมทุกช่อง (Dexie put ซ้ำค่าเดิม เกิดบ่อยกว่าที่คิด)
+       ไม่ต้องเข้าคิว — แต่ถ้าแถวนั้นอยู่ในคิวอยู่แล้ว ห้ามถอดออก */
+    if (fields && fields.size === 0 && !m.has(k)) continue;
+    m.set(k, mergeFields(m.get(k), fields));
+  }
   persistOutboxSoon();
-  if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
+  if (m.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }
 
 /** middleware ดักทุกการเขียนของ Dexie — จดว่าแถวไหนต้องส่งขึ้นตู้กลาง */
@@ -120,10 +199,28 @@ db.use({
         const def = byLocal.get(name);
         return {
           ...t,
-          mutate(req) {
+          async mutate(req) {
             if (def && !paused && cloudEnabled) {
               if (req.type === 'add' || req.type === 'put') {
-                markDirty(name, (req.values as Record<string, unknown>[]).map((v) => v[def.pk]));
+                const values = req.values as Record<string, unknown>[];
+                const keys = values.map((v) => v[def.pk]);
+                /* ต้องอ่านฉบับเดิม **ก่อน** เขียน เพื่อรู้ว่าแก้ช่องไหน
+                   อ่านตารางเดิมใน transaction เดิมปลอดภัย — ของที่ห้ามทำคือไปเขียน
+                   ตารางอื่น (เช่น kv) ซ้อนเข้าไป ซึ่งจะค้าง · จึงส่ง req.trans ต่อไป
+                   ⚠️ อ่านไม่ได้ = ถือว่า "ทั้งแถว" ไม่ใช่ "ไม่มีอะไรแก้"
+                      เดาผิดทางนี้เสียแค่แบนด์วิดท์ เดาผิดทางกลับคือข้อมูลหาย */
+                let before: Array<Record<string, unknown> | undefined>;
+                try {
+                  before = (await t.getMany({
+                    trans: req.trans, keys: keys as never[],
+                  })) as Array<Record<string, unknown> | undefined>;
+                } catch {
+                  before = keys.map(() => undefined);
+                }
+                markDirty(name, values.map((v, i) => {
+                  const prev = req.type === 'add' ? undefined : before[i];
+                  return [keys[i], changedFields(prev, v)] as [unknown, FieldSet];
+                }));
               } else if (req.type === 'delete') {
                 markDelete(name, req.keys as unknown[]);
               }
@@ -170,7 +267,16 @@ function markDelete(local: string, keys: unknown[]) {
    ══════════════════════════════════════════════════════════════════════════════ */
 const OUTBOX_KEY = 'syncOutbox';
 
+/**
+ * สำเนาคิวบนดิสก์
+ *
+ * `v: 2` เพิ่ม 13 ก.ย. 69 พร้อมคิวรายช่อง — `dirty` เก็บเป็นคู่ `[pk, ช่องที่แก้]`
+ * โดย `null` หมายถึง "ทั้งแถว" · รูปแบบเดิม (`v` ไม่มี · `dirty` เป็นแค่รายการ pk)
+ * ยังอ่านได้ เพราะผู้ใช้ที่อัปเดตแอปกลางคาบมีสำเนารุ่นเก่าค้างอยู่ในเครื่อง
+ * และคิวที่อ่านไม่ออก = งานที่ผู้ใช้ทำแล้วหายไปเลย ห้ามเกิด
+ */
 interface OutboxSnapshot {
+  v?: number;
   dirty: Array<[string, unknown[]]>;
   deletes: Array<[string, unknown[]]>;
 }
@@ -181,9 +287,14 @@ let outboxRestored = false;
 /** เก็บเฉพาะตารางที่มีคีย์จริง — markDirty ทิ้ง Set ว่างไว้ใน map เป็นปกติ
  *  ถ้าเก็บด้วยจะได้ snapshot ที่ "ไม่ว่าง" ทั้งที่ไม่มีอะไรค้าง คนอ่านโค้ดต่อจะเข้าใจผิด */
 function snapshotOutbox(): OutboxSnapshot {
-  const pick = (m: Map<string, Set<unknown>>): Array<[string, unknown[]]> =>
+  const pickDeletes = (m: Map<string, Set<unknown>>): Array<[string, unknown[]]> =>
     [...m].filter(([, keys]) => keys.size > 0).map(([t, keys]) => [t, [...keys]]);
-  return { dirty: pick(dirty), deletes: pick(pendingDeletes) };
+  const pickDirty = (): Array<[string, unknown[]]> =>
+    [...dirty].filter(([, m]) => m.size > 0).map(([t, m]) => [
+      t,
+      [...m].map(([pk, fields]) => [pk, fields ? [...fields] : null]),
+    ]);
+  return { v: 2, dirty: pickDirty(), deletes: pickDeletes(pendingDeletes) };
 }
 
 /** เขียนคิวลงเครื่องเดี๋ยวนี้ — ใช้ตอน pagehide ที่ไม่มีเวลาให้รอ macrotask */
@@ -211,9 +322,20 @@ export async function restoreOutbox(): Promise<void> {
   try {
     const snap = await kvGet<OutboxSnapshot | null>(OUTBOX_KEY, null);
     if (snap) {
-      for (const [t, keys] of snap.dirty ?? []) {
-        if (!byLocal.has(t) || !keys.length) continue;
-        dirty.set(t, new Set([...(dirty.get(t) ?? []), ...keys]));
+      for (const [t, rows] of snap.dirty ?? []) {
+        if (!byLocal.has(t) || !rows.length) continue;
+        const m = dirty.get(t) ?? new Map<unknown, FieldSet>();
+        for (const row of rows) {
+          /* รุ่น 2 เก็บเป็นคู่ [pk, ช่อง] · รุ่นเก่าเก็บแค่ pk เดี่ยวๆ
+             รุ่นเก่า → ไม่รู้ว่าแก้ช่องไหน จึงต้องถือว่า "ทั้งแถว" (ปลอดภัยกว่าเดา) */
+          if (snap.v === 2 && Array.isArray(row)) {
+            const [pk, fields] = row as [unknown, string[] | null];
+            m.set(pk, mergeFields(m.get(pk), Array.isArray(fields) ? new Set(fields) : null));
+          } else {
+            m.set(row, null);
+          }
+        }
+        dirty.set(t, m);
       }
       for (const [t, keys] of snap.deletes ?? []) {
         if (!byLocal.has(t) || !keys.length) continue;
@@ -306,7 +428,9 @@ export function retryQuarantined(): void {
   quarantine.clear();
   failCount.clear();
   problemListeners.forEach((fn) => fn());
-  for (const it of items) markDirty(it.table, [it.key]);
+  /* ของที่ถูกกักไว้ไม่รู้แล้วว่าตอนนั้นแก้ช่องไหน — ส่งทั้งแถว (null)
+     ปลอดภัยกว่าเดาช่อง และของที่ถูกกักมีไม่กี่แถวอยู่แล้ว */
+  for (const it of items) markDirty(it.table, [[it.key, null]]);
   // ของที่ไม่ได้ขึ้นทางคิวแถว (ไฟล์รูป) ต้องถูกปลุกด้วย ไม่งั้นปุ่มนี้โกหกครึ่งเดียว
   retryListeners.forEach((fn) => fn());
 }
@@ -370,6 +494,33 @@ async function flush(): Promise<void> {
     persistOutboxSoon();
   };
 
+  /**
+   * เอาแถวที่ส่งไปแล้วออกจากคิวรายช่อง
+   *
+   * ⚠️ ต้องเทียบ "ช่อง" ที่ส่งไปกับที่อยู่ในคิว **ตอนนี้** ไม่ใช่ลบทิ้งทั้งแถว
+   * เหตุผลเดียวกับคอมเมนต์ข้างบน: ระหว่างรอเน็ต ผู้ใช้กดแก้ช่องอื่นของแถวเดิมได้
+   * ลบทั้งแถว = ช่องที่เพิ่งแก้หายจากคิวโดยไม่เคยถูกส่ง แล้ว pullAll รอบหน้าทับทิ้ง
+   */
+  const clearSentFields = (
+    local: string, m: Map<unknown, FieldSet>, sent: Array<[unknown, FieldSet]>,
+  ) => {
+    for (const [pk, sentFields] of sent) {
+      const now = m.get(pk);
+      if (now === undefined) continue;
+      if (sentFields === null || now === null) {
+        /* ส่งทั้งแถวไปแล้ว = ทุกช่องที่ค้างถูกครอบไปด้วย · หรือคิวกลายเป็น "ทั้งแถว"
+           ระหว่างทาง (มีคนสร้างแถวใหม่ทับ) ซึ่งกรณีหลังต้องเก็บไว้ส่งรอบหน้า */
+        if (sentFields === null) m.delete(pk);
+        continue;
+      }
+      for (const f of sentFields) now.delete(f);
+      if (now.size === 0) m.delete(pk);
+    }
+    if (!m.size) dirty.delete(local);
+    else if (!flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
+    persistOutboxSoon();
+  };
+
   // ลบก่อน (แถวที่ถูกลบ local)
   for (const [local, keys] of [...pendingDeletes]) {
     const def = byLocal.get(local)!;
@@ -378,18 +529,55 @@ async function flush(): Promise<void> {
     const { error } = await supabase.from(def.remote).delete().in(def.rename?.[def.pk] ?? toSnake(def.pk), ids);
     if (!error) clearSent(pendingDeletes, local, keys, ids);
   }
-  // แล้วค่อย upsert แถวที่แก้ (อ่านสถานะล่าสุดจาก dexie ตอนส่งจริง)
-  for (const [local, keys] of [...dirty]) {
+  // แล้วค่อยส่งแถวที่แก้ (อ่านสถานะล่าสุดจาก dexie ตอนส่งจริง)
+  for (const [local, fieldMap] of [...dirty]) {
     const def = byLocal.get(local)!;
-    const ids = [...keys];
-    if (!ids.length) { dirty.delete(local); continue; }
-    const objs = (await db.table(local).bulkGet(ids as never[])).filter(Boolean) as Record<string, unknown>[];
-    if (!objs.length) { clearSent(dirty, local, keys, ids); continue; }
+    const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
+    if (!fieldMap.size) { dirty.delete(local); continue; }
+
+    /* แยกสองกอง:
+       · "ทั้งแถว" (แถวใหม่ / คิวรุ่นเก่า) → upsert เป็นก้อนเหมือนเดิม เร็วและสร้างแถวได้
+       · "เฉพาะช่อง" → PATCH ทีละแถว เพื่อไม่ไปแตะช่องที่เครื่องอื่นเพิ่งแก้ */
+    const fullIds = [...fieldMap].filter(([, f]) => f === null).map(([pk]) => pk);
+    const patchRows = [...fieldMap].filter(([, f]) => f !== null) as Array<[unknown, Set<string>]>;
+
+    /* ── กอง PATCH ──
+       ทำก่อนกอง "ทั้งแถว" โดยเจตนา: ถ้าแถวหายจากตู้กลาง (ใครลบไป) PATCH จะไม่โดนอะไรเลย
+       ซึ่งต้องรู้ให้ได้ ไม่ใช่เงียบ — จึงขอ pk กลับมาด้วยแล้วเช็คว่าโดนจริงไหม */
+    const patched: Array<[unknown, FieldSet]> = [];
+    for (const [pk, fields] of patchRows) {
+      const obj = (await db.table(local).get(pk as never)) as Record<string, unknown> | undefined;
+      if (!obj) {
+        /* แถวหายจากเครื่องไปแล้วระหว่างรอส่ง (ผู้ใช้ลบ) — ตัวลบมีคิวของตัวเอง
+           ตรงนี้แค่เอาออกจากคิวแก้ ไม่ต้องทำอะไรกับตู้กลาง */
+        patched.push([pk, fields]);
+        continue;
+      }
+      const patch = toRowFields(def, obj, fields);
+      if (!Object.keys(patch).length) { patched.push([pk, fields]); continue; }
+
+      const res = await supabase.from(def.remote).update(patch).eq(remotePk, pk).select(remotePk);
+      if (res.error) continue; // เน็ตสะดุด/ถูกปฏิเสธ — คาคิวไว้ลองใหม่รอบหน้า
+      if ((res.data?.length ?? 0) > 0) { patched.push([pk, fields]); continue; }
+
+      /* PATCH ไม่โดนแถวไหนเลย = ตู้กลางไม่มีแถวนี้ (ยังไม่เคยขึ้น หรือถูกลบไป)
+         ต้องส่งทั้งแถวเพื่อสร้างใหม่ ไม่ใช่ปล่อยให้งานของผู้ใช้หายเงียบ */
+      const up = await supabase.from(def.remote).upsert([toRow(def, obj)]);
+      if (!up.error) patched.push([pk, null]);
+      else quarantineRow(local, pk, up.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
+    }
+    if (patched.length) clearSentFields(local, fieldMap, patched);
+
+    /* ── กอง "ทั้งแถว" ── (ตรรกะเดิมทั้งหมด รวมถึงการแยกส่งทีละแถวเมื่อก้อนตกซ้ำ) */
+    if (!fullIds.length) continue;
+    const objs = (await db.table(local).bulkGet(fullIds as never[])).filter(Boolean) as Record<string, unknown>[];
+    const asSent = (ids: unknown[]): Array<[unknown, FieldSet]> => ids.map((k) => [k, null]);
+    if (!objs.length) { clearSentFields(local, fieldMap, asSent(fullIds)); continue; }
 
     const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
     if (!error) {
       failCount.delete(local);
-      clearSent(dirty, local, keys, ids);
+      clearSentFields(local, fieldMap, asSent(fullIds));
       continue;
     }
 
@@ -410,7 +598,7 @@ async function flush(): Promise<void> {
       if (one.error) quarantineRow(local, pk, one.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล');
       sent.push(pk); // ผ่านหรือถูกกัก ก็ออกจากคิวทั้งคู่ — ที่ถูกกักไปอยู่ในรายการที่ผู้ใช้เห็น
     }
-    clearSent(dirty, local, keys, sent);
+    clearSentFields(local, fieldMap, asSent(sent));
   }
 }
 
@@ -480,7 +668,13 @@ export async function pullAll(): Promise<void> {
     }
     if (failed) continue;
     // ห้ามทับแถวที่มีงานค้างส่งอยู่ — ไม่งั้น pull ฉบับเก่าจะกลืนสิ่งที่ผู้ใช้เพิ่งกด (บั๊กที่เจอคืนแรก)
-    const skip = new Set([...(dirty.get(def.local) ?? []), ...(pendingDeletes.get(def.local) ?? [])]);
+    /* ⚠️ `dirty` ชั้นในเป็น Map (pk → ช่องที่แก้) ตั้งแต่ 13 ก.ย. 69 — ต้องเอา **คีย์**
+       ถ้าเผลอ spread ทั้ง Map จะได้คู่ [pk, ช่อง] แล้ว skip ไม่ตรงกับ pk ของแถวเลย
+       ผลคือ pull ทับแถวที่ยังค้างส่งอยู่ = บั๊กข้อมูลหายตัวเดิมที่แก้ไปแล้วกลับมา */
+    const skip = new Set([
+      ...(dirty.get(def.local)?.keys() ?? []),
+      ...(pendingDeletes.get(def.local) ?? []),
+    ]);
     const rows = data.filter((r) => !skip.has(r[remotePkCol]));
     await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
       await db.table(def.local).bulkPut(rows.map((r) => fromRow(def, r)) as never[]);

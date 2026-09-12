@@ -26,7 +26,7 @@
  *   ② อาจารย์กด "บันทึกผล · ลงนาม" แล้วโน้ตที่นักศึกษาเพิ่งพิมพ์หายไป
  *     — แก้แล้วด้วย `0020` (กฎฝั่งเซิร์ฟเวอร์ ทิศกลับของสิ่งที่ `0017` ทำไว้)
  *   ④ นักศึกษาคนเดียวเปิดสองเครื่อง แล้ว step ที่กดบนเครื่องหนึ่งถูกย้อน
- *     — ยังไม่แก้ ต้องทำคิวรายช่อง · ล็อกพฤติกรรมปัจจุบันไว้แล้ว (ดูคอมเมนต์ในข้อ ④)
+ *     — แก้แล้ว 13 ก.ย. 69 ด้วยคิวรายช่องใน `data/cloudSync.ts`
  */
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -99,6 +99,13 @@ export const seedLocal = (n, rows) => rows.forEach((r) => tbl(n).set(r[PK[n]], s
 
 let mw = null;
 const downCore = { table: (name) => ({
+  /* DBCore จริงมี getMany — middleware ของ cloudSync ใช้อ่านฉบับเดิมก่อนเขียน
+     เพื่อรู้ว่าแก้ช่องไหน (คิวรายช่อง 13 ก.ย. 69) · ถ้าตู้ปลอมไม่มี
+     middleware จะ fallback เป็น "ทั้งแถว" แล้วเทสต์จะวัดพฤติกรรมเก่าโดยไม่รู้ตัว */
+  async getMany(req) {
+    const m = tbl(name);
+    return req.keys.map((k) => m.get(k));
+  },
   async mutate(req) {
     const m = tbl(name);
     if (req.type === 'add' || req.type === 'put') req.values.forEach((v) => m.set(v[PK[name]], v));
@@ -112,6 +119,7 @@ export const db = {
     const m = tbl(name);
     const mutate = (req) => (mw ? mw.table(name) : downCore.table(name)).mutate(req);
     return {
+      async get(id) { return m.get(id); },
       async bulkGet(ids) { return ids.map((i) => m.get(i)); },
       async bulkPut(objs) { return mutate({ type: 'put', values: objs }); },
       async put(o) { return mutate({ type: 'put', values: [o] }); },
@@ -191,6 +199,25 @@ export const supabase = {
         const arr = Array.isArray(rows) ? rows : [rows];
         arr.forEach((r) => srvTbl(t).set(r[SRV.pkcol[t]], applyTriggers(t, r)));
         return Promise.resolve({ error: null });
+      },
+      /* PATCH เฉพาะคอลัมน์ — คิวรายช่องใช้ทางนี้ (13 ก.ย. 69)
+         ผสานกับของเดิมบนตู้แล้วส่งผ่าน trigger ชุดเดียวกับ upsert
+         ถ้าไม่มีแถวนี้บนตู้ ต้องคืน data ว่าง เพื่อให้ฝั่งแอปรู้ว่า "ไม่โดนอะไรเลย"
+         แล้วมันจะ fallback ไปสร้างแถวใหม่ — ห้ามแกล้งว่าสำเร็จ */
+      update(patch) {
+        return {
+          eq(_col, val) {
+            const run = () => {
+              const m = srvTbl(t);
+              const old = m.get(val);
+              if (!old) return Promise.resolve({ data: [], error: null });
+              m.set(val, applyTriggers(t, { ...old, ...patch }));
+              return Promise.resolve({ data: [{ [_col]: val }], error: null });
+            };
+            const self2 = { select: run, then: (r) => run().then(r) };
+            return self2;
+          },
+        };
       },
       delete() {
         return { in(_col, ids) { ids.forEach((i) => srvTbl(t).delete(i)); return Promise.resolve({ error: null }); } };
@@ -421,21 +448,12 @@ console.log('\n④ คนเดียวกัน สองเครื่อง
 
   const onServer = srvTbl('workpieces').get('w1')!;
   check('โน้ตที่พิมพ์บนมือถือขึ้นตู้กลาง', onServer.note === 'นัดต่อ 19 ก.ย.', onServer.note);
-  /* ⚠️ ข้อนี้ "ล็อกพฤติกรรมที่เป็นอยู่" ไม่ใช่ยืนยันว่าถูก — step ที่กดบนไอแพดถูกย้อนกลับ
-     เพราะมือถือ upsert ทั้งแถวจากฉบับ procIndex 3 ที่ยังถืออยู่
-
-     ทำไมยังไม่แก้: `workpieces` ไม่มีการแบ่งเจ้าของช่องระหว่างบทบาท ทุกช่องเป็นของนักศึกษา
-     กฎฝั่งเซิร์ฟเวอร์แบบ `0020` ช่วยไม่ได้ เพราะทั้งสองเครื่องคือคนเดียวกัน
-     ทางแก้จริงคือให้คิวจำ "ช่องที่แก้" ไม่ใช่แค่คีย์ของแถว — งานใหญ่ใน `cloudSync.ts`
-     ซึ่งเป็นไฟล์ที่เสี่ยงที่สุด · ยังไม่ทำ บันทึกไว้ใน README แล้ว
-
-     หน้าต่างของปัญหาแคบ (คิว flush ใน 1.5 วิ · pullAll ทุก 15 วิ) และต้องเป็น
-     "คนเดียวกันเปิดสองเครื่องพร้อมกัน แล้วแก้เคสเดียวกันคนละช่องในไม่กี่วินาที"
-
-     ⚠️ ถ้าวันหน้ามีใครทำคิวรายช่องแล้ว **ข้อนี้จะตก** — ให้แก้เป็น === 4 แล้วลบคอมเมนต์นี้
-        (การตกของมันคือสัญญาณว่าแก้สำเร็จ ไม่ใช่ว่าพัง) */
-  check('สองเครื่องของคนเดียวกัน: คนเซฟทีหลังชนะทั้งแถว (ข้อจำกัดที่รู้อยู่ ยังไม่แก้)',
-    onServer.proc_index === 3, onServer.proc_index);
+  /* แก้แล้ว 13 ก.ย. 69 — คิวจำ "ช่องที่แก้" ไม่ใช่แค่ "แถวที่แก้" (ดู data/cloudSync.ts)
+     มือถือถือ procIndex เก่าอยู่ก็จริง แต่มันไม่ได้แก้ช่องนั้น จึงไม่ส่งช่องนั้นขึ้นไป
+     ⚠️ ข้อนี้เคยถูกเขียนให้คาดหวัง 3 (ล็อกพฤติกรรมที่ผิดไว้) แล้วพอทำคิวรายช่องเสร็จ
+        มันตกทันที ซึ่งเป็นสัญญาณว่าแก้สำเร็จ — จดไว้เป็นตัวอย่างของวิธีล็อกข้อจำกัด
+        ที่ "ตกตอนแก้ได้" ไม่ใช่ "ผ่านตลอดไปจนไม่มีใครรู้ว่าควรแก้" */
+  check('step ที่กดบนไอแพดไม่ถูกมือถือย้อน (คิวรายช่อง)', onServer.proc_index === 4, onServer.proc_index);
 }
 
 /* ══ ⑤ มีคนเขียนระหว่างที่อาจารย์กำลังดึงข้อมูล ═════════════════════════════
@@ -568,6 +586,128 @@ console.log('\n⑧ ตู้กลางปลอมต้องตรงกั�
   check('ทุกช่องที่ SQL คงไว้ ตู้ปลอมก็คงไว้', onlySql.length === 0, onlySql);
   check('ตู้ปลอมไม่ได้คงช่องที่ SQL ไม่ได้คง', onlyMirror.length === 0, onlyMirror);
   check('ช่องโน้ตอยู่ในรายการ (หัวใจของบั๊กข้อ ②)', inSql.has('note') && inMirror.has('note'));
+}
+
+/* ══ ⑨ คนละช่องของแถวเดียวกัน จากหลายเครื่องพร้อมกัน ════════════════════════
+   ข้อ ④ พิสูจน์สองเครื่อง · ข้อนี้ดันให้สุด: **4 เครื่องแก้ 4 ช่องของเคสเดียวกัน
+   พร้อมกัน** โดยทุกเครื่องถือฉบับเดียวกันตอนเริ่ม (ไม่มีใครเห็นของใคร)
+   ถ้าคิวยังส่งทั้งแถว จะเหลือรอดแค่ช่องของคนที่เซฟทีหลังสุด */
+console.log('\n⑨ 4 เครื่องแก้ 4 ช่องของเคสเดียวกันพร้อมกัน');
+{
+  resetServer();
+  seedServerRoster();
+  srvTbl('workpieces').set('w9', {
+    id: 'w9', patient_id: 'p9', student_id: 'st5', type: 'RPD', arch: 'lower',
+    detail: 'RPD (Lower)', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 2, note: '', tooth: '', kennedy: '',
+    updated_at: '2026-09-12T02:00:00.000Z',
+  });
+
+  const devs = await Promise.all(['ipad','phone','clinic-pc','lab-pc'].map((n) => device(`${n}-st5`)));
+  await Promise.all(devs.map((d) => d.pullAll()));   // ทุกเครื่องได้ฉบับเดียวกัน
+
+  const edits: Array<[string, unknown]> = [
+    ['procIndex', 5], ['note', 'นัดต่อ 20 ก.ย.'], ['tooth', '36'], ['kennedy', 'Class II'],
+  ];
+  await Promise.all(devs.map((d, i) => {
+    const [field, value] = edits[i];
+    return d.db.table('workpieces').put({ ...d.peek('workpieces', 'w9')!, [field]: value });
+  }));
+  await settle();
+  await Promise.all(devs.map((d) => d.flushNow()));
+
+  const row = srvTbl('workpieces').get('w9')!;
+  check('step ของเครื่องที่ 1 อยู่',     row.proc_index === 5, row.proc_index);
+  check('โน้ตของเครื่องที่ 2 อยู่',      row.note === 'นัดต่อ 20 ก.ย.', row.note);
+  check('ซี่ฟันของเครื่องที่ 3 อยู่',     row.tooth === '36', row.tooth);
+  check('Kennedy ของเครื่องที่ 4 อยู่',  row.kennedy === 'Class II', row.kennedy);
+  check('ไม่มีช่องไหนกลายเป็นค่าเดิมกลับไป',
+    row.proc_index === 5 && row.note && row.tooth && row.kennedy,
+    { p: row.proc_index, n: row.note, t: row.tooth, k: row.kennedy });
+}
+
+/* ══ ⑩ ทั้งกลุ่ม 12 คน × 2 เครื่อง = 24 เครื่องพร้อมกัน ═══════════════════════
+   ขนาดจริงของคาบที่แย่ที่สุด: ทุกคนถือทั้งมือถือและไอแพด เปิดค้างทั้งคู่
+   วัดสองอย่าง — ของทุกคนขึ้นครบไหม · และของใครไปปนกับใครไหม */
+console.log('\n⑩ 12 คน × 2 เครื่อง = 24 เครื่องพร้อมกัน');
+{
+  resetServer();
+  seedServerRoster();
+  for (const sid of studentIds) {
+    srvTbl('workpieces').set(`w-${sid}`, {
+      id: `w-${sid}`, patient_id: `p-${sid}`, student_id: sid, type: 'CD', arch: 'upper',
+      detail: 'CD/- (Upper)', accepted_date: '2026-06-03', minimum_requirement: true,
+      pending_qualification: false, proc_index: 1, note: '',
+      updated_at: '2026-09-12T02:00:00.000Z',
+    });
+  }
+
+  const pairs = await Promise.all(studentIds.map(async (sid) => ({
+    sid,
+    ipad: await device(`ipad-${sid}`),
+    phone: await device(`phone-${sid}`),
+  })));
+  await Promise.all(pairs.flatMap((p) => [p.ipad.pullAll(), p.phone.pullAll()]));
+
+  // ไอแพดกด step · มือถือพิมพ์โน้ต — ของเคสเดียวกัน คนละช่อง พร้อมกันทั้ง 12 คน
+  await Promise.all(pairs.flatMap((p) => [
+    p.ipad.db.table('workpieces').put({ ...p.ipad.peek('workpieces', `w-${p.sid}`)!, procIndex: 4 }),
+    p.phone.db.table('workpieces').put({ ...p.phone.peek('workpieces', `w-${p.sid}`)!, note: `โน้ตของ ${p.sid}` }),
+  ]));
+  await settle();
+  await Promise.all(pairs.flatMap((p) => [p.ipad.flushNow(), p.phone.flushNow()]));
+
+  const rows = studentIds.map((sid) => srvTbl('workpieces').get(`w-${sid}`)!);
+  check('ทั้ง 12 เคสได้ step ใหม่ครบ', rows.every((r) => r.proc_index === 4),
+    rows.map((r) => r.proc_index));
+  check('ทั้ง 12 เคสได้โน้ตครบ', rows.every((r, i) => r.note === `โน้ตของ ${studentIds[i]}`),
+    rows.filter((r, i) => r.note !== `โน้ตของ ${studentIds[i]}`).map((r) => r.note));
+  check('โน้ตไม่ไปปนข้ามคน',
+    new Set(rows.map((r) => r.note)).size === N, rows.map((r) => r.note).slice(0,3));
+  check('เจ้าของเคสไม่สลับ', rows.every((r) => r.id === `w-${r.student_id}`),
+    rows.filter((r) => r.id !== `w-${r.student_id}`).map((r) => r.id));
+  check('ไม่มีเครื่องไหนรายงานปัญหา sync',
+    pairs.every((p) => p.ipad.syncProblems().length === 0 && p.phone.syncProblems().length === 0),
+    pairs.flatMap((p) => [...p.ipad.syncProblems(), ...p.phone.syncProblems()]));
+
+  // ทุกเครื่องดึงกลับ ต้องเห็นทั้ง step ใหม่และโน้ตใหม่ (ไม่ใช่แค่ของตัวเอง)
+  await Promise.all(pairs.flatMap((p) => [p.ipad.pullAll(), p.phone.pullAll()]));
+  const seen = pairs.map((p) => {
+    const w = p.ipad.peek('workpieces', `w-${p.sid}`)!;
+    return { proc: w.procIndex, note: w.note };
+  });
+  check('ทุกเครื่องเห็นทั้งสองช่องตรงกันหมด',
+    seen.every((v, i) => v.proc === 4 && v.note === `โน้ตของ ${studentIds[i]}`),
+    seen.filter((v, i) => v.proc !== 4 || v.note !== `โน้ตของ ${studentIds[i]}`).slice(0,3));
+}
+
+/* ══ ⑪ แถวหายจากตู้กลางระหว่างที่ยังค้างส่งอยู่ ════════════════════════════
+   PATCH เฉพาะช่องมีข้อเสียที่ upsert ไม่มี: **ถ้าแถวไม่อยู่บนตู้ มันไม่โดนอะไรเลย**
+   แล้วงานของผู้ใช้จะหายเงียบ ซึ่งแย่กว่าบั๊กที่เพิ่งแก้ไป
+   ตัวโค้ดจึงต้องรู้ว่า "ไม่โดนอะไร" แล้ว fallback ไปสร้างแถวใหม่ — ข้อนี้บังคับให้เป็นจริง */
+console.log('\n⑪ แถวถูกลบจากตู้กลางระหว่างที่ยังค้างส่ง');
+{
+  resetServer();
+  seedServerRoster();
+  srvTbl('workpieces').set('w11', {
+    id: 'w11', patient_id: 'p11', student_id: 'st6', type: 'PC', arch: null,
+    detail: 'Post-core', accepted_date: '2026-06-03', minimum_requirement: true,
+    pending_qualification: false, proc_index: 1, note: '',
+    updated_at: '2026-09-12T02:00:00.000Z',
+  });
+  const phone = await device('phone-st6');
+  await phone.pullAll();
+
+  // ผู้ใช้กด step (คิวจำว่าแก้ช่อง procIndex) แล้วมีใครลบแถวนั้นบนตู้กลางก่อนที่เราจะส่ง
+  await phone.db.table('workpieces').put({ ...phone.peek('workpieces', 'w11')!, procIndex: 6 });
+  srvTbl('workpieces').delete('w11');
+  await settle();
+  await phone.flushNow();
+
+  const back = srvTbl('workpieces').get('w11');
+  check('แถวกลับขึ้นตู้กลาง ไม่หายเงียบ', !!back, back ? 'มี' : 'หาย');
+  check('step ที่ผู้ใช้กดอยู่ในแถวที่สร้างใหม่', back?.proc_index === 6, back?.proc_index);
+  check('คิวไม่ค้าง (ไม่วนส่งซ้ำทุก 15 วิ)', phone.pendingPushCount() === 0, phone.pendingPushCount());
 }
 
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
