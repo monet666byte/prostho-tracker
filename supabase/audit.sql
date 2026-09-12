@@ -199,6 +199,18 @@ findings as (
     union all select '0019 ปิดช่องในตัวลบตามกำหนดเก็บ',
       exists (select 1 from pg_proc where proname = 'purge_expired_cohorts'
               and pg_get_functiondef(oid) like '%accounts_left%')
+    /* 0020 · ดูจากเนื้อในฟังก์ชัน ไม่ใช่จากชื่อ — ฟังก์ชันชื่อเดิมมีอยู่แล้วตั้งแต่ 0017
+       ตัวชี้ขาดคือบรรทัดที่คงโน้ตของนักศึกษาไว้ตอนอาจารย์เขียน (ดู 0020) */
+    union all select '0020 อาจารย์ทับโน้ตของนักศึกษาไม่ได้',
+      exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
+              and pg_get_functiondef(oid) like '%new.note := old.note%')
+    /* 0009 ไม่มีตารางใหม่ให้ดู — ดูสามร่องรอยที่ต้องมีพร้อมกัน
+       (คอลัมน์ของ 0009 · trigger ที่ห้ามแก้ audit · trigger ที่ประทับผู้กระทำ) */
+    union all select '0009 ปิดช่องโหว่ (entry_year + audit แก้ไม่ได้)',
+      exists (select 1 from information_schema.columns
+              where table_schema='public' and table_name='students' and column_name='entry_year')
+      and exists (select 1 from pg_trigger where tgname = 'audit_no_change')
+      and exists (select 1 from pg_trigger where tgname = 'audit_stamp')
   ) x
 )
 
