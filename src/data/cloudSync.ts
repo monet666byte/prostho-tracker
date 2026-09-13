@@ -692,6 +692,17 @@ async function applyRemote(local: string, pks: unknown[], fn: () => Promise<void
 }
 
 const lastPulled = new Map<string, string>(); // remote table → max updated_at ที่ดึงล่าสุด
+/**
+ * pk ที่ "เห็นอยู่บนตู้กลาง" จากการดึงครบทั้งตารางครั้งล่าสุด — local table → ชุด pk
+ *
+ * ใช้ให้ pushAll ส่งเฉพาะแถวที่ตู้ยังไม่มี (13 ก.ย. 69) · วัดจากสำเนาจริง 29 ส.ค.: เดิมเครื่องอาจารย์
+ * ส่งทุกแถวในเครื่องขึ้นไปใหม่ทุกครั้งที่เปิดแอป ≈ 1 MB ทั้งที่แทบทุกแถวเพิ่งดึงลงมาเมื่อวินาทีก่อน
+ * และคาบคลินิกสะสมทั้งเทอม (96 คน × 2 ต่อสัปดาห์) ขนาดนี้โตขึ้นทุกสัปดาห์บนเน็ตคลินิก
+ *
+ * ⚠️ มีค่าเฉพาะตารางที่ดึงครบจริงเท่านั้น (ไม่มี error ระหว่างทาง) · ไม่มีค่า = pushAll ส่งทุกแถวเหมือนเดิม
+ *    ดีกว่าเดาว่า "ตู้มีแล้ว" แล้วงานที่ไม่เคยขึ้นตู้ไม่ถูกส่ง
+ */
+const serverKeys = new Map<string, Set<unknown>>();
 
 export async function pullAll(): Promise<void> {
   if (!supabase) return;
@@ -751,6 +762,7 @@ export async function pullAll(): Promise<void> {
     await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
       await db.table(def.local).bulkPut(rows.map((r) => fromRow(def, r)) as never[]);
     });
+    serverKeys.set(def.local, new Set(data.map((r) => r[remotePkCol])));
     lastPulled.set(def.remote, remoteMax);
   }
 }
@@ -780,7 +792,11 @@ export async function pullAll(): Promise<void> {
 export async function pushAll(): Promise<void> {
   if (!supabase) return;
   for (const def of TABLES) {
-    const objs = (await db.table(def.local).toArray()) as Record<string, unknown>[];
+    /* ส่งเฉพาะแถวที่การดึงครั้งล่าสุด "ไม่เห็นบนตู้" (ดู serverKeys)
+       ผลพลอยได้: แถวที่คนอื่นเพิ่งลบบนตู้ระหว่างดึงกับส่ง ไม่ถูกเครื่องนี้ฟื้นกลับขึ้นไป */
+    const onServer = serverKeys.get(def.local);
+    const objs = ((await db.table(def.local).toArray()) as Record<string, unknown>[])
+      .filter((o) => !onServer || !onServer.has(o[def.pk]));
     if (!objs.length) continue;
     // ชุดใหญ่แบ่งก้อนละ 500 กัน payload บวม
     for (let i = 0; i < objs.length; i += 500) {
@@ -861,6 +877,7 @@ async function bindToUser(uid: string): Promise<boolean> {
     // ต้องล้างสำเนาในเครื่องด้วย ไม่ใช่แค่ในหน่วยความจำ ไม่งั้นรอบหน้าอ่านกลับมาแล้วส่งของคนอื่น
     await clearOutbox();
     lastPulled.clear();
+  serverKeys.clear();
     quarantine.clear(); // ของที่กักไว้เป็นของบัญชีก่อนหน้า ไม่ใช่ของคนที่เพิ่งล็อกอิน
     patchFail.clear();  // ตัวนับชี้ไปแถวของบัญชีก่อนหน้าเหมือนกัน
   } finally {
@@ -959,6 +976,7 @@ export function stopCloudSync(): void {
   pendingDeletes.clear();
   outboxRestored = false;
   lastPulled.clear();
+  serverKeys.clear();
   quarantine.clear();
   patchFail.clear();
   problemListeners.forEach((fn) => fn());
@@ -973,6 +991,7 @@ export async function cloudReset(): Promise<void> {
     // ลิ้นชักว่างแล้ว คิวที่ชี้ไปที่แถวที่ไม่มีอยู่จึงต้องหายไปด้วย (ทั้งในเครื่อง)
     await clearOutbox();
     lastPulled.clear(); // ไม่งั้นตัวเช็ค "ไม่มีอะไรใหม่" จะข้ามการดึงกลับ
+    serverKeys.clear();
   } finally {
     setSyncPaused(false);
   }

@@ -57,7 +57,7 @@ const encode = (udt: string, v: unknown) =>
 /** สร้าง client หนึ่งตัวต่อ "เครื่อง" · ทุกคำขอรันในนามของ identity นั้นด้วย role จริง */
 export function pgSupabase(
   db: PGlite, identity: Identity,
-  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; onError?: (e: PgError) => void },
+  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; onError?: (e: PgError) => void; onUpsert?: (table: string, rows: number) => void },
 ) {
   const types = new Map<string, Map<string, string>>();
 
@@ -109,6 +109,7 @@ export function pgSupabase(
         const defaultToNull = o.defaultToNull ?? true;
         const rows = Array.isArray(values) ? values : [values];
         if (!rows.length) return { data: null, error: null };
+        opts.onUpsert?.(table, rows.length); // ให้เทสต์นับว่า "ส่งขึ้นไปจริงกี่แถว" (ไม่ว่าจะสำเร็จหรือไม่)
         const known = await columnTypes(db, table, types);
         // supabase-js: คอลัมน์ = ชื่อช่องรวมของทุกแถว
         const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];

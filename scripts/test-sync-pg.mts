@@ -31,13 +31,14 @@ const settle = () => new Promise((r) => setTimeout(r, 2000));
 
 /* ── เวทีกลาง: Postgres + สวิตช์เน็ต ───────────────────────────────────────── */
 
-interface Stage { db: PGlite; netDown: Set<string>; uid: Record<string, string>; errors: Map<string, string[]> }
+interface Stage { db: PGlite; netDown: Set<string>; uid: Record<string, string>; errors: Map<string, string[]>; upserted: Map<string, number> }
 const G = globalThis as never as { __STAGE__: Stage; __CLIENT__: (dev: string, who: string) => unknown };
 
 G.__CLIENT__ = (dev: string, who: string) =>
   pgSupabase(G.__STAGE__.db, { uid: G.__STAGE__.uid[who] }, {
     pkOf: REMOTE_PK,
     networkDown: () => G.__STAGE__.netDown.has(dev),
+    onUpsert: (_t, n) => G.__STAGE__.upserted.set(dev, (G.__STAGE__.upserted.get(dev) ?? 0) + n),
     onError: (e) => {
       const list = G.__STAGE__.errors.get(dev) ?? [];
       list.push(`${e.code} ${e.message}`.slice(0, 140));
@@ -173,7 +174,7 @@ async function stage(): Promise<Stage> {
     const r = await db.query<{ id: string }>(`insert into auth.users (email) values ($1) returning id`, [email]);
     uid[who] = r.rows[0].id;
   }
-  return { db, netDown: new Set(), uid, errors: new Map() };
+  return { db, netDown: new Set(), uid, errors: new Map(), upserted: new Map() };
 }
 
 /** อ่านแถวบนเซิร์ฟเวอร์ตรงๆ (สิทธิ์เจ้าของ ไม่ผ่าน RLS) — ใช้ตรวจผลเท่านั้น */
@@ -501,6 +502,46 @@ console.log('\n⑩ อีกเครื่องแก้ข้อมูล ร
   check('แถวที่เซิร์ฟเวอร์ยังไม่มี ยังถูก pushAll ดันขึ้นไป (หน้าที่เดิมของมัน)',
     (await server(S.db, `select 1 from workpieces where id = 'w-lost'`)).length === 1,
     S.errors.get('phone-st11'));
+  await S.db.close();
+}
+
+/* ══ ⑪ เปิดแอปบนเครื่องอาจารย์ — ต้องไม่ส่งทุกแถวขึ้นไปใหม่ ═══════════════════
+   วัดจากสำเนาจริง 29 ส.ค.: pushAll เดิมส่งทุกแถวในเครื่อง ≈ 1 MB ต่อการเปิดแอปหนึ่งครั้ง
+   ทั้งที่แทบทุกแถวเพิ่งดึงลงมา · และแถวที่คนอื่นเพิ่งลบระหว่างดึงกับส่ง ถูกฟื้นกลับขึ้นไป */
+console.log('\n⑪ เปิดแอปบนเครื่องอาจารย์ — ส่งเฉพาะแถวที่เซิร์ฟเวอร์ยังไม่มี');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phones = await Promise.all(sids.slice(0, 6).map((s) => device(`phone-${s}`, s)));
+  await Promise.all(phones.map(async (p, i) => {
+    await p.db.table('patients').put(patientOf(sids[i]));
+    await p.db.table('workpieces').put(workpieceOf(sids[i]));
+    await p.db.table('checkins').put(checkinOf(sids[i]));
+  }));
+  await settle();
+  await Promise.all(phones.map((p) => p.flushNow()));
+
+  const t1 = await device('ipad-t1', 't1');
+  await t1.pullAll();
+  const localRows = ['students', 'patients', 'workpieces', 'checkins'].reduce((n, t) => n + t1.dump(t).length, 0);
+  S.upserted.set('ipad-t1', 0);
+  await t1.pushAll();
+  check('ไม่มีอะไรใหม่ในเครื่อง → pushAll ไม่ส่งแถวไหนเลย',
+    (S.upserted.get('ipad-t1') ?? 0) === 0, { ส่งขึ้นไป: S.upserted.get('ipad-t1'), แถวในเครื่อง: localRows });
+
+  // คนอื่นลบเคสหนึ่งบนเซิร์ฟเวอร์ระหว่างที่เครื่องนี้ดึงเสร็จแล้วแต่ยังไม่ส่ง
+  await t1.pullAll();
+  await S.db.query(`delete from workpieces where id = 'w-st1'`);
+  await t1.pushAll();
+  check('แถวที่คนอื่นเพิ่งลบบนเซิร์ฟเวอร์ ไม่ถูกเครื่องนี้ฟื้นกลับ',
+    (await server(S.db, `select 1 from workpieces where id = 'w-st1'`)).length === 0);
+
+  // แถวที่เครื่องมีแต่เซิร์ฟเวอร์ไม่เคยเห็น ยังต้องถูกส่ง (หน้าที่เดิมของ pushAll)
+  (t1 as unknown as { seedLocal: (n: string, r: unknown[]) => void }).seedLocal('checkins', [checkinOf('st2', { id: 'ci-only-local' })]);
+  S.upserted.set('ipad-t1', 0);
+  await t1.pushAll();
+  check('แถวที่มีแค่ในเครื่อง ยังถูกส่งขึ้นไป — และส่งแค่แถวนั้น',
+    (await server(S.db, `select 1 from checkins where id = 'ci-only-local'`)).length === 1 && S.upserted.get('ipad-t1') === 1,
+    { ส่งขึ้นไป: S.upserted.get('ipad-t1') });
   await S.db.close();
 }
 
