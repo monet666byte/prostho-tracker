@@ -624,7 +624,11 @@ async function flush(): Promise<void> {
     const asSent = (ids: unknown[]): Array<[unknown, FieldSet]> => ids.map((k) => [k, null]);
     if (!objs.length) { clearSentFields(local, fieldMap, asSent(fullIds)); continue; }
 
-    const { error } = await supabase.from(def.remote).upsert(objs.map((o) => toRow(def, o)));
+    /* defaultToNull: false — ก้อนนี้คือแถวใหม่หลายแถวที่ช่องอาจไม่เท่ากัน (ดูคอมเมนต์ของ pushAll)
+       supabase-js ค่าเริ่มต้นจะยัด NULL ให้ช่องที่แถวนั้นไม่มี แล้วช่อง NOT NULL ทำให้ทั้งก้อนตก */
+    const { error } = await supabase.from(def.remote).upsert(
+      objs.map((o) => toRow(def, o)), { defaultToNull: false },
+    );
     if (!error) {
       failCount.delete(local);
       clearSentFields(local, fieldMap, asSent(fullIds));
@@ -741,6 +745,28 @@ export async function pullAll(): Promise<void> {
   }
 }
 
+/**
+ * ดันแถวที่ **ตู้กลางยังไม่มี** ขึ้นไป — ตาข่ายกันงานหาย ไม่ใช่ตัวส่งของที่แก้
+ *
+ * บั๊กที่พิสูจน์บน Postgres จริง 13 ก.ย. 69 (`test:sync-pg` ข้อ ⑨ ⑩):
+ * เดิมเป็น upsert แบบ merge ธรรมดา = **เขียนทับทุกแถวที่มีอยู่แล้วด้วยฉบับในเครื่อง**
+ * ทั้งที่มันถูกเรียกหลัง pullAll ทุกครั้งที่เปิดแอป และคอมเมนต์ที่จุดเรียกบอกว่า
+ * "ดันของท้องถิ่นที่ตู้ยังไม่มี" · ผลที่เกิดจริง:
+ *   · นักศึกษากด step บนไอแพด ระหว่างที่มือถือกำลังเปิดแอป → มือถือดัน step เก่ากลับขึ้นไป
+ *     (pullAll กับ pushAll ห่างกันเป็นวินาทีบนเน็ตคลินิก — 15 ตาราง ตารางละหลายร้อยแถว)
+ *   · supabase-js รวมชื่อช่องของทุกแถวในก้อน แล้วแถวที่ไม่มีช่องนั้นได้ **NULL** (ไม่ใช่ default)
+ *     → "คืนเคสแล้ว" ที่อยู่บนตู้ ถูกทับเป็นค่าว่างจากสำเนาเก่าที่ไม่มีช่อง `returned`
+ * ตู้กลางปลอมในเทสต์เดิมไม่รู้จักพฤติกรรมข้อหลังเลย จึงไม่เคยจับได้
+ *
+ * ของที่ส่ง "แก้แล้ว" มีทางของมันเองอยู่แล้ว คือคิวรายช่อง (flush) ซึ่งทนการปิดแท็บได้
+ * ตัวนี้จึงเหลือหน้าที่เดียว: แถวที่ไม่เคยขึ้นตู้เลย ให้ขึ้นไป · แถวที่มีแล้วห้ามแตะ
+ *   · `ignoreDuplicates` → ON CONFLICT DO NOTHING
+ *   · `defaultToNull: false` → แถวใหม่ที่ไม่มีบางช่อง ได้ค่า default ของคอลัมน์ ไม่ใช่ NULL
+ *     (ไม่งั้นช่อง NOT NULL ที่มี default ทำให้ทั้งก้อน 500 แถวตก)
+ *
+ * ⚠️ error ยังไม่ถูกอ่าน (เหมือนเดิม) — เครื่องนักศึกษาดันตาราง teachers / students ที่ตัวเอง
+ *    ไม่มีสิทธิ์เขียนด้วย แล้วโดน RLS ปฏิเสธเป็นเรื่องปกติ · งานที่หายจริงถูกคิวรายช่องคุมอยู่แล้ว
+ */
 export async function pushAll(): Promise<void> {
   if (!supabase) return;
   for (const def of TABLES) {
@@ -748,7 +774,10 @@ export async function pushAll(): Promise<void> {
     if (!objs.length) continue;
     // ชุดใหญ่แบ่งก้อนละ 500 กัน payload บวม
     for (let i = 0; i < objs.length; i += 500) {
-      await supabase.from(def.remote).upsert(objs.slice(i, i + 500).map((o) => toRow(def, o)));
+      await supabase.from(def.remote).upsert(
+        objs.slice(i, i + 500).map((o) => toRow(def, o)),
+        { ignoreDuplicates: true, defaultToNull: false },
+      );
     }
   }
 }

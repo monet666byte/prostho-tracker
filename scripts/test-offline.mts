@@ -150,11 +150,15 @@ const netErr = { error: { message: 'ต่อเน็ตไม่ได้' } }
 export const supabase = {
   from(t) {
     return {
-      upsert(rows) {
+      /* ignoreDuplicates = ON CONFLICT DO NOTHING (pushAll ใช้ตั้งแต่ 13 ก.ย. 69)
+         ตู้ปลอมที่ไม่รู้จักตัวเลือกนี้จะเขียนทับแถวที่มีแล้ว = ทดสอบพฤติกรรมเก่าต่อไปเงียบๆ
+         พฤติกรรมเต็มของ supabase-js (NULL ของช่องที่ไม่มี ฯลฯ) ทดสอบใน test:sync-pg บน Postgres จริง */
+      upsert(rows, o = {}) {
         if (SRV.offline) return Promise.resolve(netErr);
         const arr = Array.isArray(rows) ? rows : [rows];
         arr.forEach((r) => {
           const pk = SRV.pkcol[t];
+          if (o.ignoreDuplicates && srvTbl(t).has(r[pk])) return;
           srvTbl(t).set(r[pk], { ...r, updated_at: serverStamp() });
         });
         return Promise.resolve({ error: null });

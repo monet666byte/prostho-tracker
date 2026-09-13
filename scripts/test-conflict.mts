@@ -189,8 +189,12 @@ function applyTriggers(table, incoming) {
 export const supabase = {
   from(t) {
     return {
-      upsert(rows) {
-        const arr = Array.isArray(rows) ? rows : [rows];
+      /* ignoreDuplicates = ON CONFLICT DO NOTHING (pushAll ใช้ตั้งแต่ 13 ก.ย. 69)
+         ตู้ปลอมที่ไม่รู้จักตัวเลือกนี้จะเขียนทับแถวที่มีแล้ว = ทดสอบพฤติกรรมเก่าต่อไปเงียบๆ
+         พฤติกรรมเต็มของ supabase-js (NULL ของช่องที่ไม่มี ฯลฯ) ทดสอบใน test:sync-pg บน Postgres จริง */
+      upsert(rows, o = {}) {
+        const arr = (Array.isArray(rows) ? rows : [rows])
+          .filter((r) => !(o.ignoreDuplicates && srvTbl(t).has(r[SRV.pkcol[t]])));
         // จำลอง "ทั้งก้อนตก" แบบ Postgres: statement เดียว แถวเดียวผิดก็ตกทั้งหมด
         if (arr.some((r) => SRV.reject.has(t + '|' + r[SRV.pkcol[t]]))) {
           /* การปฏิเสธจริงของ PostgREST มีรหัส SQLSTATE เสมอ (42501 = RLS)
