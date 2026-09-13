@@ -188,8 +188,11 @@ export const supabase = {
         } };
       },
       select() {
-        const rows = () => [...srvTbl(t).values()];
+        /* gte = pullAll รอบที่ดึงเฉพาะแถวที่ขยับ (13 ก.ย. 69) — เทียบแบบสตริงเหมือนตราเวลา ISO */
+        let since = null;
+        const rows = () => [...srvTbl(t).values()].filter((r) => since === null || String(r.updated_at) >= since);
         const self = {
+          gte(_col, v) { since = String(v); return self; },
           order() { return self; },
           limit(n) {
             if (SRV.offline) return Promise.resolve({ data: null, error: netErr.error });

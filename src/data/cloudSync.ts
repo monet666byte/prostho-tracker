@@ -704,8 +704,58 @@ const lastPulled = new Map<string, string>(); // remote table → max updated_at
  */
 const serverKeys = new Map<string, Set<unknown>>();
 
-export async function pullAll(): Promise<void> {
+/**
+ * ดึงทั้งตาราง หรือดึงเฉพาะแถวที่ขยับ — ตัดสินรายตารางทุกรอบ
+ *
+ * บั๊กที่วัดได้ 13 ก.ย. 69 (`npm run perf:scale` ข้อมูลเต็มปี 200 คน):
+ * เดิมตารางไหน "มีอะไรใหม่แม้แถวเดียว" จะดึงลงมาใหม่ **ทั้งตาราง** ทุกรอบ 15 วิ
+ * ระหว่างคาบมีคนเช็คอินตลอด → เครื่องอาจารย์ดึงคาบ 16,000 แถวซ้ำทุกรอบ
+ * = **11.6 MB ต่อนาที ≈ 700 MB ต่อชั่วโมง ต่อหนึ่งเครื่อง** (โควตาแผนฟรีทั้งเดือน 5 GB)
+ * และ bulkPut หมื่นแถวทุก 15 วิ บนมือถือรุ่นเก่า
+ *
+ * ตอนนี้: ดึงทั้งตารางครั้งแรกของการเปิดแอป (ยังไม่รู้ว่าตู้มีอะไร) แล้วรอบถัดไปขอเฉพาะ
+ * `updated_at >= ค่าสูงสุดที่เคยเห็น - 2 นาที`
+ *   · ตราเวลามาจากนาฬิกาเซิร์ฟเวอร์เท่านั้น (0017) นาฬิกาเครื่องผู้ใช้ไม่เกี่ยว
+ *   · เผื่อ 2 นาที เพราะ now() ของ Postgres คือเวลา "เริ่ม" transaction — แถวที่เขียนช้า
+ *     อาจ commit หลังรอบที่แล้วแต่ตราเวลาเก่ากว่าค่าสูงสุดที่เห็นไปแล้ว (ดึงซ้ำนิดหน่อยไม่เสียหาย)
+ *   · ตราเวลาอนาคต (ตู้ที่ยังไม่รัน 0017) → ดึงทั้งตารางเหมือนเดิม ไม่เชื่อค่านั้น
+ *   · รายชื่อ/กลุ่มขยับ → สิทธิ์การมองเห็นอาจเปลี่ยน (อาจารย์ได้กลุ่มใหม่ = แถวเก่าที่ตราเวลาเก่า
+ *     เพิ่งมองเห็น) → ตารางที่เหลือในรอบนั้นดึงทั้งตาราง
+ *     (TABLES เรียง students / groups ไว้ก่อนตารางข้อมูลงาน จึงรู้ทันในรอบเดียวกัน)
+ *
+ * ⚠️ แถวที่ถูกลบบนตู้ **ไม่เคย** ถูกลบจากเครื่องด้วย pull ทั้งแบบเก่าและแบบนี้ — มีแค่ realtime
+ *    ที่ลบให้ · เรื่องนี้ไม่ได้แย่ลง แต่ก็ยังไม่ได้แก้
+ */
+const PULL_OVERLAP_MS = 120_000;
+
+/**
+ * pullAll ห้ามวิ่งซ้อนกัน — วิ่งอยู่ได้หนึ่งรอบ + รอคิวได้อีกหนึ่งรอบ
+ *
+ * บั๊กที่วัดได้ 13 ก.ย. 69 (`npm run perf:scale` · CPU ช้า 4 เท่า + เน็ต 2 Mbps):
+ * ดึงครั้งแรกของข้อมูลเต็มปีใช้ ~110 วิ แต่รอบ 15 วิ / เปิดจอกลับมา / ปุ่ม sync เรียก pullAll ซ้ำ
+ * โดยไม่รอรอบก่อน → ระหว่างที่รอบแรกยังดึงอยู่ มีอีก 6–7 รอบดึงทั้งตารางชุดเดียวกันพร้อมกัน
+ * (ยังไม่มี serverKeys ให้รอบหลังรู้ว่าดึงเฉพาะที่ขยับได้) · เน็ตคลินิกยิ่งช้า ยิ่งซ้อนมาก
+ *
+ * คนที่เรียกระหว่างที่มีรอบวิ่งอยู่ ได้ promise ของ "รอบถัดไป" ซึ่งเริ่มหลังรอบปัจจุบันจบ
+ * (ไม่ใช่รอบที่วิ่งอยู่ — cloudReset ล้างลิ้นชักแล้วเรียก pullAll ต้องได้การดึงที่เริ่มหลังล้างจริง)
+ */
+let pullRunning: Promise<void> = Promise.resolve();
+let pullQueued: Promise<void> | null = null;
+
+export function pullAll(): Promise<void> {
+  if (pullQueued) return pullQueued;
+  const next = pullRunning.then(async () => {
+    pullQueued = null;
+    await pullAllOnce();
+  });
+  pullQueued = next;
+  pullRunning = next.catch(() => {});
+  return next;
+}
+
+async function pullAllOnce(): Promise<void> {
   if (!supabase) return;
+  let scopeChanged = false;
   // ค่าตั้งของภาคอยู่คนละตารางและมีกติกาของตัวเอง (แถวเดียว · เขียนได้เฉพาะอาจารย์)
   await pullSettings();
   // นโยบาย PDPA ก็แถวเดียวเหมือนกัน แต่เขียนได้เฉพาะหัวหน้าภาค (0016)
@@ -731,13 +781,17 @@ export async function pullAll(): Promise<void> {
     // ⚠️ เซิร์ฟเวอร์ตัดผลลัพธ์ที่ 1,000 แถวเสมอ (ไม่ว่าจะขอเท่าไหร่) — ต้องดึงทีละหน้า
     // ไม่งั้นข้อมูลหายเงียบๆ พอโตเกินพัน (เจอตอนทดสอบ: มี 1,215 คาบ ดึงได้ 1,000)
     const remotePkCol = def.rename?.[def.pk] ?? toSnake(def.pk);
+    const since = lastPulled.get(def.remote);
+    const sinceMs = since ? Date.parse(since) : NaN;
+    const known = serverKeys.get(def.local);
+    const incremental = !!(stampIsSane && known && !scopeChanged && Number.isFinite(sinceMs));
+    const from0 = incremental ? new Date(sinceMs - PULL_OVERLAP_MS).toISOString() : '';
     const PAGE = 1000;
     const data: Record<string, unknown>[] = [];
     let failed = false;
     for (let from = 0; ; from += PAGE) {
-      const page = await supabase
-        .from(def.remote)
-        .select('*')
+      const base = supabase.from(def.remote).select('*');
+      const page = await (incremental ? base.gte('updated_at', from0) : base)
         .order(remotePkCol, { ascending: true })
         .range(from, from + PAGE - 1);
       if (page.error) { failed = true; break; }
@@ -762,7 +816,9 @@ export async function pullAll(): Promise<void> {
     await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
       await db.table(def.local).bulkPut(rows.map((r) => fromRow(def, r)) as never[]);
     });
-    serverKeys.set(def.local, new Set(data.map((r) => r[remotePkCol])));
+    if (incremental) data.forEach((r) => known!.add(r[remotePkCol]));
+    else serverKeys.set(def.local, new Set(data.map((r) => r[remotePkCol])));
+    if (incremental && data.length && (def.local === 'students' || def.local === 'groups')) scopeChanged = true;
     lastPulled.set(def.remote, remoteMax);
   }
 }

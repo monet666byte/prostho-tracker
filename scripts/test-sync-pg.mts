@@ -31,7 +31,7 @@ const settle = () => new Promise((r) => setTimeout(r, 2000));
 
 /* ── เวทีกลาง: Postgres + สวิตช์เน็ต ───────────────────────────────────────── */
 
-interface Stage { db: PGlite; netDown: Set<string>; uid: Record<string, string>; errors: Map<string, string[]>; upserted: Map<string, number> }
+interface Stage { db: PGlite; netDown: Set<string>; uid: Record<string, string>; errors: Map<string, string[]>; upserted: Map<string, number>; pulled: Map<string, number> }
 const G = globalThis as never as { __STAGE__: Stage; __CLIENT__: (dev: string, who: string) => unknown };
 
 G.__CLIENT__ = (dev: string, who: string) =>
@@ -39,6 +39,7 @@ G.__CLIENT__ = (dev: string, who: string) =>
     pkOf: REMOTE_PK,
     networkDown: () => G.__STAGE__.netDown.has(dev),
     onUpsert: (_t, n) => G.__STAGE__.upserted.set(dev, (G.__STAGE__.upserted.get(dev) ?? 0) + n),
+    onSelect: (t, n) => G.__STAGE__.pulled.set(`${dev}|${t}`, (G.__STAGE__.pulled.get(`${dev}|${t}`) ?? 0) + n),
     onError: (e) => {
       const list = G.__STAGE__.errors.get(dev) ?? [];
       list.push(`${e.code} ${e.message}`.slice(0, 140));
@@ -111,6 +112,9 @@ interface Device {
   peek: (n: string, k: unknown) => Record<string, unknown> | undefined;
   dump: (n: string) => Record<string, unknown>[];
   pendingPushCount: () => number;
+  initCloudSync: () => Promise<void>;
+  kvSet: (k: string, v: unknown) => Promise<void>;
+  seedLocal: (n: string, rows: unknown[]) => void;
   syncProblems: () => { table: string; key: unknown; reason: string }[];
 }
 
@@ -174,7 +178,7 @@ async function stage(): Promise<Stage> {
     const r = await db.query<{ id: string }>(`insert into auth.users (email) values ($1) returning id`, [email]);
     uid[who] = r.rows[0].id;
   }
-  return { db, netDown: new Set(), uid, errors: new Map(), upserted: new Map() };
+  return { db, netDown: new Set(), uid, errors: new Map(), upserted: new Map(), pulled: new Map() };
 }
 
 /** อ่านแถวบนเซิร์ฟเวอร์ตรงๆ (สิทธิ์เจ้าของ ไม่ผ่าน RLS) — ใช้ตรวจผลเท่านั้น */
@@ -542,6 +546,136 @@ console.log('\n⑪ เปิดแอปบนเครื่องอาจา�
   check('แถวที่มีแค่ในเครื่อง ยังถูกส่งขึ้นไป — และส่งแค่แถวนั้น',
     (await server(S.db, `select 1 from checkins where id = 'ci-only-local'`)).length === 1 && S.upserted.get('ipad-t1') === 1,
     { ส่งขึ้นไป: S.upserted.get('ipad-t1') });
+  await S.db.close();
+}
+
+/* ══ ⑫ รอบ 15 วิ ต้องดึงเฉพาะแถวที่ขยับ ไม่ใช่ทั้งตาราง ═══════════════════════
+   วัดด้วย `npm run perf:scale` (ข้อมูลเต็มปี 200 คน): เดิมมีคนเช็คอินแถวเดียว เครื่องอาจารย์ดึงคาบ
+   16,000 แถวลงมาใหม่ทุกรอบ ≈ 700 MB/ชม. ต่อเครื่อง · ข้อนี้ต้องตกกับโค้ดก่อนแก้ */
+console.log('\n⑫ รอบ 15 วิ — ดึงเฉพาะแถวที่ขยับ');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phones = await Promise.all(sids.map((s) => device(`phone-${s}`, s)));
+  await Promise.all(phones.map((p, i) => p.db.table('checkins').put(checkinOf(sids[i]))));
+  await settle();
+  await Promise.all(phones.map((p) => p.flushNow()));
+  /* ทำให้คาบเดิมเป็น "ของเมื่อชั่วโมงก่อน" — ไม่งั้นทุกแถวอยู่ในช่วงเผื่อ 2 นาทีหมด แล้ววัดอะไรไม่ได้
+     (replica = ข้าม trigger ประทับเวลา เฉพาะตอนจัดฉาก) */
+  await S.db.exec(`set session_replication_role = replica;
+    update checkins set updated_at = now() - interval '2 hours';
+    update checkins set updated_at = now() - interval '1 hour' where id = 'ci-st12';
+    update students set updated_at = now() - interval '1 hour';
+    update groups set updated_at = now() - interval '1 hour';
+    set session_replication_role = origin;`);
+
+  const t1 = await device('ipad-t1', 't1');
+  await t1.pullAll();
+  check('เปิดแอป: ดึงคาบทั้งตาราง (ยังไม่รู้ว่าตู้มีอะไร)', (S.pulled.get('ipad-t1|checkins') ?? 0) === N, S.pulled.get('ipad-t1|checkins'));
+
+  // นักศึกษาคนหนึ่งแก้โน้ต + อีกคนเช็คอินคาบใหม่
+  await phones[0].db.table('checkins').put(checkinOf(sids[0], { note: 'ลืมเครื่องมือ' }));
+  await phones[1].db.table('checkins').put(checkinOf(sids[1], { id: 'ci-st2-b', date: '2026-09-14' }));
+  await settle();
+  await Promise.all(phones.slice(0, 2).map((p) => p.flushNow()));
+
+  S.pulled.clear();
+  await t1.pullAll();
+  /* 3 = 2 แถวที่ขยับ + แถวล่าสุดเดิม (ci-st12) ที่อยู่ในช่วงเผื่อ 2 นาทีของรอบก่อน — ตั้งใจ */
+  check('รอบถัดไป: ดึงลงมาแค่แถวที่ขยับ (3) ไม่ใช่ทั้งตาราง (13)', (S.pulled.get('ipad-t1|checkins') ?? 0) === 3, S.pulled.get('ipad-t1|checkins'));
+  check('...และได้ของครบถูกต้อง', t1.peek('checkins', `ci-${sids[0]}`)?.note === 'ลืมเครื่องมือ' && !!t1.peek('checkins', 'ci-st2-b'));
+
+  // แถวที่ commit ช้า: ตราเวลาเก่ากว่าค่าสูงสุดที่เครื่องเห็นไปแล้ว ~1 นาที (now() = เวลาเริ่ม transaction)
+  await S.db.exec(`set session_replication_role = replica;
+    update checkins set note = 'commit ช้า', updated_at = (select max(updated_at) from checkins) - interval '1 minute' where id = 'ci-st5';
+    set session_replication_role = origin;`);
+  await phones[2].db.table('checkins').put(checkinOf(sids[2], { note: 'ตัวปลุกให้มีของใหม่' }));
+  await settle();
+  await phones[2].flushNow();
+  await t1.pullAll();
+  check('แถวที่ commit ช้ากว่าตราเวลาของตัวเอง ยังได้ (ช่วงเผื่อ 2 นาที)', t1.peek('checkins', 'ci-st5')?.note === 'commit ช้า', t1.peek('checkins', 'ci-st5')?.note);
+
+  // รอบ 15 วิ + เปิดจอกลับมา + ปุ่ม sync ชนกัน ระหว่างที่เครื่องช้ายังดึงไม่เสร็จ
+  const t9 = await device('ipad-t9', 't2');
+  S.pulled.clear();
+  await Promise.all([t9.pullAll(), t9.pullAll(), t9.pullAll(), t9.pullAll()]);
+  check('เรียก pullAll ซ้อนกัน 4 ครั้งตอนเปิดแอป → ดึงทั้งตารางรอบเดียว + รอบตามที่ดึงเฉพาะที่ขยับ',
+    (S.pulled.get('ipad-t9|checkins') ?? 0) <= N + 1 + 3, S.pulled.get('ipad-t9|checkins'));
+
+  // ไม่มีอะไรขยับ → ไม่ดึงแถวไหนเลย
+  S.pulled.clear();
+  await t1.pullAll();
+  check('ไม่มีอะไรขยับ → ไม่ดึงแถวข้อมูลเลย', [...S.pulled.values()].reduce((a, b) => a + b, 0) === 0, Object.fromEntries(S.pulled));
+
+  // รายชื่อกลุ่มขยับ = สิทธิ์การมองเห็นอาจเปลี่ยน → ตารางที่เหลือในรอบนั้นดึงทั้งตาราง
+  await S.db.query(`update groups set advisor_ids = array['t1'] where code = 'TH-PT1'`);
+  await phones[3].db.table('checkins').put(checkinOf(sids[3], { note: 'ปลุก' }));
+  await settle();
+  await phones[3].flushNow();
+  S.pulled.clear();
+  await t1.pullAll();
+  check('กลุ่มขยับ → คาบดึงทั้งตาราง (กันแถวเก่าที่เพิ่งมองเห็นตกหล่น)', (S.pulled.get('ipad-t1|checkins') ?? 0) === N + 1, S.pulled.get('ipad-t1|checkins'));
+  await S.db.close();
+}
+
+/* ══ ⑬ วันเปิดเทอม — รุ่นใหม่ 30 คนเปิดแอปครั้งแรกพร้อมกัน ══════════════════════
+   ภาคสร้างบัญชี + รายชื่อเชิญไว้ล่วงหน้า แล้วคาบแรกทุกคนล็อกอินในห้องเดียวกัน
+   ของที่ต้องจริง: ไม่มีใครเห็นของคนอื่น · ไม่มีเครื่องไหนดันของค้างในเครื่อง (ข้อมูลตัวอย่าง /
+   ของบัญชีก่อนหน้าบนไอแพดที่ใช้ร่วมกัน) ขึ้นเซิร์ฟเวอร์ · เช็คอินพร้อมกันแล้วครบ */
+console.log('\n⑬ วันเปิดเทอม — รุ่นใหม่ 30 คนเปิดแอปครั้งแรกพร้อมกัน');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const fresh = Array.from({ length: 30 }, (_, i) => `nw${i + 1}`);
+  await S.db.query(`insert into groups (code, advisor_ids, student_ids) values ('TH-PT2', array['t2'], $1)`, [fresh]);
+  for (const [i, sid] of fresh.entries()) {
+    await S.db.query(`insert into students (id, code, name, "group", year, entry_year) values ($1, $2, $3, 'TH-PT2', 5, 2570)`,
+      [sid, `67040${String(i + 1).padStart(2, '0')}`, `นศ. รุ่นใหม่ ${i + 1}`]);
+    await S.db.query(`insert into invites (email, role, student_id) values ($1, 'student', $2)`, [`${sid}@student.test`, sid]);
+    S.uid[sid] = (await S.db.query<{ id: string }>(`insert into auth.users (email) values ($1) returning id`, [`${sid}@student.test`])).rows[0].id;
+  }
+  const before = await server(S.db, `select (select count(*)::int from students) s, (select count(*)::int from groups) g, (select count(*)::int from teachers) t, (select count(*)::int from checkins) c`);
+
+  const devs = await Promise.all(fresh.map((sid) => device(`phone-${sid}`, sid)));
+  /* 5 เครื่องแรกเคยเปิดลิงก์เดโมไว้ (ข้อมูลตัวอย่างค้างในเครื่อง)
+     อีก 5 เครื่องเป็นไอแพดของภาคที่รุ่นพี่เคยล็อกอินไว้ มีคาบที่ยังไม่ได้ส่งค้างอยู่ */
+  for (const d of devs.slice(0, 5)) {
+    d.seedLocal('students', [{ id: 'st-TH-PT1-3', code: '6504003', name: 'นศ. ค', group: 'TH-PT1', year: 5, advisorIds: ['tc-TH-PT1-1'] }]);
+    d.seedLocal('teachers', [{ id: 'tc-TH-PT1-1', name: 'อ. ก.' }]);
+    d.seedLocal('patients', [{ id: 'pt-a', name: 'ผู้ป่วย A', hn: 'DEMO-0142', sexAge: 'ญ 68 ปี', ownerStudentId: 'st-TH-PT1-3' }]);
+  }
+  for (const d of devs.slice(5, 10)) {
+    await d.kvSet('cloudBoundUid', `${S.uid.st1}@v2`);
+    await d.kvSet('syncOutbox', { v: 2, dirty: [['checkins', [['ci-st1', null]]]], deletes: [] });
+    d.seedLocal('checkins', [checkinOf('st1', { note: 'ของรุ่นพี่ที่ค้างในไอแพด' })]);
+  }
+
+  const t0 = Date.now();
+  await Promise.all(devs.map((d) => d.initCloudSync()));
+  const openMs = Date.now() - t0;
+
+  check('ทุกเครื่องเห็นแถวนักศึกษาของตัวเองเท่านั้น (RLS จริง)',
+    devs.every((d, i) => d.dump('students').length === 1 && d.dump('students')[0].id === fresh[i]),
+    devs.map((d) => d.dump('students').map((x) => x.id).join('+')).filter((x, i) => x !== fresh[i]));
+  check('ของตัวอย่างที่ค้างในเครื่อง ถูกล้างตอนผูกบัญชี ไม่ค้างให้เห็น', devs.slice(0, 5).every((d) => !d.peek('patients', 'pt-a')));
+  check('คาบของรุ่นพี่ในไอแพดร่วม ถูกล้าง ไม่ถูกส่งในนามรุ่นน้อง',
+    devs.slice(5, 10).every((d) => !d.peek('checkins', 'ci-st1') && d.pendingPushCount() === 0)
+    && (await server(S.db, `select 1 from checkins where note = 'ของรุ่นพี่ที่ค้างในไอแพด'`)).length === 0);
+  const after = await server(S.db, `select (select count(*)::int from students) s, (select count(*)::int from groups) g, (select count(*)::int from teachers) t, (select count(*)::int from checkins) c`);
+  check('เปิดแอปพร้อมกัน 30 เครื่อง ไม่มีแถวงอกบนเซิร์ฟเวอร์', JSON.stringify(before) === JSON.stringify(after), { before, after });
+  check('ไม่มีเครื่องไหนโดนเซิร์ฟเวอร์ปฏิเสธระหว่างเปิดแอป', [...S.errors.keys()].filter((k) => k.startsWith('phone-nw')).length === 0,
+    Object.fromEntries([...S.errors].filter(([k]) => k.startsWith('phone-nw'))));
+
+  // คาบแรก: ทุกคนกดเช็คอินในนาทีเดียวกัน
+  await Promise.all(devs.map((d, i) => d.db.table('checkins').put(checkinOf(fresh[i]))));
+  await settle();
+  await Promise.all(devs.map((d) => d.flushNow()));
+  const ci = await server(S.db, `select student_id from checkins where student_id like 'nw%'`);
+  check('เช็คอินพร้อมกัน 30 คน → เซิร์ฟเวอร์ได้ครบ 30 ไม่ซ้ำ', ci.length === 30 && new Set(ci.map((r) => r.student_id)).size === 30, ci.length);
+  check('ไม่มีเครื่องไหนค้างส่ง/ถูกกัก', devs.every((d) => d.pendingPushCount() === 0 && d.syncProblems().length === 0));
+
+  const t2 = await device('ipad-t2', 't2');
+  await t2.initCloudSync();
+  check('อาจารย์ประจำกลุ่มใหม่เห็นเช็คอินครบ 30', t2.dump('checkins').filter((c) => String(c.studentId).startsWith('nw')).length === 30);
+  console.log(`   (เปิดแอป 30 เครื่องพร้อมกันบน Postgres ในเครื่อง: ${openMs} ms — ตัวเลขประกอบ ไม่ใช่เกณฑ์)`);
   await S.db.close();
 }
 

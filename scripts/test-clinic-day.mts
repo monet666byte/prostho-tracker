@@ -245,8 +245,11 @@ export const supabase = {
         return { in(_col, ids) { ids.forEach((i) => srvTbl(t).delete(i)); return Promise.resolve({ error: null }); } };
       },
       select() {
-        const rows = () => [...srvTbl(t).values()];
+        /* gte = pullAll รอบที่ดึงเฉพาะแถวที่ขยับ (13 ก.ย. 69) — เทียบแบบสตริงเหมือนตราเวลา ISO */
+        let since = null;
+        const rows = () => [...srvTbl(t).values()].filter((r) => since === null || String(r.updated_at) >= since);
         const self = {
+          gte(_col, v) { since = String(v); return self; },
           order() { return self; },
           limit(n) {
             const r = rows().sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));

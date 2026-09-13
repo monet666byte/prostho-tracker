@@ -57,7 +57,7 @@ const encode = (udt: string, v: unknown) =>
 /** สร้าง client หนึ่งตัวต่อ "เครื่อง" · ทุกคำขอรันในนามของ identity นั้นด้วย role จริง */
 export function pgSupabase(
   db: PGlite, identity: Identity,
-  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; onError?: (e: PgError) => void; onUpsert?: (table: string, rows: number) => void },
+  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; onError?: (e: PgError) => void; onUpsert?: (table: string, rows: number) => void; onSelect?: (table: string, rows: number) => void },
 ) {
   const types = new Map<string, Map<string, string>>();
 
@@ -177,22 +177,26 @@ export function pgSupabase(
 
       select(columns = '*', selOpts?: { count?: string; head?: boolean }) {
         let orderBy: { col: string; asc: boolean } | null = null;
+        let gte: { col: string; val: string } | null = null;
         const rowsOf = async (limit: number | null, offset: number) => {
           const cols = columns === '*' ? 't.*' : columns.split(',').map((c) => `t."${c.trim()}"`).join(', ');
           const order = orderBy ? `order by t."${orderBy.col}" ${orderBy.asc ? 'asc' : 'desc'}` : '';
           const lim = limit === null ? '' : `limit ${limit} offset ${offset}`;
+          const where = gte ? `where t."${gte.col}" >= $1` : '';
           // to_jsonb = รูปแบบเดียวกับที่ PostgREST ส่งออก (ตราเวลา +00:00 · array · jsonb)
           const sql = columns === '*'
-            ? `select to_jsonb(t.*) as r from "${table}" t ${order} ${lim}`
-            : `select jsonb_build_object(${columns.split(',').map((c) => `'${c.trim()}', t."${c.trim()}"`).join(', ')}) as r from "${table}" t ${order} ${lim}`;
+            ? `select to_jsonb(t.*) as r from "${table}" t ${where} ${order} ${lim}`
+            : `select jsonb_build_object(${columns.split(',').map((c) => `'${c.trim()}', t."${c.trim()}"`).join(', ')}) as r from "${table}" t ${where} ${order} ${lim}`;
           void cols;
-          const res = await run((tx) => tx.query<{ r: Record<string, unknown> }>(sql));
-          return res.error
-            ? { data: null, error: res.error }
-            : { data: (res.value as { rows: { r: Record<string, unknown> }[] }).rows.map((x) => x.r), error: null };
+          const res = await run((tx) => tx.query<{ r: Record<string, unknown> }>(sql, gte ? [gte.val] : []));
+          if (res.error) return { data: null, error: res.error };
+          const data = (res.value as { rows: { r: Record<string, unknown> }[] }).rows.map((x) => x.r);
+          if (columns === '*') opts.onSelect?.(table, data.length); // ให้เทสต์นับว่า "ดึงลงมาจริงกี่แถว"
+          return { data, error: null };
         };
         const builder = {
           order(col: string, o?: { ascending?: boolean }) { orderBy = { col, asc: o?.ascending !== false }; return builder; },
+          gte(col: string, val: string) { gte = { col, val }; return builder; },
           limit: (n: number) => rowsOf(n, 0),
           range: (fromIdx: number, toIdx: number) => rowsOf(toIdx - fromIdx + 1, fromIdx),
           // select('*', { count: 'exact', head: true }) — initCloudSync ใช้เช็คว่าตู้กลางว่างไหม
