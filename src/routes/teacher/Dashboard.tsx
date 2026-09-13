@@ -157,7 +157,9 @@ export default function Dashboard() {
                 : yearView === 'alumni' ? t('ภาพรวมรุ่นที่จบแล้ว')
                   : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
               {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
-              {cohortsShown && <span className="cohortchip">{cohortsShown}</span>}
+              {/* ตัวคั่นที่มองไม่เห็น — ช่องว่างบนจอมาจาก margin ของชิป แต่โปรแกรมอ่านหน้าจออ่านข้อความติดกัน
+                  เป็น "ภาพรวมทุกชั้นปีDTMU55" (เจอตอนไล่ใช้จริง 13 ก.ย. 69) · หน้าตาบนจอไม่เปลี่ยน */}
+              {cohortsShown && <><span className="sronly"> · </span><span className="cohortchip">{cohortsShown}</span></>}
             </h1>
             <p>
               {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
