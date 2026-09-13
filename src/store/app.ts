@@ -128,12 +128,38 @@ async function findMyGroup(teacherId: string): Promise<string | null> {
   return groups.find((g) => g.advisorIds.includes(teacherId))?.code ?? null;
 }
 
-/** อ่านชื่อจริงของคนใน session จากฐานข้อมูล (นศ. หรืออาจารย์ ตามบทบาท) */
-async function actorNameFor(session: Session): Promise<string> {
+/**
+ * อ่านชื่อจริงของคนใน session จากฐานข้อมูล (นศ. หรืออาจารย์ ตามบทบาท)
+ *
+ * ⚠️ โหมด cloud ห้ามถอยไปใช้ชื่อเดโม — เครื่องที่เพิ่งล็อกอินครั้งแรกยังไม่มีรายชื่อในลิ้นชัก
+ * (ดึงลงมาหลัง init) เดิมจึงได้ "นศ. Liv" ไปจนกว่าจะปิดแอปเปิดใหม่ และชื่อนี้ถูกจดลง
+ * audit (แก้/ลบไม่ได้) · ประวัติ step · ช่อง by ของใบประเมินที่ isOthersForm ใช้แยกเจ้าของ (เจอ 14 ก.ย. 69)
+ * ถอยไปใช้อีเมลของบัญชีแทน — อย่างน้อยเป็นความจริง · และ refreshActorName() แก้ให้หลังดึงรอบแรก
+ */
+async function actorNameFor(session: Session, user?: AppUser | null): Promise<string> {
   const row = session.role === 'teacher'
     ? await db.teachers.get(session.teacherId)
     : await db.students.get(session.studentId);
-  return row?.name ?? DEMO_STUDENT_NAME;
+  if (row?.name) return row.name;
+  return cloudEnabled && user?.email ? user.email : DEMO_STUDENT_NAME;
+}
+
+/**
+ * หลัง sync รอบแรกดึงรายชื่อลงมาแล้ว — อ่านชื่อคนทำรายการใหม่ (ถ้ายังเป็น session เดิม)
+ * และกลุ่มที่ปรึกษาของอาจารย์ด้วย เหตุเดียวกัน (เครื่องใหม่ยังไม่มีตาราง groups ตอน init)
+ * กลุ่ม: เติมเฉพาะตอนที่ยังไม่รู้ — ห้ามทับกลุ่มที่อาจารย์เลือกดูเองระหว่างรอ
+ */
+async function refreshActorName(): Promise<void> {
+  const { session, cloudUser, myGroup, teacherGroup } = useApp.getState();
+  if (!session) return;
+  const name = await actorNameFor(session, cloudUser);
+  const mine = myGroup ?? await findMyGroup(session.teacherId);
+  const st = useApp.getState();
+  if (st.session !== session) return;
+  if (st.actorName !== name) useApp.setState({ actorName: name });
+  if (!myGroup && mine) {
+    useApp.setState(st.teacherGroup === teacherGroup ? { myGroup: mine, teacherGroup: mine } : { myGroup: mine });
+  }
 }
 
 /** แปลงบัญชีที่ล็อกอิน → session ที่ UI ใช้ (ยึด id จาก app_users ไม่ใช่ค่า DEMO) */
@@ -222,7 +248,7 @@ export const useApp = create<AppState>((set, get) => ({
           const mine = await findMyGroup(session.teacherId);
           set({
             ready: true, initError: null, settings, session, cloudUser: user, cloudUnlinked: false,
-            actorName: await actorNameFor(session),
+            actorName: await actorNameFor(session, user),
             myGroup: mine,
             teacherGroup: mine ?? get().teacherGroup,
           });
@@ -232,7 +258,7 @@ export const useApp = create<AppState>((set, get) => ({
           unsubSettings = onRemoteSettings(() => {
             void (async () => set({ settings: await getSettings(), revision: get().revision + 1 }))();
           });
-          void initCloudSync();
+          void initCloudSync().then(refreshActorName);
           // ส่ง studentId เข้าไปด้วย — คนอัปรูปต้องเป็นเจ้าของรูปเท่านั้น (RLS ของบักเก็ต)
           // ไม่งั้นเครื่องอาจารย์ซึ่งดึงแถวของ นศ. ทุกคนลงมา จะไล่อัปรูปคนอื่นแล้วโดนปฏิเสธหมด
           initPhotoSync(session.studentId);
@@ -290,11 +316,11 @@ export const useApp = create<AppState>((set, get) => ({
     const myGroup = await findMyGroup(session.teacherId);
     set({
       session, cloudUser: user, cloudUnlinked: false,
-      actorName: await actorNameFor(session),
+      actorName: await actorNameFor(session, user),
       myGroup,
       teacherGroup: myGroup ?? get().teacherGroup,
     });
-    void initCloudSync();
+    void initCloudSync().then(refreshActorName);
     initPhotoSync(session.studentId);
     return {};
   },
@@ -327,7 +353,7 @@ export const useApp = create<AppState>((set, get) => ({
       ? { role, studentId: user.studentId ?? DEMO.studentId, teacherId: user.teacherId ?? DEMO.teacherId }
       : { role, studentId: await liveStudentId(), teacherId: DEMO.teacherId };
     await kvSet('session', session);
-    set({ session, sheet: null, toast: null, actorName: await actorNameFor(session) });
+    set({ session, sheet: null, toast: null, actorName: await actorNameFor(session, user) });
     return role;
   },
 
