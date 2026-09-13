@@ -55,5 +55,8 @@ from (
   union all select '0020 อาจารย์ทับโน้ตของนักศึกษาไม่ได้',
     exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
             and pg_get_functiondef(oid) like '%new.note := old.note%')
+
+  union all select '0021 ปิดช่องจากการตรวจความปลอดภัย 13 ก.ย.',
+    exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
 ) x
 order by x.label;
