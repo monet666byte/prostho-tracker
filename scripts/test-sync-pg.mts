@@ -679,5 +679,59 @@ console.log('\n⑬ วันเปิดเทอม — รุ่นใหม�
   await S.db.close();
 }
 
+/* ══ ⑭ เกิน 1,000 แถว — PostgREST ตัดทุกคำขอที่ 1,000 แถว ═══════════════════
+   บั๊กจริง 29 ส.ค. 69 (cfc33b6): มีคาบ 1,215 แถว ดึงได้ 1,000 เงียบๆ · `mutate:sync` M24 พบว่าไม่มีเทสต์เฝ้า */
+console.log('\n⑭ ตารางเกิน 1,000 แถว — ต้องดึงครบทุกหน้า  [M24]');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  await S.db.query(`insert into checkins (id, student_id, date, activities, created_at)
+    select 'bulk-' || g, 'st' || (1 + g % 12), '2026-0' || (6 + g % 3) || '-' || lpad((1 + g % 28)::text, 2, '0'), '{}', '2026-06-01T00:00:00Z'
+    from generate_series(1, 1215) g`);
+  const t1 = await device('ipad-t1', 't1');
+  await t1.pullAll();
+  check('อาจารย์ดึงคาบลงมาครบ 1,215 แถว', t1.dump('checkins').length === 1215, t1.dump('checkins').length);
+  await S.db.close();
+}
+
+/* ══ ⑮ ส่งแถวใหม่หลายแถวในก้อนเดียว ช่องไม่เท่ากัน ════════════════════════════
+   supabase-js ใส่ NULL ให้ช่องที่แถวนั้นไม่มี (ถ้าไม่ได้บอก defaultToNull: false) → ช่อง NOT NULL ทำทั้งก้อนตก
+   ⑨ เฝ้าเรื่องนี้ใน pushAll แล้ว แต่ flush (ทางที่ใช้ทุกวัน) ไม่มีใครเฝ้า · `mutate:sync` M14 */
+console.log('\n⑮ เช็คอินออฟไลน์สองคาบ ช่องไม่เท่ากัน แล้วส่งขึ้นพร้อมกันในก้อนเดียว  [M14]');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const p = await device('phone-st1', 'st1');
+  S.netDown.add('phone-st1');
+  await p.db.table('checkins').put(checkinOf('st1', { id: 'ci-a', punctual: false }));
+  const noPunctual: Record<string, unknown> = checkinOf('st1', { id: 'ci-b', date: '2026-09-14' });
+  delete noPunctual.punctual; // แถวที่สร้างจากฟอร์มรุ่นเก่า/ทางอื่น ไม่มีช่องนี้
+  await p.db.table('checkins').put(noPunctual);
+  await settle();
+  S.netDown.delete('phone-st1');
+  await p.flushNow();
+  const rows = await server(S.db, `select id, punctual from checkins where id in ('ci-a', 'ci-b') order by id`);
+  check('ส่งรอบเดียวขึ้นครบทั้งสองคาบ (ก้อนไม่ตกเพราะ NULL)', rows.length === 2, rows);
+  check('คาบที่ไม่มีช่อง punctual ได้ค่า default ของคอลัมน์ ไม่ใช่ NULL', rows.find((r) => r.id === 'ci-b')?.punctual === true, rows);
+  await S.db.close();
+}
+
+/* ══ ⑯ ค่าว่างจากเซิร์ฟเวอร์ → undefined ในเครื่อง ═══════════════════════════
+   หน้าจอเช็คแบบ `x !== undefined` / `'k' in obj` หลายที่ · ถ้าเก็บเป็น null จะขึ้น "null" หรือนับผิด
+   และ changedFields จะเห็นว่า null ≠ undefined → ส่งช่องที่ไม่ได้แก้ขึ้นไปทุกครั้งที่แก้แถวนั้น · M35 */
+console.log('\n⑯ ช่องที่เซิร์ฟเวอร์เป็น NULL ต้องเป็น undefined ในเครื่อง  [M35]');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  await S.db.query(`insert into checkins (id, student_id, date, activities, created_at, note) values ('ci-null', 'st1', '2026-09-13', '{}', '2026-09-13T00:00:00Z', null)`);
+  const p = await device('phone-st1', 'st1');
+  await p.pullAll();
+  const row = p.peek('checkins', 'ci-null');
+  check('note ที่เป็น NULL บนเซิร์ฟเวอร์ = undefined ในเครื่อง', !!row && row.note === undefined, row?.note);
+  await p.db.table('checkins').put({ ...row, activities: ['Laboratory work'] });
+  await settle();
+  S.upserted.set('phone-st1', 0);
+  await p.flushNow();
+  check('แก้ช่องเดียว → ไม่ส่งแถวทั้งแถวขึ้นไป (ช่องว่างไม่ถูกนับว่าแก้)', (S.upserted.get('phone-st1') ?? 0) === 0, S.upserted.get('phone-st1'));
+  await S.db.close();
+}
+
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);
