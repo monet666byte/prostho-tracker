@@ -943,6 +943,28 @@ async function bindToUser(uid: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * รอบ 15 วิ + ผู้ฟัง online / visibilitychange / pagehide ของเซสชันที่ล็อกอินอยู่
+ *
+ * ต้องเก็บไว้ถอดตอนออกจากระบบ — เดิม stopCloudSync ไม่ถอด (เจอ 14 ก.ย. 69):
+ * ออกจากระบบแล้วเครื่องยังยิงคำขอทุก 15 วิ และล็อกอินใหม่แต่ละครั้งเพิ่มรอบซ้อนอีกชุด
+ * (iPad กลางคลินิกที่หลายคนสลับกันใช้ = ดึงถี่ขึ้นเรื่อยๆ ทั้งวัน)
+ */
+const loop: {
+  timer: ReturnType<typeof setInterval> | null;
+  online: (() => void) | null;
+  visibility: (() => void) | null;
+  pagehide: (() => void) | null;
+} = { timer: null, online: null, visibility: null, pagehide: null };
+
+function detachLoop(): void {
+  if (loop.timer) clearInterval(loop.timer);
+  if (loop.online) window.removeEventListener('online', loop.online);
+  if (loop.visibility) document.removeEventListener('visibilitychange', loop.visibility);
+  if (loop.pagehide) window.removeEventListener('pagehide', loop.pagehide);
+  loop.timer = loop.online = loop.visibility = loop.pagehide = null;
+}
+
 /** เรียกครั้งเดียวตอนแอปเปิด (หลังล็อกอินสำเร็จ) — ไม่มีกุญแจ/ไม่ได้ล็อกอิน = ไม่ทำอะไรเลย */
 export async function initCloudSync(): Promise<void> {
   if (!cloudEnabled || started) return;
@@ -982,7 +1004,8 @@ export async function initCloudSync(): Promise<void> {
     subscribeRealtime();
     // polling สำรอง: ตารางที่ยังไม่ได้สมัคร realtime publication (0002) ก็ยังเห็นกันภายใน ~15 วิ
     // ลำดับสำคัญ: ดันของค้างขึ้นก่อนค่อยดึงลง — กันของที่เพิ่งพิมพ์ถูกฉบับเก่าบนตู้ทับ
-    setInterval(() => {
+    detachLoop(); // กันซ้อน — ปกติ stopCloudSync ถอดไปแล้ว
+    loop.timer = setInterval(() => {
       void (async () => {
         await flush();
         await flushSettings();
@@ -990,13 +1013,14 @@ export async function initCloudSync(): Promise<void> {
         await pullAll();
       })();
     }, 15_000);
-    window.addEventListener('online', () => void (async () => {
+    loop.online = () => void (async () => {
       await flush();
       await flushSettings();
       await runPumpHooks();
-    })());
+    })();
+    window.addEventListener('online', loop.online);
     // เปิดจอ/สลับกลับมาที่แอป → sync ทันที (สำคัญกับมือถือที่พักหน้าจอบ่อย — ตอนพักเบราว์เซอร์หน่วง timer)
-    document.addEventListener('visibilitychange', () => {
+    loop.visibility = () => {
       if (!document.hidden) {
         void (async () => {
           await flush();
@@ -1008,14 +1032,16 @@ export async function initCloudSync(): Promise<void> {
         void persistOutboxNow();
         void flush();
       }
-    });
+    };
+    document.addEventListener('visibilitychange', loop.visibility);
     /* ปิดแท็บ/สลับแอปบน iOS — pagehide คือ event สุดท้ายที่เชื่อถือได้
        (beforeunload ไม่ยิงบน iOS · unload ถูก browser รุ่นใหม่เลิกรองรับ)
        เขียนคิวลงเครื่องเป็นงานแรก แล้วค่อยพยายามส่ง — ถ้าแท็บตายกลางทางอย่างน้อยคิวอยู่รอด */
-    window.addEventListener('pagehide', () => {
+    loop.pagehide = () => {
       void persistOutboxNow();
       void flush();
-    });
+    };
+    window.addEventListener('pagehide', loop.pagehide);
   } catch {
     // ต่อตู้กลางไม่ได้ (เน็ตล่ม ฯลฯ) — แอปทำงาน local ต่อได้ปกติ
   }
@@ -1024,6 +1050,7 @@ export async function initCloudSync(): Promise<void> {
 /** ออกจากระบบ — ปลดสถานะ sync ให้ล็อกอินรอบหน้าเริ่มใหม่สะอาดๆ */
 export function stopCloudSync(): void {
   started = false;
+  detachLoop();
   /* ล้างเฉพาะในหน่วยความจำ — **ห้ามล้างสำเนาในเครื่อง**
      ออกจากระบบแล้วเข้าใหม่ด้วยบัญชีเดิม งานที่ยังไม่ขึ้นต้องยังได้ส่ง
      (ถ้าเป็นบัญชีอื่น bindToUser จะล้างทั้งลิ้นชักและคิวให้เองตอนผูกใหม่)

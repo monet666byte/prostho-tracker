@@ -508,6 +508,38 @@ console.log('\n⑥ เครื่องรวมที่เปลี่ยน�
   s2.stopCloudSync();
 }
 
+/* ══ ⑥ข ออกจากระบบแล้วเข้าใหม่ในแท็บเดิม — รอบ 15 วิต้องไม่ซ้อน ══════════════
+   เจอ 14 ก.ย. 69: stopCloudSync ไม่ถอดตัวจับเวลา → ออกจากระบบแล้วยังยิงคำขอ
+   และล็อกอินใหม่แต่ละครั้งเพิ่มอีกชุด · นับตัวจับเวลาที่ "ยังเดินจริง" จาก setInterval ของระบบ */
+console.log('\n⑥ข ออกจากระบบ/เข้าใหม่ในแท็บเดิม — รอบ sync ต้องไม่ซ้อน');
+{
+  resetAll();
+  seedServerRoster();
+  /* PRELUDE ของ openApp ปิด setInterval เป็นของเปล่าตอน import — จึงสวมตัวนับ "หลัง" เปิดแอป
+     ตัวนับไม่ตั้งเวลาจริง (กันเทสต์ไม่นิ่ง) แค่จำว่าตัวไหนถูกตั้งแล้วยังไม่ถูกเคลียร์ */
+  const app = await openApp('iPad กลางคลินิก');
+  const live = new Set<number>();
+  let nextId = 1_000_000;
+  const g = globalThis as unknown as { setInterval: unknown; clearInterval: unknown };
+  const [origSet, origClear] = [g.setInterval, g.clearInterval];
+  g.setInterval = (_fn: unknown, ms?: number) => { const id = nextId++; if (ms === 15_000) live.add(id); return id; };
+  g.clearInterval = (id: number) => { live.delete(id); };
+  try {
+    await app.initCloudSync();
+    check('ล็อกอิน: มีรอบ sync 1 ชุด', live.size === 1, `${live.size} ชุด`);
+    app.stopCloudSync();
+    check('ออกจากระบบ: รอบ sync หยุดจริง', live.size === 0, `${live.size} ชุด`);
+    await app.initCloudSync();
+    app.stopCloudSync();
+    await app.initCloudSync();
+    check('ออก/เข้าซ้ำสองรอบ: ยังมีแค่ 1 ชุด ไม่ซ้อน', live.size === 1, `${live.size} ชุด`);
+    app.stopCloudSync();
+  } finally {
+    g.setInterval = origSet;
+    g.clearInterval = origClear;
+  }
+}
+
 /* ══ ⑦ ตัวสำรองข้อมูลต้องครอบทุกตารางที่แอป sync ═══════════════════════════
    สำเนาที่ขาดโดยไม่มีใครรู้ แย่กว่าไม่มีสำเนา — เพราะวันที่ต้องกู้จริงถึงจะรู้ว่าขาด
    เจอ 11 ก.ย. 69: backup ชุด 29 ส.ค. ขาด self_assessments / sect2 / sect3 / settings / pdpa_policy
