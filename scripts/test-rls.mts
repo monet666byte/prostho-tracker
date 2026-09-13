@@ -301,15 +301,39 @@ console.log('\n⑧ บัญชีทดสอบ @example.com');
      เหตุผล: การลบบัญชีทดสอบคือการลบข้อมูลบนเซิร์ฟเวอร์จริง ต้องให้คนตัดสิน ไม่ใช่เทสต์
      ถ้านับเป็นตก `npm test` จะแดงถาวร แล้วเทสต์ที่ตกเพราะบั๊กใหม่จะจมหายไปกับข้อนี้
      เมื่อมี migration ที่ลบบัญชีทดสอบแล้ว ให้เปลี่ยนข้อนี้เป็น check() ธรรมดา */
-  const stillAdmin = !!(role && role.ok && role.value === 'admin');
-  if (stillAdmin) {
-    console.log('⚠️  ความเสี่ยงที่ยังเปิดอยู่ (ไม่นับเป็นตก — รอเจ้าของระบบตัดสินใจ):');
-    console.log('    ใครสมัครด้วย demo@example.com ได้สิทธิ์หัวหน้าภาคทันที');
-    console.log('    บนเซิร์ฟเวอร์จริง: อันตรายถ้า Confirm email ปิด หรือบัญชีนั้นใช้รหัสผ่านที่เดาได้');
-    console.log('    ดู supabase/security-check.sql แถว ⑧ และ ⑪');
-  } else {
-    check('บัญชีทดสอบในรายชื่อเชิญ ไม่ได้สิทธิ์หัวหน้าภาค', true);
-  }
+  /* ผู้ใช้เคาะ 14 ก.ย.: demo@ เก็บไว้พรีเซนต์ (สลับ นศ.↔อาจารย์) แต่ถอดหัวหน้าภาคใน 0022 */
+  check('demo@example.com ไม่ได้สิทธิ์หัวหน้าภาค (0022)', !!(role && role.ok && role.value !== 'admin'), role);
+  const demoInvites = claim.uid ? await visible(db, { uid: claim.uid }, `select 1 from invites`) : -1;
+  check('demo@example.com อ่านรายชื่อเชิญไม่ได้แล้ว (สิทธิ์หัวหน้าภาค)', demoInvites === 0, demoInvites);
+  /* ⚠️ ยังเหลือ: demo@ ผูก teacher_id → เห็น/แก้ผู้ป่วยทุกคนเหมือนอาจารย์ทุกคน (0004 ตั้งใจ)
+     ก่อนรับข้อมูลจริง ต้องถอด teacher_id ของ demo@ หรือลบบัญชี — รอผู้ใช้ตัดสิน */
+  if (seesAll > 0) console.log(`⚠️  demo@example.com ยังมีสิทธิ์อาจารย์ (เห็นผู้ป่วย ${seesAll} คน) — ไม่นับเป็นตก ก่อนรับข้อมูลจริงต้องจัดการ`);
+
+  /* SQL ตั้งเจ้าของระบบเป็นหัวหน้าภาค — ผู้ใช้รันเองด้วยอีเมลจริง (ไม่อยู่ใน repo เพราะ repo เป็น public)
+     ตัวนี้ก๊อปรูปเดียวกับที่ส่งให้ผู้ใช้ ใส่อีเมลสมมติ · ต้องได้ผลทั้งแบบ "สมัครก่อน" และ "สมัครทีหลัง" */
+  const ownerSql = (email: string) => `
+    insert into invites (email, role, student_id, teacher_id, is_admin) values
+      ('${email}', 'student', 'st-TH-PT7-1', 'tc-TH-PT7-1', true)
+    on conflict (email) do update
+      set role = excluded.role, student_id = excluded.student_id,
+          teacher_id = excluded.teacher_id, is_admin = true;
+    update app_users
+       set role = 'student', student_id = 'st-TH-PT7-1', teacher_id = 'tc-TH-PT7-1', is_admin = true
+     where lower(email) = '${email}';`;
+  await db.exec(ownerSql('owner-after@test.local'));
+  const after = await signUp(db, 'owner-after@test.local');
+  const afterRole = after.uid ? await as(db, { uid: after.uid }, async (tx) => (await tx.query<{ r: string }>(`select my_role() as r`)).rows[0].r) : null;
+  check('เจ้าของระบบ (สมัครหลังรัน SQL) ได้สิทธิ์หัวหน้าภาค', !!(afterRole && afterRole.ok && afterRole.value === 'admin'), afterRole ?? after.error);
+
+  await db.exec(`insert into invites (email, role, student_id) values ('owner-before@test.local', 'student', 'sA')`);
+  const before = await signUp(db, 'owner-before@test.local');
+  await db.exec(ownerSql('owner-before@test.local'));
+  const beforeRole = before.uid ? await as(db, { uid: before.uid }, async (tx) => (await tx.query<{ r: string; t: string | null }>(`select my_role() as r, my_teacher_id() as t`)).rows[0]) : null;
+  check('เจ้าของระบบ (สมัครไว้ก่อนแล้ว) ได้สิทธิ์หัวหน้าภาค + สลับเป็นอาจารย์ได้',
+    !!(beforeRole && beforeRole.ok && beforeRole.value.r === 'admin' && beforeRole.value.t === 'tc-TH-PT7-1'), beforeRole ?? before.error);
+  const ownerSees = before.uid ? await visible(db, { uid: before.uid }, `select 1 from patients`) : -1;
+  check('หัวหน้าภาคเห็นผู้ป่วยทุกคน', ownerSees === 2, ownerSees);
+  await db.exec(`delete from auth.users where email like 'owner-%@test.local'; delete from invites where email like 'owner-%@test.local'`);
 }
 
 /* ── ⑨ ก่อนรัน 0021 ช่องพวกนี้เปิดอยู่จริง (พิสูจน์ว่าเทสต์ไม่ได้ผ่านลอยๆ) ──── */
