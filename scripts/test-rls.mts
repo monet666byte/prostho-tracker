@@ -333,6 +333,80 @@ console.log('\n⑨ สภาพเซิร์ฟเวอร์ก่อนร�
   await before.db.close();
 }
 
+/* ── ⑩ ตัวลบข้อมูลตัวอย่างบนเซิร์ฟเวอร์ ลบเฉพาะของปลอม ─────────────────────
+   ไฟล์ลบถาวรที่ผู้ใช้จะเอาไปรันบนเซิร์ฟเวอร์จริง — ต้องพิสูจน์ก่อนว่าไม่แตะของจริงสักแถว
+   ของปลอม: รูปแบบที่ seed.ts สร้าง · ของจริง: รูปแบบที่ importRoster (repo.ts) สร้าง */
+console.log('\n⑩ ตัวลบข้อมูลตัวอย่างบนเซิร์ฟเวอร์');
+{
+  const { readFileSync } = await import('node:fs');
+  await db.exec(`
+    -- ของปลอม (ลอกรูปแบบจาก buildPeople / buildCases ใน seed.ts)
+    insert into teachers (id, name) values ('tc-TH7-PT1-1', 'อ. ก.'), ('tc-TH7-PT1-2', 'อ. ข.');
+    insert into groups (code, advisor_ids, student_ids) values ('TH7-PT1', array['tc-TH7-PT1-1','tc-TH7-PT1-2'], array['st-TH7-PT1-1','st-TH7-PT1-2']);
+    insert into students (id, code, name, "group", year, entry_year) values
+      ('st-TH7-PT1-1', '6304001', 'นศ. ก', 'TH7-PT1', 6, 2567),
+      ('st-TH7-PT1-2', '6304002', 'นศ. ข', 'TH7-PT1', 6, 2567);
+    insert into patients (id, name, hn, owner_student_id) values
+      ('st-TH7-PT1-1-p0', 'ผู้ป่วย ก', 'DEMO-5449', 'st-TH7-PT1-1');
+    insert into workpieces (id, patient_id, student_id, type, accepted_date, last_updated_at) values
+      ('st-TH7-PT1-1-w0', 'st-TH7-PT1-1-p0', 'st-TH7-PT1-1', 'CD', '2025-06-03', '2026-01-01');
+    insert into updates (id, workpiece_id, proc_index, progression, performed_at, created_at) values
+      ('u-demo', 'st-TH7-PT1-1-w0', 1, 1, '2025-07-01', '2025-07-01');
+    insert into checkins (id, student_id, date, created_at) values ('ci-demo', 'st-TH7-PT1-1', '2025-07-01', '2025-07-01');
+
+    -- ของจริง (รูปแบบของ importRoster: st-<กลุ่ม>-<รหัส 7 หลัก>) — ห้ามหาย
+    insert into students (id, code, name, "group", year, entry_year) values
+      ('st-TH-PT9-6604048', '6604048', 'นศ. จริง', 'TH-PT9', 5, 2569);
+    insert into groups (code, advisor_ids, student_ids) values ('TH-PT9', array['t1'], array['st-TH-PT9-6604048']);
+    insert into patients (id, name, hn, owner_student_id) values ('p-real', 'ผู้ป่วยจริง', 'HN-12345', 'st-TH-PT9-6604048');
+    insert into workpieces (id, patient_id, student_id, type, accepted_date, last_updated_at) values
+      ('w-real', 'p-real', 'st-TH-PT9-6604048', 'RPD', '2026-06-03', '2026-09-01');
+    insert into checkins (id, student_id, date, created_at) values ('ci-real', 'st-TH-PT9-6604048', '2026-09-12', '2026-09-12');
+  `);
+
+  const check1 = await db.query<Record<string, unknown>>(readFileSync(join(root, 'supabase/check-demo-rows.sql'), 'utf8'));
+  const row = (name: string) => check1.rows.find((r) => r['ตาราง'] === name) as Record<string, number> | undefined;
+  check('ไฟล์ตรวจนับนักศึกษาตัวอย่างถูก (2 ของปลอม)', Number(row('นักศึกษา')?.['ข้อมูลตัวอย่าง']) === 2, row('นักศึกษา'));
+  check('ไฟล์ตรวจนับผู้ป่วยตัวอย่างถูก', Number(row('ผู้ป่วย')?.['ข้อมูลตัวอย่าง']) === 1, row('ผู้ป่วย'));
+
+  const beforeReal = {
+    students: (await db.query(`select 1 from students where id !~ '^st-.+-[1-8]$'`)).rows.length,
+    patients: (await db.query(`select 1 from patients where hn not like 'DEMO-%'`)).rows.length,
+    works: (await db.query(`select 1 from workpieces where id in ('wA','wB','w-real')`)).rows.length,
+    invites: (await db.query(`select 1 from invites`)).rows.length,
+  };
+
+  const removeSql = readFileSync(join(root, 'supabase/remove-demo-rows.sql'), 'utf8');
+  let removeErr = '';
+  try {
+    await db.exec('begin;\n' + removeSql + '\ncommit;');
+  } catch (e) {
+    removeErr = (e as Error).message;
+    await db.exec('rollback;').catch(() => {});
+  }
+  check('ไฟล์ลบรันผ่านบน Postgres จริง', removeErr === '', removeErr);
+
+  const left = async (sql: string) => (await db.query(sql)).rows.length;
+  check('นักศึกษาตัวอย่างหายหมด', await left(`select 1 from students where id ~ '^st-.+-[1-8]$'`) === 0);
+  check('ผู้ป่วย HN DEMO- หายหมด', await left(`select 1 from patients where hn like 'DEMO-%'`) === 0);
+  check('ชิ้นงาน/step/คาบของตัวอย่างหายหมด',
+    await left(`select 1 from workpieces where id = 'st-TH7-PT1-1-w0'`) + await left(`select 1 from updates where id = 'u-demo'`)
+      + await left(`select 1 from checkins where id = 'ci-demo'`) === 0);
+  check('กลุ่มตัวอย่างที่ไม่เหลือใครหาย', await left(`select 1 from groups where code = 'TH7-PT1'`) === 0);
+  check('อาจารย์ตัวอย่างที่ไม่มีใครอ้างถึงหาย', await left(`select 1 from teachers where id like 'tc-TH7-PT1-%'`) === 0);
+
+  const afterReal = {
+    students: await left(`select 1 from students where id !~ '^st-.+-[1-8]$'`),
+    patients: await left(`select 1 from patients where hn not like 'DEMO-%'`),
+    works: await left(`select 1 from workpieces where id in ('wA','wB','w-real')`),
+    invites: await left(`select 1 from invites`),
+  };
+  check('ของจริงไม่หายสักแถว (นักศึกษา/ผู้ป่วย/ชิ้นงาน/รายชื่อเชิญ)',
+    JSON.stringify(beforeReal) === JSON.stringify(afterReal), { beforeReal, afterReal });
+  check('นักศึกษารูปแบบของจริงยังอยู่พร้อมคาบ',
+    await left(`select 1 from students where id = 'st-TH-PT9-6604048'`) === 1 && await left(`select 1 from checkins where id = 'ci-real'`) === 1);
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);

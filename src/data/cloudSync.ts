@@ -107,7 +107,16 @@ function fromRow(def: TableDef, row: Record<string, unknown>): Record<string, un
 
 /* ── คิวส่งขึ้น (in-memory + pushAll ตอนเปิดแอปกันตกหล่น) ── */
 
-let paused = false; // ปิดชั่วคราวระหว่าง seed/reset — กันข้อมูล fixture ไหลมั่ว
+/**
+ * หยุด sync ชั่วคราวระหว่าง seed/reset — กันข้อมูล fixture ไหลขึ้นตู้กลาง
+ *
+ * ⚠️ ต้องนับชั้น ไม่ใช่สวิตช์เปิด/ปิดตัวเดียว (พิสูจน์ 13 ก.ย. 69 ด้วยหน้าจอจริงในโหมด cloud):
+ * งานสองงานหยุด sync ซ้อนกัน (เช่น React StrictMode สั่ง init สองรอบพร้อมกันตอนพัฒนา
+ * หรือ seed กับการโหลดรุ่นที่จบแล้วคาบกัน) → งานแรกจบแล้วสั่ง "เปิด" ขณะที่งานที่สองยังเขียนอยู่
+ * → แถวที่เหลือของงานที่สองเข้าคิวส่งขึ้นตู้กลาง · ตอนนั้นยิงคำขอขยะหลายพันคำขอตั้งแต่ยังไม่ล็อกอิน
+ */
+let pauseDepth = 0;
+let paused = false;
 // กัน echo แบบระบุรายแถว: เฉพาะ "แถวที่กำลัง apply จากตู้กลาง" เท่านั้นที่ไม่ต้องส่งกลับ
 // (เคยใช้ธงคลุมทั้งระบบ → งานที่ผู้ใช้กดระหว่างจังหวะ apply หายไปเฉยๆ — บั๊กคืนแรก)
 const applyingKeys = new Set<string>();
@@ -136,7 +145,8 @@ const dirty = new Map<string, Map<unknown, FieldSet>>(); // local table → pk �
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function setSyncPaused(v: boolean) {
-  paused = v;
+  pauseDepth = Math.max(0, pauseDepth + (v ? 1 : -1));
+  paused = pauseDepth > 0;
 }
 
 /** รวมของเดิมกับของใหม่ — ถ้าฝ่ายใดฝ่ายหนึ่งเป็น "ทั้งแถว" ผลคือทั้งแถว */

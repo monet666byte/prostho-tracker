@@ -519,6 +519,12 @@ function buildCases(list: Student[]): { patients: Patient[]; works: Workpiece[] 
 }
 
 export async function seedIfEmpty(): Promise<void> {
+  /* ⚠️ โหมด cloud ห้ามเขียนข้อมูลตัวอย่างลงเครื่องเด็ดขาด (พิสูจน์ด้วยหน้าจอจริง 13 ก.ย. 69)
+     · ข้อมูลของโหมดนี้มาจากตู้กลางอย่างเดียว — เครื่องไม่มีอะไรต้องตั้งต้นเอง
+     · ของตัวอย่างในลิ้นชักคือของที่ pushAll จะดันขึ้นตู้กลางได้ ถ้าหลุดจากช่วงหยุด sync
+     · และถ้า SEED_VERSION ขยับ ตัวข้างล่างสั่ง db.delete() = ลบทั้งฐานในเครื่อง
+       รวมคิวรอส่งกับงานที่ทำตอนออฟไลน์ · โหมด cloud คือโหมดที่งานพวกนั้นมีจริง */
+  if (cloudEnabled) return;
   const { setSyncPaused } = await import('./cloudSync');
   setSyncPaused(true);
   try {
@@ -626,6 +632,12 @@ const ALUMNI_KEY = 'alumniSeeded';
 let alumniLoading: Promise<void> | null = null;
 
 export async function ensureAlumniSeeded(): Promise<void> {
+  /* ⚠️ บั๊กร้ายแรงที่พิสูจน์ด้วยหน้าจอจริงในโหมด cloud 13 ก.ย. 69:
+     หน้า "ตั้งค่าเกณฑ์" เรียกตัวนี้ทุกครั้งที่เปิด · เดิมไม่ดูว่าอยู่โหมดไหน จึงเขียนรุ่นที่จบแล้ว
+     แบบข้อมูลปลอม (นศ. 288 · ผู้ป่วย 1,141 · เคส 1,728) ลงเครื่องอาจารย์ แล้วตอนเปิดแอปครั้งถัดไป
+     pushAll ส่ง "แถวที่ตู้ยังไม่มี" ขึ้นไป = **ข้อมูลปลอมทั้งหมดเข้าฐานข้อมูลจริง** ปนกับของจริง
+     (เซิร์ฟเวอร์จำลอง: ผู้ป่วย 2 → 1,143 · HN DEMO-xxxx) · รุ่นที่จบแล้วของโหมด cloud มาจากตู้กลาง */
+  if (cloudEnabled) return;
   if (await kvGet<boolean>(ALUMNI_KEY, false)) return;
   if (alumniLoading) return alumniLoading;
   alumniLoading = (async () => {
@@ -659,6 +671,7 @@ export async function ensureAlumniSeeded(): Promise<void> {
 
 /** โหลดรุ่นเก่าไว้หรือยัง — หน้าจอใช้ตัดสินว่าจะขึ้นสถานะกำลังโหลดไหม */
 export async function alumniReady(): Promise<boolean> {
+  if (cloudEnabled) return true; // รุ่นที่จบแล้วมาจากตู้กลาง ไม่ต้องรอโหลดข้อมูลตัวอย่าง
   return (await kvGet<boolean>(ALUMNI_KEY, false)) === true;
 }
 
@@ -883,4 +896,72 @@ function buildSelfAssessments(students: Student[]): SelfAssessment[] {
     });
   }
   return rows;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ลายเซ็นของข้อมูลตัวอย่าง — ใช้แยกของปลอมออกจากของจริงในโหมด cloud
+
+   ต้องไม่มีทางชนกับข้อมูลจริง (ตรวจ 13 ก.ย. 69):
+   · นักศึกษาจริงที่นำเข้ารายชื่อได้ id `st-<กลุ่ม>-<รหัส 7 หลัก>` (repo.ts → importRoster)
+     ของตัวอย่างได้ `st-<กลุ่ม>-<ลำดับ 1–8>` (buildPeople) → ท้าย id ต่างกันเด็ดขาด
+   · ผู้ป่วยตัวอย่างมี HN ขึ้นต้น `DEMO-` เสมอ (buildCases / DEMO_PATIENTS)
+   ห้ามจับด้วยรหัสกลุ่มหรือชื่ออาจารย์ — รุ่นจริงในอนาคตใช้รหัสกลุ่มรูปแบบเดียวกันได้
+   ══════════════════════════════════════════════════════════════════════════════ */
+export const isDemoStudentId = (id: string | undefined | null): boolean =>
+  !!id && /^st-.+-[1-8]$/.test(id);
+export const isDemoHn = (hn: string | undefined | null): boolean => !!hn && hn.startsWith('DEMO-');
+
+/**
+ * ล้างข้อมูลตัวอย่างที่ค้างในเครื่อง — โหมด cloud เท่านั้น เรียกตอนเปิดแอปก่อนเริ่ม sync
+ *
+ * ทำไมต้องมี แม้จะปิดทางเขียนไปแล้ว: เครื่องอาจารย์ที่เคยเปิดหน้าตั้งค่าก่อนแก้ ยังมีข้อมูลปลอม
+ * ค้างในลิ้นชัก · ถ้าหัวหน้าภาคลบของปลอมบนตู้กลางแล้ว เครื่องพวกนั้นจะเห็นว่า "ตู้ยังไม่มี"
+ * แล้ว pushAll ดันกลับขึ้นไปใหม่ทุกครั้งที่เปิดแอป = ล้างไม่มีวันหมด
+ *
+ * ลบในช่วงหยุด sync เสมอ — ลบในเครื่องอย่างเดียว ไม่สั่งลบบนตู้กลาง
+ * (ถ้าลายเซ็นพลาดไปโดนของจริง ของจริงยังอยู่บนตู้ แล้วไหลกลับลงมาในรอบดึงถัดไป)
+ * การลบบนตู้กลางต้องให้คนตรวจก่อน: supabase/remove-demo-rows.sql
+ */
+export async function purgeLocalDemoRows(): Promise<number> {
+  if (!cloudEnabled) return 0;
+  const { setSyncPaused } = await import('./cloudSync');
+  setSyncPaused(true);
+  try {
+    let removed = 0;
+    await db.transaction('rw', [db.students, db.patients, db.workpieces, db.updates, db.photos, db.checkins,
+      db.sect2, db.sect3, db.selfAssessments, db.kv], async () => {
+      const demoStudents = (await db.students.toArray()).filter((x) => isDemoStudentId(x.id)).map((x) => x.id);
+      const demoStudentSet = new Set(demoStudents);
+      const demoPatients = (await db.patients.toArray())
+        .filter((p) => isDemoHn(p.hn) || demoStudentSet.has(p.ownerStudentId)).map((p) => p.id);
+      const demoPatientSet = new Set(demoPatients);
+      const demoWorks = (await db.workpieces.toArray())
+        .filter((w) => demoStudentSet.has(w.studentId) || demoPatientSet.has(w.patientId)).map((w) => w.id);
+      const demoWorkSet = new Set(demoWorks);
+
+      const byStudent = async (t: 'checkins' | 'sect2' | 'sect3' | 'selfAssessments') => {
+        const ids = (await db.table(t).toArray() as Array<{ id: string; studentId: string }>)
+          .filter((r) => demoStudentSet.has(r.studentId)).map((r) => r.id);
+        await db.table(t).bulkDelete(ids);
+        return ids.length;
+      };
+      const byWork = async (t: 'updates' | 'photos') => {
+        const ids = (await db.table(t).toArray() as Array<{ id: string; workpieceId: string }>)
+          .filter((r) => demoWorkSet.has(r.workpieceId)).map((r) => r.id);
+        await db.table(t).bulkDelete(ids);
+        return ids.length;
+      };
+      removed += await byWork('updates') + await byWork('photos');
+      await db.workpieces.bulkDelete(demoWorks);
+      await db.patients.bulkDelete(demoPatients);
+      removed += await byStudent('checkins') + await byStudent('sect2') + await byStudent('sect3') + await byStudent('selfAssessments');
+      await db.students.bulkDelete(demoStudents);
+      removed += demoWorks.length + demoPatients.length + demoStudents.length;
+      await kvSet(ALUMNI_KEY, false);
+    });
+    return removed;
+  } finally {
+    setSyncPaused(false);
+  }
 }

@@ -6,7 +6,7 @@ import { assertSect3 } from '../domain/sect3';
 import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { initPhotoSync, stopPhotoSync } from '../data/photoStore';
 import { onRemoteSettings, pushSettings } from '../data/settingsSync';
-import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, resetDemoData, seedIfEmpty } from '../data/seed';
+import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, purgeLocalDemoRows, resetDemoData, seedIfEmpty } from '../data/seed';
 import { cloudEnabled } from '../lib/cloud';
 import { toISODate } from '../lib/date';
 import { isInstalled } from '../lib/install';
@@ -202,6 +202,10 @@ export const useApp = create<AppState>((set, get) => ({
       const settings = await getSettings();
 
       if (cloudEnabled) {
+        /* เครื่องที่เคยโดนเขียนข้อมูลตัวอย่างลงลิ้นชักก่อนแก้ (ดู ensureAlumniSeeded ใน seed.ts)
+           ต้องล้างก่อนเริ่ม sync เสมอ ไม่งั้น pushAll ดันของปลอมขึ้นตู้กลางซ้ำทุกครั้งที่เปิดแอป */
+        const purged = await purgeLocalDemoRows();
+        if (purged) console.warn(`[ล้างข้อมูลตัวอย่างที่ค้างในเครื่อง] ${purged} แถว`);
         // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
         const user = await getAppUser();
         if (user) {
