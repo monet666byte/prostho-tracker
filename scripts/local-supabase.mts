@@ -67,7 +67,9 @@ async function seed(db: PGlite) {
       ('s1@test.local', 'student', 's1', null, false),
       ('s2@test.local', 'student', 's2', null, false),
       ('t1@test.local', 'teacher', null, 't1', false),
-      ('head@test.local', 'teacher', null, 'thead', true);
+      ('head@test.local', 'teacher', null, 'thead', true),
+      -- รูปแบบเดียวกับบัญชีเจ้าของระบบบนเซิร์ฟเวอร์จริง (0022): หัวหน้าภาค + สลับ นศ.↔อาจารย์ ได้
+      ('owner@test.local', 'student', 's3', 't2', true);
     insert into patients (id, name, hn, sex_age, owner_student_id) values
       ('p1', 'ผู้ป่วยทดสอบ ก', 'HN-T-0001', 'ชาย 67', 's1'),
       ('p2', 'ผู้ป่วยทดสอบ ข', 'HN-T-0002', 'หญิง 58', 's2');
@@ -80,7 +82,7 @@ async function seed(db: PGlite) {
   `);
   /* id คงที่ต่ออีเมล (md5 → uuid) — รีสตาร์ตเซิร์ฟเวอร์แล้วเครื่องที่ล็อกอินค้างไว้ต้องยัง "เป็นบัญชีเดิม"
      ไม่งั้นแอปเห็น uid ใหม่ แล้วล้างลิ้นชักทิ้งเองตอนผูกบัญชี = ทดสอบเส้นทางของเครื่องเดิมไม่ได้ */
-  for (const email of ['s1@test.local', 's2@test.local', 't1@test.local', 'head@test.local']) {
+  for (const email of ['s1@test.local', 's2@test.local', 't1@test.local', 'head@test.local', 'owner@test.local']) {
     await db.query(`insert into auth.users (id, email, password) values (md5($1)::uuid, $1, 'test1234')`, [email]);
   }
 }
@@ -517,5 +519,5 @@ if ((process.argv[1] ?? '').endsWith('local-supabase.mts')) {
   const s = await startLocalSupabase();
   console.log(`local-supabase พร้อมที่ ${s.url}`);
   console.log(`VITE_SUPABASE_ANON_KEY=${s.anonKey}`);
-  console.log('บัญชีทดสอบ (รหัส test1234): s1@test.local · s2@test.local · t1@test.local · head@test.local (หัวหน้าภาค)');
+  console.log('บัญชีทดสอบ (รหัส test1234): s1@test.local · s2@test.local · t1@test.local · head@test.local (หัวหน้าภาค) · owner@test.local (หัวหน้าภาค + สลับ นศ.↔อาจารย์)');
 }

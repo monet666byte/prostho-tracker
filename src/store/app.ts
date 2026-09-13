@@ -209,7 +209,15 @@ export const useApp = create<AppState>((set, get) => ({
         // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
         const user = await getAppUser();
         if (user) {
-          const session = sessionFromUser(user);
+          /* บัญชีที่สลับ นศ.↔อาจารย์ ได้ (เจ้าของระบบ / demo@) — เปิดแอปใหม่ต้องอยู่มุมเดิมที่เลือกไว้
+             เดิมรีเฟรชทีไรเด้งกลับหน้า นศ. ทุกครั้ง แม้กำลังทำงานหน้าจัดการรายชื่ออยู่ (เจอ 14 ก.ย. 69)
+             ปลอดภัย: role ในเครื่องเป็นแค่มุมมอง · สิทธิ์จริงอ่านจาก app_users บนเซิร์ฟเวอร์ */
+          const base = sessionFromUser(user);
+          const prev = await kvGet<Session | null>('session', null);
+          const session: Session = user.studentId && user.teacherId && prev && prev.role !== base.role
+            && prev.studentId === base.studentId && prev.teacherId === base.teacherId
+            ? { ...base, role: prev.role }
+            : base;
           await kvSet('session', session);
           const mine = await findMyGroup(session.teacherId);
           set({
