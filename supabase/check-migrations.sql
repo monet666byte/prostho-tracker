@@ -52,9 +52,12 @@ from (
             and pg_get_functiondef(oid) like '%accounts_left%')
 
   -- 0020 แทนฟังก์ชันชื่อเดิมของ 0017 — ดูชื่อไม่ได้ ต้องดูเนื้อใน
+  -- ⚠️ ต้องเป็น regex ที่ยอมให้เว้นวรรคกี่ช่องก็ได้ ไม่ใช่ like — ในไฟล์จริงจัดแนวไว้เป็น
+  --    `new.note        := old.note` · ครั้งแรกเขียน like '%new.note := old.note%' แล้วมันตอบว่า
+  --    "ยังไม่ได้รัน" ทั้งที่รันไปแล้ว (จับได้ 13 ก.ย. 69 ตอนรันไฟล์นี้บน Postgres จริงในเครื่อง)
   union all select '0020 อาจารย์ทับโน้ตของนักศึกษาไม่ได้',
     exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
-            and pg_get_functiondef(oid) like '%new.note := old.note%')
+            and pg_get_functiondef(oid) ~ 'new\.note\s*:=\s*old\.note')
 
   union all select '0021 ปิดช่องจากการตรวจความปลอดภัย 13 ก.ย.',
     exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
