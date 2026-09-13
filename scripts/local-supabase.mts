@@ -36,10 +36,14 @@ const PORT = Number(process.env.LOCAL_SUPABASE_PORT ?? 54321);
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = (payload: Record<string, unknown>) => `${b64({ alg: 'none', typ: 'JWT' })}.${b64(payload)}.local`;
 export const ANON_KEY = jwt({ role: 'anon', iss: 'local-supabase', exp: 4102444800 });
+/** กุญแจ service_role — ข้าม RLS ทั้งหมดแบบ Supabase จริง · ใช้ในสคริปต์ดูแลระบบเท่านั้น ห้ามอยู่ในแอป */
+export const SERVICE_KEY = jwt({ role: 'service_role', iss: 'local-supabase', exp: 4102444800 });
 
-function identityOf(req: IncomingMessage): { uid: string } | 'anon' {
+type Who = { uid: string } | 'anon' | 'service';
+function identityOf(req: IncomingMessage): Who {
   const bearer = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
   if (!bearer || bearer === ANON_KEY) return 'anon';
+  if (bearer === SERVICE_KEY) return 'service';
   try {
     const p = JSON.parse(Buffer.from(bearer.split('.')[1], 'base64url').toString());
     if (p.role === 'authenticated' && typeof p.sub === 'string' && p.exp * 1000 > Date.now()) return { uid: p.sub };
@@ -109,10 +113,12 @@ const httpStatusOf = (code: string) =>
   code === '42501' ? 403 : code === '23505' ? 409 : code.startsWith('PGRST') ? 400 : code === 'P0001' ? 400 : 400;
 
 /* ── รันคำสั่งในนามผู้ใช้ ───────────────────────────────────────────────────── */
-async function asUser<T>(db: PGlite, who: { uid: string } | 'anon', fn: (q: PGlite['query']) => Promise<T>): Promise<T> {
+async function asUser<T>(db: PGlite, who: Who, fn: (q: PGlite['query']) => Promise<T>): Promise<T> {
   return db.transaction(async (tx) => {
     await tx.exec(`set local timezone = 'UTC';`);
-    if (who === 'anon') {
+    if (who === 'service') {
+      await tx.exec(`set local role service_role;`); // bypassrls — แบบเดียวกับกุญแจ service_role จริง
+    } else if (who === 'anon') {
       await tx.exec(`set local role anon; select set_config('request.jwt.claim.sub', '', true);`);
     } else {
       await tx.exec(`set local role authenticated;`);
@@ -323,6 +329,18 @@ async function storage(db: PGlite, req: IncomingMessage, res: ServerResponse, ur
       return f ? send(res, 200, f.data, { 'content-type': f.type }) : storageErr(404, 'not_found', 'Object not found');
     }
 
+    // ดาวน์โหลดตรงด้วย token ของผู้ใช้ (backup.ts ใช้ทางนี้) — ต้องมองเห็นตามกฎ RLS จริง
+    if (req.method === 'GET' && rest.startsWith('object/') && !rest.startsWith('object/sign/')) {
+      const tail = rest.slice('object/'.length).replace(/^(authenticated|public)\//, '');
+      const [bucket, ...parts] = tail.split('/');
+      const name = parts.join('/');
+      const seen = await asUser(db, who, (q) => q(
+        `select 1 from storage.objects where bucket_id = $1 and name = $2`, [bucket, name]));
+      const f = bytes.get(`${bucket}/${name}`);
+      if (!seen.rows.length || !f) return storageErr(404, 'not_found', 'Object not found');
+      return send(res, 200, f.data, { 'content-type': f.type });
+    }
+
     // ขอลิงก์แบบมีอายุ — ออกให้เฉพาะไฟล์ที่คนขอ "มองเห็น" ตามกฎ RLS จริง
     if (req.method === 'POST' && rest.startsWith('object/sign/')) {
       const bucket = rest.slice('object/sign/'.length);
@@ -363,7 +381,7 @@ async function storage(db: PGlite, req: IncomingMessage, res: ServerResponse, ur
         return storageErr(415, 'invalid_mime_type', `mime type ${fileType} is not supported`);
       }
       const upsert = String(req.headers['x-upsert'] ?? 'false') === 'true';
-      const owner = who === 'anon' ? null : who.uid;
+      const owner = who === 'anon' || who === 'service' ? null : who.uid;
       await asUser(db, who, (q) => q(
         `insert into storage.objects (bucket_id, name, owner) values ($1, $2, $3::uuid)
          ${upsert ? 'on conflict (bucket_id, name) do update set owner = excluded.owner' : ''}`, [bucket, name, owner]));
@@ -426,7 +444,7 @@ async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: 
   }
   if (sub === 'user' && req.method === 'GET') {
     const who = identityOf(req);
-    if (who === 'anon') return send(res, 401, { code: 'no_authorization', msg: 'This endpoint requires a valid Bearer token' });
+    if (who === 'anon' || who === 'service') return send(res, 401, { code: 'no_authorization', msg: 'This endpoint requires a valid Bearer token' });
     const r = await db.query<{ id: string; email: string }>(`select id, email from auth.users where id = $1`, [who.uid]);
     return r.rows.length ? send(res, 200, userOf(r.rows[0].id, r.rows[0].email)) : send(res, 404, { msg: 'User not found' });
   }
@@ -442,36 +460,62 @@ async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: 
 }
 
 /* ── เริ่ม ─────────────────────────────────────────────────────────────────── */
-const { db, results } = await freshDatabase(root);
-const broken = results.filter((r) => !r.ok);
-if (broken.length) {
-  console.error('migration พัง:', broken);
-  process.exit(1);
+
+export interface LocalSupabase {
+  url: string;
+  anonKey: string;
+  db: PGlite;
+  close: () => Promise<void>;
 }
-await seed(db);
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
-  if (req.method === 'OPTIONS') return send(res, 204);
-  const started = Date.now();
-  try {
-    if (url.pathname.startsWith('/rest/v1/')) await rest(db, req, res, url);
-    else if (url.pathname.startsWith('/storage/v1/')) await storage(db, req, res, url);
-    else if (url.pathname.startsWith('/auth/v1/')) await auth(db, req, res, url);
-    else send(res, 404, { message: 'local-supabase: ไม่รู้จักเส้นทางนี้' });
-  } catch (e) {
-    send(res, 500, pgErr(e));
-  }
-  // บันทึกคำขอที่ไม่สำเร็จไว้ให้อ่านใน preview_logs — ของที่ล้มคือของที่ต้องดู
-  if (res.statusCode >= 400) {
-    console.log(`${req.method} ${url.pathname}${url.search.slice(0, 80)} → ${res.statusCode} (${Date.now() - started}ms)`);
-  }
-});
-// realtime: ปฏิเสธ websocket — แอปถอยไปดึงข้อมูลทุก 15 วิเอง (ดู cloudSync.ts)
-server.on('upgrade', (_req, socket) => socket.destroy());
+/**
+ * เปิดเซิร์ฟเวอร์ — เรียกได้ทั้งจาก Browser pane (รันไฟล์นี้ตรงๆ) และจากชุดทดสอบ
+ * port 0 = ให้ระบบเลือกพอร์ตว่างเอง (ชุดทดสอบใช้ จะได้ไม่ชนกับตัวที่เปิดค้างใน Browser pane)
+ */
+export async function startLocalSupabase(port = PORT, opts: { quiet?: boolean } = {}): Promise<LocalSupabase> {
+  const { db, results } = await freshDatabase(root);
+  const broken = results.filter((r) => !r.ok);
+  if (broken.length) throw new Error('migration พัง: ' + JSON.stringify(broken));
+  await seed(db);
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`local-supabase พร้อมที่ http://127.0.0.1:${PORT}`);
-  console.log(`VITE_SUPABASE_ANON_KEY=${ANON_KEY}`);
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+    if (req.method === 'OPTIONS') return send(res, 204);
+    const started = Date.now();
+    try {
+      if (url.pathname.startsWith('/rest/v1/')) await rest(db, req, res, url);
+      else if (url.pathname.startsWith('/storage/v1/')) await storage(db, req, res, url);
+      else if (url.pathname.startsWith('/auth/v1/')) await auth(db, req, res, url);
+      else send(res, 404, { message: 'local-supabase: ไม่รู้จักเส้นทางนี้' });
+    } catch (e) {
+      send(res, 500, pgErr(e));
+    }
+    // บันทึกคำขอที่ไม่สำเร็จไว้ให้อ่านใน preview_logs — ของที่ล้มคือของที่ต้องดู
+    if (res.statusCode >= 400 && !opts.quiet) {
+      console.log(`${req.method} ${url.pathname}${url.search.slice(0, 80)} → ${res.statusCode} (${Date.now() - started}ms)`);
+    }
+  });
+  // realtime: ปฏิเสธ websocket — แอปถอยไปดึงข้อมูลทุก 15 วิเอง (ดู cloudSync.ts)
+  server.on('upgrade', (_req, socket) => socket.destroy());
+
+  await new Promise<void>((ok) => server.listen(port, '127.0.0.1', ok));
+  const address = server.address();
+  const actual = typeof address === 'object' && address ? address.port : port;
+  return {
+    url: `http://127.0.0.1:${actual}`,
+    anonKey: ANON_KEY,
+    db,
+    close: async () => {
+      await new Promise<void>((ok) => server.close(() => ok()));
+      await db.close();
+    },
+  };
+}
+
+/* รันไฟล์นี้ตรงๆ (Browser pane) = เปิดเซิร์ฟเวอร์ค้างไว้ · ถูก import จากชุดทดสอบ = ไม่ทำอะไรเอง */
+if ((process.argv[1] ?? '').endsWith('local-supabase.mts')) {
+  const s = await startLocalSupabase();
+  console.log(`local-supabase พร้อมที่ ${s.url}`);
+  console.log(`VITE_SUPABASE_ANON_KEY=${s.anonKey}`);
   console.log('บัญชีทดสอบ (รหัส test1234): s1@test.local · s2@test.local · t1@test.local · head@test.local (หัวหน้าภาค)');
-});
+}

@@ -204,6 +204,8 @@ export interface Target {
   /** อีเมลที่ล็อกอินเข้าไป — ใส่ในรายงานให้รู้ว่ากู้ในนามใคร */
   as: string;
   isTeacher: boolean;
+  /** กุญแจสำหรับคืนไฟล์รูปเท่านั้น (ดู uploadPhotos) — ไม่มี = คืนไฟล์รูปไม่ได้ */
+  storageKey?: string;
 }
 
 /**
@@ -247,7 +249,7 @@ async function signIn(env: Record<string, string>): Promise<Target> {
     const rows = (await me.json()) as Array<{ teacher_id?: string | null }>;
     isTeacher = rows.some((r) => r.teacher_id != null);
   }
-  return { url, headers, as: email, isTeacher };
+  return { url, headers, as: email, isTeacher, storageKey: env.RESTORE_STORAGE_SERVICE_KEY || undefined };
 }
 
 /** จำนวนแถวที่ปลายทางมีอยู่ตอนนี้ — ใช้บอกว่าจะ "เติม" หรือ "ทับ" */
@@ -308,26 +310,94 @@ export async function writeTable(
   return rep;
 }
 
-async function uploadPhotos(t: Target, dir: string): Promise<{ ok: number; failed: number }> {
-  const files = walk(join(dir, 'photos'));
+/* ══════════════════════════════════════════════════════════════════════════════
+   กู้รายคน — `--student=<id หรือรหัส 7 หลัก>`
+
+   ทำไมต้องมี (13 ก.ย. 69): เหตุที่เกิดจริงบ่อยกว่า "ทั้งระบบพัง" คือ "นักศึกษาคนหนึ่งเผลอลบเคส"
+   หรือ "เครื่องคนหนึ่งพังแล้วข้อมูลหาย" · กู้ทั้งระบบในกรณีนั้น = ย้อนงานของอีก 95 คน
+   กลับไปเป็นฉบับวันที่สำรอง
+
+   ค่าเริ่มต้นคือ **เติมเฉพาะแถวที่หายไป** (ignore-duplicates) — แถวที่ยังอยู่บนเซิร์ฟเวอร์ไม่ถูกแตะ
+   เพราะแถวพวกนั้นอาจถูกแก้หลังวันสำรองแล้ว (อาจารย์ประเมินเพิ่ม · นักศึกษากด step ต่อ)
+   ใส่ `--overwrite` ถ้าต้องการย้อนทั้งหมดของคนนั้นกลับเป็นฉบับในสำเนาจริงๆ
+
+   ตารางที่ไม่ใช่ของคนใดคนหนึ่ง (teachers / groups / ค่าตั้ง / นโยบาย / รายชื่อเชิญ / บัญชี) ไม่แตะเลย
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+type Row = Record<string, unknown>;
+const readRows = (dir: string, table: string): Row[] =>
+  existsSync(join(dir, `${table}.json`)) ? JSON.parse(readFileSync(join(dir, `${table}.json`), 'utf8')) as Row[] : [];
+
+/** หา id นักศึกษาจากที่ผู้ใช้พิมพ์ — รับได้ทั้ง id ภายในและรหัสนักศึกษา 7 หลัก */
+export function resolveStudentId(dir: string, input: string): string | null {
+  const students = readRows(dir, 'students');
+  if (students.some((r) => r.id === input)) return input;
+  const byCode = students.filter((r) => String(r.code) === input);
+  return byCode.length === 1 ? String(byCode[0].id) : null;
+}
+
+/** แถวของนักศึกษาคนเดียวในทุกตาราง — ตารางที่ไม่เกี่ยวกับคนนั้นได้ array ว่าง */
+export function rowsForStudent(dir: string, sid: string): Record<string, Row[]> {
+  const works = readRows(dir, 'workpieces').filter((r) => r.student_id === sid);
+  const workIds = new Set(works.map((r) => r.id));
+  const byStudent = (t: string) => readRows(dir, t).filter((r) => r.student_id === sid);
+  const byWork = (t: string) => readRows(dir, t).filter((r) => workIds.has(r.workpiece_id));
+  return {
+    students: readRows(dir, 'students').filter((r) => r.id === sid),
+    patients: readRows(dir, 'patients').filter((r) => r.owner_student_id === sid),
+    workpieces: works,
+    updates: byWork('updates'),
+    photos: byWork('photos'),
+    reviews: byWork('reviews'),
+    checkins: byStudent('checkins'),
+    submissions: byStudent('submissions'),
+    issues: byStudent('issues'),
+    self_assessments: byStudent('self_assessments'),
+    sect2_records: byStudent('sect2_records'),
+    sect3_records: byStudent('sect3_records'),
+    audit: byStudent('audit'),
+  };
+}
+
+/**
+ * ⚠️ ไฟล์รูปต้องใช้กุญแจ service_role แยกต่างหาก (`RESTORE_STORAGE_SERVICE_KEY`) — เฉพาะงานนี้เท่านั้น
+ *
+ * จับได้จากการซ้อมกู้ครบวงจร 13 ก.ย. 69: กฎบักเก็ต (0018) ให้ "นักศึกษาเจ้าของโฟลเดอร์" อัปรูปได้คนเดียว
+ * อาจารย์/หัวหน้าภาคอ่านและลบได้ แต่อัปไม่ได้ → ตัวกู้ที่ล็อกอินเป็นอาจารย์ (ซึ่งจำเป็นสำหรับตาราง checkins
+ * ดูหัวไฟล์ ⓵) อัปรูปคืนไม่ได้เลยสักใบ = รูปกู้ไม่ได้มาตั้งแต่แรก
+ *
+ * เลือกใช้กุญแจแยกแทนการเปิดสิทธิ์อัปรูปให้อาจารย์ในฐานข้อมูล — ไม่เพิ่มสิทธิ์ให้ผู้ใช้แอปคนไหน
+ * กุญแจอยู่แค่ในเครื่องคนที่รันกู้ข้อมูล · ห้ามใช้กุญแจนี้กับตาราง (trigger ของ checkins จะทิ้งคะแนน)
+ */
+async function uploadPhotos(t: Target, dir: string, onlyStudent?: string): Promise<{ ok: number; failed: number; firstError?: string }> {
+  /* โฟลเดอร์แรกของที่อยู่ไฟล์คือ id นักศึกษา (RLS ของ 0018 + ตัวตรวจของ 0021) — กู้รายคนเอาเฉพาะโฟลเดอร์นั้น */
+  const files = walk(join(dir, 'photos')).filter((f) => !onlyStudent || f.startsWith(`${onlyStudent}/`));
   let ok = 0;
   let failed = 0;
+  let firstError: string | undefined;
   for (const path of files) {
     const body = readFileSync(join(dir, 'photos', path));
     const encoded = path.split('/').map(encodeURIComponent).join('/');
     const res = await fetch(`${t.url}/storage/v1/object/${PHOTO_BUCKET}/${encoded}`, {
       method: 'POST',
       headers: {
-        apikey: t.headers.apikey,
-        Authorization: t.headers.Authorization,
+        apikey: t.storageKey ?? t.headers.apikey,
+        Authorization: t.storageKey ? `Bearer ${t.storageKey}` : t.headers.Authorization,
         'x-upsert': 'true', // กู้ซ้ำได้ ไม่ต้องล้างบักเก็ตก่อน
+        /* ⚠️ ต้องบอกชนิดไฟล์ — บักเก็ต case-photos รับเฉพาะ image/jpeg (0018)
+           ไม่ใส่ = ถูกปฏิเสธ 415 ทุกใบ · จับได้จากการซ้อมกู้ครบวงจร 13 ก.ย. 69 (test:restore-e2e)
+           รูปทุกใบในระบบเป็น JPEG อยู่แล้ว (แอปย่อและแปลงก่อนอัปเสมอ) */
+        'content-type': 'image/jpeg',
       },
       body: new Uint8Array(body),
     });
     if (res.ok) ok++;
-    else failed++;
+    else {
+      failed++;
+      firstError ??= `${res.status} ${(await res.text()).slice(0, 160)}`;
+    }
   }
-  return { ok, failed };
+  return { ok, failed, firstError };
 }
 
 function printCheck(c: SetCheck): boolean {
@@ -366,6 +436,8 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const confirmed = args.includes('--yes');
   const tableFilter = args.find((a) => a.startsWith('--tables='))?.slice(9).split(',').filter(Boolean);
+  const studentArg = args.find((a) => a.startsWith('--student='))?.slice('--student='.length);
+  const overwrite = args.includes('--overwrite');
   const picked = args.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a));
   const dir = picked ? join('backups', picked) : latestSet();
 
@@ -402,16 +474,34 @@ async function main() {
     process.exit(1);
   }
 
+  /* กู้รายคน: เลือกแถวของคนนั้นก่อน แล้วค่อยใช้ PLAN ตามปกติ (ลำดับเดิม · audit ยังเป็น insert-missing) */
+  let sid: string | null = null;
+  let personRows: Record<string, Row[]> | null = null;
+  if (studentArg) {
+    sid = resolveStudentId(dir, studentArg);
+    if (!sid) {
+      console.error(`\n✗ ไม่เจอนักศึกษา "${studentArg}" ในสำเนาชุดนี้ (ใส่ id หรือรหัสนักศึกษา 7 หลักก็ได้)`);
+      process.exit(1);
+    }
+    personRows = rowsForStudent(dir, sid);
+    console.log(`\nกู้รายคน: ${sid} · ${overwrite ? 'ทับด้วยฉบับในสำเนา (--overwrite)' : 'เติมเฉพาะแถวที่หายไป ไม่แตะแถวที่ยังอยู่'}`);
+  }
+  const rowsOf = (table: string): Row[] =>
+    personRows ? personRows[table] ?? [] : JSON.parse(readFileSync(join(dir, `${table}.json`), 'utf8')) as Row[];
+  const modeOf = (p: (typeof PLAN)[number]): 'upsert' | 'insert-missing' =>
+    personRows && !overwrite ? 'insert-missing' : p.mode;
+
   const plan = PLAN.filter((p) => !tableFilter || tableFilter.includes(p.table))
-    .filter((p) => check.rows[p.table] != null);
+    .filter((p) => check.rows[p.table] != null)
+    .filter((p) => !personRows || p.table in personRows);
 
   if (dryRun) {
     console.log('\nจะเขียนอะไร (ยังไม่เขียน):');
     for (const p of plan) {
       const live = await liveCount(t, p.table);
-      const n = check.rows[p.table];
+      const n = personRows ? rowsOf(p.table).length : check.rows[p.table];
       const now = live == null ? 'อ่านไม่ได้' : `${live} แถว`;
-      const verb = p.mode === 'insert-missing' ? 'เติมที่ยังไม่มี' : 'ทับด้วยสำเนา';
+      const verb = modeOf(p) === 'insert-missing' ? 'เติมที่ยังไม่มี' : 'ทับด้วยสำเนา';
       console.log(`  ${p.table.padEnd(17)} สำเนา ${String(n).padStart(5)} → ปลายทางมี ${now.padEnd(12)} (${verb})`);
       if (p.note) console.log(`      ⓘ ${p.note}`);
     }
@@ -423,17 +513,37 @@ async function main() {
   console.log('\nเริ่มกู้…');
   const reports: WriteReport[] = [];
   for (const p of plan) {
-    const rows = JSON.parse(readFileSync(join(dir, `${p.table}.json`), 'utf8')) as unknown[];
+    const rows = rowsOf(p.table);
     if (!rows.length) continue;
-    const rep = await writeTable(t, p.table, rows, p.mode);
+    const rep = await writeTable(t, p.table, rows, modeOf(p));
     reports.push(rep);
     const mark = rep.failed ? '⚠' : '✓';
     console.log(`  ${mark} ${p.table.padEnd(17)} ${rep.ok}/${rep.sent}`);
     if (rep.firstError) console.log(`      ${rep.firstError}`);
   }
 
-  const photos = check.photoFiles ? await uploadPhotos(t, dir) : { ok: 0, failed: 0 };
-  if (check.photoFiles) console.log(`  ${photos.failed ? '⚠' : '✓'} รูปงาน            ${photos.ok}/${check.photoFiles}`);
+  if (check.photoFiles && !t.storageKey) {
+    console.error('  ✗ มีไฟล์รูปในสำเนา แต่ไม่ได้ใส่ RESTORE_STORAGE_SERVICE_KEY — คืนไฟล์รูปไม่ได้');
+    console.error('    บัญชีอาจารย์อัปรูปขึ้นบักเก็ตไม่ได้ตามกฎ 0018 · เอากุญแจจาก Project Settings → API (service_role)');
+  }
+  const photos = check.photoFiles ? await uploadPhotos(t, dir, sid ?? undefined) : { ok: 0, failed: 0, firstError: undefined };
+  if (check.photoFiles) {
+    console.log(`  ${photos.failed ? '⚠' : '✓'} ไฟล์รูป            ${photos.ok}/${photos.ok + photos.failed}`);
+    if (photos.firstError) console.log(`      ${photos.firstError}`);
+  }
+
+  /* แถวในตาราง photos — กู้ "หลัง" อัปไฟล์เสมอ
+     ⚠️ เดิมตาราง photos ไม่อยู่ในแผนเลย (ตั้งใจเลื่อนไว้เพราะแถวต้องชี้ไฟล์ที่มีอยู่จริง แต่ไม่มีใครกู้ต่อ)
+        ผลคือไฟล์รูปกลับขึ้นบักเก็ต แต่แอปไม่มีแถวชี้ไปหา = รูปหายจากหน้าจอทั้งหมด
+        จับได้จากการซ้อมกู้ครบวงจร 13 ก.ย. 69 · แถวที่ไฟล์อัปไม่ผ่านจะไม่ถูกเขียน ไม่ปล่อยให้ชี้ไฟล์ที่ไม่มี */
+  const photoRowsAll = (personRows ? personRows.photos ?? [] : readRows(dir, 'photos'));
+  const photoRows = photos.failed ? photoRowsAll.filter((r) => !r.storage_path) : photoRowsAll;
+  if (photoRows.length && (!tableFilter || tableFilter.includes('photos'))) {
+    const rep = await writeTable(t, 'photos', photoRows, personRows && !overwrite ? 'insert-missing' : 'upsert');
+    reports.push(rep);
+    console.log(`  ${rep.failed ? '⚠' : '✓'} ${'photos'.padEnd(17)} ${rep.ok}/${rep.sent}`);
+    if (rep.firstError) console.log(`      ${rep.firstError}`);
+  }
 
   const totalOk = reports.reduce((s, r) => s + r.ok, 0);
   const totalFailed = reports.reduce((s, r) => s + r.failed, 0);

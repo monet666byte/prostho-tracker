@@ -40,6 +40,9 @@ const TABLES: Array<[table: string, orderBy: string]> = [
 /** บักเก็ตรูปงาน — ไบต์รูปอยู่ที่นี่ ไม่ได้อยู่ในตาราง (migration 0018) */
 const PHOTO_BUCKET = 'case-photos';
 
+/** โฟลเดอร์เก็บสำเนา — เปลี่ยนได้ด้วย BACKUP_DIR (ชุดทดสอบใช้โฟลเดอร์ชั่วคราว ไม่ปนกับสำเนาจริง) */
+const BACKUP_ROOT = process.env.BACKUP_DIR || 'backups';
+
 /** เก็บย้อนหลังกี่วัน — เกินนี้ลบทิ้งอัตโนมัติ กันดิสก์เต็ม */
 const KEEP_DAYS = 30;
 const PAGE = 1000;
@@ -91,7 +94,7 @@ async function main() {
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const dir = join('backups', stamp);
+  const dir = join(BACKUP_ROOT, stamp);
   mkdirSync(dir, { recursive: true });
 
   let total = 0;
@@ -171,10 +174,10 @@ async function main() {
   if (missingPath) console.warn(`   ⚠ มีแถวรูป ${missingPath} แถวที่ยังไม่มี storage_path (ยังไม่ได้อัปขึ้นคลาวด์)`);
 
   // ลบชุดเก่าเกิน KEEP_DAYS
-  const all = existsSync('backups') ? readdirSync('backups').filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort() : [];
+  const all = existsSync(BACKUP_ROOT) ? readdirSync(BACKUP_ROOT).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort() : [];
   const drop = all.slice(0, Math.max(0, all.length - KEEP_DAYS));
   for (const d of drop) {
-    rmSync(join('backups', d), { recursive: true, force: true });
+    rmSync(join(BACKUP_ROOT, d), { recursive: true, force: true });
     console.log(`   (ลบชุดเก่า ${d})`);
   }
 }
