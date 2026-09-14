@@ -982,3 +982,13 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .checkrow__score { font: 600 13.5px var(--font-mono); color: var(--text-secondary); flex: none; }
 .checkrow__wait { font: 600 12.5px var(--font-head); color: var(--warning); flex: none; }
 .checkrow__tag { font: 500 11.5px var(--font-body); color: var(--text-faint); flex: none; }
+
+/* ══ หน้ารายละเอียดเคส แบบ 4A (ผู้ใช้เลือก 14 ก.ย. 69 — "เห็น progress ตัวเอง") ══
+   หัวแบบหน้าแรก · จุดกลมเชื่อมเส้นเหมือนเดิม · ตัวอักษรเส้นทางใหญ่ขึ้น · "ทำเอง" เป็นตัวอักษรม่วง */
+.detailmeta { display: flex; align-items: center; gap: 6px; margin-top: 10px; font: 400 12.5px/1.5 var(--font-body); color: var(--text-faint); }
+.detailmeta .dot { flex: none; }
+.tl__title { font-size: 14px; }
+.tl__title--active { font-size: 15px; }
+.tl__count { font-size: 11px; }
+.tl__date { font-size: 12px; }
+.tl__self { font: 600 11.5px var(--font-body); color: var(--self); flex: none; }

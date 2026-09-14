@@ -1,9 +1,7 @@
-import { ArrowLeft, CameraPlus, CaretDown, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
+import { ArrowLeft, CameraPlus, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  ArchBadge, Bar, PendingBadge, PhotoSlot, SelfBadge, TypeBadge,
-} from '../../components/ui/Bits';
+import { Bar, PendingBadge, PhotoSlot, SelfBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
@@ -66,9 +64,7 @@ export default function WorkpieceDetail() {
     <div className="footer">
       {next ? (
         <>
-          <div style={{ font: '400 11.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginBottom: 9 }}>
-            {t('ถัดไป')}: <span className="mono">{next.name}</span>
-          </div>
+          {/* ตัดบรรทัด "ถัดไป: …" — ซ้ำกับขั้นที่ไฮไลต์บนเส้นทาง (mock 4A) */}
           <button
             className={`btn${next.progression >= max ? ' btn--success' : ''}`}
             style={{ height: 58, borderRadius: 16 }}
@@ -156,38 +152,35 @@ export default function WorkpieceDetail() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', font: '600 14.5px var(--font-head)' }}>{t(w.patient.name)}</span>
-            <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>
-              HN {w.patient.hn} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
-            </span>
-          </span>
+          {/* หัวหน้าแบบหน้าแรก (ผู้ใช้เลือก mock 4A · 14 ก.ย. 69): ชื่อผู้ป่วยเป็นหัวเรื่อง
+              ชิปประเภท/ขากรรไกร/ซี่ → บรรทัดเทาบรรทัดเดียวพร้อม HN กึ่งหนา · ชิป minimum requirement → ข้อความเขียว
+              ตัดหัวข้อ "CD / Complicated APD" ตัวใหญ่ (ซ้ำกับบรรทัดเทา) */}
+          <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)' }}>{t(w.patient.name)}</h1>
           {/* เคยมีปุ่มเมนู ⋯ ตรงนี้ แต่ไม่เคยผูกอะไรเลย (กดแล้วเงียบ) — เอาออกจนกว่าจะมีเมนูจริง
               การลบชิ้นงานทำได้ที่หน้าคนไข้ (โหมดแก้ไข) */}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
-          <TypeBadge type={w.type} />
-          <ArchBadge arch={w.arch} />
-          {w.tooth && (
-            <span className="badge mono" style={{ background: 'var(--fill)', color: 'var(--text-muted)', fontWeight: 500 }}>
-              {t('ซี่')} {w.tooth}
-            </span>
-          )}
-          {w.kennedy && (
-            <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>{w.kennedy}</span>
-          )}
-          {w.minimumRequirement && (
-            <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
-              <SealCheck size={12} weight="fill" /> {t('นับ minimum requirement')}
-            </span>
-          )}
-          {pending.has(w.id) && <PendingBadge />}
+        <div className="detailmeta">
+          <span className="dot" style={{ background: meta.color }} />
+          <span>
+            {meta.short}
+            {w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
+            {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}
+            {w.kennedy ? ` · ${w.kennedy}` : ''}
+            {' · '}<b className="herocase__hn">HN {w.patient.hn}</b>
+            {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
+          </span>
         </div>
-
-        {/* V1 เก็บกวาด (ผู้ใช้เลือก 1 ก.ย.): ชิปบอกประเภทอยู่แล้ว — หัวย่อลง ตัดบรรทัด detail
-            และตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ 5/10 ชวนงง) เหลือ bar + x/y ที่เดียว */}
-        <h1 className="h2" style={{ marginTop: 10, font: '600 17.5px/1.3 var(--font-head)' }}>{meta.full}</h1>
+        {(w.minimumRequirement || pending.has(w.id)) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+            {w.minimumRequirement && (
+              <span style={{ font: '500 12.5px var(--font-body)', color: 'var(--success-dark)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <SealCheck size={13} weight="fill" /> {t('นับ minimum requirement')}
+              </span>
+            )}
+            {pending.has(w.id) && <PendingBadge />}
+          </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={8} />
@@ -226,13 +219,9 @@ export default function WorkpieceDetail() {
                     {first.name}
                     {extra > 0 && <span className="tl__count">×{extra + 1}</span>}
                   </span>
-                  {g.hasSelf && <SelfBadge compact />}
-                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {passedDate && <span className="tl__date">{passedDate}</span>}
-                    <span className="tl__caret" aria-hidden="true">
-                      <CaretDown size={13} weight="bold" />
-                    </span>
-                  </span>
+                  {/* ชิปม่วง "ทำเอง" → ตัวอักษรม่วงเล็ก · ตัดลูกศรท้ายแถว (แตะแถวยังกางขั้นย่อยได้) */}
+                  {g.hasSelf && <span className="tl__self">{t('ทำเอง')}</span>}
+                  {passedDate && <span className="tl__date" style={{ marginLeft: 'auto' }}>{passedDate}</span>}
                 </button>
 
                 {expanded && (

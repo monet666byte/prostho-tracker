@@ -114,16 +114,35 @@ function markScrolled(e: React.UIEvent<HTMLDivElement>) {
   const el = e.currentTarget;
   el.dataset.scrolled = el.scrollTop > 4 ? 'true' : 'false';
   // แถบล่างหดตอนเลื่อนลง ขยายตอนเลื่อนขึ้น — ธงอยู่บน .phone เพราะแถบเป็นพี่น้องของตัวที่เลื่อน
-  // ขยับเกิน 6px ถึงนับ กันนิ้วสั่นแล้วแถบกระตุกไปมา · ใกล้บนสุดขยายเสมอ
-  const last = Number(el.dataset.lastTop ?? 0);
-  const top = el.scrollTop;
+  // ⚠️ ผู้ใช้เจอ (14 ก.ย.): หน้าที่เลื่อนได้นิดเดียว นิ้วสั่น/เด้งยางของ iOS ทำแถบหด-ขยาย-หดรัวๆ
+  // กันสามชั้น: ① หน้าที่เลื่อนได้ไม่ถึง 160px ไม่หดเลย ② ไม่นับช่วงเด้งยาง (เกินบน/ล่าง)
+  // ③ ต้องเลื่อนทางเดียวสะสมเกิน 32px ถึงเปลี่ยน และเปลี่ยนแล้วพัก 300ms
   const phone = el.parentElement;
-  if (phone) {
-    if (top < 40) phone.dataset.tabCompact = 'false';
-    else if (top - last > 6) phone.dataset.tabCompact = 'true';
-    else if (last - top > 6) phone.dataset.tabCompact = 'false';
+  if (!phone) return;
+  const top = el.scrollTop;
+  const maxTop = el.scrollHeight - el.clientHeight;
+  if (maxTop < 160 || top < 24) {
+    if (phone.dataset.tabCompact === 'true') phone.dataset.tabCompact = 'false';
+    el.dataset.lastTop = String(Math.max(0, top));
+    el.dataset.acc = '0';
+    return;
   }
-  if (Math.abs(top - last) > 6 || top < 40) el.dataset.lastTop = String(top);
+  if (top < 0 || top > maxTop) return; // เด้งยางของ iOS
+  const last = Number(el.dataset.lastTop ?? top);
+  const delta = top - last;
+  el.dataset.lastTop = String(top);
+  const prevAcc = Number(el.dataset.acc ?? 0);
+  // เปลี่ยนทิศ = เริ่มนับใหม่
+  const acc = Math.sign(delta) === Math.sign(prevAcc) || prevAcc === 0 ? prevAcc + delta : delta;
+  el.dataset.acc = String(acc);
+  const now = performance.now();
+  if (now - Number(el.dataset.tabAt ?? 0) < 300) return;
+  const want = acc > 32 ? 'true' : acc < -32 ? 'false' : null;
+  if (want && phone.dataset.tabCompact !== want) {
+    phone.dataset.tabCompact = want;
+    el.dataset.tabAt = String(now);
+    el.dataset.acc = '0';
+  }
 }
 
 export function Shell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {
