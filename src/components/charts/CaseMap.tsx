@@ -19,11 +19,13 @@ function shortStep(name: string): string {
   return words.join(' ');
 }
 
-export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLegend = true, stepNames }: {
+export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLegend = true, showStaleLegend = true, stepNames }: {
   dots: CaseDot[];
   staleDays: number;
   /** ปิดเมื่อหน้าแม่มี legend สีอยู่แล้ว (เช่นปุ่มประเภทที่มีจุดสี+จำนวน) */
   showTypeLegend?: boolean;
+  /** ปิดเมื่อหน้าแม่บอก "วงแดง = ค้าง" ไว้ในคำอธิบายหัวกราฟแล้ว */
+  showStaleLegend?: boolean;
   /** ชื่อ step จริงใต้เลขแต่ละคอลัมน์ — ใช้เมื่อกรองเหลือประเภทเดียว (ชื่อถึงจะตรง) */
   stepNames?: string[];
   /** ถ้าส่งมา: เลขแกนใต้กราฟกดได้ (เปิดรายละเอียดขั้นตอนของ step นั้น) */
@@ -85,7 +87,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
         {showTypeLegend && typesPresent(dots).map((t) => (
           <span key={t}><i style={{ background: typeMeta(t).color, borderRadius: 99 }} /> {typeChipLabel(t)}</span>
         ))}
-        <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>
+        {showStaleLegend && <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>}
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>
           {hover ? tText(hover.label) : t('{n} ชิ้นงาน · ชี้ที่จุดเพื่อดูว่าเป็นเคสของใคร', { n: dots.length })}
         </span>

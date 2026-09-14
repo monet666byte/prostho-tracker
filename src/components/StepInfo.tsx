@@ -1,4 +1,4 @@
-import { HandTap, X } from '@phosphor-icons/react';
+import { X } from '@phosphor-icons/react';
 import { REQ_TYPES, typeMeta } from '../domain/catalog';
 import { procList } from '../domain/rules';
 import { t } from '../lib/i18n';
@@ -11,50 +11,44 @@ export function proceduresAt(type: WorkType, progression: number, variant?: 'cas
     .map((p) => ({ name: p[1], self: !!p[2] }));
 }
 
+/* แถวละประเภท: ชื่อประเภทตัวหนังสือสี · ขั้นตอนตัวปกติต่อกันบรรทัดเดียว (ผู้ใช้เลือก mock 14 ก.ย. 69)
+   เดิมชิปสีประเภท + ชื่อขั้นตัวโมโนทีละบรรทัด */
+function Procs({ list }: { list: Array<{ name: string; self: boolean }> }) {
+  return (
+    <>
+      {list.map((p, i) => (
+        <span key={p.name}>
+          {i > 0 && ' · '}
+          {p.name}
+          {p.self && <span className="stepinfo__self"> {t('ทำเอง')}</span>}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function TypeBlock({ type, progression }: { type: WorkType; progression: number }) {
   const meta = typeMeta(type);
   const cast = proceduresAt(type, progression, 'cast');
   const prefab = type === 'PC' ? proceduresAt(type, progression, 'prefab') : [];
   const differs = type === 'PC' && JSON.stringify(cast) !== JSON.stringify(prefab);
 
-  if (!cast.length && !prefab.length) {
-    return (
-      <div className="stepinfo__type">
-        <span className="badge" style={{ background: meta.tint, color: meta.ink }}>{meta.short}</span>
-        <span className="faint" style={{ font: '400 11px var(--font-body)' }}>{t('ไม่มีขั้นตอนที่ progression นี้')}</span>
-      </div>
-    );
-  }
-
-  const render = (list: typeof cast, label?: string) => (
-    <ul className="stepinfo__list">
-      {label && <li className="stepinfo__variant">{label}</li>}
-      {list.map((p) => (
-        <li key={p.name}>
-          <span className="mono">{p.name}</span>
-          {p.self && (
-            <span className="badge" style={{ background: 'var(--self-tint)', color: 'var(--self)' }}>
-              <HandTap size={10} weight="fill" /> {t('ทำเอง')}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-
   return (
     <div className="stepinfo__type">
-      <span className="badge" style={{ background: meta.tint, color: meta.ink, flex: 'none' }}>{meta.short}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {differs ? (
+      <b style={{ color: meta.ink }}>{meta.short}</b>
+      <span>
+        {!cast.length && !prefab.length ? (
+          <span className="faint">{t('ไม่มีขั้นตอนที่ progression นี้')}</span>
+        ) : differs ? (
           <>
-            {render(cast, 'Cast post')}
-            {render(prefab, 'Prefabricated post')}
+            <span className="stepinfo__variant">Cast post: </span><Procs list={cast} />
+            <br />
+            <span className="stepinfo__variant">Prefabricated post: </span><Procs list={prefab} />
           </>
         ) : (
-          render(cast)
+          <Procs list={cast} />
         )}
-      </div>
+      </span>
     </div>
   );
 }
@@ -78,33 +72,20 @@ export function StepInfo({
   return (
     <div className="stepinfo">
       <div className="stepinfo__head">
-        <span className="stepinfo__num">{progression}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ font: '600 13px var(--font-head)' }}>
-            Step {progression}
-            {type && <span className="faint" style={{ fontWeight: 400 }}> · {typeMeta(type).full}</span>}
-          </div>
-          {meta && (
-            <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>{meta}</div>
-          )}
-          {!type && (
-            <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-              {t('เลขเดียวกันหมายถึงคนละขั้นตอนในแต่ละประเภทงาน')}
-            </div>
-          )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b>Step {progression}</b>
+          {type && <span className="faint"> · {typeMeta(type).full}</span>}
+          {meta && <span className="stepinfo__meta">{meta}</span>}
         </div>
         {onClose && (
-          <button className="iconbtn iconbtn--plain" style={{ width: 34, height: 34 }} onClick={onClose} aria-label={t('ปิด')}>
-            <X size={14} weight="bold" />
+          <button className="textbtn" style={{ color: 'var(--text-faint)' }} onClick={onClose} aria-label={t('ปิด')}>
+            {t('ปิด')} <X size={12} weight="bold" />
           </button>
         )}
       </div>
-
-      <div className="stepinfo__body">
-        {types.map((ty) => (
-          <TypeBlock key={ty} type={ty} progression={progression} />
-        ))}
-      </div>
+      {types.map((ty) => (
+        <TypeBlock key={ty} type={ty} progression={progression} />
+      ))}
     </div>
   );
 }

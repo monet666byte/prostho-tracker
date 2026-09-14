@@ -45,8 +45,8 @@ export default function Analytics() {
   const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
   const checkinsAll = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
   const [stepType, setStepType] = useState<WorkType | 'all'>('all');
-  // null = ยังไม่ได้เลือกเอง → เปิด step ที่กองมากสุดให้ · -1 = ผู้ใช้กดปิด
-  const [openStep, setOpenStep] = useState<number | null>(null);
+  // -1 = ปิด · ไม่เปิดเองตอนเข้าหน้าแล้ว เปิดเมื่อกดเลข (ผู้ใช้เลือก mock 14 ก.ย. 69 — แบบเดียวกับหน้าภาพรวม)
+  const [openStep, setOpenStep] = useState<number>(-1);
   const burn = useMemo(() => burnup(students, works, settings), [students, works, settings]);
   const cohortReq = useMemo(() => cohortRequirement(students, works, settings), [students, works, settings]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
@@ -61,8 +61,7 @@ export default function Analytics() {
     () => bottleneckByStep(works, settings, stepType === 'all' ? undefined : stepType),
     [works, settings, stepType],
   );
-  const busiestStep = [...buckets].sort((a, b) => b.count - a.count)[0];
-  const shownStep = openStep === null ? (busiestStep && busiestStep.count > 0 ? busiestStep.progression : -1) : openStep;
+  const shownStep = openStep;
   const allDots = useMemo(() => caseDots(works, students, settings), [works, students, settings]);
   const dotCount = (ty: WorkType | 'all') => (ty === 'all' ? allDots.length : allDots.filter((d) => d.type === ty).length);
   const dots = useMemo(
@@ -83,7 +82,7 @@ export default function Analytics() {
           <div style={{ flex: 1 }}>
             <h1>{yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}</h1>
             <p>
-              {t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })} · <b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
+              {t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })}
             </p>
           </div>
           <YearSeg view={yearView} onChange={setYearView} />
@@ -94,8 +93,8 @@ export default function Analytics() {
         <div className="panel" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <h3>{t('การกระจายชิ้นงานตามขั้นงาน (ทั้งชั้นปี)')}</h3>
-              <p className="sub">{t('หนึ่งจุด = หนึ่งชิ้นงาน วางตาม step ที่ทำถึง (0 เริ่ม → 10 ปิดเคส) · เปิดขั้นตอนของ step ที่กองมากสุดไว้ให้ กดเลขใต้กราฟเพื่อสลับ')}</p>
+              <h3>{t('ชิ้นงานอยู่ step ไหน (ทั้งชั้นปี)')}</h3>
+              <p className="sub">{t('1 จุด = 1 ชิ้นงาน · วงแดง = ค้างเกิน {d} วัน · กดเลข step ใต้กราฟเพื่อดูขั้นตอน', { d: settings.stale })}</p>
             </div>
           </div>
 
@@ -106,7 +105,7 @@ export default function Analytics() {
               return (
                 <button
                   key={ty}
-                  onClick={() => { setStepType(ty); setOpenStep(null); }}
+                  onClick={() => { setStepType(ty); setOpenStep(-1); }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 7,
                     font: `600 12px var(--font-body)`, padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
@@ -129,6 +128,7 @@ export default function Analytics() {
             dots={dots}
             staleDays={settings.stale}
             showTypeLegend={false}
+            showStaleLegend={false}
             stepNames={stepType === 'all' ? undefined : buckets.map((b) => b.label)}
             onStepClick={(n) => setOpenStep(shownStep === n ? -1 : n)}
             activeStep={shownStep}
@@ -139,7 +139,7 @@ export default function Analytics() {
               <StepInfo
                 progression={shownStep}
                 type={stepType === 'all' ? undefined : stepType}
-                meta={t('{n} ชิ้นงานกำลังอยู่ที่ step นี้', { n: buckets[shownStep].count }) + (
+                meta={t('{n} ชิ้น', { n: buckets[shownStep].count }) + (
                   buckets[shownStep].stale ? t(' · ค้างเกิน {d} วัน {c} ชิ้น', { d: settings.stale, c: buckets[shownStep].stale }) : ''
                 )}
                 onClose={() => setOpenStep(-1)}

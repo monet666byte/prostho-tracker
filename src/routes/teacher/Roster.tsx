@@ -6,8 +6,8 @@
  *
  * เดิมต้องพิมพ์ SQL ทุกครั้งที่เพิ่มคน — หน้านี้ทำให้ภาคทำเองได้
  */
-import { CheckCircle, Clock, Plus, Trash, UserPlus, Users, UsersThree } from '@phosphor-icons/react';
-import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle, Clock, Trash } from '@phosphor-icons/react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { AdvisorEditor } from '../../components/teacher/AdvisorGroups';
@@ -180,9 +180,9 @@ export default function Roster() {
 
         {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก (1 ก.ย.)
             ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}
-        <div className="tabs" style={{ marginBottom: 16 }}>
-          <button data-on={tab === 'people'} onClick={() => setTab('people')}>{t('รายชื่อนักศึกษา')}</button>
-          <button data-on={tab === 'sheet'} onClick={() => setTab('sheet')}>{t('งานเก่าจากชีต')}</button>
+        <div className="tabs tabs--line" role="tablist">
+          <button role="tab" aria-selected={tab === 'people'} data-on={tab === 'people'} onClick={() => setTab('people')}>{t('รายชื่อนักศึกษา')}</button>
+          <button role="tab" aria-selected={tab === 'sheet'} data-on={tab === 'sheet'} onClick={() => setTab('sheet')}>{t('งานเก่าจากชีต')}</button>
         </div>
 
         {tab === 'sheet' && <ImportSheetBody />}
@@ -198,12 +198,16 @@ export default function Roster() {
 
         {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
         {tab === 'people' && (<>
+        {/* ไอคอนหน้าหัวข้อ + คำอธิบายยาว → หัวข้อกับคำอธิบายบรรทัดเดียว · ช่องรุ่นกับช่องวางอยู่แถวเดียวกัน
+            (ผู้ใช้เลือก mock 14 ก.ย. 69) */}
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h3><UsersThree size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
-          <p className="sub">{t('วางรายชื่อจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม (คั่นด้วยจุลภาคหรือแท็บ)')}</p>
+          <div className="panelhead">
+            <h3>{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
+            <span className="sub">{t('วางจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม')}</span>
+          </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 12 }}>
-            <label className="field" style={{ flex: '0 0 130px' }}>
+          <div className="rosterimport">
+            <label className="field">
               <span>{t('รุ่น (DTMU)')}</span>
               <input
                 className="input"
@@ -212,26 +216,25 @@ export default function Roster() {
                 onChange={(e) => setDtmu(e.target.value)}
                 placeholder="56"
               />
+              {/* ยังไม่กรอกเลขรุ่น แล้วโชว์ "ในปีการศึกษา —" อ่านเหมือนระบบคำนวณไม่ได้
+                  บอกตรงๆ ว่ายังต้องกรอกอะไรดีกว่า (เจอ 10 ก.ย. 69) */}
+              <small className="rosterimport__hint" title={t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}>
+                {dtmu
+                  ? t('→ ขึ้นปี 5 ปีการศึกษา {y}', { y: entryYearFromDtmu(Number(dtmu)) })
+                  : t('กรอกเลขรุ่นก่อน')}
+              </small>
             </label>
-            {/* ยังไม่กรอกเลขรุ่น แล้วโชว์ "ในปีการศึกษา —" อ่านเหมือนระบบคำนวณไม่ได้
-                บอกตรงๆ ว่ายังต้องกรอกอะไรดีกว่า (เจอ 10 ก.ย. 69) */}
-            <p style={{ flex: 1, margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-              {dtmu ? (
-                <>
-                  {t('รุ่นนี้จะเริ่มเป็นชั้นปี 5 ในปีการศึกษา')} <b>{entryYearFromDtmu(Number(dtmu))}</b>
-                  {' · '}{t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}
-                </>
-              ) : t('กรอกเลขรุ่น DTMU ก่อน แล้วระบบจะบอกว่ารุ่นนี้ขึ้นปี 5 ปีการศึกษาไหน')}
-            </p>
+            <label className="field">
+              <span>{t('รายชื่อ')}</span>
+              <textarea
+                className="input"
+                style={{ minHeight: 96, fontFamily: 'var(--font-mono)', fontSize: 12.5, resize: 'vertical' }}
+                value={rosterText}
+                onChange={(e) => setRosterText(e.target.value)}
+                placeholder={'6604001, นศ. ก, PT1\n6604002, นศ. ข, PT1'}
+              />
+            </label>
           </div>
-
-          <textarea
-            className="input"
-            style={{ marginTop: 10, minHeight: 108, fontFamily: 'var(--font-mono)', fontSize: 11.5, resize: 'vertical' }}
-            value={rosterText}
-            onChange={(e) => setRosterText(e.target.value)}
-            placeholder={'6604001, นศ. ก, PT1\n6604002, นศ. ข, PT1'}
-          />
 
           {parsed && (
             <div style={{ marginTop: 10 }}>
@@ -249,19 +252,20 @@ export default function Roster() {
 
           <button
             className="btn"
-            style={{ marginTop: 12, height: 44, width: 'auto', padding: '0 20px' }}
+            style={{ marginTop: 12, height: 42, width: 'auto', padding: '0 18px' }}
             disabled={!parsed?.rows.length || !dtmu || importing}
             onClick={doImportRoster}
           >
-            <UsersThree size={16} weight="bold" />
             {importing ? t('กำลังนำเข้า…') : t('นำเข้ารายชื่อ')}
           </button>
         </div>
 
         {isAdmin && (<>
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h3><UserPlus size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('เพิ่มคนเข้าระบบ')}</h3>
-          <p className="sub">{t('พิมพ์อีเมลที่เขาจะใช้สมัคร แล้วเลือกว่าเขาคือใครในระบบ')}</p>
+          <div className="panelhead">
+            <h3>{t('เพิ่มคนเข้าระบบ')}</h3>
+            <span className="sub">{t('ใส่อีเมลที่จะใช้สมัคร แล้วเลือกว่าเป็นใคร')}</span>
+          </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 12 }}>
             <label className="field" style={{ flex: '1 1 240px' }}>
               <span>{t('อีเมล')}</span>
@@ -274,31 +278,28 @@ export default function Roster() {
                 <option value="teacher">{t('อาจารย์')}</option>
               </select>
             </label>
-            <label className="field" style={{ flex: '1 1 220px' }}>
-              <span>{t('คือใคร')}</span>
-              <select className="input" value={personId} onChange={(e) => setPersonId(e.target.value)}>
-                <option value="">{t('— เลือก —')}</option>
-                {peopleGroups.map(([label, list]) => (
-                  <optgroup key={label} label={label}>
-                    {list.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}{'code' in p ? ` · ${(p as { code: string }).code}` : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+            <PersonPicker
+              key={role}
+              options={peopleGroups.flatMap(([label, list]) => list.map((p) => ({
+                id: p.id,
+                name: t(p.name),
+                code: 'code' in p ? (p as { code: string }).code : '',
+                group: label,
+              })))}
+              value={personId}
+              onChange={setPersonId}
+            />
             <button className="btn" style={{ width: 'auto', padding: '0 18px', height: 44 }} disabled={busy || !email.trim() || !personId} onClick={addInvite}>
-              <Plus size={17} weight="bold" />
-              {t('เพิ่มรายชื่อ')}
+              {t('+ เพิ่ม')}
             </button>
           </div>
         </div>
 
         <div className="panel">
-          <h3><Users size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('รายชื่อทั้งหมด')} · {invites?.length ?? 0}</h3>
-          <p className="sub">{t('✓ เขียว = สมัครแล้วใช้งานได้ · นาฬิกา = เชิญไว้แต่ยังไม่ได้สมัคร')}</p>
+          <div className="panelhead">
+            <h3>{t('รายชื่อทั้งหมด')} · {invites?.length ?? 0}</h3>
+            <span className="sub">{t('✓ เขียว = สมัครแล้วใช้งานได้ · นาฬิกา = เชิญไว้แต่ยังไม่ได้สมัคร')}</span>
+          </div>
           <div className="tblwrap" style={{ overflowX: 'auto' }}>
             <table className="tbl">
               <thead>
@@ -351,9 +352,7 @@ export default function Roster() {
               </tbody>
             </table>
           </div>
-          <p style={{ margin: '12px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-            {t('ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที')}
-          </p>
+          {/* คำอธิบาย "ลบแล้วเกิดอะไร" ย้ายไปอยู่ในกล่องยืนยันตอนกดลบ (14 ก.ย. 69) */}
         </div>
         </>)}
         {!isAdmin && (
@@ -388,5 +387,77 @@ export default function Roster() {
         )}
       </main>
     </TeacherShell>
+  );
+}
+
+/**
+ * ช่อง "คือใคร" แบบพิมพ์ค้น (ผู้ใช้เลือก mock 14 ก.ย. 69)
+ * เดิมเป็น <select> ที่มีหลายร้อยชื่อ ต้องเลื่อนหาเอง — native select ค้นไม่ได้
+ * พิมพ์รหัสหรือชื่อ → รายการ 8 อันแรกที่ตรง · ลูกศรขึ้นลง + Enter เลือกได้
+ */
+function PersonPicker({ options, value, onChange }: {
+  options: Array<{ id: string; name: string; code: string; group: string }>;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const listId = useId();
+  const picked = options.find((o) => o.id === value);
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const needle = q.trim().toLowerCase();
+  const matches = (needle
+    ? options.filter((o) => `${o.code} ${o.name} ${o.group}`.toLowerCase().includes(needle))
+    : options).slice(0, 8);
+
+  function pick(id: string) {
+    onChange(id);
+    setQ('');
+    setOpen(false);
+  }
+
+  return (
+    <label className="field personpick" style={{ flex: '1 1 220px' }}>
+      <span>{t('คือใคร')}</span>
+      <input
+        className="input"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        autoComplete="off"
+        value={open ? q : picked ? `${picked.name}${picked.code ? ` · ${picked.code}` : ''}` : q}
+        placeholder={t('พิมพ์รหัสหรือชื่อ')}
+        onFocus={() => { setOpen(true); setHi(0); }}
+        onBlur={() => setOpen(false)}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); if (value) onChange(''); }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((h) => Math.min(h + 1, matches.length - 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+          else if (e.key === 'Enter' && open && matches[hi]) { e.preventDefault(); pick(matches[hi].id); }
+          else if (e.key === 'Escape') setOpen(false);
+        }}
+      />
+      {open && (
+        <div className="personpick__list" id={listId} role="listbox">
+          {matches.length === 0 && <div className="personpick__none">{t('ไม่พบชื่อหรือรหัสนี้')}</div>}
+          {matches.map((o, i) => (
+            <div
+              key={o.id}
+              role="option"
+              aria-selected={i === hi}
+              data-on={i === hi}
+              className="personpick__opt"
+              onMouseDown={(e) => { e.preventDefault(); pick(o.id); }}
+              onMouseEnter={() => setHi(i)}
+            >
+              {o.code && <small>{o.code}</small>}
+              <span>{o.name}</span>
+              <em>{o.group}</em>
+            </div>
+          ))}
+        </div>
+      )}
+    </label>
   );
 }
