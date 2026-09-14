@@ -1,11 +1,6 @@
-import {
-  ArrowLeft, ArrowsClockwise, ArrowsLeftRight, CloudArrowUp, CloudCheck, CloudSlash, EnvelopeSimple,
-  ChatCircleDots, BellRinging, ArrowCounterClockwise, SignOut, Translate, Palette, WarningCircle,
-  HardDrives,
-} from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
@@ -42,6 +37,28 @@ export default function Sync() {
     return off;
   }, []);
 
+  async function doSync() {
+    const r = await syncNow(currentActor());
+    touch();
+    /* ข้อความต้องตรงกับของจริง — เน็ตที่ต่อติดแต่ยิงไม่ถึงเซิร์ฟเวอร์ทำให้ปุ่มนี้
+       กดได้ทั้งที่ส่งไม่ขึ้น เดิมขึ้นว่า "sync สำเร็จ" ทุกครั้ง (ดู syncNow ใน repo.ts) */
+    if (r.stillPending || r.photosFailed) {
+      showToast({
+        message: t('ส่งขึ้นไม่ครบ — เหลือค้าง {n} รายการ ระบบจะลองใหม่ให้เอง', {
+          n: r.stillPending + r.photosFailed,
+        }),
+        tone: 'warning',
+      });
+      return;
+    }
+    const done = r.cleared + r.photos;
+    showToast({
+      message: done ? t('sync สำเร็จ {n} รายการ', { n: done }) : t('ไม่มีรายการค้าง'),
+      tone: done ? 'success' : 'default',
+    });
+  }
+
+  /* การ์ด 9 ใบ → 4 หมวดแบบแอปตั้งค่าในมือถือ (ผู้ใช้เลือก mock 14 ก.ย. 69) */
   return (
     <PlainShell>
       <header className="s-header">
@@ -49,222 +66,140 @@ export default function Sync() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          <h1 className="h2" style={{ flex: 1 }}>{t('การเชื่อมต่อ & sync')}</h1>
+          <h1 className="h2" style={{ flex: 1 }}>{t('ตั้งค่า')}</h1>
         </div>
       </header>
 
-      <div style={{ padding: '14px 16px 0', display: 'grid', gap: 12 }}>
-        <div
-          className="card"
-          style={{
-            padding: 14, display: 'flex', gap: 12, alignItems: 'center',
-            background: offline ? 'var(--warning-tint)' : '#fff',
-            borderColor: offline ? 'var(--warning-border)' : undefined,
-          }}
-        >
-          <span style={{ color: offline ? 'var(--warning)' : 'var(--success)', display: 'grid', flex: 'none' }}>
-            {offline ? <CloudSlash size={26} weight="fill" /> : <CloudCheck size={26} weight="fill" />}
-          </span>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', font: '600 13.5px var(--font-head)' }}>
-              {offline ? t('โหมดออฟไลน์') : t('ออนไลน์')}
+      <div className="newform">
+        <div className="homelabel">{t('การเชื่อมต่อ')}</div>
+        <div className="card formcard">
+          <div className="formrow">
+            <span className="dot" style={{ width: 10, height: 10, background: offline ? 'var(--warning)' : 'var(--success)' }} />
+            <span className="formrow__main">
+              <b>{offline ? t('โหมดออฟไลน์') : t('ออนไลน์')}</b>
+              <span className="formrow__sub">
+                {offline
+                  ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
+                  : cloudEnabled
+                    ? t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')
+                    : t('โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น')}
+              </span>
             </span>
-            <span className="pretty" style={{ display: 'block', font: '400 11px/1.55 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
-              {offline
-                ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
-                : cloudEnabled
-                  ? t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')
-                  : t('โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น')}
-            </span>
-          </span>
-          <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
-            <i />
-          </button>
-        </div>
+            <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
+              <i />
+            </button>
+          </div>
 
-        {problems.length > 0 && (
-          <div className="card" style={{ padding: '12px 13px', borderColor: 'var(--warning-border)', background: 'var(--warning-tint)' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 7 }}>
-              <WarningCircle size={18} weight="fill" color="var(--warning)" style={{ flex: 'none' }} />
-              <h4 style={{ margin: 0, flex: 1, font: '600 12.5px var(--font-head)', color: 'var(--warning-dark)' }}>
-                {t('{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้', { n: problems.length })}
-              </h4>
-            </div>
-            <p style={{ margin: '0 0 9px', font: '400 11px var(--font-body)', color: 'var(--warning-dark)' }}>
-              {t('ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ')}
-            </p>
-            <div style={{ display: 'grid', gap: 5, marginBottom: 9 }}>
+          {/* ของที่เซิร์ฟเวอร์ปฏิเสธ — ต้องเห็นด้วยตา ไม่ย่อเหลือบรรทัดจาง */}
+          {problems.length > 0 && (
+            <div className="formrow formrow--stack formrow--warn">
+              <b>{t('{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้', { n: problems.length })}</b>
+              <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
+                {t('ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ')}
+              </span>
               {problems.slice(0, 5).map((p) => (
-                <span key={p.table + String(p.key)} style={{ font: '400 10px var(--font-mono)', color: 'var(--warning-dark)' }}>
+                <span key={p.table + String(p.key)} style={{ font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
                   {p.table} · {String(p.key)} — {p.reason}
                 </span>
               ))}
+              <button className="textlink textlink--left" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>
+                {t('ลองส่งใหม่')} ›
+              </button>
             </div>
-            <button className="btn btn--ghost" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>
-              {t('ลองส่งใหม่')}
-            </button>
+          )}
+
+          <div className="formrow">
+            <span className="formrow__main">
+              <b>{t('รอส่งขึ้นระบบ')}</b>
+              {queue.length === 0 && (
+                <span className="formrow__sub">
+                  {cloudEnabled ? t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว') : t('บันทึกครบแล้วในเครื่องนี้')}
+                </span>
+              )}
+            </span>
+            <span className="formrow__value" style={queue.length ? { color: 'var(--warning-dark)' } : undefined}>
+              {t('{n} รายการ', { n: queue.length })}
+            </span>
           </div>
-        )}
+          {queue.map((q) => (
+            <div key={q.id} className="formrow formrow--sub">
+              <span className="formrow__main">
+                <span style={{ display: 'block', font: '500 12px var(--font-mono)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.label}</span>
+                <span className="formrow__sub">{relative(q.createdAt)} · {q.hasPhoto ? t('มีรูปแนบ') : t('ไม่มีรูป')}</span>
+              </span>
+            </div>
+          ))}
+
+          <button className="formrow" disabled={offline} onClick={doSync}>
+            <span className="formrow__main">
+              <b style={{ color: offline ? 'var(--text-disabled)' : 'var(--accent)' }}>
+                {offline ? t('ต้องออนไลน์ก่อนจึงจะ sync ได้') : t('sync ทันที')}
+              </b>
+            </span>
+          </button>
+        </div>
 
         {/* ที่เก็บข้อมูลในเครื่องนี้ถาวรแค่ไหน — เบราว์เซอร์มีสิทธิ์ลบเองได้
             Safari/iOS ลบที่เก็บของเว็บที่ไม่ได้เปิดใน 7 วัน (ยกเว้นที่เพิ่มลงหน้าจอโฮม)
             ข้อมูลที่ยังไม่ได้ขึ้นตู้กลางอยู่ในนั้นทั้งหมด ผู้ใช้ควรรู้ ไม่ใช่ให้หายแล้วค่อยรู้
             ⚠️ ห้ามเขียนว่า "ปลอดภัยแล้ว" — ของที่ปลอดภัยจริงคือของที่ขึ้นตู้กลางแล้ว */}
-        <div
-          className="card"
-          style={{
-            padding: '11px 13px',
-            ...(persist === 'persisted' ? {} : {
-              borderColor: 'var(--warning-border)', background: 'var(--warning-tint)',
-            }),
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <HardDrives size={17} weight={persist === 'persisted' ? 'fill' : 'regular'} />
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>
-                {t('ข้อมูลในเครื่องนี้')}
-              </span>
-              <span className="pretty" style={{ display: 'block', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {persist === 'persisted'
-                  ? t('เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง')
-                  : persist === 'best-effort'
-                    ? t('เบราว์เซอร์อาจลบทิ้งได้ถ้าเครื่องพื้นที่ไม่พอ — เพิ่มแอปลงหน้าจอโฮมช่วยได้')
-                    : t('เบราว์เซอร์นี้ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน (Safari/iPhone) — เพิ่มแอปลงหน้าจอโฮมจะไม่ถูกลบ')}
-              </span>
+        <p className="newform__hint" style={persist === 'persisted' ? undefined : { color: 'var(--warning-dark)' }}>
+          {persist === 'persisted'
+            ? t('ข้อมูลในเครื่องนี้: เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง')
+            : persist === 'best-effort'
+              ? t('⚠ เบราว์เซอร์อาจลบข้อมูลในเครื่องถ้าพื้นที่ไม่พอ — เพิ่มแอปลงหน้าจอโฮมช่วยได้')
+              : t('⚠ เบราว์เซอร์นี้ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน (Safari/iPhone) — เพิ่มแอปลงหน้าจอโฮมจะไม่ถูกลบ')}
+        </p>
+
+        <div className="homelabel">{t('การแสดงผล')}</div>
+        <div className="card formcard">
+          {/* สลับภาษา — เดิมอยู่แค่แถบเดโมบนคอม มือถือเปลี่ยนไม่ได้ (ผู้ใช้ขอ 1 ก.ย.)
+              เขียนชื่อภาษาด้วยภาษาตัวเองเสมอ คนอ่านไม่ออกอีกภาษาจะได้หาปุ่มเจอ */}
+          <div className="formrow">
+            <span className="formrow__main"><b>ภาษา · Language</b></span>
+            <span className="minseg">
+              <button data-on={lang === 'th'} aria-pressed={lang === 'th'} onClick={() => lang !== 'th' && setLang('th')}>ไทย</button>
+              <button data-on={lang === 'en'} aria-pressed={lang === 'en'} onClick={() => lang !== 'en' && setLang('en')}>EN</button>
+            </span>
+          </div>
+          {/* ธีมสี — เหตุผลเดียวกับปุ่มภาษา: คนเปิดลิงก์แชร์จากมือถือเลือกไม่ได้ (ผู้ใช้ขอ 1 ก.ย.) */}
+          <div className="formrow">
+            <span className="formrow__main"><b>{t('ธีมสี')}</b></span>
+            <span className="minseg">
+              {THEMES.map((th) => (
+                <button
+                  key={th.cls || 'default'}
+                  data-on={theme === th.cls}
+                  aria-pressed={theme === th.cls}
+                  onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}
+                >
+                  {t(th.label)}
+                </button>
+              ))}
             </span>
           </div>
         </div>
 
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 9 }}>
-            <h4 style={{ margin: 0, flex: 1, font: '600 13.5px var(--font-head)' }}>{t('คิวรอ sync')}</h4>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--text-faint)' }}>{t('{n} รายการ', { n: queue.length })}</span>
-          </div>
-
-          {queue.length === 0 ? (
-            <Empty
-              icon={<CloudCheck size={26} />}
-              title={t('ไม่มีรายการค้าง')}
-              hint={cloudEnabled ? t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว') : t('บันทึกครบแล้วในเครื่องนี้')}
-            />
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {queue.map((q) => (
-                <div key={q.id} className="card" style={{ padding: '11px 13px', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <CloudArrowUp size={19} color="var(--warning)" style={{ flex: 'none' }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', font: '500 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
-                      {q.label}
-                    </span>
-                    <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                      {relative(q.createdAt)} · {q.hasPhoto ? t('มีรูปแนบ') : t('ไม่มีรูป')}
-                    </span>
-                  </span>
-                  <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('รอส่ง')}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            className="btn"
-            style={{ marginTop: 11 }}
-            disabled={offline}
-            onClick={async () => {
-              const r = await syncNow(currentActor());
-              touch();
-              /* ข้อความต้องตรงกับของจริง — เน็ตที่ต่อติดแต่ยิงไม่ถึงเซิร์ฟเวอร์ทำให้ปุ่มนี้
-                 กดได้ทั้งที่ส่งไม่ขึ้น เดิมขึ้นว่า "sync สำเร็จ" ทุกครั้ง (ดู syncNow ใน repo.ts) */
-              if (r.stillPending || r.photosFailed) {
-                showToast({
-                  message: t('ส่งขึ้นไม่ครบ — เหลือค้าง {n} รายการ ระบบจะลองใหม่ให้เอง', {
-                    n: r.stillPending + r.photosFailed,
-                  }),
-                  tone: 'warning',
-                });
-                return;
-              }
-              const done = r.cleared + r.photos;
-              showToast({
-                message: done ? t('sync สำเร็จ {n} รายการ', { n: done }) : t('ไม่มีรายการค้าง'),
-                tone: done ? 'success' : 'default',
-              });
-            }}
-          >
-            <ArrowsClockwise size={18} weight="bold" />
-            {offline ? t('ต้องออนไลน์ก่อนจึงจะ sync ได้') : t('sync ทันที')}
-          </button>
+        {/*
+          ปุ่มเปิด/ปิดพวกนี้เคยกดได้และเปิดค้างไว้ตั้งแต่แรก (push/email = เปิด)
+          ทั้งที่ยังไม่ได้ทำระบบแจ้งเตือนเลยสักช่องทาง — นักศึกษาเห็นว่าเปิดอยู่
+          ก็จะรอการแจ้งเตือนที่ไม่มีวันมา แล้วพลาดกำหนดส่ง
+          ปิดไว้ก่อนและบอกตรงๆ ว่ายังไม่เปิดใช้ จนกว่าจะทำจริง
+        */}
+        <div className="critlabel" style={{ margin: '6px 4px -2px' }}>
+          <span className="homelabel" style={{ margin: 0 }}>{t('การแจ้งเตือน')}</span>
+          <span style={{ font: '500 12px var(--font-body)', color: 'var(--warning-dark)' }}>{t('ยังไม่เปิดใช้')}</span>
         </div>
-
-        {/* สลับภาษา — เดิมอยู่แค่แถบเดโมบนคอม มือถือเปลี่ยนไม่ได้ (ผู้ใช้ขอ 1 ก.ย.)
-            เขียนชื่อภาษาด้วยภาษาตัวเองเสมอ คนอ่านไม่ออกอีกภาษาจะได้หาปุ่มเจอ */}
-        <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Translate size={17} color="var(--text-muted)" />
-            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)' }}>ภาษา · Language</h4>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button
-              className={`langbtn${lang === 'th' ? ' langbtn--on' : ''}`}
-              onClick={() => lang !== 'th' && setLang('th')}
-            >
-              ไทย
-            </button>
-            <button
-              className={`langbtn${lang === 'en' ? ' langbtn--on' : ''}`}
-              onClick={() => lang !== 'en' && setLang('en')}
-            >
-              English
-            </button>
-          </div>
-        </div>
-
-        {/* ธีมสี — เหตุผลเดียวกับปุ่มภาษา: เดิมอยู่แค่แถบเดโมบนคอม คนเปิดลิงก์แชร์จากมือถือเลือกไม่ได้
-            (ผู้ใช้ขอ 1 ก.ย.) · ปุ่มโชว์สีจริงของแต่ละธีม เลือกแล้วเปลี่ยนทันทีและจำไว้ในเครื่อง */}
-        <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Palette size={17} color="var(--text-muted)" />
-            <h4 style={{ margin: 0, font: '600 13.5px var(--font-head)' }}>{t('ธีมสี')}</h4>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            {THEMES.map((th) => (
-              <button
-                key={th.cls || 'default'}
-                className={`themebtn${theme === th.cls ? ' themebtn--on' : ''}`}
-                onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}
-              >
-                <span className={`themebtn__dot ${th.cls}`} />
-                {t(th.label)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: 14 }}>
-          {/*
-            ปุ่มเปิด/ปิดพวกนี้เคยกดได้และเปิดค้างไว้ตั้งแต่แรก (push/email = เปิด)
-            ทั้งที่ยังไม่ได้ทำระบบแจ้งเตือนเลยสักช่องทาง — นักศึกษาเห็นว่าเปิดอยู่
-            ก็จะรอการแจ้งเตือนที่ไม่มีวันมา แล้วพลาดกำหนดส่ง
-            ปิดไว้ก่อนและบอกตรงๆ ว่ายังไม่เปิดใช้ จนกว่าจะทำจริง
-          */}
-          <h4 style={{ margin: '0 0 3px', font: '600 13.5px var(--font-head)' }}>{t('การแจ้งเตือน')}</h4>
-          <p style={{ margin: '0 0 6px', font: '500 10.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
-            {t('ยังไม่เปิดใช้ในช่วงทดลอง — ตอนนี้ยังไม่มีการแจ้งเตือนส่งออกจากระบบ')}
-          </p>
+        <div className="card formcard">
           {(
             [
-              { key: 'push', label: 'Push notification', hint: t('ช่องทางหลัก'), Icon: BellRinging },
-              { key: 'line', label: t('LINE (สำรอง)'), hint: t('ส่งซ้ำถ้าไม่ได้เปิดแอปใน 24 ชม.'), Icon: ChatCircleDots },
-              { key: 'email', label: t('อีเมลสรุปรายสัปดาห์'), hint: t('ทุกวันจันทร์ 08:00'), Icon: EnvelopeSimple },
+              { key: 'push', label: 'Push notification' },
+              { key: 'line', label: t('LINE (สำรอง)') },
+              { key: 'email', label: t('อีเมลสรุปรายสัปดาห์') },
             ] as const
-          ).map(({ key, label, hint, Icon }) => (
-            <div key={key} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--divider)' }}>
-              <Icon size={18} color="var(--text-muted)" style={{ flex: 'none' }} />
-              <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', font: '500 12px var(--font-body)' }}>{label}</span>
-                <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>{hint}</span>
-              </span>
+          ).map(({ key, label }) => (
+            <div key={key} className="formrow formrow--off">
+              <span className="formrow__main"><b>{label}</b></span>
               <button className="toggle" data-on={false} disabled aria-label={label} title={t('ยังไม่เปิดใช้')}>
                 <i />
               </button>
@@ -272,52 +207,50 @@ export default function Sync() {
           ))}
         </div>
 
-        <button
-          className="card"
-          style={{ padding: '13px 14px', display: 'flex', gap: 11, alignItems: 'center', textAlign: 'left' }}
-          onClick={async () => {
-            /* ล้างข้อมูลในเครื่องด้วย — ข้อมูลที่ต้องล็อกอินถึงจะเห็น ไม่ควรค้างอยู่หลังออกจากระบบ
-               (ASVS V14.3.1) · ล้างเฉพาะตอนของขึ้นเซิร์ฟเวอร์ครบแล้ว ถ้ายังมีค้างต้องบอกตรง ๆ
-               ⚠️ "ปิดแอป" ไม่เข้าทางนี้ — ปิดแท็บไม่ล้างอะไรเลย ไม่งั้นออฟไลน์ใช้ไม่ได้ */
-            const res = await wipeLocalDataOnSignOut();
-            await signOut();
-            /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน student/Shell.tsx
-               พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
-               ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
-            noteSignOutOutcome(res);
-            navigate('/login');
-          }}
-        >
-          <SignOut size={19} color="var(--text-muted)" style={{ flex: 'none' }} />
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{t('ออกจากระบบ')}</span>
-            <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-              {cloudEnabled
-                ? t('ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง')
-                : t('เปลี่ยนบทบาท')}
+        <div className="homelabel">{t('บัญชี')}</div>
+        <div className="card formcard">
+          <button
+            className="formrow"
+            onClick={async () => {
+              /* ล้างข้อมูลในเครื่องด้วย — ข้อมูลที่ต้องล็อกอินถึงจะเห็น ไม่ควรค้างอยู่หลังออกจากระบบ
+                 (ASVS V14.3.1) · ล้างเฉพาะตอนของขึ้นเซิร์ฟเวอร์ครบแล้ว ถ้ายังมีค้างต้องบอกตรง ๆ
+                 ⚠️ "ปิดแอป" ไม่เข้าทางนี้ — ปิดแท็บไม่ล้างอะไรเลย ไม่งั้นออฟไลน์ใช้ไม่ได้ */
+              const res = await wipeLocalDataOnSignOut();
+              await signOut();
+              /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน student/Shell.tsx
+                 พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
+                 ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
+              noteSignOutOutcome(res);
+              navigate('/login');
+            }}
+          >
+            <span className="formrow__main">
+              <b style={{ color: 'var(--danger)' }}>{t('ออกจากระบบ')}</b>
+              <span className="formrow__sub">
+                {cloudEnabled
+                  ? t('ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง')
+                  : t('เปลี่ยนบทบาท')}
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+        </div>
 
         {/* เฉพาะโหมดเดโม — ของตกค้างชุดเดียวกับแถบเดโมที่เคยกวาด (โผล่ในโหมดจริงมาตลอด) */}
         {!cloudEnabled && (
-        <div className="dashed" style={{ padding: 14 }}>
-          <h4 style={{ margin: '0 0 3px', font: '600 13px var(--font-head)' }}>{t('เครื่องมือสำหรับการนำเสนอ')}</h4>
-          <p style={{ margin: '0 0 11px', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            {t('สำหรับตอนสาธิต')}
-          </p>
-          <div style={{ display: 'flex', gap: 9 }}>
+          <p className="newform__hint" style={{ textAlign: 'center', marginTop: 8 }}>
+            {t('สำหรับตอนสาธิต')}:{' '}
             <button
-              className="btn btn--sec"
+              className="inlinelink"
               onClick={async () => {
                 await switchRole();
                 navigate('/teacher');
               }}
             >
-              <ArrowsLeftRight size={16} /> {t('มุมมองอาจารย์')}
+              {t('มุมมองอาจารย์')}
             </button>
+            {' · '}
             <button
-              className="btn btn--sec"
+              className="inlinelink"
               onClick={async () => {
                 // ล้างธง "ไว้ก่อน" ของ popup เช็คอิน + เตือนบ่าย — รีเซ็ตแล้วต้องได้ลองใหม่ทั้ง flow
                 try { localStorage.removeItem('pt-checkin-ask'); localStorage.removeItem('pt-fill-nudge'); } catch { /* private mode */ }
@@ -325,10 +258,9 @@ export default function Sync() {
                 showToast({ message: t('รีเซ็ตแล้ว — popup เช็คอินจะกลับมาถามใหม่'), tone: 'success' });
               }}
             >
-              <ArrowCounterClockwise size={16} /> {t('รีเซ็ตข้อมูล')}
+              {t('รีเซ็ตข้อมูล')}
             </button>
-          </div>
-        </div>
+          </p>
         )}
       </div>
     </PlainShell>

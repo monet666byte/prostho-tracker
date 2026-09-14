@@ -9,7 +9,7 @@
  * ⚠️ ชั้น ② เห็นเฉพาะที่นี่ — ผู้ใช้เคาะ 5 ก.ย. 69 ว่านักศึกษาไม่ต้องเห็นสรุป
  *    เป็นเครื่องมือเตรียมตัวของอาจารย์ก่อนนัดคุย ไม่ใช่ผลป้อนกลับที่ส่งถึงนักศึกษา
  */
-import { CheckCircle, Clock, Printer, Student as StudentIcon } from '@phosphor-icons/react';
+import { Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -152,41 +152,24 @@ export default function SelfAssessments() {
 
         {/* สองคอลัมน์บนจอกว้าง · จอแคบ (อาจารย์เปิดจากมือถือ) ซ้อนเป็นคอลัมน์เดียว — กฎอยู่ท้าย teacher.css */}
         <div className="salayout">
-          {/* ① ใครส่งแล้ว */}
-          <div style={{ display: 'grid', gap: 7 }}>
+          {/* ① ใครส่งแล้ว — รายการเดียวคั่นเส้น แบบหน้า Section II/III (14 ก.ย. 69) */}
+          <div className="panel plist">
+            <div className="plist__head">{t('นักศึกษา · {n} คน', { n: groupStudents.length })}</div>
             {groupStudents.length === 0 && (
-              <div className="card" style={{ padding: '12px 14px', font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('กลุ่มนี้ยังไม่มีนักศึกษา')}
-              </div>
+              <p className="sub" style={{ padding: '0 16px 14px' }}>{t('กลุ่มนี้ยังไม่มีนักศึกษา')}</p>
             )}
             {groupStudents.map((s) => {
               const sa = byStudent.get(s.id);
               const done = sa?.status === 'submitted';
               const on = openId === s.id;
               return (
-                <button
-                  key={s.id}
-                  className="card"
-                  onClick={() => setOpenId(on ? null : s.id)}
-                  style={{
-                    padding: '10px 12px', textAlign: 'left', cursor: 'pointer', display: 'flex',
-                    alignItems: 'center', gap: 9, borderColor: on ? 'var(--accent)' : undefined,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 26, height: 26, borderRadius: 8, flex: 'none', display: 'grid', placeItems: 'center',
-                      background: done ? 'var(--success-tint)' : 'var(--fill)',
-                      color: done ? 'var(--success-dark)' : 'var(--text-faint)',
-                    }}
-                  >
-                    {done ? <CheckCircle size={15} weight="fill" /> : <Clock size={15} />}
-                  </span>
+                <button key={s.id} className="plist__row" data-on={on} aria-pressed={on} onClick={() => setOpenId(on ? null : s.id)}>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', font: '600 12px var(--font-head)' }}>{firstNameOnly(t(s.name))}</span>
-                    <span className="mono" style={{ display: 'block', font: '400 10px var(--font-mono)', color: 'var(--text-faint)' }}>
-                      {s.code}
-                    </span>
+                    <span className="plist__name">{firstNameOnly(t(s.name))}</span>
+                    <span className="plist__code">{s.code}</span>
+                  </span>
+                  <span className="plist__count" style={{ color: done ? 'var(--success-dark)' : 'var(--text-faint)', fontFamily: 'var(--font-body)' }}>
+                    {done ? t('ส่งแล้ว') : sa ? t('กรอกค้าง') : t('ยังไม่ส่ง')}
                   </span>
                 </button>
               );

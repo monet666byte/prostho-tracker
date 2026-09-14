@@ -12,11 +12,13 @@ import { t } from '../lib/i18n';
 import { useApp } from '../store/app';
 import type { SelfAssessment } from '../domain/types';
 
-const TONE: Record<FeedbackTone, { bg: string; ink: string; border: string; Icon: typeof Info; label: string }> = {
-  risk: { bg: 'var(--danger-tint)', ink: 'var(--danger-dark)', border: 'var(--danger-tint)', Icon: WarningOctagon, label: 'ควรจัดการก่อน' },
-  gap: { bg: 'var(--warning-tint)', ink: 'var(--warning-dark)', border: 'var(--warning-tint)', Icon: Warning, label: 'มองต่างจากข้อมูลจริง' },
-  info: { bg: 'var(--fill)', ink: 'var(--text-secondary)', border: 'var(--divider)', Icon: Info, label: 'ข้อมูลประกอบ' },
-  praise: { bg: 'var(--success-tint)', ink: 'var(--success-dark)', border: 'var(--success-tint)', Icon: Sparkle, label: 'ทำได้ดีกว่าที่คิด' },
+/* การ์ดเดียว แถวละเรื่อง (ผู้ใช้เลือก mock 14 ก.ย. 69) — เดิมกล่องสีพื้นเข้มคนละใบ + กล่องโค้ดซ้อนใน
+   สีเหลืออยู่แค่วงกลมหน้าหัวข้อ */
+const TONE: Record<FeedbackTone, { dot: string; Icon: typeof Info }> = {
+  risk: { dot: 'var(--danger)', Icon: WarningOctagon },
+  gap: { dot: 'var(--warning)', Icon: Warning },
+  info: { dot: 'var(--text-faint)', Icon: Info },
+  praise: { dot: 'var(--success)', Icon: Sparkle },
 };
 
 export function SaSummary({ sa }: { sa: SelfAssessment }) {
@@ -32,50 +34,29 @@ export function SaSummary({ sa }: { sa: SelfAssessment }) {
   const cards = sortFeedback(buildFeedback({ sa, student, works, checkins, updates: allUpdates, settings }));
 
   return (
-    <div style={{ display: 'grid', gap: 9 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <Sparkle size={15} weight="fill" color="var(--accent)" />
-        <span style={{ font: '600 12.5px var(--font-head)' }}>{t('สรุปจากระบบ')}</span>
-        <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('เทียบคำตอบกับผลงานจริง')}
-        </span>
+    <div className="panel insights">
+      <div className="insights__head">
+        <h3>{t('สรุปจากระบบ')}</h3>
+        <span className="sub">{t('เทียบคำตอบกับผลงานจริง · ใช้เป็นประเด็นคุย ไม่ใช่คำตัดสิน')}</span>
       </div>
 
       {cards.length === 0 && (
-        <div className="card" style={{ padding: '12px 14px', font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-          {t('ยังไม่พบจุดที่คำตอบกับข้อมูลจริงต่างกันชัดเจน')}
-        </div>
+        <p className="insights__empty">{t('ยังไม่พบจุดที่คำตอบกับข้อมูลจริงต่างกันชัดเจน')}</p>
       )}
 
       {cards.map((c) => {
         const tone = TONE[c.tone];
         return (
-          <div key={c.id} className="card" style={{ padding: '11px 13px', display: 'grid', gap: 5, borderColor: tone.border }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span
-                style={{
-                  width: 22, height: 22, borderRadius: 7, flex: 'none', display: 'grid', placeItems: 'center',
-                  background: tone.bg, color: tone.ink,
-                }}
-              >
-                <tone.Icon size={13} weight="fill" />
-              </span>
-              <span style={{ font: '600 12px/1.4 var(--font-head)', flex: 1, minWidth: 0 }}>{c.title}</span>
+          <div key={c.id} className="insight">
+            <span className="insight__ic" style={{ background: tone.dot }}><tone.Icon size={12} weight="fill" /></span>
+            <div style={{ minWidth: 0 }}>
+              <b>{c.title}</b>
+              <p>{c.body}</p>
+              <small>{c.evidence}</small>
             </div>
-            <span style={{ font: '400 11.5px/1.65 var(--font-body)', color: 'var(--text-secondary)' }}>{c.body}</span>
-            <span
-              className="mono"
-              style={{ font: '500 10px/1.5 var(--font-mono)', color: tone.ink, background: tone.bg, borderRadius: 7, padding: '5px 8px' }}
-            >
-              {c.evidence}
-            </span>
           </div>
         );
       })}
-
-      <p style={{ margin: 0, font: '400 9.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-        {t('สรุปนี้มาจากกฎที่ตั้งไว้ในระบบ ไม่ใช่คำตัดสิน — ใช้เป็นประเด็นตั้งต้นในการคุยกับนักศึกษา')}
-      </p>
     </div>
   );
 }

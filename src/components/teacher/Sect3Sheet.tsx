@@ -39,51 +39,33 @@ export function Sect3FormGroup({ group, forms, latest, onOpen }: {
   const mine = forms.filter((f) => f.group === group);
   if (!mine.length) return null;
   return (
-    <div>
-      <div style={{ font: '700 11px var(--font-head)', color: 'var(--text-secondary)', margin: '2px 0 6px' }}>
+    <>
+      <div className="frows__group">
         {group === 'CD' ? 'Complete dentures (CD)' : group === 'RPD' ? 'Removable partial dentures (RPD)' : 'Fixed prosthesis (FDP)'}
       </div>
-      <div style={{ display: 'grid', gap: 6 }}>
-        {mine.map((f) => {
-          const r = latest.get(f.key);
-          return (
-            <button
-              key={f.key}
-              onClick={() => onOpen(f.key)}
-              className="card"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)' }}
-            >
-              <span style={{ font: '700 10.5px var(--font-mono)', color: 'var(--text-muted)', width: 74, flex: 'none' }}>
-                {f.code}
+      {mine.map((f) => {
+        const r = latest.get(f.key);
+        return (
+          <button key={f.key} onClick={() => onOpen(f.key)} className="frow">
+            <span className="frow__code" style={{ width: 74 }}>{f.code}</span>
+            <span className="frow__t">{f.title.replace(/^.*? – /, '')}</span>
+            {r ? (
+              <span className="frow__s">
+                {/* กาค้างไว้ต้องดูออกทันทีว่ายังไม่เสร็จ — ขีดเฉยๆ อ่านเหมือนประเมินจบแล้ว */}
+                <b style={{ color: r.total === null ? 'var(--warning-dark)' : 'var(--success-dark)' }}>
+                  {r.total === null
+                    ? `${t('ร่าง')} ${Object.keys(r.grades ?? {}).length}/${f.topics.length}`
+                    : `${r.total}/${S3_FULL_SCORE}`}
+                </b>
+                <small>{thaiShort(r.at)}{r.by ? ` · ${r.by}` : ''}</small>
               </span>
-              <span style={{ flex: 1, minWidth: 0, font: '500 12px/1.4 var(--font-body)' }}>
-                {f.title.replace(/^.*? – /, '')}
-              </span>
-              {r ? (
-                <span style={{ textAlign: 'right', flex: 'none' }}>
-                  {/* กาค้างไว้ต้องดูออกทันทีว่ายังไม่เสร็จ — ขีดเฉยๆ อ่านเหมือนประเมินจบแล้ว */}
-                  <span style={{
-                    display: 'block', font: '700 13px var(--font-mono)',
-                    color: r.total === null ? 'var(--warning-dark)' : 'var(--success-dark)',
-                  }}>
-                    {r.total === null
-                      ? `${t('ร่าง')} ${Object.keys(r.grades ?? {}).length}/${f.topics.length}`
-                      : `${r.total}/${S3_FULL_SCORE}`}
-                  </span>
-                  <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                    {thaiShort(r.at)}{r.by ? ` · ${r.by}` : ''}
-                  </span>
-                </span>
-              ) : (
-                <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--text-faint)', flex: 'none' }}>
-                  {t('ยังไม่ประเมิน')}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+            ) : (
+              <span className="frow__none">{t('ยังไม่ประเมิน')}</span>
+            )}
+          </button>
+        );
+      })}
+    </>
   );
 }
 

@@ -5,7 +5,7 @@ import { Bar, TypeBadge } from '../../components/ui/Bits';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, maxProgression, procLabel, progression } from '../../domain/rules';
+import { currentProc, maxProgression, progression } from '../../domain/rules';
 import { useWorkpieces } from '../../hooks/data';
 import { t, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
@@ -25,7 +25,8 @@ export default function Search() {
   const quick = useMemo(() => {
     const types = [...new Set(works.map((w) => typeMeta(w.type).short))].slice(0, 4);
     const teeth = [...new Set(works.map((w) => w.tooth).filter(Boolean) as string[])].slice(0, 2);
-    return [...types, ...teeth];
+    // ซี่ฟันเป็นเลขเปล่า "46" ไม่รู้ว่าคืออะไร → ป้าย "ซี่ 46" แต่ค้นด้วยเลขเหมือนเดิม
+    return [...types.map((v) => ({ value: v, label: v })), ...teeth.map((v) => ({ value: v, label: t('ซี่ {n}', { n: v }) }))];
   }, [works]);
 
   const results = useMemo(() => {
@@ -73,7 +74,7 @@ export default function Search() {
         {quick.length > 0 && (
           <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
             {quick.map((q) => (
-              <button key={q} className="qchip mono" onClick={() => setQuery(q)}>{q}</button>
+              <button key={q.value} className="qchip" data-on={query === q.value} onClick={() => setQuery(query === q.value ? '' : q.value)}>{q.label}</button>
             ))}
           </div>
         )}
@@ -88,27 +89,38 @@ export default function Search() {
           <Empty icon={<MagnifyingGlass size={26} />} title={t('ไม่พบชิ้นงานที่ตรงกับคำค้น')} hint={t('ลองค้นด้วย HN หรือชื่อประเภทงาน')} />
         </div>
       ) : (
+        /* หน้าตาเดียวกับหน้าคนไข้ (ผู้ใช้เลือก mock 14 ก.ย. 69) — HN กึ่งหนา · ชื่อ · ป้ายประเภท · หลอด */
         results.map((w) => {
           const cur = currentProc(w);
-          const meta = typeMeta(w.type);
+          const prog = Math.max(progression(w), 0);
+          const max = maxProgression(w);
+          const done = prog >= max;
           return (
-            <Link key={w.id} to={`/app/work/${w.id}`} className="casecard" style={{ display: 'block' }}>
-              <div className="casecard__top">
+            <Link key={w.id} to={`/app/work/${w.id}`} className="rowcard" style={{ display: 'block', color: 'inherit' }}>
+              <div className="rowcard__head">
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
+                    <b className="herocase__hn">HN {w.patient.hn}</b>
+                  </span>
+                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{t(w.patient.name)}</span>
+                </span>
+              </div>
+              <div className="singlerow">
                 <TypeBadge type={w.type} />
-                <span style={{ font: '600 13.5px var(--font-head)' }}>{t(w.patient.name)}</span>
-                <span style={{ marginLeft: 'auto', font: '400 10px var(--font-mono)', color: 'var(--text-faint)' }}>
-                  HN {w.patient.hn}
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', font: '400 13px var(--font-body)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tText(w.detail)}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+                    <Bar value={(prog / max) * 100} color={done ? 'var(--success)' : typeMeta(w.type).color} height={5} />
+                    <span style={{ font: '500 11.5px var(--font-mono)', color: done ? 'var(--success-dark)' : 'var(--text-faint)', flex: 'none' }}>
+                      {prog}/{max}
+                    </span>
+                  </span>
+                  <span style={{ display: 'block', marginTop: 6, font: '400 12.5px var(--font-body)', color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {cur ? t('ขั้นล่าสุด: {step}', { step: cur.name }) : t('ยังไม่เริ่ม')}
+                  </span>
                 </span>
-              </div>
-              <div className="casecard__meta" style={{ marginTop: 6 }}>{tText(w.detail)}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '10px 0 7px' }}>
-                <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={5} />
-                <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)' }}>
-                  {Math.max(progression(w), 0)}/{maxProgression(w)}
-                </span>
-              </div>
-              <div style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
-                {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
               </div>
             </Link>
           );

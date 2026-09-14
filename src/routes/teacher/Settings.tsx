@@ -1,4 +1,4 @@
-import { DownloadSimple, Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
+import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TYPES } from '../../domain/catalog';
@@ -10,7 +10,6 @@ import { t } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { cohortLabel, isActiveStudent, KEEP_COHORTS, studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
-import { saOpenFor } from '../../domain/selfAssessment';
 import { purgeExpiredCohorts, retentionReport, type RetentionReport } from '../../data/repo';
 import { ensureAlumniSeeded } from '../../data/seed';
 import { downloadFullBackup } from '../../data/fullBackup';
@@ -19,15 +18,16 @@ import { onPdpaPolicy, pdpaPolicy, savePdpaPolicy, type PdpaPolicy, type PdpaRol
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
 import { cloudEnabled } from '../../lib/cloud';
 
+/* คำอธิบายเหลือเฉพาะข้อที่อ่านชื่อแล้วไม่รู้ (ผู้ใช้เลือก mock 14 ก.ย. 69) */
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
-  ['cd', 'CD / Complicated APD', TYPES.CD.color, t('จำนวนเคส CD ที่ต้องทำให้ครบตลอดหลักสูตร')],
-  ['rpd', 'RPD (Co-Cr or Simple APD)', TYPES.RPD.color, t('จำนวนเคส RPD ที่ต้องทำให้ครบ')],
-  ['crown', t('Crown / Bridge (รวม Post-core)'), TYPES.CB.color, t('นับ Crown, Bridge และ Post-core รวมกัน')],
+  ['cd', 'CD / Complicated APD', TYPES.CD.color, ''],
+  ['rpd', 'RPD (Co-Cr or Simple APD)', TYPES.RPD.color, ''],
+  ['crown', t('Crown / Bridge (รวม Post-core)'), TYPES.CB.color, ''],
   ['postCoreMin', t('↳ ในนั้นต้องเป็น Post-core'), TYPES.PC.color, t('เงื่อนไขซ้อนในโควตา Crown ด้านบน')],
-  ['recallRemovable', 'Recall Removable (CD/RPD)', TYPES.RRM.color, t('นัดตรวจงานถอดได้ที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี')],
-  ['recallFixed', 'Recall Fixed (FDP)', TYPES.RFX.color, t('นัดตรวจงานติดแน่นที่ใส่ไปแล้ว — นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี')],
-  ['perYear', t('ทุกปีต้องจบอย่างน้อย'), 'var(--accent)', t('เกณฑ์รายปี แยกจากเกณฑ์สะสม')],
-  ['years', t('เกณฑ์สะสมกี่ปี'), 'var(--text-muted)', t('ปกติ 2 ปี (ชั้นปีที่ 5 และ 6)')],
+  ['recallRemovable', 'Recall Removable (CD/RPD)', TYPES.RRM.color, t('นับสะสม ไม่นับรายปี')],
+  ['recallFixed', 'Recall Fixed (FDP)', TYPES.RFX.color, t('นับสะสม ไม่นับรายปี')],
+  ['perYear', t('ทุกปีต้องจบอย่างน้อย'), 'var(--accent)', ''],
+  ['years', t('เกณฑ์สะสมกี่ปี'), 'var(--text-muted)', ''],
 ];
 
 /**
@@ -117,224 +117,180 @@ export default function Settings() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
-          <div style={{ display: 'grid', gap: 16 }}>
-            <div className="panel">
+          <div className="panel setcard">
+            <div className="setcard__head">
               <h3>{t('เกณฑ์ขั้นต่ำ')}</h3>
-              <p className="sub">
-                {t('สะสมตลอดหลักสูตร {y} ปี — ปัจจุบัน', { y: settings.req.years })} CD {settings.req.cd} · RPD {settings.req.rpd} ·
-                Crown {settings.req.crown} (Post-core {settings.req.postCoreMin}) ·
-                Recall {settings.req.recallRemovable}+{settings.req.recallFixed} · {t('รายปี')} {settings.req.perYear}
-              </p>
-
-              <div style={{ marginTop: 12 }}>
-                {REQ_FIELDS.map(([key, label, color, hint]) => (
-                  <div
-                    key={key}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0',
-                      borderBottom: '1px solid var(--divider)',
-                    }}
+              <span className="sub">{t('สะสม {y} ปี', { y: settings.req.years })}</span>
+            </div>
+            {REQ_FIELDS.map(([key, label, color, hint]) => (
+              <div key={key} className="setrow" style={key === 'postCoreMin' ? { paddingLeft: 36 } : undefined}>
+                {key !== 'postCoreMin' && <span className="dot" style={{ background: color }} />}
+                <span className="setrow__main">
+                  <b style={key === 'postCoreMin' ? { fontWeight: 500 } : undefined}>{label}</b>
+                  {hint && <span className="setrow__hint">{hint}</span>}
+                </span>
+                <div className="stepper">
+                  <button
+                    onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, -1) })}
+                    aria-label={`${t('ลด')} ${label}`}
                   >
-                    <span style={{ width: 9, height: 9, borderRadius: 99, background: color, flex: 'none' }} />
-                    <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{label}</span>
-                      <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                        {hint}
-                      </span>
-                    </span>
-                    <div className="stepper">
-                      <button
-                        onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, -1) })}
-                        aria-label={t('ลด')}
-                      >
-                        <Minus size={13} weight="bold" />
-                      </button>
-                      <span>{settings.req[key]}</span>
-                      <button
-                        onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, +1) })}
-                        aria-label={t('เพิ่ม')}
-                      >
-                        <Plus size={13} weight="bold" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    <Minus size={13} weight="bold" />
+                  </button>
+                  <span>{settings.req[key]}</span>
+                  <button
+                    onClick={() => updateSettings({ req: bumpReq(settings.req, key as keyof Requirement, +1) })}
+                    aria-label={`${t('เพิ่ม')} ${label}`}
+                  >
+                    <Plus size={13} weight="bold" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
 
-            <div className="panel" style={{ background: 'var(--warning-tint)', borderColor: 'var(--warning-border)' }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <WarningCircle size={17} weight="fill" color="var(--warning)" />
-                <h3 style={{ color: 'var(--warning-dark)' }}>{t('2 ข้อที่รอภาควิชายืนยัน')}</h3>
-              </div>
-              <p className="sub" style={{ color: 'var(--warning-dark)', opacity: 0.85 }}>
-                {t('ค่าเริ่มต้นตั้งตามที่ตีความจากชีต — พอได้คำตอบแล้วกดสลับได้เลย ตัวเลขทั้งระบบจะคำนวณใหม่ทันที')}
-              </p>
-
-              {(
+            {/* กล่องเหลืองแยก → บรรทัดเตือน + สวิตช์ท้ายการ์ดเดียวกัน (14 ก.ย. 69) */}
+            <p className="setcard__warn">
+              {t('⚠ 2 ข้อรอภาควิชายืนยัน — ค่าเริ่มต้นตีความจากชีต ได้คำตอบแล้วสลับได้ ตัวเลขทั้งระบบคำนวณใหม่ทันที')}
+            </p>
+            {(
+              [
                 [
-                  [
-                    'pairCountsAsOne',
-                    t('งานถอดได้ (CD/RPD): คู่ upper+lower นับเป็น'),
-                    settings.pairCountsAsOne ? t('1 เคส (ต้องจบทั้งคู่)') : t('2 ชิ้นแยกกัน'),
-                    settings.pairCountsAsOne,
-                  ],
-                  [
-                    'perYearCountsAllTypes',
-                    t('เกณฑ์รายปีนับ'),
-                    settings.perYearCountsAllTypes ? t('ทุกประเภท (รวม Simple APD / Recall)') : t('เฉพาะ 4 ประเภทหลัก'),
-                    settings.perYearCountsAllTypes,
-                  ],
-                ] as Array<[keyof typeof settings, string, string, boolean]>
-              ).map(([key, label, value, on]) => (
-                <button
-                  key={String(key)}
-                  onClick={() => updateSettings({ [key]: !on } as never)}
-                  style={{ display: 'flex', gap: 11, alignItems: 'center', width: '100%', minHeight: 40, marginTop: 11, textAlign: 'left' }}
-                >
-                  <span style={{ flex: 1, font: '400 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
-                    {label} <b>{value}</b>
-                  </span>
-                  <span className="toggle" data-on={on}><i /></span>
-                </button>
-              ))}
-            </div>
+                  'pairCountsAsOne',
+                  t('งานถอดได้ (CD/RPD): คู่ upper+lower นับเป็น'),
+                  settings.pairCountsAsOne ? t('1 เคส (ต้องจบทั้งคู่)') : t('2 ชิ้นแยกกัน'),
+                  settings.pairCountsAsOne,
+                ],
+                [
+                  'perYearCountsAllTypes',
+                  t('เกณฑ์รายปีนับ'),
+                  settings.perYearCountsAllTypes ? t('ทุกประเภท (รวม Simple APD / Recall)') : t('เฉพาะ 4 ประเภทหลัก'),
+                  settings.perYearCountsAllTypes,
+                ],
+              ] as Array<[keyof typeof settings, string, string, boolean]>
+            ).map(([key, label, value, on]) => (
+              <button key={String(key)} className="setrow" role="switch" aria-checked={on} onClick={() => updateSettings({ [key]: !on } as never)}>
+                <span className="setrow__main">
+                  <span style={{ font: '400 13px/1.5 var(--font-body)', color: 'var(--text-secondary)' }}>{label} <b style={{ display: 'inline' }}>{value}</b></span>
+                </span>
+                <span className="toggle" data-on={on}><i /></span>
+              </button>
+            ))}
           </div>
 
           <div style={{ display: 'grid', gap: 16 }}>
-            <div className="panel">
-              <h3>{t('คาบคลินิกต่อสัปดาห์')}</h3>
-              <p className="sub">{t('ใช้คำนวณสีเสี่ยง "ทันเกณฑ์ปีนี้ไหม" — ตัวเลขจริงขึ้นกับตารางของภาค ปรับให้ตรงได้ที่นี่')}</p>
-              <div className="seg" style={{ marginTop: 11 }}>
-                {[1, 2, 3, 4].map((n) => (
-                  <button key={n} data-on={settings.periodsPerWeek === n} onClick={() => updateSettings({ periodsPerWeek: n })}>
-                    {n} {t('คาบ')}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* การ์ดเล็ก 6 ใบคนละเรื่อง → การ์ด "ระบบ" ใบเดียว แถวละเรื่อง ตัวเลือกชิดขวา (14 ก.ย. 69) */}
+            <div className="panel setcard">
+              <div className="setcard__head"><h3>{t('ระบบ')}</h3></div>
 
-            <div className="panel">
-              <h3>{t('แบบประเมินตนเอง')}</h3>
-              <p className="sub">{t('ภาคเปิดปีละครั้ง ตอนจบเทอม 1 — เปิดแยกชั้นปีได้ · ชั้นปีที่ยังไม่เปิด นักศึกษาจะไม่เห็นเมนูนี้เลย')}</p>
-              <div className="seg" style={{ marginTop: 11 }}>
-                {([[], [5], [6], [5, 6]] as number[][]).map((ys) => {
-                  const label = ys.length === 0 ? t('ปิด') : ys.length === 2 ? t('ทั้งสองชั้นปี') : t('ปี {n}', { n: ys[0] });
-                  const on = ys.length === saOpenYears.length && ys.every((y) => saOpenYears.includes(y));
-                  return (
-                    <button key={label} data-on={on} onClick={() => updateSettings({ saOpenYears: ys })}>{label}</button>
-                  );
-                })}
+              <div className="setrow">
+                <span className="setrow__main">
+                  <b>{t('คาบคลินิกต่อสัปดาห์')}</b>
+                  <span className="setrow__hint">{t('ใช้คำนวณสีเสี่ยง "ทันเกณฑ์ปีนี้ไหม"')}</span>
+                </span>
+                <div className="seg seg--sm seg--tight">
+                  {[1, 2, 3, 4].map((n) => (
+                    <button key={n} data-on={settings.periodsPerWeek === n} aria-label={`${n} ${t('คาบ')}`} onClick={() => updateSettings({ periodsPerWeek: n })}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <SettingsSyncNote />
-              <label className="field" style={{ marginTop: 11 }}>
-                <span>{t('กำหนดส่ง (ไม่บังคับ)')}</span>
+
+              <div className="setrow">
+                <span className="setrow__main">
+                  <b>{t('นิยาม “เคสค้าง”')}</b>
+                  <span className="setrow__hint">
+                    {t('ไม่อัปเดตเกินกี่วัน · ตอนนี้เข้าเงื่อนไข {n} จาก {m} ชิ้น', { n: staleCount, m: activeWorks.length })}
+                  </span>
+                </span>
+                <div className="seg seg--sm seg--tight">
+                  {[7, 14, 21, 30].map((d) => (
+                    <button key={d} data-on={settings.stale === d} aria-label={`${d} ${t('วัน')}`} onClick={() => updateSettings({ stale: d })}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="setrow setrow--wrap">
+                <span className="setrow__main">
+                  <b>{t('แบบประเมินตนเอง')}</b>
+                  <span className="setrow__hint">
+                    {saStat.map((st) => `${t('ปี {n}', { n: st.year })} ${t('ส่งแล้ว')} ${st.sent}/${st.total}`).join(' · ')}
+                  </span>
+                  <SettingsSyncNote />
+                </span>
+                <div className="seg seg--sm seg--tight">
+                  {([[], [5], [6], [5, 6]] as number[][]).map((ys) => {
+                    const label = ys.length === 0 ? t('ปิด') : ys.length === 2 ? t('ทั้งคู่') : t('ปี {n}', { n: ys[0] });
+                    const on = ys.length === saOpenYears.length && ys.every((y) => saOpenYears.includes(y));
+                    return (
+                      <button key={label} data-on={on} onClick={() => updateSettings({ saOpenYears: ys })}>{label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+              <label className="setrow setrow--sub">
+                <span className="setrow__main"><span className="setrow__hint">{t('กำหนดส่ง (ไม่บังคับ)')}</span></span>
                 <input
                   className="input mono"
+                  style={{ width: 170, height: 34 }}
                   type="date"
                   value={settings.saDue ?? ''}
                   onChange={(e) => updateSettings({ saDue: e.target.value || undefined })}
                 />
               </label>
-              <div style={{ margin: '11px 0 0', display: 'grid', gap: 3 }}>
-                {saStat.map((st) => (
-                  <p key={st.year} style={{ margin: 0, font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-                    {t('ปี {n}', { n: st.year })} · {saOpenFor({ saOpenYears }, st.year) ? t('เปิดอยู่') : t('ปิดอยู่')} ·{' '}
-                    {t('ส่งแล้ว')} <b>{st.sent}</b>/{st.total} {t('คน')}
-                  </p>
-                ))}
+
+              {/* ธีมสี — อาจารย์ที่เปิดลิงก์แชร์จากแท็บเล็ต/มือถือไม่เห็นแถบเดโม (ผู้ใช้ขอ 1 ก.ย.) */}
+              <div className="setrow">
+                <span className="setrow__main"><b>{t('ธีมสี')}</b><span className="setrow__hint">{t('จำไว้เฉพาะเครื่องนี้')}</span></span>
+                <div className="seg seg--sm seg--tight">
+                  {THEMES.map((th) => (
+                    <button key={th.cls || 'default'} data-on={theme === th.cls} onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}>
+                      {t(th.label)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="panel">
-              <h3>{t('นิยาม “เคสค้าง”')}</h3>
-              <p className="sub">{t('ชิ้นงานที่ไม่มีการอัปเดตนานเกินกำหนด จะถูก flag ทั้งฝั่งนักศึกษาและ dashboard')}</p>
-              <div className="seg" style={{ marginTop: 11 }}>
-                {[7, 14, 21, 30].map((d) => (
-                  <button key={d} data-on={settings.stale === d} onClick={() => updateSettings({ stale: d })}>
-                    {d} {t('วัน')}
-                  </button>
-                ))}
-              </div>
-              <p style={{ margin: '11px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('ตอนนี้เข้าเงื่อนไข')} <b>{staleCount}</b> {t('ชิ้นงาน จากทั้งหมด {n} ชิ้นของรุ่นที่กำลังเรียน', { n: activeWorks.length })}
-              </p>
-
-            </div>
-
-            {/* ธีมสี — เดิมเลือกได้แค่จากแถบเดโมบนคอม อาจารย์ที่เปิดลิงก์แชร์จากแท็บเล็ต/มือถือ
-                จะไม่เห็นแถบนั้น (ผู้ใช้ขอ 1 ก.ย.) · ตรงกับการ์ดธีมฝั่ง นศ. ในหน้ากระดิ่ง */}
-            <div className="panel">
-              <h3>{t('ธีมสี')}</h3>
-              <p className="sub">{t('เลือกโทนสีของทั้งแอป — จำไว้เฉพาะเครื่องนี้')}</p>
-              <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
-                {THEMES.map((th) => (
-                  <button
-                    key={th.cls || 'default'}
-                    className={`themebtn${theme === th.cls ? ' themebtn--on' : ''}`}
-                    onClick={() => { setTheme(th.cls); applyTheme(th.cls); }}
-                  >
-                    <span className={`themebtn__dot ${th.cls}`} />
-                    {t(th.label)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* เก็บข้อมูลย้อนหลังตามที่ภาคกำหนด แล้วลบรุ่นที่เกิน (อาจารย์ขอ 1 ก.ย. 69)
-                ⚠️ ปุ่มลบกดได้ต่อเมื่อหัวหน้าภาคเปิดสวิตช์ในแผง PDPA ข้างล่างแล้วเท่านั้น */}
-            <div className="panel">
-              <h3>{t('ข้อมูลย้อนหลัง')}</h3>
-              <p className="sub">
-                {t('เก็บ {n} รุ่นล่าสุด — รุ่นที่เก่ากว่านั้นลบได้เพื่อไม่ให้ข้อมูลบวม', { n: report?.keepCohorts ?? KEEP_COHORTS })}
-              </p>
-              {report && (
-                <>
-                  <p style={{ margin: '11px 0 0', font: '400 11.5px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-                    {t('รุ่นที่เก็บอยู่')}: <b>{report.keep.map((c) => cohortLabel(c)).join(' · ') || '—'}</b>
-                  </p>
-                  {!report.enabled && (
-                    <p style={{ margin: '7px 0 0', font: '400 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+              {/* เก็บข้อมูลย้อนหลังตามที่ภาคกำหนด แล้วลบรุ่นที่เกิน (อาจารย์ขอ 1 ก.ย. 69)
+                  ⚠️ ปุ่มลบกดได้ต่อเมื่อหัวหน้าภาคเปิดสวิตช์ในแผง PDPA ข้างล่างแล้วเท่านั้น */}
+              <div className="setrow setrow--wrap">
+                <span className="setrow__main">
+                  <b>{t('ข้อมูลย้อนหลัง')}</b>
+                  <span className="setrow__hint">
+                    {t('เก็บ {n} รุ่นล่าสุด', { n: report?.keepCohorts ?? KEEP_COHORTS })}
+                    {report && ` · ${report.keep.map((c) => cohortLabel(c)).join(' · ') || '—'}`}
+                  </span>
+                  {report && !report.enabled && report.expired.length > 0 && (
+                    <span className="setrow__hint" style={{ color: 'var(--warning-dark)' }}>
                       {t('ภาควิชายังไม่ได้เปิดใช้การลบตามกำหนดเก็บ — ข้อมูลเก่ายังอยู่ครบ')}
-                    </p>
+                    </span>
                   )}
                   {/* คนที่ไม่มีรุ่น = ระบบเดาไม่ได้ว่าเก่าแค่ไหน จึงไม่ลบ ต้องบอกให้เห็น
                       ไม่งั้นจะเข้าใจว่า "ลบครบแล้ว" ทั้งที่ยังมีข้อมูลเก่าค้างอยู่ */}
-                  {report.undated > 0 && (
-                    <p style={{ margin: '7px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+                  {report && report.undated > 0 && (
+                    <span className="setrow__hint">
                       {t('มี {n} คนที่ยังไม่ระบุรุ่น — ระบบไม่ลบให้ ต้องเติมรุ่นในหน้ารายชื่อก่อน', { n: report.undated })}
-                    </p>
+                    </span>
                   )}
-                  {report.expired.length === 0 ? (
-                    <p style={{ margin: '7px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                      {t('ยังไม่มีรุ่นที่เกินกำหนดเก็บ')}
-                    </p>
-                  ) : (
-                    <>
-                      <div style={{ marginTop: 11, display: 'grid', gap: 6 }}>
-                        {report.expired.map((e) => (
-                          <div key={e.cohort} style={{ display: 'flex', alignItems: 'center', gap: 9, font: '400 11.5px var(--font-body)', color: 'var(--warning-dark)' }}>
-                            <b>{cohortLabel(e.cohort)}</b>
-                            <span>{t('{a} คน · {b} ชิ้นงาน · {c} คาบ', { a: e.students, b: e.workpieces, c: e.checkins })}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        className="btn"
-                        style={{ marginTop: 12, height: 42, fontSize: 13 }}
-                        disabled={purging || !report.enabled}
-                        onClick={() => setConfirmPurge(true)}
-                      >
-                        <Trash size={15} weight="bold" />
-                        {t('ลบรุ่นที่เกินกำหนด')}
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
+                  {report?.expired.map((e) => (
+                    <span key={e.cohort} className="setrow__hint" style={{ color: 'var(--warning-dark)' }}>
+                      <b style={{ display: 'inline', font: 'inherit', fontWeight: 600 }}>{cohortLabel(e.cohort)}</b>{' '}
+                      {t('{a} คน · {b} ชิ้นงาน · {c} คาบ', { a: e.students, b: e.workpieces, c: e.checkins })}
+                    </span>
+                  ))}
+                </span>
+                {report && (report.expired.length === 0 ? (
+                  <span className="setrow__value">{t('ยังไม่มีรุ่นที่เกินกำหนดเก็บ')}</span>
+                ) : (
+                  <button className="textbtn" style={{ color: 'var(--danger)' }} disabled={purging || !report.enabled} onClick={() => setConfirmPurge(true)}>
+                    {t('ลบรุ่นที่เกินกำหนด')} ›
+                  </button>
+                ))}
+              </div>
 
-            <BackupPanel />
+              <BackupRow />
+            </div>
 
             <PdpaPanel />
 
@@ -474,32 +430,28 @@ const EXPORT_ROLE_LABELS: Array<[PdpaRole, string]> = [
  * ⚠️ ต้องบอกข้อจำกัดไว้บนหน้าจอตรงๆ ว่า "ไม่รวมไบต์รูป" — สำเนาที่ไม่ครบโดยคนกดไม่รู้
  * แย่กว่าไม่มีสำเนา เพราะวันที่ต้องกู้จริงถึงจะรู้
  */
-function BackupPanel() {
+function BackupRow() {
   const { showToast } = useApp();
   const [busy, setBusy] = useState(false);
   const isAdmin = currentPdpaRole() === 'admin';
 
   return (
-    <div className="panel">
-      <h3><DownloadSimple size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('สำรองข้อมูล')}</h3>
-      <p className="sub">
-        {t('ดาวน์โหลดข้อมูลทั้งระบบเป็นไฟล์เดียวเก็บไว้ — Supabase แผนที่ใช้อยู่ไม่มีสำเนาอัตโนมัติ')}
-      </p>
-      <p style={{ margin: '8px 0 0', font: '400 11px/1.7 var(--font-body)', color: 'var(--text-faint)' }}>
-        {t('ไฟล์นี้มีชื่อและ HN ผู้ป่วยครบทุกแถว · ทุกครั้งที่กดถูกบันทึกใน audit log')}
-        <br />
-        {t('⚠️ ไม่รวมไฟล์รูปงาน (รูปอยู่คนละที่) — รูปต้องสำรองด้วยคำสั่ง npm run backup')}
-      </p>
-      {/* ปุ่มเทาโดยไม่บอกเหตุผลคือทางตัน — tooltip ไม่พอ บนมือถือไม่มี hover
-          (บทเรียนเดียวกับปุ่ม "สร้างชิ้นงาน" ที่แก้ไป 10 ก.ย. 69) */}
-      {!isAdmin && (
-        <p style={{ margin: '10px 0 0', font: '500 11.5px var(--font-body)', color: 'var(--text-muted)' }}>
-          {t('สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค')}
-        </p>
-      )}
+    <div className="setrow setrow--wrap">
+      <span className="setrow__main">
+        <b>{t('สำรองข้อมูล')}</b>
+        <span className="setrow__hint">
+          {t('ไฟล์เดียวทั้งระบบ มีชื่อและ HN ผู้ป่วย · ทุกครั้งที่กดถูกบันทึกใน audit log')}
+        </span>
+        {/* ห้ามลบบรรทัดนี้ — สำเนาที่ไม่ครบโดยคนกดไม่รู้ แย่กว่าไม่มีสำเนา (CLAUDE.md) */}
+        <span className="setrow__hint" style={{ color: 'var(--warning-dark)' }}>
+          {t('⚠️ ไม่รวมไฟล์รูปงาน (รูปอยู่คนละที่) — รูปต้องสำรองด้วยคำสั่ง npm run backup')}
+        </span>
+        {/* ปุ่มเทาโดยไม่บอกเหตุผลคือทางตัน — tooltip ไม่พอ บนมือถือไม่มี hover
+            (บทเรียนเดียวกับปุ่ม "สร้างชิ้นงาน" ที่แก้ไป 10 ก.ย. 69) */}
+        {!isAdmin && <span className="setrow__hint">{t('สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค')}</span>}
+      </span>
       <button
-        className="btn"
-        style={{ marginTop: 12, height: 42, fontSize: 13, width: 'auto', padding: '0 18px' }}
+        className="textbtn"
         disabled={busy || !isAdmin}
         onClick={() => {
           setBusy(true);
@@ -519,8 +471,7 @@ function BackupPanel() {
             .finally(() => setBusy(false));
         }}
       >
-        <DownloadSimple size={15} weight="bold" />
-        {busy ? t('กำลังรวบรวม…') : t('ดาวน์โหลดไฟล์สำรองข้อมูล')}
+        {busy ? t('กำลังรวบรวม…') : `${t('ดาวน์โหลด')} ›`}
       </button>
     </div>
   );

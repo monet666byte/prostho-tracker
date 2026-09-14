@@ -1,6 +1,6 @@
-import { ArrowLeft, Camera, Images, WarningCircle } from '@phosphor-icons/react';
+import { ArrowLeft, Camera } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
-import { Empty, PhotoSlot } from '../../components/ui/Bits';
+import { PhotoSlot } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { getPhotoStatus, retryPhoto } from '../../data/repo';
 import { usePhotoSrc, usePhotos, useWorkpieces } from '../../hooks/data';
@@ -42,7 +42,7 @@ export default function Photos() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
             <ArrowLeft size={17} />
           </button>
-          <h1 className="h2" style={{ flex: 1 }}>{t('รูปต่อ step')}</h1>
+          <h1 className="h2" style={{ flex: 1 }}>{t('คลังรูปงาน')}</h1>
         </div>
         <p style={{ margin: '6px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
           {t('ย่อรูปให้อัตโนมัติ · ถ่ายตอนเน็ตหลุดได้ เดี๋ยวส่งขึ้นเองทีหลัง')}
@@ -52,67 +52,64 @@ export default function Photos() {
       {cam.input}
       {lib.input}
 
-      <div style={{ display: 'flex', gap: 11, padding: '14px 16px 0' }}>
-        <button className="card" style={bigBtn} disabled={busy} onClick={cam.open}>
-          <Camera size={24} weight="fill" color="var(--accent)" />
+      {/* ปุ่มหลักปุ่มเดียว + ลิงก์ (ผู้ใช้เลือก mock 14 ก.ย. 69) — ถ่ายรูปใช้บ่อยกว่าเลือกจากคลัง */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <button className="btn" style={{ height: 52, borderRadius: 16 }} disabled={busy} onClick={cam.open}>
+          <Camera size={20} weight="fill" />
           {busy ? (uploading ? t('กำลังส่งรูป…') : t('กำลังย่อรูป…')) : t('ถ่ายรูป')}
         </button>
-        <button className="card" style={bigBtn} disabled={busy} onClick={lib.open}>
-          <Images size={24} weight="fill" color="var(--accent)" />
-          {busy ? (uploading ? t('กำลังส่งรูป…') : t('รอสักครู่')) : t('เลือกจากคลัง')}
+        <button className="textlink" disabled={busy} onClick={lib.open}>
+          {t('เลือกจากคลังในเครื่อง')} ›
         </button>
       </div>
 
-      <div className="sectiontitle">
-        <h4>{t('รูปทั้งหมด · {n} รูป', { n: photos.length })}</h4>
+      <div className="critlabel" style={{ margin: '14px 20px 8px' }}>
+        <span className="homelabel" style={{ margin: 0 }}>{t('รูปทั้งหมด')}</span>
+        <span className="mono faint">{photos.length}</span>
       </div>
 
-      <div style={{ padding: '0 16px', display: 'grid', gap: 9 }}>
-        {photos.length === 0 && (
-          <Empty icon={<Images size={26} />} title={t('ยังไม่มีรูปในเคสนี้')} hint={t('แนบรูปตอนบันทึก step เสร็จได้เลย')} />
+      <div style={{ padding: '0 16px' }}>
+        {photos.length === 0 ? (
+          <div className="card emptyplain">
+            <b>{t('ยังไม่มีรูป')}</b>
+            {t('แนบรูปตอนบันทึก step เสร็จได้เลย')}
+          </div>
+        ) : (
+          <div className="card checklist">
+            {photos.map((p) => {
+              const chip = CHIP[p.status];
+              return (
+                <button
+                  key={p.id}
+                  className="photorow"
+                  onClick={async () => {
+                    if (p.status !== 'fail') return;
+                    await retryPhoto(p.id);
+                    // อ่านสถานะจริงหลังลองส่ง — เดิมขึ้น "ลองส่งใหม่แล้ว" ทุกครั้งไม่ว่าผลจะเป็นยังไง
+                    const now = await getPhotoStatus(p.id);
+                    showToast(now === 'ok'
+                      ? { message: t('ส่งรูปขึ้นเซิร์ฟเวอร์แล้ว'), tone: 'success' }
+                      : { message: t('ยังส่งไม่ขึ้น — ดูสาเหตุที่หน้า “ตั้งค่า”'), tone: 'warning' });
+                  }}
+                >
+                  <PhotoSlot size={64} filled src={srcs.get(p.id)} alt={p.stepLabel} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', font: '600 13.5px var(--font-head)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.stepLabel}
+                    </span>
+                    <span style={{ display: 'block', font: '400 12px var(--font-body)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {tText(p.detail)}
+                    </span>
+                    <span style={{ display: 'block', font: '400 12px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
+                      {thaiShort(p.createdAt)} · {p.sizeLabel} · <span style={{ color: chip.fg, fontWeight: 600 }}>{chip.label}</span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
-        {photos.map((p) => {
-          const chip = CHIP[p.status];
-          return (
-            <button
-              key={p.id}
-              className="card"
-              style={{ padding: 10, display: 'flex', gap: 11, alignItems: 'center', textAlign: 'left' }}
-              onClick={async () => {
-                if (p.status !== 'fail') return;
-                await retryPhoto(p.id);
-                // อ่านสถานะจริงหลังลองส่ง — เดิมขึ้น "ลองส่งใหม่แล้ว" ทุกครั้งไม่ว่าผลจะเป็นยังไง
-                const now = await getPhotoStatus(p.id);
-                showToast(now === 'ok'
-                  ? { message: t('ส่งรูปขึ้นเซิร์ฟเวอร์แล้ว'), tone: 'success' }
-                  : { message: t('ยังส่งไม่ขึ้น — ดูสาเหตุที่หน้า “การเชื่อมต่อ & sync”'), tone: 'warning' });
-              }}
-            >
-              <PhotoSlot size={74} filled src={srcs.get(p.id)} alt={p.stepLabel} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', font: '500 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
-                  {p.stepLabel}
-                </span>
-                <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3 }}>
-                  {tText(p.detail)}
-                </span>
-                <span style={{ display: 'block', font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 4 }}>
-                  {thaiShort(p.createdAt)} · {p.sizeLabel}
-                </span>
-              </span>
-              <span className="chip" style={{ background: chip.bg, color: chip.fg, flex: 'none' }}>
-                {p.status === 'fail' && <WarningCircle size={12} weight="fill" />}
-                {chip.label}
-              </span>
-            </button>
-          );
-        })}
       </div>
     </PlainShell>
   );
 }
-
-const bigBtn: React.CSSProperties = {
-  flex: 1, height: 80, display: 'grid', placeItems: 'center', gap: 6, borderRadius: 14,
-  font: '600 12.5px var(--font-body)', color: 'var(--text-secondary)',
-};

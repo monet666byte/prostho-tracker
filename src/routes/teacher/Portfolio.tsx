@@ -8,7 +8,6 @@
  * ทุกใบมีลายเซ็นอาจารย์บนกระดาษ → หน้านี้ทำหน้าที่ "คีย์ครั้งเดียวแล้วพิมพ์ไปเซ็น"
  * ไม่ได้ตั้งใจแทนลายเซ็น
  */
-import { Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -73,21 +72,21 @@ export default function Portfolio() {
                 : 'Section III: Knowledge and skill assessments in specific prosthodontic procedures'}
               {' · '}
               {t('คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ')}
+              {' · '}
+              {t('ปีการศึกษา')} {year}
             </p>
           </div>
         </div>
 
         <div className="salayout">
-          <div className="panel">
-            <h3>{t('กลุ่ม')} {groupShort(teacherGroup)}</h3>
-            <p className="sub">{t('ปีการศึกษา')} {year}</p>
-            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-              {roster.map((s) => (
-                <RosterRow key={s.id} student={s} year={year} tab={tab} on={s.id === selId}
-                  onPick={() => { setSelId(s.id); setOpenKey(null); }} />
-              ))}
-              {!roster.length && <p className="sub">{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
-            </div>
+          {/* รายการเดียวคั่นเส้น (ผู้ใช้เลือก mock 14 ก.ย. 69) — เดิมการ์ดทีละคน + ไอคอนหมวก */}
+          <div className="panel plist">
+            <div className="plist__head">{t('นักศึกษา · {n} คน', { n: roster.length })}</div>
+            {roster.map((s) => (
+              <RosterRow key={s.id} student={s} year={year} tab={tab} on={s.id === selId}
+                onPick={() => { setSelId(s.id); setOpenKey(null); }} />
+            ))}
+            {!roster.length && <p className="sub" style={{ padding: '0 16px 14px' }}>{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
           </div>
 
           <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
@@ -97,14 +96,14 @@ export default function Portfolio() {
 
             {/* ── Section II ── */}
             {student && tab === 'sect2' && !openKey && (
-              <div className="panel">
+              <div className="panel formspanel">
                 <StudentHead
                   student={student}
                   note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest2.size}/3 ${t('ใบ')}`}
                   canPrint={latest2.size + latest3.size > 0}
                   onPrint={() => navigate(`/teacher/portfolio/${student.id}/print`)}
                 />
-                <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+                <div className="frows">
                   {SECT2_ROWS.map((r) => (
                     <FormRow
                       key={r.key}
@@ -150,7 +149,7 @@ export default function Portfolio() {
 
             {/* ── Section III ── */}
             {student && tab === 'sect3' && !openKey && (
-              <div className="panel">
+              <div className="panel formspanel">
                 <StudentHead
                   student={student}
                   note={`${t('ชั้นปี {n}', { n: classYear })} · ${t('ประเมินแล้ว')} ${latest3.size}/${forms3.length} ${t('ใบ')}`
@@ -158,7 +157,7 @@ export default function Portfolio() {
                   canPrint={latest2.size + latest3.size > 0}
                   onPrint={() => navigate(`/teacher/portfolio/${student.id}/print`)}
                 />
-                <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                <div className="frows">
                   {(['CD', 'RPD', 'FDP'] as const).map((g) => (
                     <Sect3FormGroup key={g} group={g} forms={forms3} latest={latest3} onOpen={setOpenKey} />
                   ))}
@@ -188,19 +187,15 @@ export default function Portfolio() {
 }
 
 /** หัวบล็อกของ นศ. ที่เลือก — ปุ่มพิมพ์รวมทุกใบที่ประเมินแล้ว ไม่แยกตามแท็บ
-    เพราะเวลาส่งเล่มจริงส่งทั้งเล่ม ไม่ได้ส่งทีละ Section */
+    เพราะเวลาส่งเล่มจริงส่งทั้งเล่ม ไม่ได้ส่งทีละ Section · ปุ่มเทาเต็มแถว → ลิงก์ข้างชื่อ (14 ก.ย. 69) */
 function StudentHead({ student, note, canPrint, onPrint }: {
   student: Student; note: string; canPrint: boolean; onPrint: () => void;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 'min(150px, 100%)' }}>
-        <h3 style={{ margin: 0 }}>{firstNameOnly(t(student.name))} · {student.code}</h3>
-        <p className="sub" style={{ margin: '2px 0 0' }}>{note}</p>
-      </div>
-      <button className="btn btn--sec" style={{ height: 40 }} disabled={!canPrint} onClick={onPrint}>
-        <Printer size={15} /> {t('พิมพ์')}
-      </button>
+    <div className="formspanel__head">
+      <h3>{firstNameOnly(t(student.name))} · {student.code}</h3>
+      <span className="sub">{note}</span>
+      <button className="textbtn" disabled={!canPrint} onClick={onPrint}>{t('พิมพ์')} ›</button>
     </div>
   );
 }
@@ -210,28 +205,18 @@ function FormRow({ code, label, status, at, by, onOpen }: {
   code: string; label: string; status: { text: string; done: boolean } | null;
   at?: string; by?: string; onOpen: () => void;
 }) {
+  const failed = status?.text === t('ยังไม่ผ่าน');
   return (
-    <button
-      onClick={onOpen}
-      className="card"
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)' }}
-    >
-      <span style={{ font: '700 10px var(--font-mono)', color: 'var(--text-muted)', width: 54, flex: 'none' }}>{code}</span>
-      <span style={{ flex: 1, minWidth: 0, font: '500 12px/1.45 var(--font-body)' }}>{label}</span>
+    <button onClick={onOpen} className="frow">
+      <span className="frow__code">{code}</span>
+      <span className="frow__t">{label}</span>
       {status ? (
-        <span style={{ textAlign: 'right', flex: 'none' }}>
-          <span style={{
-            display: 'block', font: '700 13px var(--font-mono)',
-            color: status.done ? 'var(--success-dark)' : 'var(--warning-dark)',
-          }}>{status.text}</span>
-          {at && (
-            <span style={{ display: 'block', font: '400 9.5px var(--font-body)', color: 'var(--text-faint)' }}>
-              {thaiShort(at)}{by ? ` · ${by}` : ''}
-            </span>
-          )}
+        <span className="frow__s">
+          <b style={{ color: failed ? 'var(--danger)' : status.done ? 'var(--success-dark)' : 'var(--warning-dark)' }}>{status.text}</b>
+          {at && <small>{thaiShort(at)}{by ? ` · ${by}` : ''}</small>}
         </span>
       ) : (
-        <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--text-faint)', flex: 'none' }}>{t('ยังไม่ประเมิน')}</span>
+        <span className="frow__none">{t('ยังไม่ประเมิน')}</span>
       )}
     </button>
   );
@@ -246,25 +231,12 @@ function RosterRow({ student, year, tab, on, onPick }: {
   const total = tab === 'sect2' ? SECT2_FORMS.length + 1 : sect3FormsFor(studentYear(student)).length;
   const full = done === total;
   return (
-    <button
-      onClick={onPick}
-      data-on={on}
-      className="card"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', textAlign: 'left',
-        border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
-        background: on ? 'var(--accent-tint)' : 'transparent', cursor: 'pointer',
-      }}
-    >
-      <StudentIcon size={16} weight={full ? 'fill' : 'regular'}
-        color={full ? 'var(--success-dark)' : 'var(--text-faint)'} />
+    <button onClick={onPick} data-on={on} aria-pressed={on} className="plist__row">
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', font: '600 12px var(--font-head)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {firstNameOnly(t(student.name))}
-        </span>
-        <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>{student.code}</span>
+        <span className="plist__name">{firstNameOnly(t(student.name))}</span>
+        <span className="plist__code">{student.code}</span>
       </span>
-      <span style={{ font: '600 11px var(--font-mono)', color: full ? 'var(--success-dark)' : 'var(--text-muted)' }}>
+      <span className="plist__count" style={{ color: full ? 'var(--success-dark)' : done === 0 ? 'var(--warning-dark)' : undefined }}>
         {done}/{total}
       </span>
     </button>
