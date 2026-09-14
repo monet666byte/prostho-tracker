@@ -589,10 +589,11 @@ export const DICT: Record<string, string> = {
   'มุมมองอาจารย์': 'Instructor view',
 
   /* ── login / splash ── */
-  'ติดตามเคสงานทันตกรรมประดิษฐ์ รายวิชา DTPT502': 'Prosthodontic case tracking for DTPT502',
-  'เข้าระบบด้วยบัญชี @student.mahidol.edu': 'Sign in with your @student.mahidol.edu account',
+  'บันทึกเคสทันตกรรมประดิษฐ์': 'Prosthodontic case log',
+  'ใช้อีเมลและรหัสผ่านแทน': 'Use email and password instead',
+  'เข้าด้วยอีเมล': 'Sign in with email',
+  'กลับ': 'Back',
   'กำลังไปหน้า Google…': 'Opening Google…',
-  'หรือใช้อีเมลและรหัสผ่าน': 'or use email and password',
   'ยังไม่ได้เปิดการเข้าด้วย Google บนเซิร์ฟเวอร์': 'Google sign-in is not enabled on the server yet',
   'อีเมลนี้ยังไม่อยู่ในรายชื่อที่ภาควิชาเชิญ — ตรวจว่าเลือกบัญชี Google ถูกอัน หรือติดต่อภาควิชาเพื่อเพิ่มรายชื่อ':
     'This email is not on the department invite list — check you picked the right Google account, or ask the department to add you',
@@ -646,8 +647,6 @@ export const DICT: Record<string, string> = {
   'อาจารย์ / ภาควิชา': 'Instructor / Department',
   'ภาพรวมทั้งชั้นปี · ตรวจงาน · ตั้งค่าเกณฑ์': 'Cohort overview · review work · set requirements',
   'เข้าสู่ระบบด้วย Google': 'Sign in with Google',
-  'เพิ่มลงหน้าจอโฮม (ใช้ออฟไลน์ในคลินิกได้)': 'Add to home screen (works offline in clinic)',
-  'ข้อมูลผู้ป่วยเก็บตาม PDPA · ทุกการแก้ไขมี audit log': 'Patient data handled per PDPA · every change is audit-logged',
   'เพิ่ม Prostho Tracker ลงหน้าจอโฮม': 'Add Prostho Tracker to home screen',
   'เปิดใช้ได้เร็วกว่า ใช้ได้แม้สัญญาณคลินิกไม่ดี': 'Opens faster, works even on poor clinic Wi-Fi',
   'ไว้ก่อน': 'Not now',
