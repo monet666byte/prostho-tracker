@@ -73,7 +73,7 @@ function StatusBar() {
 /* แถบล่างแบบกระจกไอคอนล้วน (ผู้ใช้ส่งคลิป Instagram มาเป็นตัวอย่าง 14 ก.ย.)
    · ป้ายชื่อแท็บซ่อนจากตา แต่ยังอยู่ใน aria-label ให้ VoiceOver อ่าน
    · พื้นรองแท็บที่เลือกเป็นชิ้นเดียว เลื่อนไปหาแท็บใหม่ (ไม่กระพริบย้ายที่)
-   · เลื่อนลงแล้วแถบหดเล็ก เลื่อนขึ้นกลับขนาดเดิม — ทำที่ markScrolled */
+   · เคยหดตอนเลื่อนลง — ผู้ใช้ลองบนมือถือแล้วขอเอาออก (14 ก.ย. 69) แถบคงขนาดเดียว */
 // แต่ละหน้าสร้าง Shell ของตัวเอง แถบจึงถูกสร้างใหม่ทุกครั้งที่เปลี่ยนแท็บ
 // จำตำแหน่งเดิมไว้นอกคอมโพเนนต์ แล้วค่อยเลื่อนพื้นรองจากที่เดิมไปที่ใหม่หลังวาดเฟรมแรก
 let lastTabIndex = 0;
@@ -113,36 +113,6 @@ function TabBar() {
 function markScrolled(e: React.UIEvent<HTMLDivElement>) {
   const el = e.currentTarget;
   el.dataset.scrolled = el.scrollTop > 4 ? 'true' : 'false';
-  // แถบล่างหดตอนเลื่อนลง ขยายตอนเลื่อนขึ้น — ธงอยู่บน .phone เพราะแถบเป็นพี่น้องของตัวที่เลื่อน
-  // ⚠️ ผู้ใช้เจอ (14 ก.ย.): หน้าที่เลื่อนได้นิดเดียว นิ้วสั่น/เด้งยางของ iOS ทำแถบหด-ขยาย-หดรัวๆ
-  // กันสามชั้น: ① หน้าที่เลื่อนได้ไม่ถึง 160px ไม่หดเลย ② ไม่นับช่วงเด้งยาง (เกินบน/ล่าง)
-  // ③ ต้องเลื่อนทางเดียวสะสมเกิน 32px ถึงเปลี่ยน และเปลี่ยนแล้วพัก 300ms
-  const phone = el.parentElement;
-  if (!phone) return;
-  const top = el.scrollTop;
-  const maxTop = el.scrollHeight - el.clientHeight;
-  if (maxTop < 160 || top < 24) {
-    if (phone.dataset.tabCompact === 'true') phone.dataset.tabCompact = 'false';
-    el.dataset.lastTop = String(Math.max(0, top));
-    el.dataset.acc = '0';
-    return;
-  }
-  if (top < 0 || top > maxTop) return; // เด้งยางของ iOS
-  const last = Number(el.dataset.lastTop ?? top);
-  const delta = top - last;
-  el.dataset.lastTop = String(top);
-  const prevAcc = Number(el.dataset.acc ?? 0);
-  // เปลี่ยนทิศ = เริ่มนับใหม่
-  const acc = Math.sign(delta) === Math.sign(prevAcc) || prevAcc === 0 ? prevAcc + delta : delta;
-  el.dataset.acc = String(acc);
-  const now = performance.now();
-  if (now - Number(el.dataset.tabAt ?? 0) < 300) return;
-  const want = acc > 32 ? 'true' : acc < -32 ? 'false' : null;
-  if (want && phone.dataset.tabCompact !== want) {
-    phone.dataset.tabCompact = want;
-    el.dataset.tabAt = String(now);
-    el.dataset.acc = '0';
-  }
 }
 
 export function Shell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {

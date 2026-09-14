@@ -910,7 +910,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .linkgroup__new { width: 8px; height: 8px; border-radius: 99px; background: var(--danger); }
 
 /* ══ แถบล่างกระจกไอคอนล้วน — ผู้ใช้ส่งคลิป Instagram เป็นตัวอย่าง (14 ก.ย. 69) ══
-   หดด้วย transform อย่างเดียว (การ์ดจอทำ ลื่นกว่าเปลี่ยนความกว้าง) · เส้นโค้งแบบลิ้นชัก iOS */
+   ไม่หดตอนเลื่อนแล้ว (ผู้ใช้ขอเอาออก 14 ก.ย. 69) */
 .phone .tabbar {
   height: 58px;
   background: var(--glass-bg);
@@ -922,7 +922,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
   isolation: isolate;
 }
-.phone[data-tab-compact='true'] .tabbar { transform: translateY(4px) scale(0.84); }
 .phone .tabbar a { height: 46px; background: transparent; position: relative; z-index: 1; }
 .phone .tabbar a.on { background: transparent; }
 .phone .tabbar a i { font-size: 23px; transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1); }
