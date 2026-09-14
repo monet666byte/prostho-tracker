@@ -162,6 +162,18 @@ async function refreshActorName(): Promise<void> {
   }
 }
 
+/**
+ * หลังเปลี่ยนอาจารย์ที่ปรึกษา (0024) — อ่าน "กลุ่มของฉัน" ใหม่จากลิ้นชัก
+ * ถ้ากำลังดูกลุ่มของตัวเองอยู่ (หรือยังไม่เคยมีกลุ่ม) ให้ตามไปกลุ่มใหม่ · ถ้ากำลังดูกลุ่มอื่นอยู่ ไม่ย้ายให้
+ */
+export async function refreshMyGroup(): Promise<void> {
+  const { session, myGroup, teacherGroup } = useApp.getState();
+  if (!session) return;
+  const mine = await findMyGroup(session.teacherId);
+  const follow = !!mine && (!myGroup || teacherGroup === myGroup);
+  useApp.setState(follow ? { myGroup: mine, teacherGroup: mine! } : { myGroup: mine });
+}
+
 /** แปลงบัญชีที่ล็อกอิน → session ที่ UI ใช้ (ยึด id จาก app_users ไม่ใช่ค่า DEMO) */
 function sessionFromUser(u: AppUser): Session {
   return {

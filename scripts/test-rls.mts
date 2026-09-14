@@ -544,6 +544,72 @@ console.log('\n⑪ ผูกบัญชีเองด้วยรหัสน�
   check('ยืนยันคำขอที่ถูกปฏิเสธไปแล้วซ้ำไม่ได้', !again.ok, again);
 }
 
+/* ── ⑫ อาจารย์เลือกกลุ่มที่ปรึกษาเอง · หัวหน้าภาคแก้ได้ (0024) ────────────────── */
+console.log('\n⑫ กลุ่มที่ปรึกษา (0024)');
+{
+  /** รันแล้ว commit จริง (ข้อต่อไปต้องเห็นผล) — คืน error ถ้าล้ม */
+  const commitAs = async (who: { uid: string }, sql: string, params: unknown[] = []) => {
+    await db.exec(`set role authenticated`);
+    try {
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who.uid]);
+      return { ok: true as const, rows: (await db.query(sql, params)).rows };
+    } catch (e) {
+      return { ok: false as const, error: (e as Error).message };
+    } finally {
+      await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+    }
+  };
+  const slots = async () => {
+    const g = await db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'G3'`);
+    const s = await db.query<{ a: string[] }>(`select distinct advisor_ids as a from students where "group" = 'G3'`);
+    return { groups: g.rows[0]?.a, students: s.rows.map((r) => r.a) };
+  };
+  await db.exec(`
+    insert into groups (code, advisor_ids, student_ids) values ('G3', array['',''], array['sE']);
+    insert into students (id, code, name, "group", year, entry_year, advisor_ids) values ('sE', '6604005', 'นศ. อี', 'G3', 5, 2570, array['','']);
+  `);
+
+  const byStudent = await commitAs(U.A, `select claim_group('G3')`);
+  check('นักศึกษาเลือกเป็นที่ปรึกษาไม่ได้', !byStudent.ok, byStudent);
+  const byAnon = await as(db, 'anon', async (tx) => (await tx.query(`select claim_group('G3')`)).rows);
+  check('คนไม่ได้ล็อกอินเรียกไม่ได้', !byAnon.ok, byAnon);
+  const direct = await commitAs(U.T1, `select write_group_advisors('G3', array['t1',''], 'x')`);
+  check('เรียกตัวเขียนภายในตรงๆ ไม่ได้ (ข้ามการตรวจ)', !direct.ok, direct);
+
+  const t2 = await commitAs(U.T2, `select claim_group('G3')`);
+  check('อาจารย์เลือกกลุ่มที่ว่างได้', t2.ok, t2);
+  let now = await slots();
+  check('ลงทั้ง groups และ students ตรงกัน', JSON.stringify(now.groups) === '["t2",""]' && JSON.stringify(now.students) === '[["t2",""]]', now);
+  const again = await commitAs(U.T2, `select claim_group('G3')`);
+  check('เลือกซ้ำไม่ลงสองช่อง', again.ok && JSON.stringify((await slots()).groups) === '["t2",""]', await slots());
+
+  const decide = await as(db, U.T2, async (tx) => (await tx.query<{ ok: boolean }>(`select can_decide_link('sE') as ok`)).rows[0].ok);
+  check('เลือกแล้วยืนยันบัญชีนักศึกษาในกลุ่มนั้นได้ (0023)', decide.ok && decide.value === true, decide);
+
+  const t1 = await commitAs(U.T1, `select claim_group('G3')`);
+  const full = await commitAs(U.HEAD, `select claim_group('G3')`);
+  check('ท่านที่สองลงช่องที่สองได้', t1.ok && JSON.stringify((await slots()).groups) === '["t2","t1"]', await slots());
+  check('ครบ 2 ท่านแล้ว คนที่สามเลือกไม่ได้ (ต้องให้หัวหน้าภาคแก้)', !full.ok && /ครบ 2 ท่าน/.test(full.error), full);
+
+  const rel = await commitAs(U.T2, `select release_group('G3')`);
+  now = await slots();
+  check('ถอนตัวได้ และช่องว่างลงทั้งสองที่', rel.ok && JSON.stringify(now.groups) === '["","t1"]' && JSON.stringify(now.students) === '[["","t1"]]', now);
+
+  const notAdmin = await commitAs(U.T1, `select set_group_advisors('G3', array['t2'])`);
+  check('อาจารย์ทั่วไปตั้งที่ปรึกษาให้คนอื่นไม่ได้', !notAdmin.ok, notAdmin);
+  const dedupe = await commitAs(U.HEAD, `select set_group_advisors('G3', array['t1','t1','t2'])`);
+  check('หัวหน้าภาคตั้งได้ · ชื่อซ้ำถูกรวม', dedupe.ok && JSON.stringify((await slots()).groups) === '["t1","t2"]', await slots());
+  const three = await commitAs(U.HEAD, `select set_group_advisors('G3', array['t1','t2','tadmin'])`);
+  check('เกิน 2 ท่านตั้งไม่ได้', !three.ok && JSON.stringify((await slots()).groups) === '["t1","t2"]', three);
+  const ghost = await commitAs(U.HEAD, `select set_group_advisors('G3', array['nobody'])`);
+  check('รหัสอาจารย์ที่ไม่มีอยู่ตั้งไม่ได้', !ghost.ok, ghost);
+  const clear = await commitAs(U.HEAD, `select set_group_advisors('G3', array[]::text[])`);
+  check('ล้างที่ปรึกษาได้ (กลับเป็นช่องว่าง 2 ช่อง)', clear.ok && JSON.stringify((await slots()).groups) === '["",""]', await slots());
+
+  const trail = await db.query<{ who: string; text: string; group_code: string }>(`select who, text, group_code from audit where id like 'a-adv-%' order by at_when`);
+  check('ทุกการเปลี่ยนจด audit พร้อมชื่อคนทำ', trail.rows.length === 5 && trail.rows.every((r) => r.group_code === 'G3' && r.who !== ''), trail.rows);
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);

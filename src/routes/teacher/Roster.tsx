@@ -10,6 +10,7 @@ import { CheckCircle, Clock, Plus, Trash, UserPlus, Users, UsersThree } from '@p
 import { useEffect, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
+import { AdvisorEditor } from '../../components/teacher/AdvisorGroups';
 import { useAllStudents } from '../../hooks/data';
 import { cloudEnabled, supabase } from '../../lib/cloud';
 import { t } from '../../lib/i18n';
@@ -187,6 +188,7 @@ export default function Roster() {
         {tab === 'sheet' && <ImportSheetBody />}
 
         {tab === 'people' && <LinkRequestsPanel />}
+        {tab === 'people' && isAdmin && <AdvisorEditor />}
 
         {tab === 'people' && error && (
           <div style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, font: '500 12px var(--font-body)' }}>

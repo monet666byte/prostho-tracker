@@ -1,5 +1,5 @@
 import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
@@ -11,6 +11,7 @@ import { useApp } from '../../store/app';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
 import { BetaBadge } from '../BetaBadge';
+import { AdvisorGroupsDialog, useAdvisorPromptCohorts } from './AdvisorGroups';
 import { groupShort, sortGroupCodes } from '../../domain/group';
 /* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
    เดิมเป็น `${BASE_URL}logo-mark.svg` = ไฟล์แยกที่ต้องวางข้าง index.html
@@ -63,11 +64,24 @@ const COHORT_NAV: NavItem[] = [
 /** เมนูเฉพาะหัวหน้าภาค */
 
 
+/** ถามเรื่องกลุ่มที่ปรึกษาไปแล้วในการเปิดแอปครั้งนี้ — อยู่นอกคอมโพเนนต์เพราะเชลล์ถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า */
+let advisorPromptShown = false;
+
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
   const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   const offGroup = !!myGroup && teacherGroup !== myGroup;
+  /* อาจารย์ที่ปรึกษา (0024) — มีรุ่นที่กลุ่มยังไม่มีที่ปรึกษา และเรายังไม่ได้ดูแลกลุ่มไหนในรุ่นนั้น → ถามเอง
+     เปิดครั้งเดียวต่อการเปิดแอป (ปิดแล้วไม่เด้งซ้ำตอนเปลี่ยนหน้า) · ตอบ "ไม่ได้เป็นที่ปรึกษา" = ไม่ถามรุ่นนั้นอีก */
+  const promptCohorts = useAdvisorPromptCohorts();
+  const [advisorDialog, setAdvisorDialog] = useState<null | 'prompt' | 'manage'>(null);
+  useEffect(() => {
+    if (promptCohorts.length && !advisorPromptShown) {
+      advisorPromptShown = true;
+      setAdvisorDialog('prompt');
+    }
+  }, [promptCohorts.length]);
   const teacher = useTeacher(session?.teacherId);
   const students = useAllStudents();
   const checkins = useAllCheckIns();
@@ -134,6 +148,12 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               ))}
             </select>
           </label>
+          {cloudEnabled && session?.teacherId && (
+            <button className="linkbtn" onClick={() => setAdvisorDialog('manage')}
+              style={{ margin: '-4px 0 8px 12px', font: '500 10.5px var(--font-body)', color: 'var(--accent)', textAlign: 'left' }}>
+              {t('เลือกกลุ่มที่ปรึกษาของฉัน')}
+            </button>
+          )}
 
           <div className="side__cluster">
             {GROUP_NAV.map(({ key, label, short, to, Icon, sect }) => (
@@ -167,7 +187,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 <BetaBadge compact />
               </div>
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')} · TH-PT7
+                {/* เดิมเขียน "· TH-PT7" ตายตัวทุกคน — ใช้กลุ่มที่ปรึกษาจริง (0024) */}
+                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')}{myGroup ? ` · ${groupShort(myGroup)}` : ''}
               </div>
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
                   ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
@@ -208,6 +229,9 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             {t('กลับกลุ่มฉัน')}
           </button>
         </div>
+      )}
+      {advisorDialog && (
+        <AdvisorGroupsDialog mode={advisorDialog} cohorts={advisorDialog === 'prompt' ? promptCohorts : undefined} onClose={() => setAdvisorDialog(null)} />
       )}
       <ToastView variant="desk" />
       <RoleFab low />

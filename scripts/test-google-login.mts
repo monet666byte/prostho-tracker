@@ -144,6 +144,7 @@ try {
     await tp.getByText('นักศึกษารอยืนยันบัญชี').waitFor({ timeout: 15_000 }).catch(() => {});
     const ttext = await tp.locator('body').innerText();
     check('อาจารย์ที่ปรึกษาเห็นคำขอในหน้าภาพรวม', ttext.includes('นักศึกษารอยืนยันบัญชี') && ttext.includes('new.student@student.mahidol.edu'), ttext.slice(0, 300));
+    check('อาจารย์ที่ดูแลกลุ่มอยู่แล้ว ไม่ถูกถามเรื่องกลุ่มที่ปรึกษา (ตอนข้อมูลยังลงไม่ครบ)', !(await tp.locator('.confirmwrap').isVisible()));
     await tp.locator('.panel', { hasText: 'นักศึกษารอยืนยันบัญชี' }).getByRole('button', { name: 'ยืนยัน' }).click();
     await tp.locator('.confirmbox').getByRole('button', { name: 'ยืนยัน' }).click();
     await tp.waitForTimeout(2500);
@@ -155,6 +156,49 @@ try {
     text = await sp.locator('body').innerText();
     check('นักศึกษาเข้าแอปได้ในชื่อตัวเอง', new URL(sp.url()).hash.startsWith('#/app') && text.includes('นศ. ทดสอบ สี่'), sp.url());
     await sctx.close();
+  }
+
+  console.log('\n⑥ รุ่นใหม่ยังไม่มีที่ปรึกษา → อาจารย์เลือกเอง · หัวหน้าภาคแก้ได้ (0024)');
+  {
+    await S.db.exec(`
+      insert into groups (code, advisor_ids, student_ids) values ('TH56-PT1', array['',''], array['n1']), ('TH56-PT2', array['',''], array['n2']);
+      insert into students (id, code, name, "group", year, entry_year, advisor_ids) values
+        ('n1', '6704001', 'นศ. รุ่นใหม่ หนึ่ง', 'TH56-PT1', 5, 2570, array['','']),
+        ('n2', '6704002', 'นศ. รุ่นใหม่ สอง', 'TH56-PT2', 5, 2570, array['',''])`);
+
+    const tctx = await freshBrowser();
+    const tp = await loginWithGoogle(tctx, 't1@test.local');
+    await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').waitFor({ timeout: 15_000 }).catch(() => {});
+    check('อาจารย์ถูกถามเรื่องกลุ่มที่ปรึกษาของรุ่นใหม่', await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible());
+    await tp.locator('.confirmbox div', { hasText: /^PT1/ }).getByRole('button', { name: 'ฉันดูแลกลุ่มนี้' }).first().click();
+    await tp.waitForTimeout(3000);
+    const g1 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'TH56-PT1'`);
+    const s1 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from students where id = 'n1'`);
+    check('เลือกแล้ว ลงเซิร์ฟเวอร์ทั้ง groups และ students', g1.rows[0]?.a.includes('t1') && s1.rows[0]?.a.includes('t1'), { g: g1.rows, s: s1.rows });
+    check('กล่องถามปิดเอง', !(await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+    await tp.reload();
+    await tp.waitForTimeout(5000);
+    check('เปิดแอปใหม่ ไม่ถามซ้ำ (ดูแลกลุ่มในรุ่นนั้นแล้ว)', !(await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+    await tctx.close();
+
+    const hctx = await freshBrowser();
+    const hp = await loginWithGoogle(hctx, 'head@test.local');
+    await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').waitFor({ timeout: 15_000 }).catch(() => {});
+    check('หัวหน้าภาค (ยังไม่ได้ดูแลกลุ่มไหนในรุ่นนั้น) ถูกถามด้วย', await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible());
+    await hp.getByRole('button', { name: 'ไม่ได้เป็นที่ปรึกษากลุ่มในรุ่นนี้' }).click();
+    await hp.reload();
+    await hp.waitForTimeout(5000);
+    check('ตอบว่าไม่ได้เป็นที่ปรึกษา → ไม่ถามรุ่นนั้นอีก', !(await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+
+    await hp.evaluate(() => { location.hash = '#/teacher/roster'; });
+    await hp.getByText('อาจารย์ที่ปรึกษาแต่ละกลุ่ม').waitFor({ timeout: 15_000 });
+    await hp.getByLabel('PT2 ที่ปรึกษา 1').selectOption('t2');
+    await hp.getByLabel('PT2 ที่ปรึกษา 1').locator('xpath=..').getByRole('button', { name: 'บันทึก' }).click();
+    await hp.waitForTimeout(3000);
+    const g2 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'TH56-PT2'`);
+    const s2 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from students where id = 'n2'`);
+    check('หัวหน้าภาคตั้งที่ปรึกษาจากหน้ารายชื่อได้', JSON.stringify(g2.rows[0]?.a) === '["t2",""]' && JSON.stringify(s2.rows[0]?.a) === '["t2",""]', { g: g2.rows, s: s2.rows });
+    await hctx.close();
   }
 } finally {
   await S.close();
