@@ -1,4 +1,4 @@
-import { Archive, BellRinging, Check, Info, Stack, Users, WarningCircle } from '@phosphor-icons/react';
+import { Archive, BellRinging, Check } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
@@ -45,6 +45,9 @@ export default function Dashboard() {
   const everyCheckIn = useAllCheckIns();
   // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
   const myGroup = useApp((st) => st.myGroup);
+  // ป้าย "กลุ่มคุณ" บนช่องกลุ่ม — กลุ่มที่ผูกกับบัญชี ถ้ายังไม่รู้ (เดโม/บัญชียังไม่ผูก) ใช้กลุ่มที่เลือกไว้ในแถบซ้าย "กลุ่มที่ดูแล"
+  const teacherGroup = useApp((st) => st.teacherGroup);
+  const ownGroup = myGroup ?? teacherGroup;
   // เข้าทางเมนู "รุ่นที่จบแล้ว" = ล็อกโหมดนี้ไว้ ไม่ปนกับตัวกรองชั้นปีที่จำไว้ในเครื่อง
   const alumniPage = useLocation().pathname.endsWith('/alumni');
   /* รุ่นที่จบแล้วโหลดตอนกด ไม่ได้โหลดตอนเปิดแอป (ดู ensureAlumniSeeded ใน seed.ts)
@@ -139,7 +142,6 @@ export default function Dashboard() {
 
   const activePieces = works.filter(isActiveWork).length;
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
-  const maxTypeCount = Math.max(1, ...typeCounts.map((x) => x.count));
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
@@ -209,73 +211,76 @@ export default function Dashboard() {
 
         {view === 'overview' && (
           <>
-            <div className="kpis">
+            {/* หน้าภาพรวมแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — ตัวเลขใหญ่ 4 ตัวอยู่การ์ดเดียวคั่นเส้น ตัดไอคอน */}
+            <div className="kpis kpis--strip">
               <div className="kpi">
-                <div className="kpi__label"><Stack size={14} /> {t('ชิ้นงานที่กำลังทำ')}</div>
-                <div className="kpi__value">{activePieces}</div>
-                <div className="kpi__hint">{t('จากทั้งหมด {n} ชิ้น', { n: works.length })}</div>
+                <div className="kpi__value">
+                  {activePieces}
+                  <span className="kpi__of"> / {works.length}</span>
+                </div>
+                <div className="kpi__label">{t('ชิ้นงานที่กำลังทำ')}</div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><Users size={14} /> {t('จบเคสสะสมปี')} {yearly.year}</div>
                 <div className="kpi__value" style={{ color: yearly.piecesDone >= yearly.piecesGoal ? 'var(--success)' : undefined }}>
                   {yearly.piecesDone}
-                  <span style={{ font: '500 14px var(--font-body)', color: 'var(--text-faint)' }}> / {yearly.piecesGoal}</span>
+                  <span className="kpi__of"> / {yearly.piecesGoal}</span>
                 </div>
-                <div className="kpi__hint">{t('เป้า {a} คน × {b} ชิ้น/ปี', { a: students.length, b: settings.req.perYear })}</div>
+                <div className="kpi__label">{t('จบเคสสะสมปี')} {yearly.year}</div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><WarningCircle size={14} /> {t('เคสค้าง >')} {settings.stale} {t('วัน')}</div>
-                <div className="kpi__value" style={{ color: 'var(--danger-chart)' }}>{stale.length}</div>
-                <div className="kpi__hint">{t('กระจายใน {n} กลุ่ม', { n: new Set(stale.map((s) => s.student.group)).size })}</div>
+                <div className="kpi__value" style={{ color: stale.length > 0 ? 'var(--danger)' : undefined }}>{stale.length}</div>
+                <div className="kpi__label">
+                  {t('เคสค้าง >')} {settings.stale} {t('วัน')} · {t('กระจายใน {n} กลุ่ม', { n: new Set(stale.map((s) => s.student.group)).size })}
+                </div>
               </div>
               <div className="kpi">
-                <div className="kpi__label"><BellRinging size={14} /> {t('นักศึกษารอประเมิน')}</div>
-                <div className="kpi__value" style={{ color: pendingEval > 0 ? 'var(--warning)' : undefined }}>{pendingEval}</div>
-                <div className="kpi__hint">{t('ดูที่ ประเมินรายคาบ')}</div>
+                <div className="kpi__value" style={{ color: pendingEval > 0 ? 'var(--warning)' : 'var(--success-dark)' }}>{pendingEval}</div>
+                <div className="kpi__label">
+                  {t('นักศึกษารอประเมิน')}
+                  {pendingEval > 0 && <> · <button className="kpi__link" onClick={() => navigate('/teacher/evaluate')}>{t('ไปประเมิน')} ›</button></>}
+                </div>
               </div>
             </div>
 
-            <div className="panel" style={{ marginBottom: 16 }}>
-              <h3>{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</h3>
-              {/* มุมมองรวมเคยแปะป้ายปีทุกใบ 24 ใบ — รกและซ้ำ (ผู้ใช้ทัก 1 ก.ย.)
-                  แบ่งเป็นหมวดละปีแทน: หัวข้อบอกครั้งเดียว การ์ดสะอาดเหมือนมุมมองรายปี */}
+            <div className="homelabel tlabel">{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</div>
+            <div className="panel groupstrip">
+              {/* เดิม 24 กล่องขอบหนา มีหลอดทุกใบ → ช่องไม่มีกรอบ แถวละปี · ต่ำกว่า 55% เป็นช่องสีส้ม (เดิมแค่เปลี่ยนสีตัวเลข ตามองข้าม)
+                  กลุ่มที่อาจารย์ดูแลมีป้าย "กลุ่มคุณ" (ผู้ใช้ขอให้ชัด 14 ก.ย.) · กลุ่มที่เลือกดูอยู่มีกรอบบาง */}
               {(yearView === 'all' ? [5, 6] : [null]).map((yr) => {
                 const list = yr === null ? groups : groups.filter((g) => g.year === yr);
                 if (!list.length) return null;
                 return (
-                  <div key={yr ?? 'one'}>
-                    {/* บอกเลขรุ่นคู่ชั้นปี — ภาคเรียกกันด้วยเลขรุ่น (ผู้ใช้ 1 ก.ย.: DTMU55 = ปี 5) */}
+                  <div key={yr ?? 'one'} className={`grouprow${yr === null ? ' grouprow--single' : ''}`}>
                     {yr !== null && (
-                      <p className="sub" style={{ margin: '13px 0 0' }}>
-                        {t('ชั้นปีที่')} {yr}
-                        {list[0]?.students[0] && ` · ${studentCohortLabel(list[0].students[0].student)}`}
-                        {' · '}{list.length} {t('กลุ่ม')}
-                      </p>
+                      <div className="grouprow__label">
+                        {t('ปี {n}', { n: yr })}
+                        {list[0]?.students[0] && <small>{studentCohortLabel(list[0].students[0].student)}</small>}
+                      </div>
                     )}
-                    <div className="groupgrid" style={{ marginTop: yr !== null ? 8 : 13 }}>
-                      {list.map((g) => {
-                        // เดิมไล่ 3 สี เขียว/น้ำเงิน/ส้ม โดยไม่มี legend — คนดูเดาความหมายไม่ออก (ผู้ใช้ทัก 1 ก.ย.)
-                        // เหลือ 2 สถานะพอ: ปกติ = สีเดียวกลางๆ · ต่ำกว่า 55% = ส้มตามภาษาสีเตือนของแอป
-                        const lagging = g.percent < 55;
-                        return (
-                          <button
-                            key={g.code}
-                            className={`groupcard${g.code === group ? ' on' : ''}`}
-                            title={advisorsOf(g.code) ? `${t('อาจารย์ที่ปรึกษา')} ${advisorsOf(g.code)}` : undefined}
-                            onClick={() => setGroup(g.code)}
-                          >
-                            <div className="groupcard__code">{groupShort(g.code)}</div>
-                            <div className="groupcard__pct" style={{ color: lagging ? 'var(--warning)' : 'var(--text-secondary)' }}>{g.percent}%</div>
-                            <span className="bar" style={{ height: 6, display: 'block', marginTop: 7 }}>
-                              <i style={{ width: `${g.percent}%`, background: lagging ? 'var(--warning)' : 'var(--accent)' }} />
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {list.map((g) => {
+                      const lagging = g.percent < 55;
+                      const mine = g.code === ownGroup;
+                      return (
+                        <button
+                          key={g.code}
+                          className={`groupcell${lagging ? ' groupcell--low' : ''}${mine ? ' groupcell--mine' : ''}${g.code === group ? ' groupcell--on' : ''}`}
+                          title={advisorsOf(g.code) ? `${t('อาจารย์ที่ปรึกษา')} ${advisorsOf(g.code)}` : undefined}
+                          aria-pressed={g.code === group}
+                          onClick={() => setGroup(g.code)}
+                        >
+                          {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
+                          <span className="groupcell__code">{groupShort(g.code)}</span>
+                          <span className="groupcell__pct">{g.percent}%</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })}
+            </div>
+            <div className="grouplegend">
+              <span><i className="groupcell--low" />{t('ต่ำกว่า 55%')}</span>
+              {ownGroup && <span><i className="groupcell--mine" />{t('กลุ่มที่คุณดูแล')}</span>}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
@@ -362,19 +367,13 @@ export default function Dashboard() {
                         </td>
                         <td className="mono">{s.pieces}</td>
                         <td>
-                          <span
-                            className="chip"
-                            style={{
-                              background: s.allComplete ? 'var(--success-tint)' : 'var(--fill)',
-                              color: s.allComplete ? 'var(--success-dark)' : 'var(--text-muted)',
-                            }}
-                          >
+                          <span className="mono" style={{ color: s.allComplete ? 'var(--success-dark)' : 'var(--text-secondary)', fontWeight: s.allComplete ? 600 : 500 }}>
                             {s.reqDone}/{s.reqTotal}
                           </span>
                         </td>
                         <td>
                           {s.stale > 0 ? (
-                            <span className="chip" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>{s.stale}</span>
+                            <span className="mono" style={{ color: 'var(--danger)', fontWeight: 600 }}>{s.stale}</span>
                           ) : (
                             <span className="faint">—</span>
                           )}
@@ -385,12 +384,15 @@ export default function Dashboard() {
                 </table>
               </div>
 
+              </div>
+
+              <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}</h3>
-                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}</p>
+                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}{stale.length > 5 ? ` · ${t('แสดง 5 ชิ้นที่ค้างนานสุด')}` : ''}</p>
                 <table className="tbl">
                   <tbody>
-                    {stale.slice(0, 6).map((r) => {
+                    {stale.slice(0, 5).map((r) => {
                       const cur = currentProc(r.workpiece);
                       const key = r.workpiece.id;
                       return (
@@ -407,19 +409,13 @@ export default function Dashboard() {
                               {cur ? procLabel(r.workpiece.type, cur) : t('ยังไม่เริ่ม')}
                             </div>
                           </td>
-                          <td style={{ width: 44 }}>
-                            <span className="chip" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>{r.days}</span>
+                          <td style={{ width: 64 }}>
+                            <span className="staledays">{r.days}<small>{t('วัน')}</small></span>
                           </td>
                           <td style={{ width: 72 }}>
                             <button
-                              className="btn btn--sec"
-                              style={{
-                                /* min-width ตามเนื้อหา — ช่องตารางบีบจนคำว่า "Remind"
-                                   (อังกฤษยาวกว่าไทย) ถูกตัดบน iPad ที่ป้ายยังไม่ซ่อน */
-                                minHeight: 34, fontSize: 11, whiteSpace: 'nowrap', minWidth: 'max-content',
-                                background: pinged[key] ? 'var(--success-tint)' : undefined,
-                                color: pinged[key] ? 'var(--success-dark)' : undefined,
-                              }}
+                              className="textbtn"
+                              style={{ color: pinged[key] ? 'var(--success-dark)' : undefined }}
                               onClick={() => {
                                 // ยังไม่มีช่องทางแจ้งเตือนจริง (push/LINE รอ phase 2) — toast ต้องไม่โกหก
                                 // ว่าส่งแล้ว ไม่งั้นอาจารย์เข้าใจผิดว่าเด็กได้รับ (ตระกูลเดียวกับปุ่มส่งรายงานปลอมที่ตัดไป)
@@ -440,25 +436,6 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
-              </div>
-
-              <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
-                <div className="panel">
-                  <h3>{t('จำนวนชิ้นงานต่อประเภท (ทั้งชั้นปี)')}</h3>
-                  <p className="sub">{t('รวม {n} ชิ้นงาน', { n: works.length })}</p>
-                  <div style={{ marginTop: 10 }}>
-                    {typeCounts.map((tc) => (
-                      <div className="hbar" key={tc.type}>
-                        <span className="hbar__label">{typeMeta(tc.type).short}</span>
-                        <span className="hbar__track">
-                          <i style={{ width: `${(tc.count / maxTypeCount) * 100}%`, background: typeMeta(tc.type).color }} />
-                        </span>
-                        <span className="hbar__value">{tc.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="panel">
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ flex: 1 }}>
@@ -468,6 +445,8 @@ export default function Dashboard() {
                       {typesPresent(works).map((ty) => (
                         <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
                           {typeChipLabel(ty)}
+                          {/* จำนวนชิ้นงานต่อประเภทอยู่ในแท็บเลย — ไม่ต้องมีการ์ดแยกอีกใบ */}
+                          <b className="seg__count">{typeCounts.find((x) => x.type === ty)?.count ?? 0}</b>
                         </button>
                       ))}
                     </div>
@@ -494,7 +473,7 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {shownStep >= 0 && (
+                  {openStep !== null && openStep >= 0 && (
                     <div style={{ marginTop: 12 }}>
                       <StepInfo
                         progression={shownStep}
@@ -504,15 +483,14 @@ export default function Dashboard() {
                       />
                     </div>
                   )}
-                  <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--fill)', borderRadius: 10, padding: '10px 12px' }}>
-                    <Info size={15} weight="fill" color="var(--text-faint)" style={{ flex: 'none', marginTop: 1 }} />
-                    <span className="pretty" style={{ font: '500 11px/1.55 var(--font-body)', color: 'var(--text-muted)' }}>
+                  <p className="pretty" style={{ margin: '12px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-secondary)' }}>
+                    <span>
                       {busiest.count > 0
                         ? t('งาน {s} กองอยู่ที่ step {p} มากที่สุด ({c} ชิ้น) — {l}', { s: typeMeta(stepType).short, p: busiest.progression, c: busiest.count, l: busiest.label })
                         : t('ยังไม่มีชิ้นงานที่กำลังทำในประเภทนี้')}
                       {' · '}{t('ดูวิเคราะห์เชิงลึกได้ที่เมนู “วิเคราะห์”')}
                     </span>
-                  </div>
+                  </p>
                 </div>
               </div>
             </div>
