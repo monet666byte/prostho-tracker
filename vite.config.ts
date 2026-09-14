@@ -56,6 +56,10 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: 'index.html',
+        /* หน้านโยบายความเป็นส่วนตัวเป็นไฟล์นิ่งแยก (Google เปิดดูตอนตรวจแอป) — ห้ามให้ service worker
+           ตอบด้วยหน้าแอปแทน และไม่เก็บลงแคช จะได้เห็นฉบับล่าสุดเสมอเมื่อแก้เนื้อหา */
+        navigateFallbackDenylist: [/^\/privacy\.html$/],
+        globIgnores: ['**/privacy.html'],
       },
       devOptions: { enabled: false },
       disable: mode === 'share',

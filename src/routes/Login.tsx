@@ -96,6 +96,9 @@ export default function Login() {
             {t('เข้าระบบด้วยบัญชี @student.mahidol.edu')}
           </p>
 
+          {/* ป้ายเดโมเฉพาะเวอร์ชันที่ไม่ต่อเซิร์ฟเวอร์ (GitHub Pages / ลิงก์แชร์) — เวอร์ชันนำร่องบน Vercel
+              ใช้ข้อมูลจริงของผู้ใช้ ห้ามบอกว่า "ข้อมูลสมมติทั้งหมด" (ผู้ใช้ขอเอาออก 14 ก.ย. 69) */}
+          {!cloudEnabled && (
           <div
             style={{
               marginTop: 12, borderRadius: 12, padding: '9px 12px', display: 'flex', gap: 8, alignItems: 'flex-start',
@@ -107,6 +110,7 @@ export default function Login() {
               {t('ตัวอย่างช่วงเริ่มต้น (~10%) · ข้อมูลสมมติทั้งหมด')}
             </span>
           </div>
+          )}
 
           {signOutNotice && (
             <div
