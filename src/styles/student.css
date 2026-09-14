@@ -583,15 +583,23 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 /* ── แถบกำลังใจแบบสะสมบนหน้าแรก — ตัวเลขมีแต่เพิ่ม ไม่มีรีเซ็ต (แทน streak รายสัปดาห์) ── */
 .growcard { display: block; padding: 13px 14px; border-radius: 16px; }
 .growcard__head { font: 600 13px var(--font-head); color: var(--text); }
-.growcard__row { display: flex; gap: 8px; margin-top: 10px; }
+/* ตัวเลขสามช่องคั่นด้วยเส้น แทนกล่องเทาซ้อนในการ์ด (กล่องในกล่อง = รก · 14 ก.ย.) */
+.growcard__row { display: flex; margin-top: 10px; }
 .growcard__stat {
-  flex: 1; display: grid; gap: 1px; padding: 9px 6px; border-radius: 12px;
-  background: var(--fill); text-align: center;
-  font: 400 9.5px/1.35 var(--font-body); color: var(--text-muted);
+  flex: 1; display: grid; gap: 1px; padding: 2px 6px; text-align: center;
+  font: 400 10.5px/1.35 var(--font-body); color: var(--text-muted);
 }
-.growcard__stat b { font: 700 18px var(--font-head); color: var(--warning-dark); } /* โทนส้มไฟ ให้เข้ากับ 🔥 */
+.growcard__stat + .growcard__stat { border-left: 1px solid var(--border); }
+.growcard__stat b { font: 700 20px var(--font-head); color: var(--text); }
 .growcard__sub { display: block; margin-top: 9px; font: 400 10.5px var(--font-body); color: var(--text-faint); }
-.growcard__sub--quote { font: italic 500 11px/1.6 var(--font-body); color: var(--text-muted); text-align: center; }
+.growcard__sub--quote { font: 400 11px/1.6 var(--font-body); color: var(--text-faint); text-align: center; margin-top: 10px; }
+
+/* ลิงก์เอกสารบนหน้าแรก — การ์ดใบเดียว แถวคั่นเส้น */
+.linkgroup { display: block; padding: 0; overflow: hidden; }
+.linkgroup__row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; color: inherit; }
+.linkgroup__row + .linkgroup__row { border-top: 1px solid var(--border); }
+.linkgroup__row:active { background: var(--fill); }
+.linkgroup__row--new { background: var(--accent-tint); }
 
 /* ── การ์ดความสำเร็จท้ายหน้าแรก — สรุปป้ายจากหน้า achievement (mock) ───────
    ป้ายที่ยังไม่ปลดล็อกโชว์แบบจาง ให้เห็นว่ามีอะไรรออยู่ — ชวนกดเข้าไปดู */
@@ -700,10 +708,24 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   border-bottom-width: 4px;
   box-shadow: none;
 }
-.phone .minirow__body {
+/* เคสอื่นบนหน้าแรก: ทั้งแถวคือการ์ดใบเดียว ปุ่มผ่าน step อยู่ข้างใน
+   (เดิมการ์ดกับปุ่มแยกกัน ขอบขวาสั้นกว่าการ์ดใบอื่น — 14 ก.ย.) */
+.phone .minirow {
+  background: var(--surface);
   border: 2px solid var(--border-2);
   border-bottom-width: 4px;
+  border-radius: 16px;
+  padding-right: 12px;
 }
+.phone .minirow__body { border: 0; background: transparent; }
+
+/* ขอบล่างหนา = "กดได้" — ของที่แค่ให้อ่าน (การ์ดสะสม) ใช้ขอบเท่ากันทุกด้าน ไม่ทำตัวเป็นปุ่ม (14 ก.ย.) */
+.phone .growcard { border-bottom-width: 2px; }
+
+/* MOCK 14 ก.ย. — การ์ดเคสเด่น: เดิมพื้นฟ้า + ขอบฟ้า + เส้นคั่นใน ซ้อนสามชั้น → เหลือพื้นฟ้าอ่อน ขอบเทาเท่าการ์ดอื่น ไม่มีเส้นคั่น */
+.phone .herocase.herocase { --hero-bg: var(--surface); background: var(--surface); border-color: var(--border-2); }
+.phone .herocase__rule { height: 0; margin: 8px 0 6px; }
+
 .phone .herocase {
   /* เก็บสีพื้นไว้ในตัวแปร ให้จุดบนเส้นทางด่านเจาะวงรอบตัวเองด้วยสีเดียวกันได้ */
   --hero-bg: var(--accent-tint);
@@ -723,6 +745,12 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .phone .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
 .phone .btn--light { background: #fff; box-shadow: 0 4px 0 var(--border-2); }
 .phone .btn--ghost, .phone .btn--sec { background: var(--fill); box-shadow: none; transform: none; }
+/* เอาเมาส์ชี้ปุ่มรอง ("ไว้ก่อน" · "ยกเลิก") ต้องไม่กลายเป็นปุ่มน้ำเงินทึบ — เดิมกฎ hover ของปุ่มหลักด้านบน
+   เจาะจงกว่า เลยทาน้ำเงินทับทั้งปุ่ม ตัวอักษรน้ำเงินจมหาย (ผู้ใช้แคปจอ 14 ก.ย.) */
+@media (hover: hover) {
+  .phone .btn--sec:hover { background: var(--fill-2); filter: none; }
+  .phone .btn--ghost:hover { background: var(--fill); filter: none; }
+}
 .phone .btn--ghost { background: transparent; }
 .phone .herocase__btn {
   box-shadow: 0 4px 0 var(--accent-hover);
@@ -860,3 +888,55 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 /* การ์ดในหน้า sync กว้างเกินจอตอนตัวหนังสือใหญ่สุด (วัดเจอ 7 ก.ย. 69 · iPhone SE + xl) */
 :root[data-zoom='lg'] .screen .card,
 :root[data-zoom='xl'] .screen .card { min-width: 0; }
+
+/* ══ หน้าแรกแบบ "ตัดของซ้ำ" — ผู้ใช้เลือก mock A+B (14 ก.ย. 69) ══
+   หลัก: การ์ดละหัวเรื่อง 1 · บรรทัดรอง 1 · ปุ่ม 1 · ชิปกลายเป็นข้อความเทา · หัวข้อเล็กแบ่งกลุ่ม
+   ("รก" ของผู้ใช้ = ของยิบย่อยในจอเดียว ไม่ใช่หน้ายาว) */
+.homelabel { font: 600 13px var(--font-head); color: var(--text-faint); margin: 6px 4px -2px; }
+.dot { width: 8px; height: 8px; border-radius: 99px; display: inline-block; flex: none; }
+.homecheckin__go {
+  flex: none; font: 600 13px var(--font-head); color: #fff; background: var(--accent);
+  border-radius: 10px; padding: 7px 13px; box-shadow: 0 3px 0 var(--accent-hover);
+}
+.herocase__line { min-width: 0; font: 400 12.5px/1.4 var(--font-body); color: var(--text-faint); }
+/* HN: กึ่งหนา + ฟอนต์หัว (ตัวอ้วนกว่าโมโน) ผู้ใช้ขอ 14 ก.ย. · ตัวเลขกว้างเท่ากันไว้อ่านเทียบ */
+.herocase__hn { font: 600 13px var(--font-head); color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.herocase__top .herocase__meta { font: 400 12px var(--font-body); }
+.minirow__name { font: 400 12.5px var(--font-body); color: var(--text-faint); }
+.minirow__name .mono { font: 500 11.5px var(--font-mono); }
+.minirow__step { font-size: 15px; }
+.linkgroup__title { flex: 1; min-width: 0; font: 600 14px var(--font-head); display: inline-flex; align-items: center; gap: 6px; }
+.linkgroup__note { font: 400 12.5px var(--font-body); color: var(--text-faint); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.linkgroup__new { width: 8px; height: 8px; border-radius: 99px; background: var(--danger); }
+
+/* ══ แถบล่างกระจกไอคอนล้วน — ผู้ใช้ส่งคลิป Instagram เป็นตัวอย่าง (14 ก.ย. 69) ══
+   หดด้วย transform อย่างเดียว (การ์ดจอทำ ลื่นกว่าเปลี่ยนความกว้าง) · เส้นโค้งแบบลิ้นชัก iOS */
+.phone .tabbar {
+  height: 58px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(190%);
+  backdrop-filter: blur(22px) saturate(190%);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), var(--glass-shadow);
+  transform-origin: 50% 100%;
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+  isolation: isolate;
+}
+.phone[data-tab-compact='true'] .tabbar { transform: translateY(4px) scale(0.84); }
+.phone .tabbar a { height: 46px; background: transparent; position: relative; z-index: 1; }
+.phone .tabbar a.on { background: transparent; }
+.phone .tabbar a i { font-size: 23px; transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1); }
+.phone .tabbar a:active i { transform: scale(0.88); }
+/* พื้นรองแท็บที่เลือก — ชิ้นเดียวเลื่อนตามแท็บ (กว้าง 1 ใน 5 ของแถบ ลบขอบใน 5px สองข้าง) */
+.tabbar__pill {
+  position: absolute; z-index: 0;
+  top: 5px; bottom: 5px; left: 5px;
+  width: calc((100% - 10px) / 5);
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  transform: translateX(calc(var(--tab-i, 0) * 100%));
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone .tabbar, .tabbar__pill, .phone .tabbar a i { transition: none; }
+}

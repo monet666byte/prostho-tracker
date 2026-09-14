@@ -1,7 +1,7 @@
-import { Bell, BookOpen, CaretRight, Check, CheckCircle, CheckSquare, ClipboardText, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
+import { Bell, CaretRight, Check, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArchBadge, Bar, PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
+import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
@@ -9,7 +9,6 @@ import { useCheckIns, usePending, useSect2, useSect3, useSelfAssessment, useStep
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { t } from '../../lib/i18n';
-import { BetaBadge } from '../../components/BetaBadge';
 import { typeMeta } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
@@ -60,13 +59,20 @@ function HeroCard({
   const upcoming = next ? procAt(w, w.procIndex + 2) : undefined;
   return (
     <article className={`herocase t-${w.type}`}>
+      {/* บรรทัดเทาบรรทัดเดียวแทนชิป (ผู้ใช้เลือก 14 ก.ย.) · HN กึ่งหนาตัวอ้วน อ่านเจอเร็วแต่ไม่แย่งชื่อผู้ป่วย */}
       <div className="herocase__top">
-        <TypeBadge type={w.type} />
-        <ArchBadge arch={w.arch} />
-        {pending && <PendingBadge />}
-        {stale && <StaleBadge days={daysSinceUpdate(w)} />}
+        <span className="dot" style={{ background: typeMeta(w.type).color }} />
+        <span className="herocase__line">
+          {typeMeta(w.type).short}{w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''} · <b className="herocase__hn">HN {w.patient.hn}</b>
+        </span>
         <span className="herocase__meta">{relative(w.lastUpdatedAt)}</span>
       </div>
+      {(pending || stale) && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          {pending && <PendingBadge />}
+          {stale && <StaleBadge days={daysSinceUpdate(w)} />}
+        </div>
+      )}
 
       {/* โซนหัว "เคสไหน": ชื่อคนไข้เป็นหัวเรื่อง + บรรทัดรอง ชิดซ้าย · วงแหวนรวมทั้งเคสชิดขวา
           เดิมซ้ายมีบรรทัด mono จางบรรทัดเดียว สูงไม่ถึงครึ่งวงแหวน เลยเหลือช่องโหวงข้างวงแหวน (ผู้ใช้ทัก 2 ก.ย.)
@@ -76,10 +82,6 @@ function HeroCard({
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว ไม่ต้องซ้ำในบรรทัดนี้ */}
           <Link to={`/app/work/${w.id}`} className="herocase__name">{t(w.patient.name)}</Link>
-          <span className="herocase__sub">
-            HN {w.patient.hn}
-            {next && ` · ${t('ขั้นที่ {n} จาก {m}', { n: prog, m: max })}`}
-          </span>
         </div>
         {next && <Ring value={prog} max={max} />}
       </div>
@@ -87,7 +89,6 @@ function HeroCard({
       {next ? (
         <>
           {/* เส้นคั่นแบ่งโซน "เคสไหน" ออกจากโซน "ต้องทำอะไรต่อ" — ไม่งั้นทุกแถวลอยกองรวมกัน */}
-          <div className="herocase__rule" />
           {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด (ผู้ใช้ทักว่าปุ่มกลางทางรก, 1 ก.ย.) */}
           <div className="heropath">
             {cur && (
@@ -100,7 +101,7 @@ function HeroCard({
               <span className="heropath__node heropath__node--now">{next.progression}</span>
               {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม (แทนลิงก์ฟ้าเล็กเดิม — ธรรมเนียมตั้งแต่ 31 ส.ค.) */}
               <Link to={`/app/work/${w.id}`} className="heropath__name heropath__name--now">
-                {next.name} <CaretRight size={13} weight="bold" className="herocase__steparrow" />
+                {next.name}
               </Link>
             </div>
             {upcoming && (
@@ -330,7 +331,10 @@ export default function Home() {
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>{greeting()}</div>
+          {/* หน้าแรกแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock A+B 14 ก.ย.): ชิปกลุ่ม + ป้าย BETA ข้างชื่อ → กลุ่มอยู่ในบรรทัดทักทาย */}
+          <div style={{ font: '400 12px var(--font-body)', color: 'var(--text-faint)' }}>
+            {greeting()}{student?.group ? ` · ${groupShort(student.group)}` : ''}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>" (ผู้ใช้ขอ 2 ก.ย.)
                 ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
@@ -338,8 +342,6 @@ export default function Home() {
             <h1 style={{ margin: 0, font: '700 19px var(--font-head)' }}>
               {t('นศ.')} {firstNameOnly(t(student?.name ?? 'นศ. Liv'))}
             </h1>
-            <span className="groupchip">{groupShort((student?.group ?? '')) || '—'}</span>
-            <BetaBadge compact />
           </div>
         </div>
         <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label={t('ค้นหา')}>
@@ -351,29 +353,28 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="sectiontitle" style={{ padding: '12px 16px 7px' }}>
-        <h4>{t('วันนี้')}</h4>
-      </div>
 
       {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
-      <div style={{ padding: '0 16px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+      <div style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
       {(() => {
         const inner = (
           <>
             {checkedInToday ? (
               <CheckSquare size={26} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
             ) : (
-              <Square size={26} color="var(--warning)" style={{ flex: 'none' }} />
+              <Square size={24} weight="bold" color="var(--accent)" style={{ flex: 'none' }} />
             )}
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', font: '600 13px/1.4 var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</span>
-              <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {checkedInToday
-                  ? (todayCheckIn?.activities.length ?? 0) > 0
-                    ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
-                    : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })
-                  : t('ยังไม่เช็คอิน — แตะครั้งเดียว เช็คอินเลย')}
+              <span style={{ display: 'block', font: '600 14px/1.4 var(--font-head)' }}>
+                {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
               </span>
+              {checkedInToday && (
+                <span style={{ display: 'block', font: '400 11.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {(todayCheckIn?.activities.length ?? 0) > 0
+                    ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
+                    : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })}
+                </span>
+              )}
               {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555) */}
               {checkedInToday && (
                 <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
@@ -381,10 +382,12 @@ export default function Home() {
                 </span>
               )}
             </span>
-            <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
+            {checkedInToday
+              ? <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
+              : <span className="homecheckin__go">{t('เช็คอิน')}</span>}
           </>
         );
-        const cardStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 11, padding: '12px 13px', borderRadius: 16, width: '100%', textAlign: 'left' };
+        const cardStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 11, padding: '11px 12px 11px 14px', borderRadius: 16, width: '100%', textAlign: 'left' };
         // ยังไม่เช็คอิน = แตะเดียวเช็คอินทันที · เช็คอินแล้ว = พาไปหน้าคาบ (เติมกิจกรรม/ดูประวัติ)
         return checkedInToday ? (
           <Link to="/app/checkin" className="card" style={cardStyle}>{inner}</Link>
@@ -393,29 +396,29 @@ export default function Home() {
         );
       })()}
 
+      {hero && <div className="homelabel">{t('งานถัดไป')}</div>}
       {hero && <HeroCard w={hero} pending={pending.has(hero.id)} stale={isStale(hero, settings)} onPass={() => openSheet(hero.id)} />}
 
       {rest.map((w) => {
         const next = nextProc(w);
         const meta = typeMeta(w.type);
         return (
+          // ปุ่มผ่าน step อยู่ในการ์ดแล้ว — เดิมลอยนอกการ์ด ขอบขวาของการ์ดนี้เลยสั้นกว่าใบอื่น ดูเบี้ยว (14 ก.ย.)
           <div key={w.id} className="minirow">
             <Link to={`/app/work/${w.id}`} className="minirow__body">
               <span className="minirow__top">
-                <TypeBadge type={w.type} />
-                <span className="minirow__name">{t(w.patient.name)}</span>
-                {w.arch && <span className="minirow__arch">{w.arch === 'upper' ? 'Upper' : 'Lower'}</span>}
-                {w.tooth && <span className="minirow__arch">{t('ซี่')} {w.tooth}</span>}
+                <span className="dot" style={{ background: meta.color }} />
+                <span className="minirow__name">
+                  {t(w.patient.name)}
+                  {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
+                  {' · '}<span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
+                </span>
                 {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
                 {pending.has(w.id) && <PendingBadge />}
               </span>
               {/* ชื่อขั้นถัดไป — เดิมแถวย่อบอกแค่ตัวเลข ต้องกดเข้าไปถึงจะรู้ว่าต้องทำอะไร
                   ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
               {next && <span className="minirow__step">{next.name}</span>}
-              <span className="minirow__meta">
-                <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={5} />
-                <span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
-              </span>
             </Link>
             {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก (ผู้ใช้ทัก 1 ก.ย.)
                 เลข step ตัดออกเพราะซ้ำกับ 9/10 ที่อยู่ข้างๆ อยู่แล้ว — เหลือเครื่องหมายถูกอย่างเดียว */}
@@ -428,6 +431,7 @@ export default function Home() {
         );
       })}
 
+      <div className="homelabel">{t('สะสมมาแล้ว')}</div>
       <div style={{ display: 'flex', gap: 11 }}>
         <button className="card" style={statBox} onClick={() => navigate('/app/patients')}>
           <span style={statNum}>{active.length}</span>
@@ -442,7 +446,7 @@ export default function Home() {
       </div>
 
       {/* แถบกำลังใจแบบสะสม — ผู้ใช้ 1 ก.ย.: streak รายสัปดาห์ไม่เข้ากับตารางคลินิก (บางสัปดาห์ไม่มีคาบ)
-          เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" */}
+          เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" · ผู้ใช้ยืนยันเก็บไว้ 14 ก.ย. */}
       <div className="card growcard">
         <span className="growcard__head">🔥 {t('เก็บสะสมมาเรื่อยๆ')}</span>
         <div className="growcard__row">
@@ -465,41 +469,23 @@ export default function Home() {
           การ์ดนี้ทำหน้าที่ "แจ้งเตือน" ด้วย — ผู้ใช้ขอ 5 ก.ย. 69 ให้ผูกการเปิดฟอร์มกับ noti
           วินาทีที่อาจารย์กดสวิตช์เปิด นักศึกษาที่ยังไม่เริ่มจะเห็นจุดแดงบนหน้าแรกทันที
           (ทำงานออฟไลน์ ไม่ต้องขอสิทธิ์ ไม่ต้องมีเซิร์ฟเวอร์ — push จริงยังไม่มีในระบบ) */}
+      {/* ประเมินตนเอง + สมุดของฉัน อยู่ในการ์ดใบเดียวคั่นเส้น — เดิมแยกสองใบขอบหนา ดูเป็นกองกล่อง (ผู้ใช้บอกรก 14 ก.ย.) */}
+      <div className="homelabel">{t('ของฉัน')}</div>
+      <div className="card linkgroup">
       {(saOpen || saDone) && (
         <Link
           to="/app/self-assessment"
-          className="card"
-          style={{
-            padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
-            borderColor: saNew ? 'var(--accent)' : saDone ? undefined : 'var(--accent-ring)',
-          }}
+          className={`linkgroup__row${saNew ? ' linkgroup__row--new' : ''}`}
         >
-          <span
-            style={{
-              width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
-              background: saDone ? 'var(--success-tint)' : 'var(--accent-tint)',
-              color: saDone ? 'var(--success-dark)' : 'var(--accent)',
-              position: 'relative',
-            }}
-          >
-            <ClipboardText size={17} weight="fill" />
-            {saNew && (
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute', top: -3, right: -3, width: 10, height: 10, borderRadius: 99,
-                  background: 'var(--danger)', border: '2px solid var(--bg-elevated)',
-                }}
-              />
-            )}
+          {/* แถวเดียวไม่มีไอคอน · สถานะสั้นชิดขวา (ผู้ใช้เลือก 14 ก.ย.) — ใกล้กำหนดยังเป็นสีเตือนเหมือนเดิม */}
+          <span className="linkgroup__title">
+            {t('ประเมินตนเอง')}
+            {saNew && <span className="linkgroup__new" aria-label={t('ใหม่')} />}
           </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('ประเมินตนเอง')}</span>
-            <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: saDueSoon ? 'var(--warning-dark)' : 'var(--text-muted)', marginTop: 1 }}>
-              {saNote}
-            </span>
+          <span className="linkgroup__note" style={saDueSoon ? { color: 'var(--warning-dark)' } : undefined}>
+            {saDone ? t('ส่งแล้ว') : saDueSoon || !saProg ? saNote : `${saProg.done}/${saProg.total}`}
           </span>
-          <CaretRight size={14} color="var(--text-disabled)" />
+          <CaretRight size={14} color="var(--text-disabled)" style={{ flex: 'none' }} />
         </Link>
       )}
 
@@ -507,27 +493,12 @@ export default function Home() {
           อยู่ต่อจากแบบประเมินตนเองเพราะเป็นเรื่องเดียวกัน: ของที่ "คนอื่นกรอกให้เรา"
           การ์ดถาวร ไม่ซ่อนตอนยังไม่มีใบไหนถูกประเมิน — สมุดเปล่าก็ยังเป็นสมุดของเขา
           และเป็นที่เดียวที่บอกได้ว่าเล่มนี้มีอะไรรออยู่บ้าง */}
-      <Link
-        to="/app/portfolio"
-        className="card"
-        style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}
-      >
-        <span
-          style={{
-            width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
-            background: 'var(--fill)', color: 'var(--text-secondary)',
-          }}
-        >
-          <BookOpen size={17} weight="fill" />
-        </span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('สมุดของฉัน')}</span>
-          <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
-            {t('อาจารย์ประเมินแล้ว {n} ใบ', { n: portfolioDone })}
-          </span>
-        </span>
-        <CaretRight size={14} color="var(--text-disabled)" />
+      <Link to="/app/portfolio" className="linkgroup__row">
+        <span className="linkgroup__title">{t('สมุดของฉัน')}</span>
+        <span className="linkgroup__note">{t('ประเมินแล้ว {n} ใบ', { n: portfolioDone })}</span>
+        <CaretRight size={14} color="var(--text-disabled)" style={{ flex: 'none' }} />
       </Link>
+      </div>
 
       {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)
           เปิดกลับ: เปลี่ยน SHOW_ACHIEVEMENT_CARD เป็น true */}

@@ -277,8 +277,9 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
 .betabadge {
   display: inline-flex; align-items: center;
   padding: 2px 7px; border-radius: 6px;
-  background: var(--warning-tint); color: var(--warning-dark);
-  border: 1px solid var(--warning-border);
+  /* เทาเรียบ — เดิมพื้นเหลืองขอบส้มแย่งสายตาข้างชื่อ และคนละทรงกับชิปกลุ่ม (14 ก.ย.) */
+  background: transparent; color: var(--text-faint);
+  border: 1px solid var(--border-2);
   font: 700 9.5px/1.5 var(--font-mono); letter-spacing: .06em;
   flex: none; white-space: nowrap;
 }

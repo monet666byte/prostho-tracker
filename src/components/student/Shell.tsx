@@ -2,7 +2,7 @@ import {
   BatteryFull, BookOpen, CalendarCheck, CellSignalFull, CellSignalSlash, ChartDonut, CloudSlash, House, UsersThree, WifiHigh,
 } from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../../store/app';
 import { clock } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -70,18 +70,33 @@ function StatusBar() {
   );
 }
 
+/* แถบล่างแบบกระจกไอคอนล้วน (ผู้ใช้ส่งคลิป Instagram มาเป็นตัวอย่าง 14 ก.ย.)
+   · ป้ายชื่อแท็บซ่อนจากตา แต่ยังอยู่ใน aria-label ให้ VoiceOver อ่าน
+   · พื้นรองแท็บที่เลือกเป็นชิ้นเดียว เลื่อนไปหาแท็บใหม่ (ไม่กระพริบย้ายที่)
+   · เลื่อนลงแล้วแถบหดเล็ก เลื่อนขึ้นกลับขนาดเดิม — ทำที่ markScrolled */
+// แต่ละหน้าสร้าง Shell ของตัวเอง แถบจึงถูกสร้างใหม่ทุกครั้งที่เปลี่ยนแท็บ
+// จำตำแหน่งเดิมไว้นอกคอมโพเนนต์ แล้วค่อยเลื่อนพื้นรองจากที่เดิมไปที่ใหม่หลังวาดเฟรมแรก
+let lastTabIndex = 0;
+
 function TabBar() {
+  const { pathname } = useLocation();
+  const active = TABS.findIndex(({ to, end }) => (end ? pathname === to : pathname.startsWith(to)));
+  const [pillAt, setPillAt] = useState(lastTabIndex);
+  useEffect(() => {
+    if (active < 0) return;
+    const id = requestAnimationFrame(() => setPillAt(active));
+    lastTabIndex = active;
+    return () => cancelAnimationFrame(id);
+  }, [active]);
   return (
-    <nav className="tabbar">
+    <nav className="tabbar" style={{ '--tab-i': pillAt } as React.CSSProperties}>
+      {active >= 0 && <span className="tabbar__pill" aria-hidden />}
       {TABS.map(({ to, label, Icon, end }) => (
-        <NavLink key={to} to={to} end={end} className={({ isActive }) => (isActive ? 'on' : undefined)}>
+        <NavLink key={to} to={to} end={end} aria-label={label} className={({ isActive }) => (isActive ? 'on' : undefined)}>
           {({ isActive }) => (
-            <>
-              <i>
-                <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
-              </i>
-              {label}
-            </>
+            <i>
+              <Icon size={23} weight={isActive ? 'fill' : 'regular'} />
+            </i>
           )}
         </NavLink>
       ))}
@@ -98,6 +113,17 @@ function TabBar() {
 function markScrolled(e: React.UIEvent<HTMLDivElement>) {
   const el = e.currentTarget;
   el.dataset.scrolled = el.scrollTop > 4 ? 'true' : 'false';
+  // แถบล่างหดตอนเลื่อนลง ขยายตอนเลื่อนขึ้น — ธงอยู่บน .phone เพราะแถบเป็นพี่น้องของตัวที่เลื่อน
+  // ขยับเกิน 6px ถึงนับ กันนิ้วสั่นแล้วแถบกระตุกไปมา · ใกล้บนสุดขยายเสมอ
+  const last = Number(el.dataset.lastTop ?? 0);
+  const top = el.scrollTop;
+  const phone = el.parentElement;
+  if (phone) {
+    if (top < 40) phone.dataset.tabCompact = 'false';
+    else if (top - last > 6) phone.dataset.tabCompact = 'true';
+    else if (last - top > 6) phone.dataset.tabCompact = 'false';
+  }
+  if (Math.abs(top - last) > 6 || top < 40) el.dataset.lastTop = String(top);
 }
 
 export function Shell({ children, footer, overlay }: { children: ReactNode; footer?: ReactNode; overlay?: ReactNode }) {
