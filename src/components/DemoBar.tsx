@@ -31,11 +31,8 @@ export function DemoBar() {
 
   return (
     <div className="demobar">
-      {demoOnly && (
-        <span className="demobar__stage" title={t('ตัวเลขคร่าวๆ ไว้สื่อสารว่ายังอยู่ช่วงเริ่มต้น')}>
-          {t('DEMO · งาน ~10%')}
-        </span>
-      )}
+      {/* ป้ายเหลือแค่ "DEMO" — ตัด "งาน ~10%" (ผู้ใช้ขอ 15 ก.ย. 69 · อาจารย์อ่านแล้วงง) */}
+      {demoOnly && <span className="demobar__stage">DEMO</span>}
       {canSwitch && <span className="demobar__label">{t('มุมมอง')}</span>}
       {canSwitch && (
       <div className="demobar__seg">

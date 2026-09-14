@@ -306,6 +306,7 @@ export const DICT: Record<string, string> = {
   'สัปดาห์ที่ได้ลงมือ': 'weeks of hands-on',
   'ขั้นที่ผ่านมือคุณ': 'steps done by you',
   'งานถัดไป': 'Up next',
+  'ข้อมูลสมมติทั้งหมด': 'All data is fictional',
   'รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่': 'Still loading the invite list — try again in a moment',
   'ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว (สิทธิ์เดิมไม่เปลี่ยน)': 'Skipped {n} emails already on the list (existing access unchanged)',
   'นำเข้าอาจารย์แล้ว — เพิ่ม {a} ท่าน · อัปเดต {b} ท่าน': 'Instructors imported — added {a} · updated {b}',

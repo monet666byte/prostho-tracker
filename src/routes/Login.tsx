@@ -250,7 +250,7 @@ export default function Login() {
           >
             <span className="badge" style={{ background: 'var(--warning)', color: '#fff', flex: 'none', marginTop: 1 }}>DEMO</span>
             <span className="pretty" style={{ font: '400 10.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
-              {t('ตัวอย่างช่วงเริ่มต้น (~10%) · ข้อมูลสมมติทั้งหมด')}
+              {t('ข้อมูลสมมติทั้งหมด')}
             </span>
           </div>
           {notices}
