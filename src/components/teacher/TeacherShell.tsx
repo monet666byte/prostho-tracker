@@ -42,7 +42,7 @@ const GROUP_NAV: NavItem[] = [
      พอติดเลขครบทั้งสามหัวข้อ เมนูก็เล่าตัวเองได้ว่าไม่มีเลขไหนหาย และไม่ต้องมีแท็บซ้อนข้างใน
      ชื่อย่อภาษาไทยตามหัวข้อจริงในสมุด (Patient examination and treatment planning /
      Knowledge and skill assessments) ซึ่งยาวเกินกว่าจะใส่เต็มในแถบ 214px */
-  { key: 'sect2', label: t('ตรวจและวางแผนการรักษา'), short: t('แผนรักษา'), to: '/teacher/sect2', Icon: ClipboardText, sect: 'II' },
+  { key: 'sect2', label: t('แผนการรักษา'), short: t('แผนรักษา'), to: '/teacher/sect2', Icon: ClipboardText, sect: 'II' },
   { key: 'sect3', label: t('ความรู้และทักษะ'), short: t('ความรู้'), to: '/teacher/sect3', Icon: ListChecks, sect: 'III' },
   /* OSCE + สอบ RPD design — ผู้ใช้เคาะ 8 ก.ย. 69 ว่าทำเป็นแค่ช่องติ๊กพอ ไม่ต้องมีฟอร์ม
      ไม่ติดเลข section เพราะ OSCE อยู่หน้าแรกสุดของเล่ม ส่วนใบสอบ design อยู่ใน Section II
@@ -52,6 +52,9 @@ const GROUP_NAV: NavItem[] = [
      ไม่ใช่งานประจำเหมือนสามอันบน · ผลพลอยได้คือ Section I กับ II–III ได้อยู่ติดกันตามลำดับเล่ม */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
 ];
+
+/** เมนูตั้งค่าและจัดการข้อมูล — แยกหมวดของตัวเองในแถบซ้าย (ไม่ปนกับงานดูข้อมูลทั้งชั้นปี) */
+const SETUP_KEYS: TeacherNav[] = ['settings', 'roster'];
 
 /** ระดับชั้นปี */
 const COHORT_NAV: NavItem[] = [
@@ -154,6 +157,10 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             <b>Prosth Mahidol</b>
           </div>
 
+          {/* แถบซ้ายแบบ B (ผู้ใช้เลือก 14 ก.ย. 69 — เดิม "ดูกลืนไปหมด แบ่งไม่ชัด")
+              กล่องขาวสองใบบนพื้นเทา: งานของกลุ่ม (หัวกล่องคือตัวเลือกกลุ่ม) · ดูทั้งชั้นปี
+              ตั้งค่า & ข้อมูล แยกออกมาเป็นหมวดของตัวเอง ไม่ปนกับงานดูข้อมูล */}
+          <div className="sidebox sidebox--group">
           <label className="mygroup">
             <span className="mygroup__label">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
@@ -187,8 +194,20 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             ))}
           </div>
 
-          <div className="side__section">{t('ทั้งชั้นปี')}</div>
-          {COHORT_NAV.map(({ key, label, short, to, Icon }) => (
+          </div>
+
+          <div className="sidebox">
+            <div className="side__section">{t('ทั้งชั้นปี')}</div>
+            {COHORT_NAV.filter((n) => !SETUP_KEYS.includes(n.key)).map(({ key, label, short, to, Icon }) => (
+              <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
+                <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
+                <span className="navlabel">{label}</span>
+                <span className="navlabel--short">{short ?? label}</span>
+              </NavLink>
+            ))}
+          </div>
+          <div className="side__section side__section--loose">{t('ตั้งค่า & ข้อมูล')}</div>
+          {COHORT_NAV.filter((n) => SETUP_KEYS.includes(n.key)).map(({ key, label, short, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               <span className="navlabel">{label}</span>

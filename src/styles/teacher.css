@@ -1194,3 +1194,40 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .grouprow, .grouprow--single { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 14px; }
   .grouprow__label { grid-column: 1 / -1; }
 }
+
+/* ══ แถบซ้ายแบบ B — กล่องแยกหมวดบนพื้นเทา (ผู้ใช้เลือกจาก mock 14 ก.ย. 69) ══
+   เดิม: หัวข้อ "ทั้งชั้นปี" ตัวเล็กจาง · กล่องกลุ่มสีจางมาก · ตั้งค่าปนกับงานดูข้อมูล → "ดูกลืนไปหมด" */
+@media (min-width: 781px) {
+  .side { background: var(--bg-dash); }
+  .sidebox {
+    display: grid; gap: 2px; padding: 6px; margin-bottom: 10px;
+    background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 14px;
+  }
+  /* หัวกล่องกลุ่ม = ตัวเลือกกลุ่ม ตัวใหญ่ · ป้าย "กลุ่มที่ดูแล" เล็กอยู่ใต้ */
+  .sidebox--group .mygroup {
+    flex-direction: column-reverse; align-items: stretch; gap: 0;
+    margin: 0 0 4px; padding: 4px 6px 9px; border: 0; border-bottom: 1px solid var(--border);
+    border-radius: 0; background: none;
+  }
+  .sidebox--group .mygroup__label { font: 400 11px var(--font-body); color: var(--text-faint); padding-left: 3px; }
+  .sidebox--group .mygroup select {
+    width: 100%; border: 0; background: transparent; padding: 2px 0;
+    font: 700 14.5px var(--font-head); color: var(--text); cursor: pointer;
+  }
+  .sidebox--group .side__cluster { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+  .sidebox .side__section { font: 700 12px var(--font-head); color: var(--text-faint); letter-spacing: 0; padding: 5px 8px 6px; }
+  .side__section--loose { font: 700 12px var(--font-head); color: var(--text-faint); letter-spacing: 0; padding: 4px 12px 4px; }
+  /* เลข I / II / III ชิดขวา สีจาง ไม่แย่งชื่อเมนู */
+  .side .navsect { margin-left: auto; background: none; color: var(--text-disabled); padding: 0; font-weight: 500; }
+  .side a.on .navsect { background: none; }
+  .side .navsect + .count { margin-left: 5px; }
+  /* ชื่อเมนูบรรทัดเดียวเสมอ — "ประเมินรายคาบ" + เลข I + ป้าย 5 เคยดันชื่อตกสองบรรทัด */
+  .side a .navlabel { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebox { padding: 5px; }
+  .sidebox a, .side > a { padding-left: 9px; padding-right: 8px; }
+}
+/* จอแคบ: เมนูเรียงแถวเดียว — กล่องต้องหายไปเหมือนไม่มี ไม่งั้นแถวแนวนอนแตก */
+@media (max-width: 780px) {
+  .sidebox { display: contents; }
+  .side__section--loose { display: none; }
+}

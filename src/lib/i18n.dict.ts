@@ -306,6 +306,8 @@ export const DICT: Record<string, string> = {
   'สัปดาห์ที่ได้ลงมือ': 'weeks of hands-on',
   'ขั้นที่ผ่านมือคุณ': 'steps done by you',
   'งานถัดไป': 'Up next',
+  'ตั้งค่า & ข้อมูล': 'Settings & data',
+  'แผนการรักษา': 'Treatment planning',
   'แสดง 5 ชิ้นที่ค้างนานสุด': 'showing the 5 longest',
   'กลุ่มที่คุณดูแล': 'Your advisory group',
   'ต่ำกว่า 55%': 'Below 55%',
