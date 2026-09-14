@@ -1231,3 +1231,42 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .sidebox { display: contents; }
   .side__section--loose { display: none; }
 }
+
+/* ══ การ์ดประเมินรายคาบแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) ══
+   ค่าตั้งต้น 3 = ปุ่มขาวในแถบเทา · ให้ 1 = เหลือง (ผู้ใช้ขอเปลี่ยนจากส้ม — ใกล้แดงเกินไป) · ให้ 0 = แดง */
+.evalcard--calm { background: var(--surface); padding: 0; gap: 0; }
+.evalcard--calm .evalcard__info { padding: 16px 18px; border-right: 1px solid var(--border); flex: 0 0 220px; }
+.evalcard--calm .evalcard__scores { flex: 1 1 auto; padding: 12px 18px 14px; column-gap: 20px; }
+.evalwho b { display: block; font: 700 15.5px/1.3 var(--font-head); }
+.evalwho .mono { font: 500 11px var(--font-mono); color: var(--text-faint); }
+.evalline { margin-top: 3px; font: 400 12px/1.5 var(--font-body); color: var(--text-muted); }
+.evalpunct { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+.evalpunct--late { color: var(--warning-dark); font-weight: 600; }
+.evalact { margin-top: 8px; font: 600 13px/1.45 var(--font-head); color: var(--text-secondary); }
+.evalpatient { font: 500 11px var(--font-mono); color: var(--text-faint); }
+.evalsteps { margin-top: 4px; font: 400 11.5px/1.5 var(--font-body); color: var(--text-faint); }
+.evalsteps--done { color: var(--success-dark); font-family: var(--font-mono); font-size: 11px; }
+.evalcard--calm .scorerow { padding: 5px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+.evalcard--calm .scorerow__label { font: 400 12.5px var(--font-body); color: var(--text-secondary); white-space: normal; }
+.evalcard--calm .scorerow[data-changed='true'] .scorerow__label { color: var(--text); font-weight: 600; }
+.evalcard--calm .scorerow__btns { background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; flex: none; }
+.evalcard--calm .scorerow__btns button { width: 31px; height: 27px; border: 0; border-radius: 7px; background: transparent; color: var(--text-faint); font: 600 12.5px var(--font-mono); }
+@media (hover: hover) { .evalcard--calm .scorerow__btns button:not(:disabled):hover { background: var(--surface); color: var(--text); border: 0; } }
+.evalcard--calm .scorerow__btns button[data-on='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
+.evalcard--calm .scorerow__btns button[data-on='true'][data-v='1'] { background: #fef3c7; color: #92600a; box-shadow: inset 0 0 0 1.5px #e0a800; }
+.evalcard--calm .scorerow__btns button[data-on='true'][data-v='0'] { background: var(--danger-tint); color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+.evalfoot { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; flex-wrap: wrap; }
+.evalfoot__total { font: 700 18px var(--font-mono); }
+.evalfoot__total small { font: 500 12.5px var(--font-body); color: var(--text-faint); }
+.evalfoot__note { flex: 1; min-width: 0; font: 400 12px var(--font-body); color: var(--text-faint); }
+@media (pointer: coarse) {
+  .evalcard--calm .scorerow__btns button { width: 42px; height: 38px; font-size: 13.5px; }
+}
+@media (max-width: 1240px) {
+  .evalcard--calm { flex-direction: column; }
+  .evalcard--calm .evalcard__info { flex-basis: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .evalcard--calm .evalcard__scores { flex-basis: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .evalcard--calm .evalcard__scores { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,4 +1,4 @@
-import { ArrowClockwise, CalendarCheck, CheckCircle, PencilSimple, Signature, WarningCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, CheckCircle, PencilSimple, Signature, WarningCircle } from '@phosphor-icons/react';
 import { PhotoSlot } from '../../components/ui/Bits';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -322,100 +322,80 @@ export default function Evaluate() {
               // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง (ผู้ใช้ขอ 1 ก.ย.)
               const locked = student ? isAlumni(student) : false;
               return (
-                <div key={c.id} className="evalcard">
+                <div key={c.id} className="evalcard evalcard--calm">
+                  {/* การ์ดประเมินแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69 · อาจารย์ให้คะแนนต่างกันรายคน)
+                      ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · ค่าตั้งต้น 3 เป็นปุ่มเรียบ
+                      ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
                   <div className="evalcard__info">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ font: '600 13.5px var(--font-head)' }}>{t(student?.name ?? '')}</span>
-                      <span className="mono" style={{ font: '400 10px var(--font-mono)', color: 'var(--text-faint)' }}>
-                        {student?.code}
-                      </span>
-                      <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                        <CalendarCheck size={12} weight="fill" /> {thaiShort(c.date)}{c.checkinAt ? ` · ${t('{time} น.', { time: c.checkinAt })}` : ''}
-                      </span>
+                    <div className="evalwho">
+                      <b>{t(student?.name ?? '')}</b>
+                      <span className="mono">{student?.code}</span>
+                    </div>
+                    <div className="evalline">
+                      {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}{' · '}
                       {/* ป้ายตรงต่อเวลา — กดเพื่อแก้ได้ทั้งสองทาง
                           `punctual` คิดครั้งเดียวตอนกดเช็คอินจากเวลาเครื่อง แล้วเดิมแก้ไม่ได้เลย
                           คนที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนเย็นจะถูกบันทึกว่าสายถาวร
                           แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน (ผู้ใช้เคาะ 11 ก.ย. 69)
                           ต้องกดได้ทั้งสองสถานะ — ทางเดียวแปลว่าแก้พลาดแล้วแก้กลับไม่ได้ */}
                       <button
-                        className="badge"
-                        style={{
-                          border: 0, cursor: 'pointer', font: 'inherit',
-                          ...(c.punctual
-                            ? { background: 'var(--fill)', color: 'var(--text-muted)' }
-                            : { background: 'var(--warning-tint)', color: 'var(--warning-dark)' }),
-                        }}
+                        className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`}
                         title={t('อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log')}
                         onClick={() => setPunctualId(c.id)}
                       >
                         {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
                       </button>
-                      {c.noPatient && (
-                        <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>{t('ไม่มีผู้ป่วย')}</span>
-                      )}
+                      {c.noPatient && <> · {t('ไม่มีผู้ป่วย')}</>}
                       {/* นักศึกษาแก้บันทึกหลังเช็คอิน — โชว์ให้อาจารย์เห็นตรงๆ ว่ามีการแก้และเมื่อไหร่ (รายละเอียดเต็มอยู่ audit log) */}
-                      {c.editedAt && (
-                        <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
-                          {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}
-                        </span>
-                      )}
+                      {c.editedAt && <> · {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</>}
                     </div>
-                    <div style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-body)', marginTop: 6 }}>
-                      {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)' }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
+                    <div className="evalact">
+                      {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
                       {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
                           ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
                       {patient && (() => {
                         const lb = patientLabel(patient, idLevel);
                         return (
-                          <span className="mono" style={{ color: 'var(--text-faint)' }}>
+                          <span className="mono evalpatient">
                             {' · '}{t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}
                           </span>
                         );
                       })()}
                     </div>
                     {c.note && (
-                      <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 3, overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
+                      <div className="evalsteps" style={{ overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
                     )}
-
-                    {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น */}
-                    <div
-                      style={{
-                        marginTop: 10, borderRadius: 10, padding: '9px 11px',
-                        background: (stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? 'var(--success-tint)' : 'var(--fill)',
-                      }}
-                    >
-                      <div style={{ font: '600 10.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 3 }}>
-                        {t('step ที่ทำเสร็จวันนั้น (จากในระบบ)')}
+                    {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น
+                        ไม่มี = บรรทัดเล็กบรรทัดเดียว (เดิมเป็นกล่องเทาว่างทั้งกล่อง) */}
+                    {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? (
+                      <div className="evalsteps evalsteps--done">
+                        <CheckCircle size={13} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+                        {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).join(' · ')}
                       </div>
-                      {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? (
-                        <div className="mono" style={{ font: '400 10.5px/1.7 var(--font-mono)', color: 'var(--success-dark)' }}>
-                          {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).join(' · ')}
-                        </div>
-                      ) : (
-                        <div style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                          {t('ไม่มีบันทึก step เสร็จ')}
-                        </div>
-                      )}
-                      {!!c.photoCount && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                          {Array.from({ length: c.photoCount }, (_, i) => <PhotoSlot key={i} size={38} filled />)}
-                          <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)' }}>
-                            {t('รูปงานจากนักศึกษา · {n} รูป (เดโม)', { n: c.photoCount })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="evalsteps">{t('ไม่มีบันทึก step เสร็จวันนั้น')}</div>
+                    )}
+                    {!!c.photoCount && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                        {Array.from({ length: c.photoCount }, (_, i) => <PhotoSlot key={i} size={34} filled />)}
+                        <span className="evalsteps" style={{ marginTop: 0 }}>
+                          {t('รูปงานจากนักศึกษา · {n} รูป (เดโม)', { n: c.photoCount })}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="evalcard__scores">
                     {CRITERIA.map((cr) => (
-                      <div key={cr.key} className="scorerow">
+                      <div key={cr.key} className="scorerow" data-changed={draft[cr.key] !== 3}>
                         <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
-                        <span className="scorerow__btns">
+                        <span className="scorerow__btns" role="radiogroup" aria-label={cr.label}>
                           {SCORE_OPTIONS.map((n) => (
                             <button
                               key={n}
                               data-on={draft[cr.key] === n}
+                              data-v={n}
+                              aria-pressed={draft[cr.key] === n}
                               disabled={locked}
                               onClick={() => setDrafts({ ...drafts, [c.id]: { ...draft, [cr.key]: n } })}
                             >
@@ -425,21 +405,38 @@ export default function Evaluate() {
                         </span>
                       </div>
                     ))}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                      <span className="mono" style={{ font: '700 14px var(--font-mono)', color: total >= MAX_TOTAL * 0.7 ? 'var(--success)' : 'var(--text-secondary)' }}>
-                        {total}/{MAX_TOTAL}
-                      </span>
-                      <button
-                        className="btn"
-                        style={{ flex: 1, height: 40, fontSize: 13 }}
-                        disabled={locked}
-                        title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
-                        onClick={() => setConfirmId(c.id)}
-                      >
-                        <Signature size={16} weight="bold" />
-                        {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
-                      </button>
-                    </div>
+                    {(() => {
+                      const changed = CRITERIA.filter((cr) => draft[cr.key] !== 3).length;
+                      return (
+                        <div className="evalfoot">
+                          <span className="evalfoot__total">{total}<small> / {MAX_TOTAL}</small></span>
+                          <span className="evalfoot__note">
+                            {changed > 0 ? (
+                              <>
+                                {t('ปรับ {n} ข้อ', { n: changed })}{' · '}
+                                <button
+                                  className="textbtn"
+                                  disabled={locked}
+                                  onClick={() => { const next = { ...drafts }; delete next[c.id]; setDrafts(next); }}
+                                >
+                                  {t('คืนเป็น 3 ทุกข้อ')}
+                                </button>
+                              </>
+                            ) : t('ได้ 3 ทุกข้อ')}
+                          </span>
+                          <button
+                            className="btn"
+                            style={{ width: 'auto', height: 40, fontSize: 13, padding: '0 16px' }}
+                            disabled={locked}
+                            title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
+                            onClick={() => setConfirmId(c.id)}
+                          >
+                            <Signature size={16} weight="bold" />
+                            {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
