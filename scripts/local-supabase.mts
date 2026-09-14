@@ -23,7 +23,7 @@
  * ⚠️ ของทดสอบในเครื่องเท่านั้น — รหัสผ่านเก็บเป็นข้อความธรรมดา token ไม่ได้เซ็นลายเซ็น
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import type { PGlite } from '@electric-sql/pglite';
@@ -411,6 +411,9 @@ async function storage(db: PGlite, req: IncomingMessage, res: ServerResponse, ur
   }
 }
 
+/** code ของ Google จำลองที่ยังไม่ถูกแลก (ใช้ได้ครั้งเดียว) */
+const oauthCodes = new Map<string, { id: string; email: string; challenge: string; method: string }>();
+
 /* ── Auth ─────────────────────────────────────────────────────────────────── */
 async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: URL) {
   const sub = url.pathname.replace(/^\/auth\/v1\//, '');
@@ -435,6 +438,16 @@ async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: 
       if (!r.rows.length) return send(res, 400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
       return send(res, 200, session(r.rows[0].id, r.rows[0].email));
     }
+    if (url.searchParams.get('grant_type') === 'pkce') {
+      const got = oauthCodes.get(body.auth_code ?? '');
+      oauthCodes.delete(body.auth_code ?? '');
+      const verifier = String(body.code_verifier ?? '');
+      const expect = got?.method === 's256' ? createHash('sha256').update(verifier).digest('base64url') : verifier;
+      if (!got || expect !== got.challenge) {
+        return send(res, 400, { code: 'bad_code_verifier', error_code: 'bad_code_verifier', msg: 'code challenge does not match previously saved code verifier' });
+      }
+      return send(res, 200, session(got.id, got.email));
+    }
     if (url.searchParams.get('grant_type') === 'refresh_token') {
       try {
         const { id, email } = JSON.parse(Buffer.from(body.refresh_token, 'base64url').toString());
@@ -444,6 +457,52 @@ async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: 
       }
     }
   }
+  /* ── Google จำลอง (OAuth + PKCE) · ของทดสอบในเครื่องเท่านั้น ──────────────────
+     Supabase จริง: /authorize → หน้า Google → Supabase สร้างบัญชี (trigger handle_new_user)
+     → กลับไป redirect_to พร้อม ?code= หรือ ?error= · แล้วแอปแลก code ที่ /token?grant_type=pkce
+     ที่นี่แทนหน้า Google ด้วยหน้าเลือกอีเมล · ส่วนที่ตัดสินจริง (trigger รายชื่อเชิญ) เป็นของจริงบน Postgres
+     รูปแบบ error ลอกจากที่ Supabase ส่งเมื่อ trigger ไม่ยอมสร้างบัญชี: "Database error saving new user" */
+  if (sub === 'authorize' && req.method === 'GET') {
+    const q = url.searchParams;
+    const emails = (await db.query<{ email: string }>(`select email from invites order by email`)).rows.map((r) => r.email);
+    const link = (email: string) => {
+      const p = new URLSearchParams({
+        email, redirect_to: q.get('redirect_to') ?? '', code_challenge: q.get('code_challenge') ?? '',
+        code_challenge_method: q.get('code_challenge_method') ?? '',
+      });
+      return `<li><a href="/auth/v1/authorize/pick?${p}">${email}</a></li>`;
+    };
+    const html = `<!doctype html><meta charset="utf-8"><title>Google จำลอง</title>
+      <body style="font:15px system-ui;padding:24px"><h1>Google จำลอง (local-supabase)</h1>
+      <p>provider=${q.get('provider')} · prompt=${q.get('prompt') ?? '-'}</p>
+      <ul>${[...emails, 'outsider@student.mahidol.edu'].map(link).join('')}</ul></body>`;
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    return res.end(html);
+  }
+  if (sub === 'authorize/pick' && req.method === 'GET') {
+    const q = url.searchParams;
+    const email = q.get('email') ?? '';
+    const back = new URL(q.get('redirect_to') || 'http://127.0.0.1/');
+    const go = (params: Record<string, string>) => {
+      for (const [k, v] of Object.entries(params)) back.searchParams.set(k, v);
+      res.writeHead(303, { location: back.toString() });
+      res.end();
+    };
+    let r = await db.query<{ id: string }>(`select id from auth.users where lower(email) = lower($1)`, [email]);
+    if (!r.rows.length) {
+      try {
+        r = await db.query<{ id: string }>(`insert into auth.users (email) values ($1) returning id`, [email]);
+      } catch {
+        return go({ error: 'server_error', error_code: 'unexpected_failure', error_description: 'Database error saving new user' });
+      }
+    }
+    const code = randomUUID();
+    oauthCodes.set(code, {
+      id: r.rows[0].id, email, challenge: q.get('code_challenge') ?? '', method: q.get('code_challenge_method') ?? '',
+    });
+    return go({ code });
+  }
+
   if (sub === 'user' && req.method === 'GET') {
     const who = identityOf(req);
     if (who === 'anon' || who === 'service') return send(res, 401, { code: 'no_authorization', msg: 'This endpoint requires a valid Bearer token' });

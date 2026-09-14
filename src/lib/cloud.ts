@@ -24,7 +24,36 @@ export const isDemoRun = import.meta.env.VITE_DEMO === '1';
 
 export const cloudEnabled = !!url && !!anonKey && !isPublicBuild && !isDemoRun;
 
+/**
+ * ข้อผิดพลาดที่ติดมากับ URL ตอนกลับจากหน้า Google (เช่น อีเมลไม่อยู่ในรายชื่อเชิญ)
+ *
+ * ต้องอ่านแล้วลบออกจาก URL **ก่อน** createClient และก่อน HashRouter เห็น
+ * ไม่งั้น `#error=...` ถูกอ่านเป็นเส้นทางของแอป และ supabase-js กลืน error ไปเงียบๆ
+ * ห้ามลบ `code` — supabase-js ต้องใช้แลกเป็น session (ลบให้เองหลังแลกเสร็จ)
+ */
+let oauthReturnError: string | null = null;
+if (cloudEnabled && typeof window !== 'undefined') {
+  const u = new URL(window.location.href);
+  const fromHash = u.hash.startsWith('#/') ? new URLSearchParams() : new URLSearchParams(u.hash.slice(1));
+  const pick = (k: string) => u.searchParams.get(k) ?? fromHash.get(k);
+  if (pick('error') || pick('error_description')) {
+    oauthReturnError = pick('error_description') || pick('error') || 'unknown';
+    for (const k of ['error', 'error_code', 'error_description']) u.searchParams.delete(k);
+    if (!u.hash.startsWith('#/')) u.hash = '';
+    window.history.replaceState(window.history.state, '', u.toString());
+  }
+}
+/** อ่านครั้งเดียวแล้วหาย — หน้า login เอาไปแสดง */
+export function takeOAuthReturnError(): string | null {
+  const e = oauthReturnError;
+  oauthReturnError = null;
+  return e;
+}
+
 export const supabase: SupabaseClient | null = cloudEnabled
   // persistSession: จำการล็อกอินไว้ในเครื่อง — เปิดแอปวันรุ่งขึ้นไม่ต้องล็อกอินใหม่
-  ? createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true } })
+  /* flowType 'pkce': กลับจาก Google มาเป็น `?code=` ไม่ใช่ `#access_token=`
+     แอปใช้ HashRouter — แบบเดิม (implicit) token ใน # จะชนกับเส้นทางของแอป (14 ก.ย. 69)
+     ไม่กระทบการล็อกอินด้วยรหัสผ่าน */
+  ? createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true, flowType: 'pkce' } })
   : null;

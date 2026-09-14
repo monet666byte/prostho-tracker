@@ -2,7 +2,8 @@ import { ChalkboardTeacher, CheckCircle, GoogleLogo, LockSimple, SignIn, Student
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
-import { cloudEnabled } from '../lib/cloud';
+import { cloudEnabled, takeOAuthReturnError } from '../lib/cloud';
+import { explainOAuthError, signInWithGoogle } from '../lib/auth';
 import { useApp } from '../store/app';
 import { PhoneFrame } from '../components/student/Shell';
 import { canInstall, isAppleSafari, isInstalled, onInstallChange, promptInstall } from '../lib/install';
@@ -17,7 +18,13 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(cloudUnlinked ? t('บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ') : null);
+  /* กลับมาจากหน้า Google พร้อม error (เช่น อีเมลไม่อยู่ในรายชื่อเชิญ) — อ่านครั้งเดียวตอน mount */
+  const [error, setError] = useState<string | null>(() => {
+    const oauth = takeOAuthReturnError();
+    if (oauth) return explainOAuthError(oauth);
+    return cloudUnlinked ? t('บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ') : null;
+  });
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   /* ── ติดตั้งลงหน้าจอโฮม ──
      เบราว์เซอร์ยิง beforeinstallprompt ตอนไหนก็ได้ (บางทีหลังหน้าโหลดไปแล้วหลายวินาที)
@@ -44,6 +51,15 @@ export default function Login() {
     if (!role) return;
     await signIn(role);
     navigate(role === 'student' ? '/app' : '/teacher');
+  }
+
+  async function goGoogle() {
+    if (googleBusy) return;
+    setGoogleBusy(true);
+    setError(null);
+    const res = await signInWithGoogle();
+    // สำเร็จ = เบราว์เซอร์กำลังเปลี่ยนไปหน้า Google · มาถึงบรรทัดนี้แปลว่าออกไปไม่ได้
+    if (res.error) { setError(res.error); setGoogleBusy(false); }
   }
 
   async function goCloud(e: React.FormEvent) {
@@ -76,7 +92,7 @@ export default function Login() {
             {t('ติดตามเคสงานทันตกรรมประดิษฐ์ รายวิชา DTPT502')}
           </p>
           <p style={{ margin: '10px 0 0', font: '500 11.5px var(--font-body)', color: 'var(--text-muted)' }}>
-            {t('เข้าระบบด้วยบัญชี @student.mahidol.ac.th')}
+            {t('เข้าระบบด้วยบัญชี @student.mahidol.edu')}
           </p>
 
           <div
@@ -118,6 +134,16 @@ export default function Login() {
 
           {cloudEnabled ? (
             <form onSubmit={goCloud} style={{ display: 'grid', gap: 10, marginTop: 20 }}>
+              {/* ทางหลัก: บัญชี Google ของมหาลัย ไม่มีรหัสผ่านให้จำ · อีเมล+รหัสผ่านข้างล่างเก็บไว้ให้บัญชีสาธิต/สำรอง */}
+              <button className="btn" type="button" onClick={goGoogle} disabled={googleBusy || busy}>
+                <GoogleLogo size={19} weight="bold" />
+                {googleBusy ? t('กำลังไปหน้า Google…') : t('เข้าสู่ระบบด้วย Google')}
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
+                <span style={{ flex: 1, height: 1, background: 'var(--border-2)' }} />
+                {t('หรือใช้อีเมลและรหัสผ่าน')}
+                <span style={{ flex: 1, height: 1, background: 'var(--border-2)' }} />
+              </div>
               <label className="field">
                 <span>{t('อีเมล')}</span>
                 <input
@@ -126,7 +152,7 @@ export default function Login() {
                   autoComplete="username"
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
-                  placeholder="name@student.mahidol.ac.th"
+                  placeholder="name@student.mahidol.edu"
                 />
               </label>
               <label className="field">
@@ -150,7 +176,7 @@ export default function Login() {
                   {error}
                 </div>
               )}
-              <button className="btn" type="submit" disabled={busy || !email.trim() || !password}>
+              <button className="btn btn--sec" type="submit" disabled={busy || googleBusy || !email.trim() || !password}>
                 <SignIn size={19} weight="bold" />
                 {busy ? t('กำลังเข้าสู่ระบบ…') : t('เข้าสู่ระบบ')}
               </button>

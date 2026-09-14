@@ -485,7 +485,14 @@ export const DICT: Record<string, string> = {
 
   /* ── login / splash ── */
   'ติดตามเคสงานทันตกรรมประดิษฐ์ รายวิชา DTPT502': 'Prosthodontic case tracking for DTPT502',
-  'เข้าระบบด้วยบัญชี @student.mahidol.ac.th': 'Sign in with your @student.mahidol.ac.th account',
+  'เข้าระบบด้วยบัญชี @student.mahidol.edu': 'Sign in with your @student.mahidol.edu account',
+  'กำลังไปหน้า Google…': 'Opening Google…',
+  'หรือใช้อีเมลและรหัสผ่าน': 'or use email and password',
+  'ยังไม่ได้เปิดการเข้าด้วย Google บนเซิร์ฟเวอร์': 'Google sign-in is not enabled on the server yet',
+  'อีเมลนี้ยังไม่อยู่ในรายชื่อที่ภาควิชาเชิญ — ตรวจว่าเลือกบัญชี Google ถูกอัน หรือติดต่อภาควิชาเพื่อเพิ่มรายชื่อ':
+    'This email is not on the department invite list — check you picked the right Google account, or ask the department to add you',
+  'ยกเลิกการเข้าด้วย Google': 'Google sign-in was cancelled',
+  'เข้าด้วย Google ไม่สำเร็จ': 'Google sign-in failed',
   'ตัวอย่างช่วงเริ่มต้น (~10%) · ข้อมูลสมมติทั้งหมด': 'Early-stage prototype (~10%) · all data is mock',
   'บันทึก step · ดูเกณฑ์ · ส่งรายงาน': 'Record steps · track requirements · export reports',
   'อาจารย์ / ภาควิชา': 'Instructor / Department',

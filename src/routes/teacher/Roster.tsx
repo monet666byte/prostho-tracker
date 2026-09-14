@@ -260,7 +260,7 @@ export default function Roster() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 12 }}>
             <label className="field" style={{ flex: '1 1 240px' }}>
               <span>{t('อีเมล')}</span>
-              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@student.mahidol.ac.th" />
+              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@student.mahidol.edu" />
             </label>
             <label className="field" style={{ flex: '0 0 150px' }}>
               <span>{t('เข้าในฐานะ')}</span>

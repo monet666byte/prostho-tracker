@@ -31,6 +31,7 @@
     "test:sync-gaps": "npx --yes tsx scripts/test-sync-gaps.mts",
     "test:upgrade": "npx --yes tsx scripts/test-upgrade.mts",
     "test:first-login": "npx --yes tsx scripts/test-first-login.mts",
+    "test:google-login": "npx --yes tsx scripts/test-google-login.mts",
     "test:restore-e2e": "npx --yes tsx scripts/test-restore-e2e.mts",
     "test": "npm run test:rules && npm run test:analytics && npm run test:aggregate && npm run test:forms && npm run test:import && npm run test:settings && npm run test:groups && npm run test:conflict && npm run test:invariants && npm run test:photos && npm run test:core && npm run test:export && npm run test:sa && npm run test:sync-button && npm run test:user-round && npm run test:offline && npm run test:restore && npm run test:clinic && npm run test:rls && npm run test:sync-pg && npm run test:sync-gaps && npm run test:restore-e2e",
     "test:rules": "npx --yes tsx scripts/test-rules.mts",
