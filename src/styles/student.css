@@ -38,13 +38,13 @@
   display: flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 99px;
   font: 600 11.5px var(--font-body); color: var(--text-muted); transition: all .15s;
 }
-.demobar__seg button:hover { color: var(--text-secondary); }
+@media (hover: hover) { .demobar__seg button:hover { color: var(--text-secondary); } }
 .demobar__seg button[data-on='true'] { background: var(--accent); color: #fff; }
 .demobar__reset {
   display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 99px;
   font: 500 11px var(--font-body); color: var(--text-muted);
 }
-.demobar__reset:hover { background: var(--fill); color: var(--text-secondary); }
+@media (hover: hover) { .demobar__reset:hover { background: var(--fill); color: var(--text-secondary); } }
 
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) { .demobar { display: none; } }
 .phone {
@@ -158,13 +158,14 @@
   /* ความหนาฐาน 12/13 (ค่าที่ผู้ใช้ชอบ) — ตอนเลื่อนจะยุบบางลงอีกนิดแบบ iOS
      (กฎยุบอยู่ถัดลงไป ทำงานด้วย data-scrolled) */
   padding: 12px 20px 13px;
-  transition: padding 0.18s ease;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   /* เส้นคั่นบางๆ โผล่เฉพาะตอนเลื่อนแล้วมีเนื้อหาอยู่ข้างหลัง */
   border-bottom: 1px solid transparent;
-  transition: border-color 0.2s;
+  /* เดิมเขียน transition สองบรรทัด บรรทัดหลังทับบรรทัดแรก → หัวยุบแบบกระตุก (เจอ 14 ก.ย.)
+     ต้องอยู่บรรทัดเดียวกันเสมอ */
+  transition: padding 0.2s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.2s ease;
 }
 .screen[data-scrolled='true'] .s-header { border-bottom-color: var(--border); }
 /* ยุบหัวตอนเลื่อน — กลิ่นอาย large title ของ iOS แบบเบาๆ */
@@ -179,9 +180,9 @@
   color: var(--accent); display: grid; place-items: center; flex: none;
   transition: background 0.15s;
 }
-.iconbtn:hover { background: var(--accent-ring); }
+@media (hover: hover) { .iconbtn:hover { background: var(--accent-ring); } }
 .iconbtn--plain { background: var(--fill); color: var(--text-secondary); }
-.iconbtn--plain:hover { background: var(--fill-2); }
+@media (hover: hover) { .iconbtn--plain:hover { background: var(--fill-2); } }
 
 .groupchip {
   background: var(--accent-tint); color: var(--accent);
@@ -316,7 +317,19 @@
   font: 600 11px var(--font-mono); flex: none;
 }
 .tl__dot--done { background: var(--success); color: #fff; }
-.tl__dot--active { background: var(--accent); color: #fff; animation: pulseRing 2s infinite; }
+/* วงกระเพื่อมรอบขั้นที่กำลังทำ — เดิมขยับ box-shadow ซึ่งเครื่องต้องวาดใหม่ทุกเฟรมไม่หยุด
+   ตอนนี้ใช้วงแยก (::after) ขยายด้วย transform + opacity ให้การ์ดจอทำ ตาเห็นเหมือนเดิม */
+.tl__dot--active { background: var(--accent); color: #fff; position: relative; isolation: isolate; }
+.tl__dot--active::after {
+  /* z-index -1 + isolation บนจุด = วงอยู่ใต้ตัวเลข แต่ยังอยู่เหนือพื้นหลังหน้า */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  background: var(--accent); opacity: 0; pointer-events: none;
+  animation: dotRipple 2s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes dotRipple {
+  0% { transform: scale(1); opacity: 0.45; }
+  70%, 100% { transform: scale(1.6); opacity: 0; }
+}
 .tl__dot--todo { background: #fff; border: 1px solid #d0d5dd; color: var(--text-faint); }
 .tl__line { width: 2px; flex: 1; background: var(--border); min-height: 14px; }
 .tl__line--done { background: var(--success); }
@@ -362,14 +375,14 @@
   border-radius: 10px; padding: 8px 12px; background: var(--fill);
   font: 600 12px var(--font-body); color: var(--text-secondary); transition: all 0.15s;
 }
-.seg button:hover { background: var(--fill-2); }
+@media (hover: hover) { .seg button:hover { background: var(--fill-2); } }
 .seg button[data-on='true'] { background: var(--accent); color: #fff; }
 
 .qchip {
   border-radius: 99px; padding: 6px 12px; background: var(--fill);
   font: 500 11.5px var(--font-body); color: var(--text-secondary);
 }
-.qchip:hover { background: var(--accent-tint); color: var(--accent); }
+@media (hover: hover) { .qchip:hover { background: var(--accent-tint); color: var(--accent); } }
 
 .sectiontitle { padding: 16px 16px 9px; }
 .sectiontitle h4 { margin: 0; font: 600 14px var(--font-head); }
@@ -427,7 +440,7 @@
   gap: 0;
   transition: background 0.15s;
 }
-.minirow__pass:hover { background: var(--accent-ring); }
+@media (hover: hover) { .minirow__pass:hover { background: var(--accent-ring); } }
 .minirow__pass:active { transform: translateY(1px); }
 
 /* ปุ่มลบในโหมดแก้ไข */
@@ -442,7 +455,7 @@
   flex: none;
   transition: background 0.15s;
 }
-.delbtn:hover { background: var(--danger-border); }
+@media (hover: hover) { .delbtn:hover { background: var(--danger-border); } }
 
 /* ── การ์ดฉลองจบเคส (mock) ── */
 .celebrate { position: relative; overflow: hidden; }
@@ -643,6 +656,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .screen { animation: shellIn 0.15s ease; }
+  /* คนที่ตั้ง "ลดการเคลื่อนไหว" — เลิกเลื่อน/กระเพื่อม เหลือค่อยๆ ปรากฏ (ยังรู้ว่ามีอะไรโผล่มา) */
+  .sheet, .toast { animation: fadeIn 0.18s ease; }
+  .tl__dot--active::after { animation: none; }
 }
 
 
@@ -659,7 +675,7 @@
   font: 500 11.5px/1.35 var(--font-body); color: var(--text-secondary);
   text-align: left; transition: all 0.15s; min-height: 40px;
 }
-.actgrid button:hover { background: var(--fill-2); }
+@media (hover: hover) { .actgrid button:hover { background: var(--fill-2); } }
 .actgrid button[data-on='true'] { background: var(--accent); color: #fff; font-weight: 600; }
 
 /* ══ สกิน Duolingo — ผู้ใช้เลือกจาก mock รอบ 3–4 (1 ก.ย. 69) ══
@@ -688,7 +704,7 @@
   background: var(--accent);
   box-shadow: 0 4px 0 var(--accent-hover);
 }
-.phone .btn:hover { background: var(--accent); filter: brightness(1.04); }
+@media (hover: hover) { .phone .btn:hover { background: var(--accent); filter: brightness(1.04); } }
 .phone .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
 .phone .btn:disabled { background: var(--text-disabled); box-shadow: none; }
 .phone .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
@@ -704,7 +720,7 @@
   color: #fff;
   box-shadow: 0 3px 0 var(--accent-hover);
 }
-.phone .minirow__pass:hover { background: var(--accent); filter: brightness(1.04); }
+@media (hover: hover) { .phone .minirow__pass:hover { background: var(--accent); filter: brightness(1.04); } }
 .phone .minirow__pass:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
 
 /* ── เส้นทางด่านบนการ์ดเคสเด่น — เลย์เอาต์ F·1 (แทนวงแหวน + กล่องขั้นย่อยแบบพับ) ──

@@ -41,7 +41,7 @@
   font: 500 12.5px var(--font-body); color: var(--text-body); width: 100%; text-align: left;
   transition: background .15s, color .15s;
 }
-.side a:hover, .side button.navitem:hover { background: var(--fill); }
+@media (hover: hover) { .side a:hover, .side button.navitem:hover { background: var(--fill); } }
 .side a.on, .side button.navitem.on { background: var(--accent-tint); color: var(--accent-hover); font-weight: 600; }
 /* เลขหัวข้อในสมุด portfolio ต่อท้ายชื่อเมนู (ผู้ใช้เสนอ 7 ก.ย. 69)
    เป็นตัวอ้างอิงกลับไปที่เล่มกระดาษ ไม่ใช่ชื่อเมนู — จึงต้องเบากว่าชื่อชัดเจน
@@ -87,7 +87,7 @@
   background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px;
   text-align: left; transition: all .15s; position: relative;
 }
-.groupcard:hover { border-color: var(--border-2); }
+@media (hover: hover) { .groupcard:hover { border-color: var(--border-2); } }
 .groupcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 .groupcard__code { font: 600 12.5px var(--font-mono); }
 .groupcard__pct { font: 700 17px var(--font-head); margin-top: 6px; }
@@ -119,7 +119,7 @@
   width: 100%; height: 34px; border-radius: 8px; font: 600 10px var(--font-body);
   display: grid; place-items: center; transition: all .15s;
 }
-.cell:hover { filter: brightness(0.97); }
+@media (hover: hover) { .cell:hover { filter: brightness(0.97); } }
 
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
 .legend span { display: flex; align-items: center; gap: 6px; font: 500 10.5px var(--font-body); color: var(--text-muted); }
@@ -130,7 +130,7 @@
   width: 26px; height: 26px; border-radius: 8px; background: var(--fill); display: grid; place-items: center;
   color: var(--text-secondary); transition: background .15s;
 }
-.stepper button:hover { background: var(--fill-2); }
+@media (hover: hover) { .stepper button:hover { background: var(--fill-2); } }
 .stepper span { width: 26px; text-align: center; font: 600 13px var(--font-mono); }
 
 .rail { width: 330px; flex: none; border-left: 1px solid var(--border); padding: 20px 18px; overflow-y: auto; background: var(--bg-subtle); }
@@ -174,7 +174,7 @@
   color: var(--text-secondary);
   transition: all 0.15s;
 }
-.pickrow button:hover { border-color: var(--border-2); background: var(--bg-subtle); }
+@media (hover: hover) { .pickrow button:hover { border-color: var(--border-2); background: var(--bg-subtle); } }
 .pickrow button span { font: 400 9.5px var(--font-mono); color: var(--text-faint); }
 .pickrow button[data-on='true'] {
   background: var(--accent);
@@ -194,7 +194,7 @@
   color: var(--text-muted);
   transition: all 0.15s;
 }
-.grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); }
+@media (hover: hover) { .grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); } }
 .grouppick button[data-on='true'] { background: var(--accent); color: #fff; }
 
 /* ── ตัวเลือกชั้นปี — segmented แบบ iOS: รางเทา เม็ดขาวเลื่อนนุ่มๆ ตามตัวที่เลือก ── */
@@ -220,7 +220,7 @@
   white-space: nowrap;
   padding: 0 10px;
 }
-.yearseg button:hover { color: var(--text-secondary); }
+@media (hover: hover) { .yearseg button:hover { color: var(--text-secondary); } }
 .yearseg button[data-on='true'] { color: var(--accent-hover); }
 .yearseg__thumb {
   position: absolute;
@@ -291,7 +291,7 @@
   color: #fff;
   font: 700 9px var(--font-mono);
 }
-.heat tbody tr:hover .heat__cell { background: var(--fill); }
+@media (hover: hover) { .heat tbody tr:hover .heat__cell { background: var(--fill); } }
 
 /* ── legend ใต้กราฟ ── */
 .chartlegend {
@@ -313,7 +313,7 @@
   padding: 3px 8px;
   border-radius: 7px;
 }
-.chartlegend button:hover { background: var(--accent-tint); }
+@media (hover: hover) { .chartlegend button:hover { background: var(--accent-tint); } }
 
 /* ── แท่งสองทาง (เทียบกับค่าเฉลี่ย) ── */
 .dvg { display: grid; gap: 3px; }
@@ -363,7 +363,7 @@
 /* ข้อกำหนด Sect II / Design RPD: "ยังไม่ผ่าน" ต่างจาก "ยังไม่มีข้อมูล" — ชีตเขียน No ไว้ชัดๆ */
 .slots__box[data-state='no'] { background: var(--warning-tint, #fff4e5); border: 1px solid var(--warning, #e8a33d); color: var(--warning-dark, #9a5b00); }
 .slots__box--btn { cursor: pointer; font-family: inherit; padding: 2px 3px; flex-direction: column; gap: 2px; height: 38px; }
-.slots__box--btn:hover { filter: brightness(0.96); }
+@media (hover: hover) { .slots__box--btn:hover { filter: brightness(0.96); } }
 
 /* ── แผนที่เคส (หนึ่งจุด = หนึ่งชิ้นงาน) ── */
 .casemap {
@@ -406,7 +406,7 @@
   background: none;
   text-align: center;
 }
-button.casemap__step:hover { color: var(--accent); }
+@media (hover: hover) { button.casemap__step:hover { color: var(--accent); } }
 button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; border-top: 2px solid var(--accent); }
 
 /* ปุ่มเลข step ใต้แผนที่เคส */
@@ -419,7 +419,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   color: var(--text-muted);
   transition: all 0.15s;
 }
-.stepbar button:hover { background: var(--accent-tint); color: var(--accent); }
+@media (hover: hover) { .stepbar button:hover { background: var(--accent-tint); color: var(--accent); } }
 .stepbar button[data-on='true'] { background: var(--accent); color: #fff; }
 
 /* ── การ์ดประเมินรายคาบ ── */
@@ -453,7 +453,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   color: var(--text-muted);
   transition: all 0.12s;
 }
-.scorerow__btns button:hover { border-color: var(--accent); color: var(--accent); }
+@media (hover: hover) { .scorerow__btns button:hover { border-color: var(--accent); color: var(--accent); } }
 .scorerow__btns button[data-on='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ── ปรับขนาดตัวหนังสือ (สำหรับผู้ใช้อาวุโส) ── */
@@ -480,7 +480,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   place-items: center;
   transition: all 0.15s;
 }
-.textsize__btns button:hover { background: var(--fill-2); }
+@media (hover: hover) { .textsize__btns button:hover { background: var(--fill-2); } }
 .textsize__btns button[data-on='true'] { background: var(--accent); color: #fff; }
 
 /* ขยายทั้งหน้าต่างด้วย zoom — ตัวหนังสือและปุ่มโตตามกันหมด
@@ -695,7 +695,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   background: var(--warning-dark); color: #fff; border-radius: 99px;
   padding: 5px 11px; font: 600 11px var(--font-body); cursor: pointer;
 }
-.offgroup button:hover { filter: brightness(1.12); }
+@media (hover: hover) { .offgroup button:hover { filter: brightness(1.12); } }
 @media (max-width: 780px) {
   /* เลี่ยงปุ่มลอยสลับบทบาทที่มุมขวาล่าง */
   .offgroup { left: 10px; right: 10px; bottom: 76px; font-size: 10.5px; padding: 7px 8px 7px 12px; gap: 7px; }
@@ -715,7 +715,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   white-space: nowrap; min-width: max-content; flex: none;
   transition: all 0.12s;
 }
-.revisebtn:hover { border-color: var(--accent); color: var(--accent); }
+@media (hover: hover) { .revisebtn:hover { border-color: var(--accent); color: var(--accent); } }
 @media (pointer: coarse) { .revisebtn { min-height: 34px; } }
 
 /* กล่องแก้กว้างกว่ากล่องยืนยันปกติ เพราะต้องใส่ 8 หัวข้อ */
@@ -798,11 +798,11 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   box-shadow: none;
 }
 .groupcard { border: 2px solid var(--border-2); border-bottom-width: 4px; }
-.groupcard:hover { border-color: var(--text-disabled); }
+@media (hover: hover) { .groupcard:hover { border-color: var(--text-disabled); } }
 .groupcard.on { border-color: var(--accent); box-shadow: none; }
 .evalcard { border: 2px solid var(--border-2); border-bottom-width: 4px; border-radius: 16px; }
 .window .btn { background: var(--accent); box-shadow: 0 4px 0 var(--accent-hover); }
-.window .btn:hover { background: var(--accent); filter: brightness(1.04); }
+@media (hover: hover) { .window .btn:hover { background: var(--accent); filter: brightness(1.04); } }
 .window .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
 .window .btn:disabled { background: var(--text-disabled); box-shadow: none; }
 .window .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
@@ -946,7 +946,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   letter-spacing: -0.01em;
   transition: background .15s, border-color .15s, color .15s;
 }
-.cohortpick button:hover { border-color: var(--text-disabled); }
+@media (hover: hover) { .cohortpick button:hover { border-color: var(--text-disabled); } }
 .cohortpick button[data-on='true'] {
   background: var(--accent-tint);
   border-color: var(--accent);
@@ -1134,5 +1134,5 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   font: 500 11.5px var(--font-body); color: var(--text-body); cursor: pointer;
   transition: background .15s, border-color .15s, color .15s;
 }
-.chipbtn:hover { background: var(--fill); }
+@media (hover: hover) { .chipbtn:hover { background: var(--fill); } }
 .chipbtn[data-on='true'] { background: var(--accent-tint); border-color: var(--accent-ring); color: var(--accent-hover); }

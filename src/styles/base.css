@@ -96,13 +96,15 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   box-shadow: 0 2px 0 var(--accent-hover), 0 8px 18px rgba(43, 92, 230, 0.22);
   transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
 }
-.btn:hover { background: var(--accent-hover); }
+/* ทุก :hover ในแอปห่อ @media (hover: hover) — iPhone แตะแล้วสี hover ค้างจนแตะที่อื่น (เจอ 14 ก.ย.)
+   เพิ่ม :hover ใหม่เมื่อไหร่ต้องห่อแบบเดียวกัน */
+@media (hover: hover) { .btn:hover { background: var(--accent-hover); } }
 .btn:active { transform: translateY(1px); box-shadow: none; }
 .btn:disabled { background: var(--text-disabled); box-shadow: none; cursor: not-allowed; }
 .btn--success { background: var(--success); box-shadow: 0 2px 0 var(--success-dark); }
-.btn--success:hover { background: var(--success-dark); }
+@media (hover: hover) { .btn--success:hover { background: var(--success-dark); } }
 .btn--light { background: #fff; color: var(--accent); box-shadow: 0 2px 0 rgba(16, 24, 40, 0.08); }
-.btn--light:hover { background: #f3f6ff; }
+@media (hover: hover) { .btn--light:hover { background: #f3f6ff; } }
 .btn--ghost {
   background: transparent;
   color: var(--text-muted);
@@ -110,7 +112,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   font: 500 14px var(--font-body);
   height: 44px;
 }
-.btn--ghost:hover { background: var(--fill); }
+@media (hover: hover) { .btn--ghost:hover { background: var(--fill); } }
 .btn--sec {
   height: 42px;
   background: var(--fill);
@@ -119,7 +121,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   box-shadow: none;
   border-radius: 12px;
 }
-.btn--sec:hover { background: var(--fill-2); }
+@media (hover: hover) { .btn--sec:hover { background: var(--fill-2); } }
 
 /* form */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -231,7 +233,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
 
 /* แท่งกราฟที่กดได้ */
 .vbars > div[data-clickable='true'] { cursor: pointer; }
-.vbars > div[data-clickable='true']:hover .bar-v { filter: brightness(1.08); }
+@media (hover: hover) { .vbars > div[data-clickable='true']:hover .bar-v { filter: brightness(1.08); } }
 .vbars > div[data-on='true'] .tick { color: var(--accent); font-weight: 700; }
 
 /* ── skeleton loader ── */

@@ -120,17 +120,23 @@ export default function WorkpieceDetail() {
         <ConfirmSheet />
         {askReturn && (
           <div className="backdrop" onClick={() => setAskReturn(false)}>
-            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="return-sheet-title"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="grabber" />
-              <h3 className="h3">{t('คืนเคสนี้?')}</h3>
+              <h3 className="h3" id="return-sheet-title">{t('คืนเคสนี้?')}</h3>
               <p style={{ margin: '4px 0 12px', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
                 {t('ใช้เมื่อผู้ป่วยไม่มาต่อ / ยกเลิกการรักษา — เคสจะยังอยู่ในรายการแบบขีดฆ่า และไม่ถูกนับเป็นงานที่กำลังทำ · กดกลับมาทำต่อได้ทีหลัง')}
               </p>
               <label className="field">
                 <span style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)' }}>{t('เหตุผล (ไม่บังคับ)')}</span>
+                {/* ไม่ใส่ autoFocus — บนมือถือคีย์บอร์ดเด้งทันทีแล้วบังคำอธิบาย+ปุ่มยืนยัน ทั้งที่ช่องนี้ไม่บังคับ */}
                 <input
                   className="input"
-                  autoFocus
                   placeholder={t('เช่น ผู้ป่วยไม่สะดวกมาต่อ · ต้องรักษารากเพิ่ม')}
                   value={returnNote}
                   onChange={(e) => setReturnNote(e.target.value)}
@@ -212,6 +218,7 @@ export default function WorkpieceDetail() {
                     (คำว่า "ผ่านแล้ว/รอดำเนินการ" ซ้ำกับสีจุด — ผู้ใช้บอกรก 1 ก.ย.)
                     เหลือวันที่เฉพาะขั้นที่ผ่านล่าสุด · จำนวนขั้นย่อยย่อเป็น ×N */}
                 <button
+                  aria-expanded={expanded}
                   onClick={() => setOpenStep(openStep === g.progression ? null : g.progression)}
                   style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', width: '100%', textAlign: 'left' }}
                 >
@@ -222,7 +229,7 @@ export default function WorkpieceDetail() {
                   {g.hasSelf && <SelfBadge compact />}
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {passedDate && <span className="tl__date">{passedDate}</span>}
-                    <span style={{ color: 'var(--text-disabled)', display: 'grid' }}>
+                    <span style={{ color: 'var(--text-disabled)', display: 'grid' }} aria-hidden="true">
                       {expanded ? <CaretUp size={13} weight="bold" /> : <CaretDown size={13} weight="bold" />}
                     </span>
                   </span>
