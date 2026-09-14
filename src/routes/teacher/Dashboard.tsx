@@ -1,11 +1,11 @@
-import { Archive, BellRinging, Check } from '@phosphor-icons/react';
+import { BellRinging, Check } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
-import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
+import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep } from '../../domain/analytics';
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
@@ -141,6 +141,8 @@ export default function Dashboard() {
   }, [teachersAll, allStudents]);
 
   const activePieces = works.filter(isActiveWork).length;
+  const isAlumniView = yearView === 'alumni';
+  const alumni = useMemo(() => alumniOverview(summaries, works), [summaries, works]);
   const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
@@ -157,35 +159,40 @@ export default function Dashboard() {
           <div style={{ flex: 1 }}>
             <h1>
               {yearView === 'all' ? t('ภาพรวมทุกชั้นปี')
-                : yearView === 'alumni' ? t('ภาพรวมรุ่นที่จบแล้ว')
+                : yearView === 'alumni' ? t('รุ่นที่จบแล้ว')
                   : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
               {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
               {/* ตัวคั่นที่มองไม่เห็น — ช่องว่างบนจอมาจาก margin ของชิป แต่โปรแกรมอ่านหน้าจออ่านข้อความติดกัน
                   เป็น "ภาพรวมทุกชั้นปีDTMU55" (เจอตอนไล่ใช้จริง 13 ก.ย. 69) · หน้าตาบนจอไม่เปลี่ยน */}
-              {cohortsShown && <><span className="sronly"> · </span><span className="cohortchip">{cohortsShown}</span></>}
+              {cohortsShown && !isAlumniView && <><span className="sronly"> · </span><span className="cohortchip">{cohortsShown}</span></>}
             </h1>
             <p>
-              {t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}
+              {/* ป้ายบอกว่ากำลังดูของเก่า — กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ · เดิมเป็นกล่องเหลือง ย้ายมาบรรทัดใต้หัวข้อ (14 ก.ย. 69) */}
+              {isAlumniView
+                ? t('ดูได้อย่างเดียว แก้ไขไม่ได้ · {a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })
+                : <>{t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}</>}
             </p>
           </div>
           {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
               — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
           {!alumniPage && <YearSeg view={yearView} onChange={setYearView} />}
-          <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
-            {t('ภาคเรียน')} {termLabel(new Date())}
-          </span>
+          {isAlumniView ? (
+            !alumniLoading && alumniCohorts.length > 0 && (
+              <div className="seg seg--sm seg--tight" aria-label={t('เลือกรุ่น')}>
+                {alumniCohorts.map((c) => (
+                  <button key={c} data-on={(cohortPick ?? alumniCohorts[0]) === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
+                ))}
+              </div>
+            )
+          ) : (
+            <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
+              {t('ภาคเรียน')} {termLabel(new Date())}
+            </span>
+          )}
         </div>
 
         {/* นักศึกษาขอผูกบัญชี (0023) — ไม่มีคำขอ = ไม่แสดง · อยู่หน้าแรกเพราะอาจารย์ที่ปรึกษาเปิดหน้านี้ก่อนเสมอ */}
         {!alumniPage && <LinkRequestsPanel />}
-
-        {/* ป้ายบอกว่ากำลังดูของเก่า — กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ */}
-        {yearView === 'alumni' && (
-          <div className="archivebar">
-            <Archive size={15} weight="fill" />
-            {t('กำลังดูรุ่นที่เรียนจบไปแล้ว — ดูได้อย่างเดียว แก้ไขไม่ได้')}
-          </div>
-        )}
 
         {yearView === 'alumni' && alumniLoading && (
           <div className="panel" style={{ display: 'grid', gap: 8, placeItems: 'center', padding: 26 }}>
@@ -200,18 +207,33 @@ export default function Dashboard() {
           </div>
         )}
 
-        {yearView === 'alumni' && !alumniLoading && alumniCohorts.length > 0 && (
-          <div className="cohortpick">
-            <span className="cohortpick__label">{t('เลือกรุ่น')}</span>
-            {alumniCohorts.map((c) => (
-              <button key={c} data-on={(cohortPick ?? alumniCohorts[0]) === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
-            ))}
-          </div>
-        )}
-
         {view === 'overview' && (
           <>
             {/* หน้าภาพรวมแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — ตัวเลขใหญ่ 4 ตัวอยู่การ์ดเดียวคั่นเส้น ตัดไอคอน */}
+            {isAlumniView ? (
+              /* รุ่นที่จบแล้ว: ตัวเลขที่มีความหมายกับรุ่นเก่า (ผู้ใช้เลือก mock 14 ก.ย. 69)
+                 เดิมใช้ชุดของรุ่นที่ยังเรียน → กำลังทำ/ค้าง/รอประเมิน เป็น 0 ทั้งแถว */
+              <div className="kpis kpis--strip">
+                <div className="kpi">
+                  <div className="kpi__value">{alumni.students}</div>
+                  <div className="kpi__label">{t('นักศึกษา · {n} กลุ่ม', { n: groups.length })}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi__value" style={{ color: alumni.students && alumni.reqComplete === alumni.students ? 'var(--success)' : undefined }}>
+                    {alumni.reqComplete}<span className="kpi__of"> / {alumni.students}</span>
+                  </div>
+                  <div className="kpi__label">{t('ครบเกณฑ์สะสม')}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi__value">{alumni.done}<span className="kpi__of"> / {alumni.total}</span></div>
+                  <div className="kpi__label">{t('ชิ้นงานที่จบ')}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi__value" style={{ color: alumni.unfinished ? 'var(--warning)' : undefined }}>{alumni.unfinished}</div>
+                  <div className="kpi__label">{t('ชิ้นงานที่ไม่จบ (ไม่นับคืนเคส)')}</div>
+                </div>
+              </div>
+            ) : (
             <div className="kpis kpis--strip">
               <div className="kpi">
                 <div className="kpi__value">
@@ -241,7 +263,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            )}
 
+            {!isAlumniView && (<>
             <div className="homelabel tlabel">{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</div>
             <div className="panel groupstrip">
               {/* เดิม 24 กล่องขอบหนา มีหลอดทุกใบ → ช่องไม่มีกรอบ แถวละปี · ต่ำกว่า 55% เป็นช่องสีส้ม (เดิมแค่เปลี่ยนสีตัวเลข ตามองข้าม)
@@ -282,8 +306,9 @@ export default function Dashboard() {
               <span><i className="groupcell--low" />{t('ต่ำกว่า 55%')}</span>
               {ownGroup && <span><i className="groupcell--mine" />{t('กลุ่มที่คุณดูแล')}</span>}
             </div>
+            </>)}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isAlumniView ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 {/* เลือกกลุ่มได้จากในการ์ดนี้เลย ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่มด้านบน
@@ -323,11 +348,11 @@ export default function Dashboard() {
                   <thead>
                     <tr>
                       <th>{t('นักศึกษา')}</th>
-                      <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>
+                      {!isAlumniView && <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>}
                       <th style={{ width: 56 }}>{t('ชิ้นงาน')}</th>
                       {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด (สกรีนช็อตผู้ใช้ 1 ก.ย.) */}
                       <th style={{ width: 94, whiteSpace: 'nowrap' }}>{t('เกณฑ์สะสม 2 ปี')}</th>
-                      <th style={{ width: 46 }}>{t('ค้าง')}</th>
+                      {!isAlumniView && <th style={{ width: 46 }}>{t('ค้าง')}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -357,27 +382,34 @@ export default function Dashboard() {
                             {query && ` · ${groupShort(s.student.group)}`}
                           </div>
                         </td>
-                        <td>
+                        {!isAlumniView && <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                             <span className="bar" style={{ height: 6 }}>
                               <i style={{ width: `${s.percent}%`, background: 'var(--accent)' }} />
                             </span>
                             <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{s.percent}%</span>
                           </div>
-                        </td>
+                        </td>}
                         <td className="mono">{s.pieces}</td>
                         <td>
+                          {isAlumniView ? (
+                            /* รุ่นเก่าดูแค่เกณฑ์สะสม — ตรงกับตัวนับ "ครบเกณฑ์สะสม" ด้านบน (alumniOverview) */
+                            <span className="mono" style={{ color: s.reqDone >= s.reqTotal ? 'var(--success-dark)' : 'var(--warning-dark)', fontWeight: 600 }}>
+                              {s.reqDone >= s.reqTotal ? `${t('ครบ')} ` : ''}{s.reqDone}/{s.reqTotal}
+                            </span>
+                          ) : (
                           <span className="mono" style={{ color: s.allComplete ? 'var(--success-dark)' : 'var(--text-secondary)', fontWeight: s.allComplete ? 600 : 500 }}>
                             {s.reqDone}/{s.reqTotal}
                           </span>
+                          )}
                         </td>
-                        <td>
+                        {!isAlumniView && <td>
                           {s.stale > 0 ? (
                             <span className="mono" style={{ color: 'var(--danger)', fontWeight: 600 }}>{s.stale}</span>
                           ) : (
                             <span className="faint">—</span>
                           )}
-                        </td>
+                        </td>}
                       </tr>
                     ))}
                   </tbody>
@@ -386,6 +418,8 @@ export default function Dashboard() {
 
               </div>
 
+              {/* รุ่นที่จบไม่มีงานค้าง/คอขวด — สองการ์ดนี้ว่างทุกครั้ง จึงไม่แสดง (14 ก.ย. 69) */}
+              {!isAlumniView && (
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}</h3>
@@ -493,6 +527,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
+              )}
             </div>
           </>
         )}

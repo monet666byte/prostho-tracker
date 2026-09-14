@@ -1,7 +1,7 @@
 /** สรุปข้อมูลระดับกลุ่ม / ชั้นปี สำหรับ dashboard อาจารย์ */
 
 import { orderOf } from './catalog';
-import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork, gatesDone, GATE_KEYS } from './rules';
+import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork, isComplete, gatesDone, GATE_KEYS } from './rules';
 import { academicYear } from '../lib/date';
 import { studentYear } from './cohort';
 import type { Settings, Student, WorkType, Workpiece } from './types';
@@ -190,4 +190,22 @@ export function staleRows(students: Student[], works: Workpiece[], settings: Set
 export function cohortPercent(works: Workpiece[]): number {
   if (!works.length) return 0;
   return Math.round(works.reduce((s, w) => s + percentCompleted(w), 0) / works.length);
+}
+
+/**
+ * ตัวเลขหัวหน้า "รุ่นที่จบแล้ว" (ผู้ใช้เลือก mock 14 ก.ย. 69)
+ * เดิมหน้านี้ใช้ตัวเลขของรุ่นที่กำลังเรียน → กำลังทำ/ค้าง/รอประเมิน เป็น 0 ทั้งแถว ไม่บอกอะไร
+ *
+ * reqComplete นับจาก "เกณฑ์สะสม" (reqDone ≥ reqTotal) เท่านั้น — ไม่ใช้ allComplete
+ * เพราะ allComplete เช็คเกณฑ์รายปีด้วยวันที่ปัจจุบัน ซึ่งไม่ใช่ปีที่รุ่นเก่าเรียนอยู่
+ * unfinished = ยังไม่จบและไม่ได้คืนเคส (งานที่ค้างอยู่ตอนรุ่นจบ)
+ */
+export function alumniOverview(summaries: StudentSummary[], works: Workpiece[]) {
+  return {
+    students: summaries.length,
+    reqComplete: summaries.filter((s) => s.reqTotal > 0 && s.reqDone >= s.reqTotal).length,
+    done: works.filter(isComplete).length,
+    unfinished: works.filter(isActiveWork).length,
+    total: works.length,
+  };
 }

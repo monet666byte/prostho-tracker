@@ -1,4 +1,4 @@
-import { ArrowLeft, FileCsv, FilePdf } from '@phosphor-icons/react';
+import { ArrowLeft, FilePdf } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
@@ -66,9 +66,10 @@ export default function ExportScreen() {
       </header>
 
       <div style={{ padding: '14px 16px 0' }}>
-        <p className="noprint" style={{ margin: '0 0 8px', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('เลื่อนแนวนอนเพื่อดูช่อง 0–10')}
-        </p>
+        <div className="critlabel noprint" style={{ margin: '0 4px 8px' }}>
+          <span className="homelabel" style={{ margin: 0 }}>{t('ตัวอย่างใบรายงาน')}</span>
+          <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-faint)' }}>{t('เลื่อนดูได้ ›')}</span>
+        </div>
         <div className="a4wrap">
         <div className="a4">
           {/* หัวของใบรายงาน A4 เป็นหัวข้อ "ส่วนหนึ่งในหน้า" ไม่ใช่หัวเรื่องของหน้า
@@ -145,18 +146,13 @@ export default function ExportScreen() {
           <FilePdf size={19} weight="fill" />
           {t('สร้าง PDF สำหรับลงนาม')}
         </button>
-        <button
-          className="btn btn--sec"
-          style={{ height: 48 }}
-          disabled={!perm.allowed || busy}
-          onClick={() => void doExportCsv()}
-        >
-          <FileCsv size={18} />
-          {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')}
+        {/* ปุ่มหลักปุ่มเดียว · CSV เป็นลิงก์ · ชื่อคอลัมน์พับไว้ (ผู้ใช้เลือก mock 14 ก.ย. 69 — เดิมชิป 25 อันกินครึ่งจอ) */}
+        <button className="textlink" style={{ marginTop: 4 }} disabled={!perm.allowed || busy} onClick={() => void doExportCsv()}>
+          {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')} ›
         </button>
         {/* บอกตรงๆ ว่าทำไมกดไม่ได้ / ไฟล์ที่ได้จะหน้าตายังไง — ไม่ปล่อยให้ปุ่มเทาเฉยๆ
             ทุกครั้งที่กดสำเร็จจะมีแถวใน audit log ว่าใครดึงอะไรออกไปเมื่อไหร่ */}
-        <p style={{ margin: '-2px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+        <p style={{ margin: 0, textAlign: 'center', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
           {!perm.allowed
             ? t('ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกให้บทบาทนี้')
             : perm.identified
@@ -164,15 +160,13 @@ export default function ExportScreen() {
               : t('ไฟล์นี้แสดงรหัสเคสแทนชื่อและ HN · การส่งออกทุกครั้งถูกบันทึกใน audit log')}
         </p>
 
-        <div className="sectiontitle" style={{ padding: '8px 0 6px' }}>
-          <h4>{t('คอลัมน์ใน CSV')}</h4>
-
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 6 }}>
-          {CSV_COLUMNS.map((c) => (
-            <span key={c} className="qchip mono" style={{ cursor: 'default' }}>{c}</span>
-          ))}
-        </div>
+        <details className="colsfold">
+          <summary>
+            <span className="homelabel" style={{ margin: 0 }}>{t('คอลัมน์ใน CSV')}</span>
+            <span>{t('{n} คอลัมน์', { n: CSV_COLUMNS.length })} ▾</span>
+          </summary>
+          <div className="card colsfold__body">{CSV_COLUMNS.join(' · ')}</div>
+        </details>
       </div>
     </PlainShell>
   );

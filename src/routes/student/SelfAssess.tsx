@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, CaretLeft, CheckCircle, Lock, PaperPlaneTilt, Printer } from '@phosphor-icons/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, CaretLeft, Lock, PaperPlaneTilt } from '@phosphor-icons/react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { Empty } from '../../components/ui/Bits';
@@ -258,47 +258,44 @@ export default function SelfAssess() {
           <button className="iconbtn" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}><CaretLeft size={18} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 className="h2">{t('ประเมินตนเอง')}</h1>
-            <p style={{ margin: '2px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
-              {t('ส่งแล้วเมื่อ {d}', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })}
-            </p>
           </div>
         </header>
-        <div style={{ padding: '14px 16px 22px', display: 'grid', gap: 12 }}>
-          <div
-            className="card"
-            style={{ padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'center', background: 'var(--success-tint)', borderColor: '#CDEEDF' }}
-          >
-            <CheckCircle size={20} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
-            <span style={{ font: '500 12.5px/1.5 var(--font-body)', color: 'var(--success-dark)' }}>
-              {t('ส่งเรียบร้อย แก้ไม่ได้แล้ว — ถ้าต้องแก้ให้บอกอาจารย์ที่ปรึกษา')}
+        {/* กล่องเขียว + ปุ่มพิมพ์ → บรรทัดเดียว · ข้อคะแนนชิดขวาในแถว (ผู้ใช้เลือก mock 14 ก.ย. 69) */}
+        <div className="newform" style={{ paddingBottom: 22 }}>
+          <div className="sadone">
+            <span className="dot" style={{ width: 10, height: 10, background: 'var(--success)' }} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {t('ส่งแล้ว {d} · แก้ไม่ได้', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })}
+              <small>{t('ต้องแก้ ให้บอกอาจารย์ที่ปรึกษา')}</small>
             </span>
+            {/* ปริ้นท์ไปให้อาจารย์เซ็นแล้วเก็บเข้าแฟ้ม — ฟอร์ม Word เดิมทำแบบนี้ */}
+            <Link to="/app/self-assessment/print" className="inlinelink" style={{ textDecoration: 'none' }}>{t('พิมพ์')} ›</Link>
           </div>
 
-          {/* ปริ้นท์ไปให้อาจารย์เซ็นแล้วเก็บเข้าแฟ้ม — ฟอร์ม Word เดิมทำแบบนี้ */}
-          <Link
-            to="/app/self-assessment/print"
-            className="btn btn--sec"
-            style={{ height: 44, textDecoration: 'none' }}
-          >
-            <Printer size={16} weight="fill" /> {t('พิมพ์')}
-          </Link>
-
           {sections.map((s) => (
-            <div key={s.key} className="card" style={{ padding: '12px 14px' }}>
-              <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 8 }}>{saSectionLabel(s)}</div>
-              <div style={{ display: 'grid', gap: 7 }}>
-                {s.questions.map((q) => (
-                  <div key={q.key} style={{ display: 'grid', gap: 2 }}>
-                    <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                      {saLabel(q)}{q.col ? ` · ${saColLabel(q.col)}` : ''}
-                    </span>
-                    <span style={{ font: '400 11.5px/1.6 var(--font-body)', color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
-                      {readable(q, answers[q.key], answers) || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
-                    </span>
-                  </div>
-                ))}
+            <Fragment key={s.key}>
+              <div className="homelabel">{saSectionLabel(s)}</div>
+              <div className="card formcard">
+                {s.questions.map((q) => {
+                  const value = readable(q, answers[q.key], answers);
+                  const label = `${saLabel(q)}${q.col ? ` · ${saColLabel(q.col)}` : ''}`;
+                  const short = q.kind === 'scale' || q.kind === 'level' || q.kind === 'yesno';
+                  return short ? (
+                    <div key={q.key} className="formrow">
+                      <span className="formrow__main" style={{ font: '400 13.5px/1.5 var(--font-body)', color: 'var(--text-secondary)' }}>{label}</span>
+                      <b className="sascore">{value || <span className="faint">{t('ไม่ได้ตอบ')}</span>}</b>
+                    </div>
+                  ) : (
+                    <div key={q.key} className="formrow formrow--stack" style={{ gap: 2 }}>
+                      <span className="formrow__sub">{label}</span>
+                      <span style={{ font: '400 14px/1.6 var(--font-body)', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+                        {value || <span className="faint">{t('ไม่ได้ตอบ')}</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            </Fragment>
           ))}
         </div>
       </PlainShell>

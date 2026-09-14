@@ -4,7 +4,7 @@
  * ขั้นตอน: เลือกนักศึกษา → วางไฟล์ CSV (export จากแท็บ PTn) → ดูรายงานตรวจสอบ → ยืนยันนำเข้า
  * ปรัชญา: ไม่เดามั่ว แถวที่อ่านไม่ออกจะขึ้นรายงานพร้อมเหตุผล ให้คนตัดสินเอง
  */
-import { CheckCircle, FileArrowUp, UploadSimple, WarningCircle } from '@phosphor-icons/react';
+import { CheckCircle, UploadSimple, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../../data/db';
 import { useAllStudents } from '../../hooks/data';
@@ -25,6 +25,7 @@ export function ImportSheetBody() {
      งานนี้แก้ "ข้อมูลงาน" ไม่ใช่ "สิทธิ์เข้าถึง" จึงเปิดให้อาจารย์ทุกคนได้ */
   void cloudUser;
 
+  const [mode, setMode] = useState<'cohort' | 'one'>('cohort');
   const [studentId, setStudentId] = useState('');
   const [csv, setCsv] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -100,64 +101,83 @@ export function ImportSheetBody() {
 
   const rep = result?.report;
 
+  /* การ์ดเดียว สลับ "ทั้งรุ่น / ทีละคน" · ขั้นตอนเป็นแถวเลข 1-2-3 (ผู้ใช้เลือก mock 14 ก.ย. 69)
+     เดิมสองแบบโชว์พร้อมกันสามการ์ด งงว่าต้องทำอันไหน */
   return (
     <>
-      <p className="sub" style={{ margin: '0 0 14px' }}>
-        {t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ — ทีละคน ดูรายงานก่อนยืนยันทุกครั้ง')}
-      </p>
-
-      <WholeCohortImport />
-
-        <div className="panel" style={{ marginBottom: 16 }}>
-          <h3>{t('① เลือกนักศึกษาเจ้าของงาน')}</h3>
-          <select
-            className="input"
-            style={{ maxWidth: 380, marginTop: 10 }}
-            value={studentId}
-            onChange={(e) => { setStudentId(e.target.value); preview(csv, e.target.value); }}
-          >
-            <option value="">{t('— เลือก —')}</option>
-            {sorted.map((s) => (
-              <option key={s.id} value={s.id}>{s.code} · {s.name} · {groupShort(s.group)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="panel" style={{ marginBottom: 16 }}>
-          <h3>{t('② วางไฟล์ CSV จากชีต')}</h3>
-          <p className="sub">{t('ในชีต: File → Download → Comma-separated values (.csv) แล้วลากไฟล์มาวางที่นี่')}</p>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              disabled={!studentId}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }}
-              style={{ font: '400 12px var(--font-body)' }}
-            />
-            <span className="faint" style={{ font: '400 11px var(--font-body)' }}>
-              {t('หรือวางข้อความ CSV ในช่องด้านล่างก็ได้')}
-            </span>
+      <div className="panel setcard" style={{ marginBottom: 16 }}>
+        <div className="setcard__head" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <h3 style={{ flex: 1 }}>{t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ')}</h3>
+          <div className="seg seg--sm seg--tight" role="tablist">
+            <button role="tab" aria-selected={mode === 'cohort'} data-on={mode === 'cohort'} onClick={() => setMode('cohort')}>{t('ทั้งรุ่น')}</button>
+            <button role="tab" aria-selected={mode === 'one'} data-on={mode === 'one'} onClick={() => setMode('one')}>{t('ทีละคน')}</button>
           </div>
-          {readError && (
-            <p style={{ margin: '10px 0 0', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--danger-dark)', background: 'var(--danger-tint)', borderRadius: 10, padding: '9px 12px' }}>
-              {readError}
-            </p>
-          )}
-          <textarea
-            className="input"
-            style={{ minHeight: 90, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11 }}
-            placeholder={t('วางเนื้อหา CSV ที่นี่…')}
-            disabled={!studentId}
-            value={csv}
-            onChange={(e) => preview(e.target.value, studentId)}
-          />
         </div>
 
-        {rep && (
+        {mode === 'cohort' && <WholeCohortImport />}
+
+        {mode === 'one' && (<>
+          <div className="setrow setrow--wrap stepline">
+            <span className="stepn">1</span>
+            <span className="setrow__main"><b>{t('เลือกนักศึกษาเจ้าของงาน')}</b></span>
+            <select
+              className="input"
+              style={{ maxWidth: 380, flex: '1 1 260px' }}
+              value={studentId}
+              onChange={(e) => { setStudentId(e.target.value); preview(csv, e.target.value); }}
+            >
+              <option value="">{t('— เลือก —')}</option>
+              {sorted.map((s) => (
+                <option key={s.id} value={s.id}>{s.code} · {s.name} · {groupShort(s.group)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="setrow setrow--wrap stepline" data-off={!studentId}>
+            <span className="stepn">2</span>
+            <span className="setrow__main">
+              <b>{t('วางไฟล์ CSV จากชีต')}</b>
+              <span className="setrow__hint">{t('ในชีต: File → Download → Comma-separated values (.csv) · หรือวางข้อความ CSV ในช่องด้านล่าง')}</span>
+            </span>
+            <label className="filebtn" data-disabled={!studentId}>
+              <input
+                ref={fileRef}
+                className="sronly"
+                type="file"
+                accept=".csv,text/csv"
+                disabled={!studentId}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }}
+              />
+              {t('เลือกไฟล์ CSV')}
+            </label>
+            {readError && (
+              <p style={{ flexBasis: '100%', margin: 0, font: '500 12px/1.6 var(--font-body)', color: 'var(--danger-dark)' }}>
+                {readError}
+              </p>
+            )}
+            <textarea
+              className="input"
+              style={{ flexBasis: '100%', minHeight: 80, fontFamily: 'var(--font-mono)', fontSize: 12 }}
+              placeholder={t('วางเนื้อหา CSV ที่นี่…')}
+              disabled={!studentId}
+              value={csv}
+              onChange={(e) => preview(e.target.value, studentId)}
+            />
+          </div>
+
+          {!rep && (
+            <div className="setrow stepline" data-off>
+              <span className="stepn">3</span>
+              <span className="setrow__main"><b>{t('ดูรายงาน แล้วยืนยันนำเข้า')}</b><span className="setrow__hint">{t('ขึ้นหลังวางไฟล์')}</span></span>
+            </div>
+          )}
+        </>)}
+      </div>
+
+        {mode === 'one' && rep && (
           <>
             <div className="panel" style={{ marginBottom: 16 }}>
-              <h3>{t('③ รายงานตรวจสอบ')}</h3>
+              <h3>{t('3 · รายงานตรวจสอบ')}</h3>
               <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, 1fr)', margin: '12px 0 0' }}>
                 <div className="kpi">
                   <div className="kpi__label"><CheckCircle size={14} /> {t('นำเข้าได้')}</div>
@@ -208,7 +228,7 @@ export function ImportSheetBody() {
             </div>
 
             <div className="panel">
-              <h3>{t('④ ตรวจก่อนยืนยัน')} · {result!.workpieces.length} {t('ชิ้นงาน')}</h3>
+              <h3>{t('4 · ตรวจก่อนยืนยัน')} · {result!.workpieces.length} {t('ชิ้นงาน')}</h3>
               <p className="sub">{t('อ่านทานสักรอบว่าแปลงถูก โดยเฉพาะ step ที่ผ่านและวันรับเคส')}</p>
               <div className="tblwrap" style={{ overflowX: 'auto', maxHeight: 360, overflowY: 'auto' }}>
                 <table className="tbl">
@@ -258,7 +278,6 @@ export function ImportSheetBody() {
                   : t('ยืนยันนำเข้า {n} ชิ้นงาน', { n: result!.workpieces.length })}
               </button>
               <p style={{ margin: '8px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-                <FileArrowUp size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
                 {dupes > 0
                   ? t('นำเข้าซ้ำได้ไม่เกิดข้อมูลซ้ำ — {n} ชิ้นที่เคยนำเข้าจะถูกเขียนทับด้วยค่าจากไฟล์นี้', { n: dupes })
                   : t('นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าไฟล์เดิมซ้ำจะทับของเดิม ไม่เพิ่มซ้ำ')}
@@ -432,97 +451,123 @@ function WholeCohortImport() {
     }
   }
 
+  const pulled = groups.length > 0;
   return (
-    <div className="panel" style={{ marginBottom: 16, border: '1.5px solid var(--accent)' }}>
-      <h3>{t('นำเข้าทั้งรุ่นจากชีตจริง (ทีเดียวทุกกลุ่ม)')}</h3>
-      <p className="sub" style={{ margin: '4px 0 10px' }}>
-        {t('วางลิงก์ชีตแล้วกดดึง — หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12)')}<br />
-        <b>{t('🔒 ข้อมูลวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้โดยตรง ไม่ถูกอัปขึ้นเว็บและไม่ออกจากเครื่อง')}</b><br />
-        {t('⚠️ การยืนยันจะแทนที่ข้อมูลของรุ่นนี้ (รุ่นอื่นที่นำเข้าไว้ไม่ถูกแตะ) — ใช้กับเครื่องทดลอง local เท่านั้น')}
-      </p>
+    <>
       {/* ทางที่ง่ายที่สุด: วางลิงก์ชีต — ไม่ต้อง export ไฟล์เอง */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-        <input
-          className="input"
-          style={{ flex: '1 1 320px', height: 40, fontSize: 12.5 }}
-          placeholder={t('วางลิงก์ Google Sheet ของภาคที่นี่')}
-          value={sheetUrl}
-          onChange={(e) => setSheetUrl(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void pullFromSheet(); }}
-        />
-        <button
-          className="btn"
-          style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 12.5, flex: 'none' }}
-          disabled={!!pulling || !sheetUrl.trim()}
-          onClick={() => void pullFromSheet()}
-        >
-          {pulling ?? t('ดึงข้อมูลจากชีต')}
-        </button>
-      </div>
-      {/* แอนิเมชันระหว่างดึง — ดึง 13 แท็บใช้เวลาหลายวินาที ถ้านิ่งสนิทคนจะคิดว่าค้าง */}
-      {pulling && (
-        <div className="pullbar" role="status" aria-live="polite">
-          <div className="pullbar__track"><i style={{ width: `${pullPct}%` }} /></div>
-          <div className="pullbar__row">
-            <span className="pullbar__spin" aria-hidden />
-            <span>{pulling}</span>
-            <span className="mono" style={{ marginLeft: 'auto' }}>{pullPct}%</span>
-          </div>
-        </div>
-      )}
-      {pullError && (
-        <p style={{ margin: '0 0 10px', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>{pullError}</p>
-      )}
-      <p className="sub" style={{ margin: '0 0 8px' }}>{t('หรือเลือกไฟล์ CSV ที่ export ไว้แล้ว')}</p>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".csv,text/csv"
-        multiple
-        onChange={(e) => void onFiles(e.target.files)}
-      />
-      {roster && (
-        <p style={{ margin: '10px 0 0', font: '500 12px var(--font-body)' }}>
-          📋 {t('รายชื่อ')}: {roster.entries.length} {t('คน')}{roster.issues ? ` · ${t('ปัญหา')} ${roster.issues}` : ''}
-        </p>
-      )}
-      {groups.length > 0 && (
-        <>
-          <p style={{ margin: '4px 0 0', font: '500 12px var(--font-body)' }}>
-            🗂 {groups.length} {t('กลุ่ม')} · {totals.students} {t('คน')} · {totals.patients} {t('ผู้ป่วย')} · {totals.works} {t('ชิ้นงาน')}
-            {totals.unmatched ? ` · ⚠️ ${t('จับคู่ไม่ได้')} ${totals.unmatched}` : ''}
-            {totals.issues ? ` · ${t('ติดธงให้ตรวจ')} ${totals.issues}` : ''}
-          </p>
-          {totals.works > 0 && countingWorks === 0 && (
-            <p style={{ margin: '6px 0 0', font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
-              {t('⚠️ ชีตนี้ยังไม่ได้กรอกช่อง “Minimum Req / การนับชิ้นงาน” เลยสักแถว — แถบเกณฑ์ขั้นต่ำจะขึ้น 0 ทั้งรุ่น จนกว่าจะกรอกในชีต')}
-            </p>
-          )}
-          {allIssues.length > 0 && (
-            <div style={{ marginTop: 8, maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
-              {allIssues.slice(0, 60).map((x, i) => (
-                <div key={i} style={{ font: '400 10.5px/1.6 var(--font-mono)', color: 'var(--text-muted)' }}>
-                  [{x.g} · {x.code}] {t('แถว')}{x.i.row} {x.i.column}: {x.i.value.slice(0, 28)} → {x.i.problem}
-                </div>
-              ))}
-              {allIssues.length > 60 && <div className="sub">… {allIssues.length - 60} {t('รายการ')}</div>}
-            </div>
-          )}
+      <div className="setrow setrow--wrap stepline">
+        <span className="stepn">1</span>
+        <span className="setrow__main">
+          <b>{t('วางลิงก์ Google Sheet ของภาค')}</b>
+          <span className="setrow__hint">{t('หรือเลือกไฟล์ CSV ที่ export ไว้ (Student list + PT1–PT12) เลือกทีเดียวหลายไฟล์ได้')}</span>
+        </span>
+        <div className="stepline__inputs">
+          <input
+            className="input"
+            style={{ flex: '1 1 280px', height: 40, fontSize: 13 }}
+            placeholder="https://docs.google.com/spreadsheets/…"
+            aria-label={t('วางลิงก์ Google Sheet ของภาคที่นี่')}
+            value={sheetUrl}
+            onChange={(e) => setSheetUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void pullFromSheet(); }}
+          />
+          <label className="filebtn">
+            <input
+              ref={fileRef}
+              className="sronly"
+              type="file"
+              accept=".csv,text/csv"
+              multiple
+              onChange={(e) => void onFiles(e.target.files)}
+            />
+            {t('เลือกไฟล์ CSV')}
+          </label>
           <button
             className="btn"
-            style={{ marginTop: 12, height: 46, width: 'auto', padding: '0 18px' }}
+            style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 13, flex: 'none' }}
+            disabled={!!pulling || !sheetUrl.trim()}
+            onClick={() => void pullFromSheet()}
+          >
+            {pulling ?? t('ดึงข้อมูล')}
+          </button>
+        </div>
+        {/* แอนิเมชันระหว่างดึง — ดึง 13 แท็บใช้เวลาหลายวินาที ถ้านิ่งสนิทคนจะคิดว่าค้าง */}
+        {pulling && (
+          <div className="pullbar" role="status" aria-live="polite" style={{ flexBasis: '100%' }}>
+            <div className="pullbar__track"><i style={{ width: `${pullPct}%` }} /></div>
+            <div className="pullbar__row">
+              <span className="pullbar__spin" aria-hidden />
+              <span>{pulling}</span>
+              <span className="mono" style={{ marginLeft: 'auto' }}>{pullPct}%</span>
+            </div>
+          </div>
+        )}
+        {pullError && (
+          <p style={{ flexBasis: '100%', margin: 0, font: '500 12px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>{pullError}</p>
+        )}
+      </div>
+
+      <div className="setrow setrow--wrap stepline" data-off={!pulled}>
+        <span className="stepn">2</span>
+        <span className="setrow__main">
+          <b>{t('ดูรายงานว่าแถวไหนอ่านไม่ออก')}</b>
+          {!pulled && <span className="setrow__hint">{t('ขึ้นหลังดึงข้อมูล')}</span>}
+          {roster && (
+            <span className="setrow__hint" style={{ color: 'var(--text-secondary)' }}>
+              {t('รายชื่อ')}: {roster.entries.length} {t('คน')}{roster.issues ? ` · ${t('ปัญหา')} ${roster.issues}` : ''}
+            </span>
+          )}
+          {pulled && (
+            <span className="setrow__hint" style={{ color: 'var(--text-secondary)' }}>
+              {groups.length} {t('กลุ่ม')} · {totals.students} {t('คน')} · {totals.patients} {t('ผู้ป่วย')} · {totals.works} {t('ชิ้นงาน')}
+              {totals.unmatched ? <span style={{ color: 'var(--warning-dark)' }}> · {t('จับคู่ไม่ได้')} {totals.unmatched}</span> : ''}
+              {totals.issues ? <span style={{ color: 'var(--warning-dark)' }}> · {t('ติดธงให้ตรวจ')} {totals.issues}</span> : ''}
+            </span>
+          )}
+        </span>
+        {/* ชีตปี 5 ปีนี้ยังไม่ได้กรอกช่อง Minimum Req — ถ้าไม่เตือน อาจารย์จะเห็นแถบเกณฑ์ 0 ทั้งรุ่นแล้วนึกว่าแอปพัง */}
+        {pulled && totals.works > 0 && countingWorks === 0 && (
+          <p style={{ flexBasis: '100%', margin: 0, font: '500 12px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+            {t('⚠️ ชีตนี้ยังไม่ได้กรอกช่อง “Minimum Req / การนับชิ้นงาน” เลยสักแถว — แถบเกณฑ์ขั้นต่ำจะขึ้น 0 ทั้งรุ่น จนกว่าจะกรอกในชีต')}
+          </p>
+        )}
+        {allIssues.length > 0 && (
+          <div style={{ flexBasis: '100%', maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
+            {allIssues.slice(0, 60).map((x, i) => (
+              <div key={i} style={{ font: '400 11px/1.6 var(--font-mono)', color: 'var(--text-muted)' }}>
+                [{x.g} · {x.code}] {t('แถว')}{x.i.row} {x.i.column}: {x.i.value.slice(0, 28)} → {x.i.problem}
+              </div>
+            ))}
+            {allIssues.length > 60 && <div className="sub">… {allIssues.length - 60} {t('รายการ')}</div>}
+          </div>
+        )}
+      </div>
+
+      <div className="setrow setrow--wrap stepline" data-off={!pulled}>
+        <span className="stepn">3</span>
+        <span className="setrow__main">
+          <b>{t('ยืนยันนำเข้า')}</b>
+          {pulled && !roster?.entries.length && (
+            <span className="setrow__hint" style={{ color: 'var(--warning-dark)' }}>{t('ต้องมีไฟล์ Student list ด้วย — ใช้จับคู่รหัสนักศึกษา')}</span>
+          )}
+          {done && <span className="setrow__hint" style={{ color: 'var(--success-dark)', fontWeight: 600 }}>✓ {done}</span>}
+        </span>
+        {pulled && (
+          <button
+            className="btn"
+            style={{ height: 42, width: 'auto', padding: '0 18px' }}
             disabled={busy || !roster?.entries.length}
             onClick={confirmAll}
           >
             {busy && <span className="pullbar__spin pullbar__spin--onbtn" aria-hidden />}
             {busy ? t('กำลังบันทึกลงเครื่อง…') : t('ยืนยัน — ล้างเดโมแล้วนำเข้ารุ่นจริงทั้งหมด')}
           </button>
-          {!roster?.entries.length && (
-            <p className="sub" style={{ marginTop: 6 }}>{t('ต้องมีไฟล์ Student list ด้วย — ใช้จับคู่รหัสนักศึกษา')}</p>
-          )}
-        </>
-      )}
-      {done && <p style={{ margin: '10px 0 0', font: '600 12px var(--font-body)', color: 'var(--success-dark)' }}>✓ {done}</p>}
-    </div>
+        )}
+      </div>
+
+      <p className="setcard__warn">
+        {t('⚠ ยืนยันแล้วแทนที่ข้อมูลของรุ่นนี้ (รุ่นอื่นไม่ถูกแตะ) — ใช้กับเครื่องทดลอง local เท่านั้น · ข้อมูลวิ่งจากชีตเข้าเบราว์เซอร์เครื่องนี้โดยตรง ไม่ถูกอัปขึ้นเว็บและไม่ออกจากเครื่อง')}
+      </p>
+    </>
   );
 }

@@ -12,7 +12,7 @@
  */
 import {
   cohortPercent, cohortRequirement, cohortYearly, countByType,
-  staleRows, summarizeAll, summarizeGroups, summarizeStudent,
+  staleRows, summarizeAll, summarizeGroups, summarizeStudent, alumniOverview,
 } from '../src/domain/aggregate.ts';
 import { procList } from '../src/domain/rules.ts';
 import { readDefaultSettings } from './test-helpers.mts';
@@ -243,6 +243,19 @@ ok('ไม่มีงาน → ลิสต์ว่าง', countByType([]).l
 }
 ok('cohortPercent ของลิสต์ว่าง = 0 ไม่ใช่ NaN', cohortPercent([]) === 0);
 ok('cohortPercent ของงานที่จบหมด = 100', cohortPercent([finished('CD'), finished('RRM')]) === 100);
+
+/* ── 7. alumniOverview ──────────────────────────────────────────────────── */
+console.log('\nalumniOverview');
+{
+  const works = [...fullSet('a'), wp('CD', { studentId: 'b' }), wp('RPD', { studentId: 'b', returned: true } as Partial<Workpiece>)];
+  const sums = summarizeAll([student({ id: 'a' }), student({ id: 'b' })], works, S);
+  const o = alumniOverview(sums, works);
+  ok('ชิ้นที่จบ = 8 (ชุดครบเกณฑ์ของ a)', o.done === 8, String(o.done));
+  ok('งานที่ยังไม่จบไม่นับเคสที่คืนแล้ว', o.unfinished === 1, String(o.unfinished));
+  ok('ครบเกณฑ์สะสม 1 คน (a) · b ไม่ครบ', o.reqComplete === 1, String(o.reqComplete));
+  ok('ทั้งหมด = 10 ชิ้น', o.total === 10, String(o.total));
+  ok('ลิสต์ว่างไม่พัง', alumniOverview([], []).students === 0);
+}
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(bad ? 1 : 0);
