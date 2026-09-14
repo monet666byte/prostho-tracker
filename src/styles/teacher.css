@@ -1136,3 +1136,14 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 }
 @media (hover: hover) { .chipbtn:hover { background: var(--fill); } }
 .chipbtn[data-on='true'] { background: var(--accent-tint); border-color: var(--accent-ring); color: var(--accent-hover); }
+
+/* ปุ่มติ๊กผ่านทั้งกลุ่มใต้หัวคอลัมน์การสอบ (ผู้ใช้ขอ 14 ก.ย. 69) — กดสองจังหวะ */
+.bulkpass {
+  display: inline-flex; align-items: center; margin-top: 6px; padding: 4px 10px; border-radius: 99px;
+  border: 1px solid var(--border-2); background: var(--surface); color: var(--text-secondary);
+  font: 600 11px var(--font-body); cursor: pointer; white-space: nowrap;
+}
+.bulkpass:disabled { opacity: .5; cursor: default; }
+.bulkpass--go { background: var(--success); border-color: var(--success); color: #fff; }
+.bulkpass--done { border-color: transparent; background: var(--success-tint); color: var(--success-dark); cursor: default; }
+@media (hover: hover) { .bulkpass:not(:disabled):not(.bulkpass--done):not(.bulkpass--go):hover { background: var(--fill); } .bulkpass--go:not(:disabled):hover { background: var(--success-dark); } }

@@ -1,4 +1,4 @@
-import { CaretRight, LinkSimple, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
+import { LinkSimple, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
@@ -6,7 +6,7 @@ import { Shell } from '../../components/student/Shell';
 import { usePending, useWorkpieces } from '../../hooks/data';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned } from '../../domain/rules';
+import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned, isActiveWork } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -53,12 +53,6 @@ function MiniRow({
       )}
     </Link>
   );
-}
-
-/** ตัวย่อบน avatar — ใช้อักษรแรกของคำสุดท้าย ("ผู้ป่วย A" → "A") */
-function initial(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return (parts[parts.length - 1] ?? name).charAt(0);
 }
 
 function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | null; onCancel: () => void; onConfirm: () => void }) {
@@ -155,8 +149,19 @@ export default function Patients() {
         </div>
       </header>
 
-      <div style={{ paddingTop: 14 }}>
-        {[...byPatient.entries()].map(([pid, list]) => {
+      {/* หน้าคนไข้แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย.): แบ่งกำลังทำ / จบแล้ว ·
+          ไม่มีกล่องชิ้นงานซ้อนในการ์ด · ตัดตัวอักษรย่อ · "+ เพิ่มสถานะ" โผล่เฉพาะโหมดแก้ไข */}
+      <div style={{ paddingTop: 6 }}>
+        {(['active', 'done'] as const).map((section) => {
+          const entries = [...byPatient.entries()].filter(([, list]) => list.some(isActiveWork) === (section === 'active'));
+          if (entries.length === 0) return null;
+          return (
+          <div key={section}>
+          <div className="homelabel" style={{ margin: '14px 20px 8px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>{section === 'active' ? t('กำลังทำ') : t('จบแล้ว / คืนเคส')}</span>
+            <span className="mono" style={{ fontSize: 12 }}>{entries.length}</span>
+          </div>
+        {entries.map(([pid, list]) => {
           const patient = list[0].patient;
           // แยกคู่ upper/lower ออกจากชิ้นเดี่ยว
           const pairs = new Map<string, WorkpieceView[]>();
@@ -172,31 +177,29 @@ export default function Patients() {
           return (
             <section key={pid} className="rowcard">
               <div className="rowcard__head">
-                <span className="avatar">{initial(t(patient.name))}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', font: '600 14px var(--font-head)' }}>{t(patient.name)}</span>
-                  <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>
-                    HN {patient.hn} · {tSexAge(patient.sexAge)}
+                  <span style={{ display: 'block', font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
+                    <b className="herocase__hn">HN {patient.hn}</b> · {tSexAge(patient.sexAge)}
                   </span>
+                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{t(patient.name)}</span>
                   {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย (ผู้ใช้ขอ 2 ก.ย.) */}
-                  {noteEdit?.id !== patient.id && (
+                  {noteEdit?.id !== patient.id && (patient.note || editing) && (
                     <button
                       onClick={() => setNoteEdit({ id: patient.id, text: patient.note ?? '' })}
                       style={{ display: 'flex', alignItems: 'center', minHeight: 34, textAlign: 'left', padding: 0, marginTop: 1, background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       {patient.note ? (
-                        <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>
+                        <span style={{ font: '500 12px var(--font-body)', color: 'var(--warning-dark)' }}>
                           📝 {t(patient.note)} <PencilSimpleLine size={11} style={{ verticalAlign: -1.5 }} />
                         </span>
                       ) : (
-                        <span style={{ font: '500 10px var(--font-body)', color: 'var(--text-faint)' }}>
+                        <span style={{ font: '500 12px var(--font-body)', color: 'var(--accent)' }}>
                           + {t('เพิ่มสถานะ (เช่น รอ preprosth · รอถอนฟัน)')}
                         </span>
                       )}
                     </button>
                   )}
                 </span>
-                <CaretRight size={16} color="var(--text-disabled)" />
               </div>
               {noteEdit?.id === patient.id && (
                 <div style={{ display: 'flex', gap: 7, margin: '8px 0 2px' }}>
@@ -255,7 +258,7 @@ export default function Patients() {
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span
                       style={{
-                        display: 'block', font: '500 11.5px var(--font-body)', color: 'var(--text-secondary)',
+                        display: 'block', font: '400 13px var(--font-body)', color: 'var(--text-secondary)',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}
                     >
@@ -264,10 +267,10 @@ export default function Patients() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
                       <Bar
                         value={(Math.max(progression(w), 0) / maxProgression(w)) * 100}
-                        color={typeMeta(w.type).color}
+                        color={progression(w) >= maxProgression(w) ? 'var(--success)' : typeMeta(w.type).color}
                         height={5}
                       />
-                      <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)', flex: 'none' }}>
+                      <span style={{ font: '500 11.5px var(--font-mono)', color: progression(w) >= maxProgression(w) ? 'var(--success-dark)' : 'var(--text-faint)', flex: 'none' }}>
                         {Math.max(progression(w), 0)}/{maxProgression(w)}
                       </span>
                     </span>
@@ -287,6 +290,9 @@ export default function Patients() {
                 </Link>
               ))}
             </section>
+          );
+        })}
+          </div>
           );
         })}
 

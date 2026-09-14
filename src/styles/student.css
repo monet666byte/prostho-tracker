@@ -940,3 +940,36 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) {
   .phone .tabbar, .tabbar__pill, .phone .tabbar a i { transition: none; }
 }
+
+/* ══ หน้าคนไข้แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69) ══
+   การ์ดละคนไข้ ขอบหนาเหมือนการ์ดอื่น · แถวชิ้นงานไม่มีกล่องซ้อน คั่นเส้นบาง · เว้นที่หายใจเยอะขึ้น */
+.phone .rowcard {
+  border: 2px solid var(--border-2); border-bottom-width: 4px; box-shadow: none;
+  margin: 0 16px 14px;
+}
+.phone .rowcard__head { padding: 16px 16px 10px; }
+.phone .singlerow, .phone .pairbox {
+  margin: 0; border-radius: 0; background: transparent; border: 0;
+  border-top: 1px solid var(--border); padding: 12px 16px 14px; gap: 10px;
+}
+.phone .pairbox::before { display: none; }
+.phone .pairrow { padding: 8px 0; }
+.phone .rowcard .badge { padding: 4px 8px; border-radius: 7px; font-size: 11.5px; }
+
+/* ══ หน้าเกณฑ์แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69) ══ */
+.critlabel { display: flex; justify-content: space-between; margin: 12px 4px -2px; }
+.critlabel .mono { font-size: 12px; }
+.critgroup { padding: 0; overflow: hidden; }
+.critrow { padding: 15px 16px; }
+.critrow + .critrow { border-top: 1px solid var(--border); }
+.critrow__h { display: flex; align-items: center; gap: 10px; }
+.critrow__h b { flex: 1; min-width: 0; font: 600 14px var(--font-head); }
+.critrow__v { font: 600 13px var(--font-mono); color: var(--text-secondary); flex: none; }
+.critsegs { display: grid; gap: 4px; margin-top: 11px; }
+.critsegs i { height: 8px; border-radius: 99px; background: var(--track); }
+.critrow__note { margin-top: 9px; font: 500 12px/1.5 var(--font-body); }
+.critgate { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font: 400 13.5px var(--font-body); }
+.critgate + .critgate { border-top: 1px solid var(--border); }
+.critgate span:first-child { flex: 1; min-width: 0; }
+.critgate span:last-child { font-size: 12.5px; flex: none; }
+.critfoot { margin: 6px 6px 0; font: 400 11.5px/1.7 var(--font-body); color: var(--text-faint); }

@@ -63,6 +63,23 @@ export default function Exams() {
 
   const done = (key: GateKey) => roster.filter((s) => s.gates?.[key] === true).length;
 
+  /* ติ๊กผ่านทั้งกลุ่ม (ผู้ใช้ขอ 14 ก.ย. 69) — ส่วนใหญ่ผ่าน อาจารย์เลยไม่ต้องกดทีละคน
+     กดสองจังหวะ: ปุ่มแรกเปลี่ยนเป็น "ยืนยัน n คน" กันกดพลาด · แตะเฉพาะคนที่ยังไม่ผ่าน
+     (คนที่ติ๊กผ่านไว้แล้วไม่ถูกเขียนซ้ำ = audit ไม่มีแถวซ้ำ) · คนที่ไม่ผ่านค่อยกดเอาออกทีละคน
+     เขียนทีละคนผ่าน setStudentGate ตัวเดิม → audit แยกรายคนเหมือนกดเอง */
+  const [askAll, setAskAll] = useState<GateKey | null>(null);
+  async function passAll(key: GateKey) {
+    if (saving.current) return;
+    const targets = roster.filter((s) => s.gates?.[key] !== true);
+    if (targets.length === 0) { setAskAll(null); return; }
+    saving.current = true;
+    setBusy(`all:${key}`);
+    try {
+      for (const st of targets) await setStudentGate(st.id, key, true, currentActor());
+      showToast({ message: t('{exam} ผ่านแล้ว {n} คน — ถ้ามีคนไม่ผ่าน กดที่ช่องของคนนั้นเพื่อเอาออก', { exam: examName(key), n: targets.length }), tone: 'success' });
+    } finally { saving.current = false; setBusy(null); setAskAll(null); }
+  }
+
   return (
     <TeacherShell active="exams">
       <main className="main">
@@ -97,6 +114,25 @@ export default function Exams() {
                           {GATE_LABELS[k]}
                         </span>
                       )}
+                      {roster.length > 0 && (() => {
+                        const left = roster.length - done(k);
+                        if (left === 0) {
+                          return <span className="bulkpass bulkpass--done">{t('ผ่านครบทุกคน')}</span>;
+                        }
+                        return askAll === k ? (
+                          <span style={{ display: 'inline-flex', gap: 6, marginTop: 6 }}>
+                            <button className="bulkpass bulkpass--go" disabled={busy !== null} onClick={() => void passAll(k)}>
+                              {t('ยืนยันผ่าน {n} คน', { n: left })}
+                            </button>
+                            <button className="bulkpass" disabled={busy !== null} onClick={() => setAskAll(null)}>{t('ยกเลิก')}</button>
+                          </span>
+                        ) : (
+                          <button className="bulkpass" disabled={busy !== null} onClick={() => setAskAll(k)}>
+                            <CheckCircle size={14} weight="bold" style={{ verticalAlign: -2, marginRight: 4 }} />
+                            {t('ติ๊กผ่านทั้งกลุ่ม')}
+                          </button>
+                        );
+                      })()}
                     </th>
                   ))}
                 </tr>

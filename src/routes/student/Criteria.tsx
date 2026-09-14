@@ -1,6 +1,5 @@
-import { CalendarCheck, HourglassMedium, SealCheck, WarningCircle } from '@phosphor-icons/react';
+import { SealCheck } from '@phosphor-icons/react';
 import { Shell } from '../../components/student/Shell';
-import { TYPES } from '../../domain/catalog';
 import { caseCount, caseCountTotals, gateRows, yearlyRows } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { t } from '../../lib/i18n';
@@ -46,132 +45,89 @@ export default function Criteria() {
         </span>
       </header>
 
-      <div style={{ padding: '14px 16px 0', display: 'grid', gap: 11 }}>
-        {/* เกณฑ์รายปีขึ้นก่อน — เป้าที่ต้องจัดการปีนี้ ใกล้ตัวกว่าเกณฑ์สะสม 2 ปี */}
-        <article className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarCheck size={16} color="var(--accent)" />
-            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('เกณฑ์รายปี')}</span>
-            <span className="chip" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }}>
-              {t('ปีละ {n} ชิ้น', { n: settings.req.perYear })}
-            </span>
-          </div>
-          <p style={{ margin: '5px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            {t('แยกจากเกณฑ์สะสม — ทุกปีการศึกษาต้องจบเคสอย่างน้อย {n} ชิ้นงาน', { n: settings.req.perYear })}
-            {settings.perYearCountsAllTypes ? t(' (นับทุกประเภท)') : t(' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)')}
-          </p>
-
-          <div style={{ display: 'grid', gap: 9, marginTop: 12 }}>
-            {years.map((y) => (
-              <div key={y.year}>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                  <span className="mono" style={{ flex: 1, font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)' }}>
-                    {t('ปีการศึกษา')} {y.year}
-                  </span>
-                  <span style={{ font: '700 12px var(--font-mono)', color: y.complete ? 'var(--success)' : 'var(--warning)' }}>
-                    {y.done} / {y.required}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 5 }}>
-                  {Array.from({ length: y.required }, (_, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        flex: 1, height: 10, borderRadius: 4,
-                        background: i < y.done ? 'var(--accent)' : 'var(--track)',
-                        transition: 'background .4s ease',
-                      }}
-                    />
-                  ))}
-                </div>
+      {/* หน้าเกณฑ์แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69)
+          หัวข้อเล็กสามกลุ่ม · แต่ละกลุ่มเป็นการ์ดใบเดียวคั่นเส้น (เดิมประเภทงานละใบ)
+          ตัดบรรทัด "เหลืออีก n ชิ้น" (อ่านจาก x/y กับช่องว่างในแถบได้) · กล่องม่วง Post-core เป็นบรรทัดเล็ก
+          คำอธิบายยาวรวมเป็นหมายเหตุท้ายหน้า · เกณฑ์รายปียังขึ้นก่อน (ผู้ใช้ขอคงลำดับเดิม) */}
+      <div style={{ padding: '6px 16px 0', display: 'grid', gap: 10 }}>
+        <div className="homelabel critlabel">
+          <span>{t('เกณฑ์รายปี')} · {t('ปีละ {n} ชิ้น', { n: settings.req.perYear })}</span>
+        </div>
+        <article className="card critgroup" style={{ borderBottomWidth: 2 }}>
+          {years.map((y) => (
+            <div key={y.year} className="critrow">
+              <div className="critrow__h">
+                <b>{t('ปีการศึกษา')} {y.year}</b>
+                <span className="critrow__v" style={{ color: y.complete ? 'var(--success-dark)' : 'var(--warning)' }}>{y.done}/{y.required}</span>
               </div>
-            ))}
-          </div>
+              <Segs n={y.required} done={y.done} color="var(--accent)" />
+            </div>
+          ))}
         </article>
 
-        {rows.map((r) => (
-          <article key={r.group} className="card" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 99, background: r.color, flex: 'none' }} />
-              <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t(r.label)}</span>
-              <span style={{ font: '700 14px var(--font-mono)', color: r.complete ? 'var(--success)' : 'var(--text-secondary)' }}>
-                {r.done} / {r.required}
-              </span>
+        <div className="homelabel critlabel">
+          <span>{t('เกณฑ์สะสม')} · {t('ปี 5–6')}</span>
+          <span className="mono">{totals.done}/{totals.required}</span>
+        </div>
+        <article className="card critgroup" style={{ borderBottomWidth: 2 }}>
+          {rows.map((r) => (
+            <div key={r.group} className="critrow">
+              <div className="critrow__h">
+                <span className="dot" style={{ background: r.color }} />
+                <b>{t(r.label)}</b>
+                <span className="critrow__v" style={{ color: r.complete ? 'var(--success-dark)' : undefined }}>
+                  {r.complete && <SealCheck size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />}
+                  {r.done}/{r.required}
+                </span>
+              </div>
+              <Segs n={r.required} done={r.done} color={r.color} />
+              {/* Crown/Bridge มีเงื่อนไขซ้อน: ในโควตานี้ต้องเป็น Post-core อย่างน้อย N ชิ้น */}
+              {r.postCoreRequired !== undefined && (
+                <div className="critrow__note" style={{ color: r.postCoreComplete ? 'var(--success-dark)' : 'var(--self)' }}>
+                  {t('ต้องมี {f} อย่างน้อย {n} ชิ้น · ตอนนี้ {a}/{n}', { f: 'Post-core', n: r.postCoreRequired, a: r.postCoreDone ?? 0 })}
+                </div>
+              )}
             </div>
+          ))}
+        </article>
 
-            <div style={{ display: 'flex', gap: 5, marginTop: 11 }}>
-              {Array.from({ length: r.required }, (_, i) => (
-                <span
-                  key={i}
-                  style={{
-                    flex: 1, height: 10, borderRadius: 4,
-                    background: i < r.done ? r.color : 'var(--track)',
-                    transition: 'background .4s ease',
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Crown/Bridge มีเงื่อนไขซ้อน: ในโควตานี้ต้องเป็น Post-core อย่างน้อย N ชิ้น */}
-            {r.postCoreRequired !== undefined && (
-              <div
+        <div className="homelabel critlabel">
+          <span>{t('ข้อกำหนดก่อนจบ')}</span>
+          <span className="mono">{gates.filter((g) => g.value === true).length}/{gates.length}</span>
+        </div>
+        <article className="card critgroup" style={{ borderBottomWidth: 2 }}>
+          {gates.map((g) => (
+            <div key={g.key} className="critgate">
+              <span>{g.label}</span>
+              <span
                 style={{
-                  marginTop: 10, borderRadius: 10, padding: '9px 11px',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  background: r.postCoreComplete ? 'var(--success-tint)' : 'var(--self-tint)',
-                  color: r.postCoreComplete ? 'var(--success-dark)' : 'var(--self)',
-                  font: '500 11px/1.45 var(--font-body)',
+                  color: g.value === true ? 'var(--success-dark)' : g.value === false ? 'var(--danger)' : 'var(--text-faint)',
+                  fontWeight: g.value === undefined ? 400 : 600,
                 }}
               >
-                <span style={{ display: 'grid', flex: 'none' }}>
-                  {r.postCoreComplete ? <SealCheck size={14} weight="fill" /> : <WarningCircle size={14} weight="fill" />}
-                </span>
-                {t('ในจำนวนนี้ต้องเป็น {f} อย่างน้อย {n} ชิ้น — ตอนนี้ {a}/{n}', { f: TYPES.PC.full, n: r.postCoreRequired, a: r.postCoreDone ?? 0 })}
-              </div>
-            )}
-
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
-                font: '500 11px var(--font-body)',
-                color: r.complete ? 'var(--success-dark)' : 'var(--text-muted)',
-              }}
-            >
-              {r.complete ? <SealCheck size={14} weight="fill" /> : <HourglassMedium size={14} />}
-              {r.complete ? t('ครบเกณฑ์แล้ว') : t('เหลืออีก {n} ชิ้น', { n: Math.max(0, r.required - r.done) })}
+                {g.value === true ? t('ผ่านแล้ว') : g.value === false ? t('ยังไม่ผ่าน') : t('ยังไม่มีข้อมูล')}
+              </span>
             </div>
-          </article>
-        ))}
-
-        <article className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--text-muted)', flex: 'none' }} />
-            <span style={{ flex: 1, font: '600 13px var(--font-head)' }}>{t('ข้อกำหนดก่อนจบ (ไม่ใช่ชิ้นงาน)')}</span>
-            <span style={{ font: '700 14px var(--font-mono)', color: gates.every((g) => g.value === true) ? 'var(--success)' : 'var(--text-secondary)' }}>
-              {gates.filter((g) => g.value === true).length} / {gates.length}
-            </span>
-          </div>
-          <div style={{ display: 'grid', gap: 7, marginTop: 11 }}>
-            {gates.map((g) => (
-              <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 11.5px var(--font-body)', color: g.value === true ? 'var(--success-dark)' : 'var(--text-secondary)' }}>
-                {g.value === true ? <SealCheck size={15} weight="fill" /> : g.value === false ? <WarningCircle size={15} weight="fill" color="var(--warning)" /> : <HourglassMedium size={15} color="var(--text-faint)" />}
-                <span style={{ flex: 1 }}>{g.label}</span>
-                <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-                  {g.value === true ? t('ผ่านแล้ว') : g.value === false ? t('ยังไม่ผ่าน') : t('ยังไม่มีข้อมูล')}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p style={{ margin: '10px 0 0', font: '400 10.5px/1.55 var(--font-body)', color: 'var(--text-faint)' }}>
-            {gateKnown ? t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ค่าตั้งต้นมาจากชีต') : t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ยังไม่มีข้อมูลในระบบ')}
-          </p>
+          ))}
         </article>
 
-        <p style={{ margin: '2px 2px 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('Simple APD ไม่นับเข้าเกณฑ์ · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี')}
+        <p className="critfoot">
+          {t('เกณฑ์รายปี')}{settings.perYearCountsAllTypes ? t(' (นับทุกประเภท)') : t(' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)')}
+          {' · '}{t('Simple APD ไม่นับเข้าเกณฑ์ · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี')}
+          {' · '}{gateKnown ? t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ค่าตั้งต้นมาจากชีต') : t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ยังไม่มีข้อมูลในระบบ')}
         </p>
-
       </div>
     </Shell>
+  );
+}
+
+/** แถบเป็นช่องตามจำนวนที่ต้องมี — ช่องที่ยังว่างคือจำนวนที่เหลือ (แทนบรรทัด "เหลืออีก n ชิ้น") */
+function Segs({ n, done, color }: { n: number; done: number; color: string }) {
+  return (
+    <div className="critsegs" style={{ gridTemplateColumns: `repeat(${Math.max(1, n)}, 1fr)` }} aria-hidden>
+      {Array.from({ length: n }, (_, i) => (
+        <i key={i} style={{ background: i < done ? color : undefined }} />
+      ))}
+    </div>
   );
 }
