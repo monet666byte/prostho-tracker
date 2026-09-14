@@ -6,7 +6,7 @@ import { useAllStudents, useGroups } from '../../hooks/data';
 import { claimGroup, releaseGroup, setGroupAdvisors } from '../../lib/advisors';
 import { cloudEnabled } from '../../lib/cloud';
 import { academicYear } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 import { currentAdvisorIds, groupShort, sortGroupCodes } from '../../domain/group';
 import type { Teacher } from '../../domain/types';
@@ -97,7 +97,7 @@ export function AdvisorGroupsDialog({ mode, onClose }: { mode: 'prompt' | 'manag
   const rows = useActiveGroupRows();
   const me = useApp((s) => s.session?.teacherId);
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
-  const nameOf = (id: string) => teachers.find((tc) => tc.id === id)?.name ?? id;
+  const nameOf = (id: string) => personName(teachers.find((tc) => tc.id === id)) || id;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const guard = useRef(false);
@@ -203,7 +203,7 @@ export function AdvisorEditor() {
   const showToast = useApp((s) => s.showToast);
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const sorted = useMemo(() => [...teachers].sort((a, b) => a.name.localeCompare(b.name, 'th')), [teachers]);
-  const nameOf = (id: string) => teachers.find((tc) => tc.id === id)?.name ?? id;
+  const nameOf = (id: string) => personName(teachers.find((tc) => tc.id === id)) || id;
   const [draft, setDraft] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +257,7 @@ export function AdvisorEditor() {
                         aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)} ${t('เพิ่มที่ปรึกษา')}`}
                         onChange={(e) => { if (e.target.value) edit(r, [...ids, e.target.value]); }}>
                         <option value="">{t('+ เพิ่มอาจารย์')}</option>
-                        {addable.map((tc) => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
+                        {addable.map((tc) => <option key={tc.id} value={tc.id}>{personName(tc)}</option>)}
                       </select>
                     )}
                   </span>

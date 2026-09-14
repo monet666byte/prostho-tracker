@@ -13,7 +13,7 @@ import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/da
 import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
-import { t, tText } from '../../lib/i18n';
+import { personName, t, tText } from '../../lib/i18n';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -115,7 +115,7 @@ export default function Dashboard() {
   const shownStudents = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return selected?.students ?? [];
-    return summaries.filter((s) => `${s.student.name} ${s.student.code}`.toLowerCase().includes(q));
+    return summaries.filter((s) => `${s.student.name} ${s.student.nameEn ?? ''} ${s.student.code}`.toLowerCase().includes(q));
   }, [query, selected, summaries]);
 
   // รุ่นที่จบแล้วทั้งหมดในระบบ เรียงใหม่→เก่า ใช้ทำปุ่มเลือกรุ่น
@@ -133,7 +133,7 @@ export default function Dashboard() {
   /* ชื่อที่ปรึกษาต่อกลุ่ม — อ่านจาก advisorIds ของนักศึกษาในกลุ่มนั้น */
   const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const advisorsOf = useMemo(() => {
-    const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
+    const byId = new Map(teachersAll.map((tc) => [tc.id, personName(tc)]));
     return (code: string) => {
       const ids = allStudents.find((st) => st.group === code)?.advisorIds ?? [];
       return [...new Set(ids)].map((id) => t(byId.get(id) ?? '')).filter(Boolean).join(' / ');
@@ -361,7 +361,7 @@ export default function Dashboard() {
                         <td>
                           {/* ชื่อบรรทัดบน นามสกุลล่าง + กดแล้วไปหน้าตรวจงานรายคน (ผู้ใช้ขอ 2 ก.ย.) */}
                           {(() => {
-                            const [fn, ln] = splitPersonName(t(s.student.name));
+                            const [fn, ln] = splitPersonName(personName(s.student));
                             return (
                               <button
                                 onClick={() => { setGroup(s.student.group); navigate(`/teacher/review?student=${s.student.id}`); }}
@@ -432,7 +432,7 @@ export default function Dashboard() {
                       return (
                         <tr key={key}>
                           <td style={{ font: '600 11.5px var(--font-body)', width: 90 }}>
-                            {t(r.student.name)}
+                            {personName(r.student)}
                             <span className="mono" style={{ display: 'block', font: '400 9px var(--font-mono)', color: 'var(--text-faint)' }}>
                               {groupShort(r.student.group)}
                             </span>
@@ -454,7 +454,7 @@ export default function Dashboard() {
                                 // ยังไม่มีช่องทางแจ้งเตือนจริง (push/LINE รอ phase 2) — toast ต้องไม่โกหก
                                 // ว่าส่งแล้ว ไม่งั้นอาจารย์เข้าใจผิดว่าเด็กได้รับ (ตระกูลเดียวกับปุ่มส่งรายงานปลอมที่ตัดไป)
                                 setPinged({ ...pinged, [key]: true });
-                                showToast({ message: t('จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ', { n: t(r.student.name) }), tone: 'warning' });
+                                showToast({ message: t('จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ', { n: personName(r.student) }), tone: 'warning' });
                               }}
                             >
                               {/* จอแคบเหลือแต่ไอคอน — วัดจริงบน iPhone แล้วคำว่า "เตือน" ถูกตัดเหลือ "เตือ"

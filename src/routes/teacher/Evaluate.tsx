@@ -11,7 +11,7 @@ import {
   useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, useStepsOnDates, useTeacher,
 } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { patientLabel } from '../../lib/privacy';
 import type { CheckIn } from '../../domain/types';
 import { currentActor, useApp } from '../../store/app';
@@ -328,7 +328,7 @@ export default function Evaluate() {
                       ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
                   <div className="evalcard__info">
                     <div className="evalwho">
-                      <b>{t(student?.name ?? '')}</b>
+                      <b>{personName(student, '')}</b>
                       <span className="mono">{student?.code}</span>
                     </div>
                     <div className="evalline">
@@ -469,7 +469,7 @@ export default function Evaluate() {
                 const locked = st ? isAlumni(st) : false;
                 return (
                 <tr key={c.id}>
-                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(st?.name ?? '')}</td>
+                  <td style={{ font: '600 11.5px var(--font-body)' }}>{personName(st, '')}</td>
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
                   <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}</td>
                   <td>
@@ -528,7 +528,7 @@ export default function Evaluate() {
               aria-label={t('เลือกนักศึกษา')}
             >
               {groupStudents.map((st) => (
-                <option key={st.id} value={st.id}>{`${t(st.name)} · ${st.code}`}</option>
+                <option key={st.id} value={st.id}>{`${personName(st)} · ${st.code}`}</option>
               ))}
             </select>
           </div>
@@ -545,7 +545,7 @@ export default function Evaluate() {
                 <Radar
                   axes={criterionAvg(selectedRows)}
                   reference={groupProfile}
-                  label={t(studentById.get(selectedId ?? '')?.name ?? '')}
+                  label={personName(studentById.get(selectedId ?? ''), '')}
                   referenceLabel={`${t('เฉลี่ยกลุ่ม')} ${groupShort(group)}`}
                   size={250}
                   onAxisClick={(k) => setCritKey(k === critKey ? null : k)}
@@ -596,7 +596,7 @@ export default function Evaluate() {
           <div className="confirmwrap" onClick={closePunctual}>
             <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
               <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
-              <div className="confirmbox__who">{t(punctualStudent?.name ?? '')}</div>
+              <div className="confirmbox__who">{personName(punctualStudent, '')}</div>
               <div className="confirmbox__meta">
                 <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
                 {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
@@ -630,7 +630,7 @@ export default function Evaluate() {
           <div className="confirmwrap" onClick={() => setConfirmId(null)}>
             <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
               <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
-              <div className="confirmbox__who">{t(confirmStudent?.name ?? '')}</div>
+              <div className="confirmbox__who">{personName(confirmStudent, '')}</div>
               <div className="confirmbox__meta">
                 <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
                 {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
@@ -658,7 +658,7 @@ export default function Evaluate() {
           <div className="confirmwrap" onClick={closeRevise}>
             <div className="confirmbox confirmbox--wide" onClick={(e) => e.stopPropagation()}>
               <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
-              <div className="confirmbox__who">{t(reviseStudent?.name ?? '')}</div>
+              <div className="confirmbox__who">{personName(reviseStudent, '')}</div>
               <div className="confirmbox__meta">
                 <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
                 {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}

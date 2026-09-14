@@ -18,7 +18,7 @@ import {
 import { deleteSect2, saveSect2 } from '../../data/repo';
 import { CasePicker, type CaseScope } from './CasePicker';
 import { thaiShort, toISODate } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { currentActor } from '../../store/app';
 import type { Sect2Record, Student } from '../../domain/types';
 
@@ -32,7 +32,7 @@ function SheetHead({ student, title, code, onClose }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ margin: 0 }}>{title}</h3>
         <p className="sub" style={{ margin: '2px 0 0' }}>
-          {code} · {firstNameOnly(t(student.name))} {student.code} · {t('ปี {n}', { n: studentYear(student) })}
+          {code} · {firstNameOnly(personName(student))} {student.code} · {t('ปี {n}', { n: studentYear(student) })}
         </p>
       </div>
     </div>

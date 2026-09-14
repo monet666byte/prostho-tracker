@@ -12,7 +12,7 @@ import {
 } from '../../domain/sect3';
 import { deleteSect3, saveSect3 } from '../../data/repo';
 import { thaiShort, toISODate } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { CasePicker } from './CasePicker';
 import { currentActor } from '../../store/app';
 import type { Sect3Record, Student } from '../../domain/types';
@@ -185,7 +185,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: 0 }}>{form.title}</h3>
           <p className="sub" style={{ margin: '2px 0 0' }}>
-            {form.code} · {firstNameOnly(t(student.name))} {student.code}
+            {form.code} · {firstNameOnly(personName(student))} {student.code}
             {form.yearOnly ? ` · YEAR ${form.yearOnly}` : ''}
           </p>
         </div>

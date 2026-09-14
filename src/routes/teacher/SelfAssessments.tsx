@@ -25,7 +25,7 @@ import {
 import { saId } from '../../data/repo';
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
-import { lang, t } from '../../lib/i18n';
+import { lang, personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import type { ProfileAxis } from '../../domain/analytics';
 import type { SelfAssessment, Student } from '../../domain/types';
@@ -165,7 +165,7 @@ export default function SelfAssessments() {
               return (
                 <button key={s.id} className="plist__row" data-on={on} aria-pressed={on} onClick={() => setOpenId(on ? null : s.id)}>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span className="plist__name">{firstNameOnly(t(s.name))}</span>
+                    <span className="plist__name">{firstNameOnly(personName(s))}</span>
                     <span className="plist__code">{s.code}</span>
                   </span>
                   <span className="plist__count" style={{ color: done ? 'var(--success-dark)' : 'var(--text-faint)', fontFamily: 'var(--font-body)' }}>
@@ -190,7 +190,7 @@ export default function SelfAssessments() {
 
             {openStudent && !openSa && (
               <div className="card" style={{ padding: '18px', font: '400 12px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-                {t('{n} ยังไม่ได้เริ่มกรอกแบบประเมินตนเองของปีนี้', { n: firstNameOnly(t(openStudent.name)) })}
+                {t('{n} ยังไม่ได้เริ่มกรอกแบบประเมินตนเองของปีนี้', { n: firstNameOnly(personName(openStudent)) })}
               </div>
             )}
 
@@ -204,7 +204,7 @@ export default function SelfAssessments() {
               <>
                 <div className="card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ flex: 1, minWidth: 'min(160px, 100%)' }}>
-                    <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{firstNameOnly(t(openStudent.name))}</span>
+                    <span style={{ display: 'block', font: '600 13px var(--font-head)' }}>{firstNameOnly(personName(openStudent))}</span>
                     <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
                       {t('ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}', {
                         d: thaiShort(openSa.submittedAt ?? openSa.updatedAt), y: openSa.classYear, v: openSa.formVersion,

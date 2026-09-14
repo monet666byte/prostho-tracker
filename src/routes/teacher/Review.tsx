@@ -12,7 +12,7 @@ import { useAllStudents, usePending, usePhotoSrc, useReviewConflicts, useReviews
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
-import { t, tSexAge, tText } from '../../lib/i18n';
+import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
 import type { Photo } from '../../domain/types';
@@ -46,7 +46,7 @@ export default function Review() {
     () => students.filter((s) => s.group === groupCode).sort((a, b) => a.code.localeCompare(b.code)),
     [students, groupCode],
   );
-  const advisors = groupStudents[0]?.advisorIds.map((id) => t(teacherById.get(id)?.name ?? '—')).join(' / ') ?? '';
+  const advisors = groupStudents[0]?.advisorIds.map((id) => personName(teacherById.get(id), '—')).join(' / ') ?? '';
   const activeId = studentId ?? groupStudents[0]?.id;
   const active = groupStudents.find((s) => s.id === activeId);
   const works = useWorkpieces(activeId);
@@ -128,7 +128,7 @@ export default function Review() {
             onChange={(e) => setStudentId(e.target.value)}
           >
             {groupStudents.map((st) => (
-              <option key={st.id} value={st.id}>{t(st.name)} · {st.code}</option>
+              <option key={st.id} value={st.id}>{personName(st)} · {st.code}</option>
             ))}
           </select>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -358,7 +358,7 @@ export default function Review() {
           {showReq && (
           <div className="panel" style={{ position: 'sticky', top: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-              <h3 style={{ flex: 1 }}>{t('เกณฑ์ของ')} {t(active?.name ?? '')}</h3>
+              <h3 style={{ flex: 1 }}>{t('เกณฑ์ของ')} {personName(active, '')}</h3>
               <button className="iconbtn iconbtn--plain" style={{ width: 34, height: 34 }} onClick={() => setShowReq(false)} aria-label={t('ปิด')}>
                 <X size={13} weight="bold" />
               </button>

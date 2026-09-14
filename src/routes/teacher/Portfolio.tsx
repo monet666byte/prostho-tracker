@@ -20,7 +20,7 @@ import { SECT2_FORMS, sect2Form } from '../../domain/sect2';
 import { S3_FULL_SCORE, sect3Form, sect3FormsFor } from '../../domain/sect3';
 import { useAllStudents, useSect2, useSect3 } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import type { Student } from '../../domain/types';
 
@@ -193,7 +193,7 @@ function StudentHead({ student, note, canPrint, onPrint }: {
 }) {
   return (
     <div className="formspanel__head">
-      <h3>{firstNameOnly(t(student.name))} · {student.code}</h3>
+      <h3>{firstNameOnly(personName(student))} · {student.code}</h3>
       <span className="sub">{note}</span>
       <button className="textbtn" disabled={!canPrint} onClick={onPrint}>{t('พิมพ์')} ›</button>
     </div>
@@ -233,7 +233,7 @@ function RosterRow({ student, year, tab, on, onPick }: {
   return (
     <button onClick={onPick} data-on={on} aria-pressed={on} className="plist__row">
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span className="plist__name">{firstNameOnly(t(student.name))}</span>
+        <span className="plist__name">{firstNameOnly(personName(student))}</span>
         <span className="plist__code">{student.code}</span>
       </span>
       <span className="plist__count" style={{ color: full ? 'var(--success-dark)' : done === 0 ? 'var(--warning-dark)' : undefined }}>

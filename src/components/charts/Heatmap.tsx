@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { HeatRow } from '../../domain/analytics';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 
 /**
  * ตารางรายคน × ด้านเกณฑ์ — แบบ "ช่องนับชิ้น" (ผู้ใช้เคาะแล้ว 27 ส.ค. หลังลองเทียบกับวงกลมรวมและแท่ง)
@@ -85,11 +85,11 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
             {rows.map((r) => (
               <tr key={r.student.id}>
                 <th scope="row">
-                  {t(r.student.name)}
+                  {personName(r.student)}
                   <span className="mono">{r.student.code}</span>
                 </th>
                 {r.cells.map((c) => (
-                  <td key={c.key}>{cell(c, r.student.name)}</td>
+                  <td key={c.key}>{cell(c, personName(r.student))}</td>
                 ))}
               </tr>
             ))}
@@ -118,7 +118,7 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.student.id}>
-                  <td style={{ font: '600 11.5px var(--font-body)' }}>{t(r.student.name)}</td>
+                  <td style={{ font: '600 11.5px var(--font-body)' }}>{personName(r.student)}</td>
                   {r.cells.map((c) => (
                     <td key={c.key} className="mono" style={{ color: c.value >= 100 ? 'var(--success)' : undefined }}>
                       {c.detail}

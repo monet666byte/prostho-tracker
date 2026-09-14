@@ -1090,6 +1090,8 @@ export interface RosterImportResult {
   added: number;
   updated: number;
   cohort: number;
+  /** รหัสนักศึกษา → id ในระบบ (ใช้ผูกอีเมลเข้ารายชื่อเชิญต่อ) */
+  idByCode: Record<string, string>;
 }
 
 /**
@@ -1115,13 +1117,16 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
     const groupCode = `TH${r.dtmu ?? dtmu}-${r.group}`;
     const prev = byCode.get(r.code);
     if (prev) {
-      toPut.push({ ...prev, name: r.name, group: groupCode, entryYear, year: 5 });
+      /* ไม่มีชื่ออังกฤษมาในรอบนี้ = คงของเดิม (รายชื่อบางชุดมีแค่ชื่อไทย) */
+      toPut.push({ ...prev, name: r.name, ...(r.nameEn ? { nameEn: r.nameEn } : {}), group: groupCode, entryYear, year: 5 });
       updated++;
     } else {
       toPut.push({
         id: `st-${groupCode}-${r.code}`,
         code: r.code,
         name: r.name,
+        /* ใส่ช่องเฉพาะเมื่อมีค่า — แถวที่ไม่มีช่องนี้ส่งขึ้นเซิร์ฟเวอร์ที่ยังไม่รัน 0025 ได้ตามเดิม */
+        ...(r.nameEn ? { nameEn: r.nameEn } : {}),
         group: groupCode,
         year: 5,
         entryYear,
@@ -1144,7 +1149,7 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
   });
 
   await logAudit(`นำเข้ารายชื่อ DTMU${dtmu}: เพิ่ม ${added} คน · อัปเดต ${updated} คน`, by);
-  return { added, updated, cohort: entryYearFromDtmu(dtmu) };
+  return { added, updated, cohort: entryYearFromDtmu(dtmu), idByCode: Object.fromEntries(toPut.map((s) => [s.code, s.id])) };
 }
 
 

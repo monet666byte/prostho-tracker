@@ -80,5 +80,10 @@ from (
     and exists (select 1 from pg_proc where proname = 'reset_advisors_for_new_year')
     and exists (select 1 from pg_policies where tablename = 'audit' and policyname = 'audit_read'
                 and qual like '%my_advised_groups%')
+
+  -- 0025 ช่องชื่ออังกฤษต้องมีทั้งสองตาราง
+  union all select '0025 ชื่อภาษาอังกฤษ (นักศึกษา + อาจารย์)',
+    (select count(*) from information_schema.columns
+     where table_schema = 'public' and table_name in ('students', 'teachers') and column_name = 'name_en') = 2
 ) x
 order by x.label;

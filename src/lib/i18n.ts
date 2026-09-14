@@ -62,6 +62,17 @@ export function t(s: string, params?: Record<string, string | number>): string {
   return out;
 }
 
+/**
+ * ชื่อคน (นักศึกษา / อาจารย์) ตามภาษาที่เลือก — ใช้แทน t(x.name) ทุกที่ที่ "แสดง" ชื่อ
+ * โหมดอังกฤษ: ชื่ออังกฤษถ้ามี · ไม่มีก็ใช้ชื่อไทย (ผ่าน t() เพื่อให้ชื่อสมมติในเดโมยังแปลได้)
+ * ⚠️ ห้ามใช้กับข้อความที่ "เก็บ" (audit · ชื่อผู้ประเมิน) — ของที่เก็บใช้ name ไทยเสมอ
+ */
+export function personName(p: { name: string; nameEn?: string | null } | null | undefined, fallback = ''): string {
+  if (!p) return t(fallback);
+  if (lang === 'en') return p.nameEn?.trim() || t(p.name);
+  return p.name;
+}
+
 let sortedKeys: string[] | null = null;
 
 /**

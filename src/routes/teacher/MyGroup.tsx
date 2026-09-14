@@ -8,7 +8,7 @@ import { typeMeta } from '../../domain/catalog';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces,
 } from '../../hooks/data';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
@@ -57,7 +57,7 @@ export default function MyGroup() {
 
   const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const advisors = useMemo(() => {
-    const byId = new Map(teachersAll.map((tc) => [tc.id, tc.name]));
+    const byId = new Map(teachersAll.map((tc) => [tc.id, personName(tc)]));
     const ids = students.find((st) => st.group === group)?.advisorIds ?? [];
     return [...new Set(ids)].map((id) => t(byId.get(id) ?? '')).filter(Boolean).join(' / ');
   }, [teachersAll, students, group]);
@@ -175,7 +175,7 @@ export default function MyGroup() {
                           style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                         >
                           {(() => {
-                            const [fn, ln] = splitPersonName(t(r.student.name));
+                            const [fn, ln] = splitPersonName(personName(r.student));
                             return (
                               <div className="grpname">
                                 {fn}

@@ -648,6 +648,27 @@ console.log('\n⑫ กลุ่มที่ปรึกษา (0024)');
   check('ทุกการเปลี่ยนจด audit พร้อมชื่อคนทำ', trail.rows.length === 7 && trail.rows.every((r) => r.group_code === 'G3' && r.who !== ''), trail.rows);
 }
 
+/* ── ⑬ ชื่อภาษาอังกฤษ (0025) — ช่องใหม่ต้องอยู่ใต้กฎเดิมของตาราง ─────────────── */
+console.log('\n⑬ ชื่อภาษาอังกฤษ (0025)');
+{
+  const byTeacher = await as(db, U.T1, async (tx) =>
+    (await tx.query<{ n: string }>(`update students set name_en = 'Student E' where id = 'sE' returning name_en as n`)).rows);
+  check('อาจารย์ใส่ชื่ออังกฤษของนักศึกษาได้', byTeacher.ok && byTeacher.value[0]?.n === 'Student E', byTeacher);
+  const bySelf = await as(db, U.A, async (tx) =>
+    (await tx.query(`update students set name_en = 'Hacked' where id = my_student_id() returning 1`)).rows.length);
+  check('นักศึกษาแก้ชื่ออังกฤษของตัวเองไม่ได้ (0 แถว หรือถูกปฏิเสธ)', !bySelf.ok || bySelf.value === 0, bySelf);
+  const tooLong = await as(db, U.T1, async (tx) =>
+    (await tx.query(`update students set name_en = repeat('a', 121) where id = 'sE'`)).rows);
+  check('ชื่ออังกฤษยาวเกิน 120 ตัว เข้าไม่ได้', !tooLong.ok, tooLong);
+  const teacherCol = await as(db, U.HEAD, async (tx) =>
+    (await tx.query<{ n: string | null }>(`select name_en as n from teachers limit 1`)).rows);
+  check('ตาราง teachers มีช่องชื่ออังกฤษ และอ่านได้', teacherCol.ok, teacherCol);
+  const checker = await db.query<{ 'สถานะ': string; migration: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'));
+  const row = checker.rows.find((r) => r.migration.startsWith('0025'));
+  check('check-migrations.sql ตอบว่า 0025 รันแล้ว', !!row && row['สถานะ'].startsWith('✓'), row);
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);

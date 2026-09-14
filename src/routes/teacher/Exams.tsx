@@ -17,7 +17,7 @@ import { EXAM_GATE_KEYS, GATE_LABELS } from '../../domain/rules';
 import { saYearNow } from '../../domain/saFeedback';
 import { setStudentGate } from '../../data/repo';
 import { useAllStudents } from '../../hooks/data';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import type { GateKey, Student } from '../../domain/types';
 
@@ -54,8 +54,8 @@ export default function Exams() {
       await setStudentGate(student.id, key, next, currentActor());
       showToast({
         message: next
-          ? t('{name} · {exam} ผ่านแล้ว', { name: student.name, exam: examName(key) })
-          : t('{name} · {exam} ยังไม่ผ่าน', { name: student.name, exam: examName(key) }),
+          ? t('{name} · {exam} ผ่านแล้ว', { name: personName(student), exam: examName(key) })
+          : t('{name} · {exam} ยังไม่ผ่าน', { name: personName(student), exam: examName(key) }),
         tone: next ? 'success' : 'default',
       });
     } finally { saving.current = false; setBusy(null); }
@@ -141,7 +141,7 @@ export default function Exams() {
                 {roster.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      <span style={{ display: 'block', font: '600 12px var(--font-body)' }}>{t(s.name)}</span>
+                      <span style={{ display: 'block', font: '600 12px var(--font-body)' }}>{personName(s)}</span>
                       <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)' }}>
                         {s.code} · {t('ปี {n}', { n: studentYear(s) })}
                       </span>

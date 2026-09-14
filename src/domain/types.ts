@@ -23,6 +23,8 @@ export type Role = 'student' | 'teacher';
 export interface Teacher {
   id: string;
   name: string;
+  /** ชื่ออังกฤษ (ไม่บังคับ · 0025) — แสดงผ่าน personName() เท่านั้น */
+  nameEn?: string;
   title?: string;
 }
 
@@ -45,6 +47,8 @@ export interface Student {
   id: string;
   code: string; // เช่น 6504008
   name: string;
+  /** ชื่ออังกฤษ (ไม่บังคับ · 0025) — แสดงผ่าน personName() เท่านั้น · audit ใช้ name ไทยเสมอ */
+  nameEn?: string;
   group: string; // TH-PT1 … TH-PT12 — ที่สังกัด "ปัจจุบัน" ย้ายได้อิสระเวลาขึ้นปี
   /**
    * ⚠️ ชั้นปีที่บันทึกไว้ตอนสร้าง — อย่าอ่านตรงๆ ใช้ studentYear() แทน

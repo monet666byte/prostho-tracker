@@ -1388,4 +1388,10 @@ export const DICT: Record<string, string> = {
   'มี {n} คนที่ยังไม่ระบุรุ่น — ระบบไม่ลบให้ ต้องเติมรุ่นในหน้ารายชื่อก่อน': '{n} students have no cohort recorded — they are never deleted; add their cohort on the roster page first',
   'ลบไม่สำเร็จ': 'Delete failed',
   'อาจารย์ในภาคเห็นข้อมูลนักศึกษาได้ทั้งชั้นปี (อาจารย์เวรต้องเซ็นให้ทุกกลุ่ม) · นักศึกษาเห็นเฉพาะของตัวเอง · ตัวคุมฝั่งอาจารย์คือ audit log ที่แก้และลบย้อนหลังไม่ได้ ไม่ใช่การบล็อก': 'Instructors can see every student in the year (the on-duty instructor signs for all groups) · students see only their own data · the control on the instructor side is an audit log that cannot be edited or deleted, not access blocking',
+
+  /* ── ชื่อสองภาษา + อีเมลในรายชื่อ (0025) ── */
+  'ก๊อปทั้งตารางจากแบบฟอร์มขอรายชื่อ (รวมหัวตาราง) หรือวาง รหัส, ชื่อ, กลุ่ม': 'Copy the whole table from the roster request form (with headers), or paste ID, name, group',
+  'ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}': 'Could not grant access by email: {e}',
+  'ให้สิทธิ์เข้าระบบ {n} อีเมล': 'granted access to {n} emails',
+  'ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว': 'skipped {n} emails already on the list',
 };

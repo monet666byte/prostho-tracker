@@ -12,7 +12,7 @@ import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYearOf } from '../../domain/group';
 import { isActiveStudent, isAlumni, studentYear } from '../../domain/cohort';
@@ -271,7 +271,7 @@ export default function Analytics() {
                 <tbody>
                   {selfRows.slice(0, 12).map((r) => (
                     <tr key={r.student.id}>
-                      <td style={{ font: '600 11.5px var(--font-body)' }}>{t(r.student.name)}</td>
+                      <td style={{ font: '600 11.5px var(--font-body)' }}>{personName(r.student)}</td>
                       <td className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                         {groupShort(r.student.group)}
                       </td>

@@ -6,7 +6,7 @@ import { RoleFab } from '../RoleFab';
 import { ToastView } from '../ToastView';
 import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useGroups, useTeacher } from '../../hooks/data';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
@@ -219,7 +219,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             <TextSizeControl />
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ font: '600 12.5px var(--font-head)' }}>{t(teacher?.name ?? 'อ. Liv')}</span>
+                <span style={{ font: '600 12.5px var(--font-head)' }}>{personName(teacher, 'อ. Liv')}</span>
                 <BetaBadge compact />
               </div>
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>

@@ -8,7 +8,7 @@ import { Shell } from '../../components/student/Shell';
 import { useCheckIns, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { typeMeta } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
@@ -340,7 +340,7 @@ export default function Home() {
                 ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
             {/* หัวเรื่องของหน้าแรก = ชื่อเจ้าของหน้า · ต้องเป็น h1 หนึ่งตัวต่อหน้า (WCAG 1.3.1) */}
             <h1 style={{ margin: 0, font: '700 19px var(--font-head)' }}>
-              {t('นศ.')} {firstNameOnly(t(student?.name ?? 'นศ. Liv'))}
+              {t('นศ.')} {firstNameOnly(personName(student, 'นศ. Liv'))}
             </h1>
           </div>
         </div>

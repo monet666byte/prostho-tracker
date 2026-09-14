@@ -10,7 +10,7 @@ import { db } from '../../data/db';
 import { useAllStudents } from '../../hooks/data';
 import { importSheetCsv, type ImportResult } from '../../lib/sheetImport';
 import { logAudit } from '../../data/repo';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
@@ -81,7 +81,7 @@ export function ImportSheetBody() {
       const who = students.find((st) => st.id === studentId);
       await logAudit(
         t('นำเข้าจากชีตให้ {name}: {p} ผู้ป่วย · {w} ชิ้นงาน', {
-          name: t(who?.name ?? ''), p: result.patients.length, w: result.workpieces.length,
+          name: personName(who, ''), p: result.patients.length, w: result.workpieces.length,
         }),
         currentActor(),
         { studentId },
@@ -128,7 +128,7 @@ export function ImportSheetBody() {
             >
               <option value="">{t('— เลือก —')}</option>
               {sorted.map((s) => (
-                <option key={s.id} value={s.id}>{s.code} · {s.name} · {groupShort(s.group)}</option>
+                <option key={s.id} value={s.id}>{s.code} · {personName(s)} · {groupShort(s.group)}</option>
               ))}
             </select>
           </div>

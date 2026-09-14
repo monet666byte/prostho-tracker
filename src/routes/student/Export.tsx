@@ -6,7 +6,7 @@ import { CSV_COLUMNS, PROGRESSION_COLUMNS, exportCsv, exportPermission, passedPr
 import { currentProc, isComplete, maxProgression, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { thaiLong, academicYear } from '../../lib/date';
-import { t, tText } from '../../lib/i18n';
+import { personName, t, tText } from '../../lib/i18n';
 import { currentActor, currentPdpaRole, useApp } from '../../store/app';
 import { onPdpaPolicy } from '../../data/pdpaSync';
 
@@ -78,7 +78,7 @@ export default function ExportScreen() {
           <div className="sub">
             {/* ห้ามใส่ค่าเดโมเป็น fallback — เอกสารนี้พิมพ์ออกไปให้อาจารย์ลงนาม
                 ถ้าดึงข้อมูลไม่ได้ ต้องเห็นว่าว่าง ไม่ใช่เห็นรหัสของคนอื่นที่ดูสมจริง */}
-            {t(student?.name ?? '—')} · {t('รหัส')} {student?.code ?? '—'} · {t('กลุ่ม')} {student?.group ?? '—'} ·
+            {personName(student, '—')} · {t('รหัส')} {student?.code ?? '—'} · {t('กลุ่ม')} {student?.group ?? '—'} ·
             {/* เดิมใส่ชื่อ "รอบส่งรายงาน" จากปฏิทินที่ฝังตายไว้ปีเดียว
                 — ระบบรายงานถูกถอดออกไปแล้ว และหลัง มี.ค. 2570 ป้ายจะหายไปเฉยๆ ตลอดกาล
                 เปลี่ยนเป็นปีการศึกษา + วันที่พิมพ์ ซึ่งจริงเสมอและจำเป็นกว่าบนเอกสารที่เซ็นจริง */}

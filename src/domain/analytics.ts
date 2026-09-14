@@ -3,7 +3,7 @@
  * ไม่มีค่าคงที่ที่ hard-code ไว้ ถ้า import ข้อมูลจริงเข้ามา ตัวเลขจะเปลี่ยนตามทันที
  */
 
-import { lang } from '../lib/i18n';
+import { lang, personName } from '../lib/i18n';
 import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
   caseCount, completedInYear, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
@@ -623,7 +623,7 @@ export function caseDots(
         progression: p,
         type: w.type,
         stale: isStale(w, settings),
-        label: `${student?.name ?? ''} (${groupShort(student?.group ?? '')}) · ${w.detail} · step ${p}`,
+        label: `${personName(student)} (${groupShort(student?.group ?? '')}) · ${w.detail} · step ${p}`,
       };
     })
     .sort((a, b) => a.progression - b.progression);

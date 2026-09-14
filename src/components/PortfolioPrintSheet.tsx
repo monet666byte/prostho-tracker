@@ -14,7 +14,7 @@ import {
 import { S3_FULL_SCORE, s3Points, sect3Form } from '../domain/sect3';
 import { SheetBoundary } from './SheetBoundary';
 import { thaiShort } from '../lib/date';
-import { t } from '../lib/i18n';
+import { personName, t } from '../lib/i18n';
 import type { Sect2Record, Sect3Record, Student } from '../domain/types';
 
 const PORTFOLIO_TITLE = 'Clinical Performance Portfolio';
@@ -31,7 +31,7 @@ function Head({ section, code, student }: { section: string; code: string; stude
         <div className="pfcode">{code}</div>
       </div>
       <div className="pffield">
-        <span>Student full name <b>{student.name}</b></span>
+        <span>Student full name <b>{personName(student)}</b></span>
         <span>ID <b className="mono">{student.code}</b></span>
         <span>Group <b>{student.group}</b></span>
       </div>
@@ -219,7 +219,7 @@ export function RpdDesignPrintPage({ row, student }: { row: Sect2Record; student
       />
       <h1 className="pftitle">RPD Design Examination Form</h1>
       <div className="pffield">
-        <span>Examinee full name <b>{student.name}</b></span>
+        <span>Examinee full name <b>{personName(student)}</b></span>
         <span>ID <b className="mono">{student.code}</b></span>
       </div>
       <CaseLine row={row} />

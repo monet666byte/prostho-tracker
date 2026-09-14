@@ -13,11 +13,12 @@ import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { AdvisorEditor } from '../../components/teacher/AdvisorGroups';
 import { useAllStudents } from '../../hooks/data';
 import { cloudEnabled, supabase } from '../../lib/cloud';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { importRoster, parseRoster } from '../../data/repo';
+import type { RosterRow } from '../../data/repo';
 import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
 import { groupShort } from '../../domain/group';
@@ -61,18 +62,42 @@ export default function Roster() {
     try {
       const res = await importRoster(parsed.rows, Number(dtmu), currentActor());
       setRosterText('');
+      const invited = await inviteRosterEmails(parsed.rows, res.idByCode);
       // รุ่นที่ยังไม่ถึงปีขึ้นคลินิกจะยังไม่โผล่ในตัวกรองปี 5/6 — บอกไว้กันเข้าใจว่านำเข้าไม่สำเร็จ
       const startsLater = res.cohort > academicYear(new Date());
-      showToast({
-        message: startsLater
-          ? t('นำเข้าแล้ว {a} คน — จะเริ่มแสดงเป็นชั้นปี 5 ในปีการศึกษา {y}', { a: res.added + res.updated, y: res.cohort })
-          : t('นำเข้าแล้ว — เพิ่ม {a} คน · อัปเดต {b} คน', { a: res.added, b: res.updated }),
-        tone: 'success',
-      });
+      const base = startsLater
+        ? t('นำเข้าแล้ว {a} คน — จะเริ่มแสดงเป็นชั้นปี 5 ในปีการศึกษา {y}', { a: res.added + res.updated, y: res.cohort })
+        : t('นำเข้าแล้ว — เพิ่ม {a} คน · อัปเดต {b} คน', { a: res.added, b: res.updated });
+      const inviteNote = !invited ? ''
+        : invited.error ? ` · ${t('ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}', { e: invited.error })}`
+        : ` · ${t('ให้สิทธิ์เข้าระบบ {n} อีเมล', { n: invited.added })}`
+          + (invited.skipped ? ` · ${t('ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว', { n: invited.skipped })}` : '');
+      showToast({ message: base + inviteNote, tone: invited?.error ? 'warning' : 'success' });
+      if (invited && !invited.error) void load();
     } finally {
       setImporting(false);
     }
   }
+  /**
+   * อีเมลที่มากับรายชื่อ → ใส่รายชื่อเชิญให้เลย นักศึกษาเข้าด้วย Google ได้ทันทีโดยไม่ต้องรออาจารย์ยืนยัน
+   * อีเมลที่อยู่ในรายชื่อเชิญแล้วห้ามทับ (ignoreDuplicates) — อาจเป็นของคนอื่นที่ภาคตั้งไว้ถูกแล้ว
+   * ทับแล้วบัญชีนั้นจะไปผูกกับนักศึกษาอีกคนโดยไม่มีใครเห็น
+   * null = ไม่มีอีเมลในรายชื่อ หรือไม่ได้ต่อเซิร์ฟเวอร์ (โหมดเดโมไม่มีรายชื่อเชิญ)
+   */
+  async function inviteRosterEmails(rows: RosterRow[], idByCode: Record<string, string>) {
+    const invites = rows.flatMap((r) => (r.email && idByCode[r.code]
+      ? [{ email: r.email.toLowerCase(), role: 'student' as const, student_id: idByCode[r.code], teacher_id: null }]
+      : []));
+    if (!supabase || !invites.length) return null;
+    const { data, error: e } = await supabase
+      .from('invites')
+      .upsert(invites, { onConflict: 'email', ignoreDuplicates: true, defaultToNull: false })
+      .select('email');
+    if (e) return { added: 0, skipped: 0, error: e.message };
+    const added = data?.length ?? 0;
+    return { added, skipped: invites.length - added, error: null };
+  }
+
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [personId, setPersonId] = useState('');
   // ยืนยันก่อนลบ — เดิมกดถังขยะทีเดียวหายเลย ไอคอนเล็กๆ ในตารางกดพลาดง่ายมากบน iPad
@@ -152,8 +177,8 @@ export default function Roster() {
 
   const nameOf = (inv: Invite) =>
     inv.role === 'student'
-      ? students.find((s) => s.id === inv.student_id)?.name ?? inv.student_id ?? '—'
-      : teachers.find((tc) => tc.id === inv.teacher_id)?.name ?? inv.teacher_id ?? '—';
+      ? personName(students.find((s) => s.id === inv.student_id)) || inv.student_id || '—'
+      : personName(teachers.find((tc) => tc.id === inv.teacher_id)) || inv.teacher_id || '—';
 
   if (!isAdmin) {
     return (
@@ -203,7 +228,7 @@ export default function Roster() {
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
-            <span className="sub">{t('วางจาก Excel หรือ CSV — รหัส, ชื่อ, กลุ่ม')}</span>
+            <span className="sub">{t('ก๊อปทั้งตารางจากแบบฟอร์มขอรายชื่อ (รวมหัวตาราง) หรือวาง รหัส, ชื่อ, กลุ่ม')}</span>
           </div>
 
           <div className="rosterimport">
@@ -282,7 +307,7 @@ export default function Roster() {
               key={role}
               options={peopleGroups.flatMap(([label, list]) => list.map((p) => ({
                 id: p.id,
-                name: t(p.name),
+                name: personName(p),
                 code: 'code' in p ? (p as { code: string }).code : '',
                 group: label,
               })))}

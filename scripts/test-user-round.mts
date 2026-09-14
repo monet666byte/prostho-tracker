@@ -213,6 +213,40 @@ console.log('\nนำเข้ารายชื่อ — ตัวกรอง
     mixed.errors.every((e) => e.line > 0 && e.reason.length > 0));
   ok('คั่นด้วยแท็บอ่านได้ (คนก๊อปจาก Excel มาตรงๆ)',
     mixed.rows.some((r) => r.code === '6604004' && r.group === 'PT12'));
+
+  /* แบบฟอร์มขอรายชื่อ (docs/prostho-roster-request-template.xlsx) ก๊อปทั้งตารางจาก Excel = คั่นแท็บ + หัวตาราง
+     มีช่องว่างได้ (คำนำหน้า · ชื่ออังกฤษ · อีเมล) — เดาทีละเซลล์จะหยิบ "นาย" มาเป็นชื่อ */
+  const H = 'รหัสนักศึกษา *\tคำนำหน้า\tชื่อ-นามสกุล (ไทย) *\tชื่อ-นามสกุล (อังกฤษ)\tอีเมลมหาวิทยาลัย\tรุ่น DTMU *\tกลุ่มคลินิก *';
+  const form = parseRoster([
+    H,
+    '6604999\tนาย\tสมมติ ตัวอย่าง\tSommut Tuayang\tsommut.tua@student.mahidol.edu\t56\tPT1',
+    '6604101\tนางสาว\tกานดา ใจงาม\tKanda Jaingam\tKanda.Jai@student.mahidol.edu\t56\tPT3',
+    '6604102\t\tสมชาย ดีมาก\t\t\t56\tPT4',
+    '6604103\tนาย\tวีระ กล้าหาญ',
+    '\t\t\t\t\t\t',
+    '6604104\t\tมานี มีนา\tManee Meena\tไม่ใช่อีเมล\t56\tPT5',
+  ].join('\n'));
+  const kanda = form.rows.find((r) => r.code === '6604101');
+  ok('แบบฟอร์ม: ชื่อไทย/อังกฤษ/อีเมล/รุ่น/กลุ่ม ลงช่องถูก ไม่หยิบคำนำหน้ามาเป็นชื่อ',
+    kanda?.name === 'กานดา ใจงาม' && kanda.nameEn === 'Kanda Jaingam' && kanda.email === 'kanda.jai@student.mahidol.edu'
+      && kanda.dtmu === 56 && kanda.group === 'PT3', kanda);
+  const somchai = form.rows.find((r) => r.code === '6604102');
+  ok('แบบฟอร์ม: ช่องไม่บังคับที่ว่าง → ไม่มีชื่ออังกฤษ/อีเมล (ไม่ใช่สตริงว่าง)',
+    somchai?.name === 'สมชาย ดีมาก' && !('nameEn' in somchai) && !('email' in somchai), somchai);
+  ok('แบบฟอร์ม: แถวตัวอย่างสีเทาไม่หลุดเข้าไป และมีเหตุผลบอก',
+    !form.rows.some((r) => r.code === '6604999') && form.errors.some((e) => /ตัวอย่าง/.test(e.reason)), form.errors);
+  ok('แบบฟอร์ม: แถวที่ไม่มีกลุ่ม · อีเมลผิดรูป ตกพร้อมเหตุผล · แถวช่องว่างล้วนไม่นับ',
+    form.rows.length === 2 && form.errors.length === 3
+      && form.errors.some((e) => /กลุ่ม/.test(e.reason)) && form.errors.some((e) => /อีเมล/.test(e.reason)),
+    form.errors);
+
+  const noHeader = parseRoster('6604201, นาย, ปิติ ยินดี, Piti Yindee, piti.yin@student.mahidol.edu, PT2');
+  ok('ไม่มีหัวตาราง: ยังแยกชื่ออังกฤษกับอีเมลออกจากชื่อไทยได้',
+    noHeader.rows[0]?.name === 'ปิติ ยินดี' && noHeader.rows[0]?.nameEn === 'Piti Yindee' && noHeader.rows[0]?.email === 'piti.yin@student.mahidol.edu',
+    noHeader.rows[0]);
+  const latinOnly = parseRoster('6604202, Liv, PT2');
+  ok('ไม่มีหัวตาราง + มีแต่ชื่ออังกฤษ → ใช้เป็นชื่อหลัก (รายชื่อเก่ายังนำเข้าได้)',
+    latinOnly.rows[0]?.name === 'Liv' && !latinOnly.rows[0]?.nameEn, latinOnly.rows[0]);
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════

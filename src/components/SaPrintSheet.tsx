@@ -12,7 +12,7 @@ import {
   type SAQuestion, type SAValue,
 } from '../domain/selfAssessment';
 import { thaiLong } from '../lib/date';
-import { t } from '../lib/i18n';
+import { personName, t } from '../lib/i18n';
 import type { SelfAssessment, Student, Teacher } from '../domain/types';
 
 /** ค่าที่พิมพ์ลงกระดาษ — ตัวเลขต้องมีคำกำกับเสมอ คนอ่านกระดาษไม่มี tooltip ให้ชี้ */
@@ -49,8 +49,8 @@ export function SaPrintSheet({
       <h1>Self-assessment (SA) report: MIDS Prosthodontic Clinic {sa.academicYear}</h1>
       <div className="sub">
         {/* ห้ามใส่ค่าสำรองที่ดูสมจริงบนเอกสารที่เซ็นจริง — ไม่มีข้อมูลต้องเห็นว่าว่าง */}
-        {t(student.name)} · {student.code} · {student.group} · {course} Year {sa.classYear} MIDS
-        {advisors.length > 0 && <> · Advisors: {advisors.map((a) => t(a.name)).join(', ')}</>}
+        {personName(student)} · {student.code} · {student.group} · {course} Year {sa.classYear} MIDS
+        {advisors.length > 0 && <> · Advisors: {advisors.map((a) => personName(a)).join(', ')}</>}
       </div>
       <div className="sub">
         Submitted {sa.submittedAt ? thaiLong(sa.submittedAt) : '—'} · Printed {thaiLong(new Date())} · Form {sa.formVersion}

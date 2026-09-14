@@ -30,7 +30,7 @@ import {
 import { S3_FULL_SCORE, s3Points, sect3Form, sect3FormsFor } from '../../domain/sect3';
 import { useCheckIns, useSect2, useSect3, useStudent } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import type { S2Grade } from '../../domain/sect2';
 import type { S3Grade } from '../../domain/sect3';
@@ -318,7 +318,7 @@ export default function Portfolio() {
         </p>
         {student && (
           <p style={{ margin: '3px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-            {t(student.name)} · {student.code} · {groupShort(student.group)} · {cohortLabel(cohortOf(student))}
+            {personName(student)} · {student.code} · {groupShort(student.group)} · {cohortLabel(cohortOf(student))}
             {' · '}{t('ชั้นปีที่ {n}', { n: classYear })}
           </p>
         )}
