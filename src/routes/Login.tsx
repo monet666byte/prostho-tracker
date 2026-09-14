@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { t } from '../lib/i18n';
 import { cloudEnabled, takeOAuthReturnError } from '../lib/cloud';
 import { explainOAuthError, signInWithGoogle } from '../lib/auth';
+import { LinkAccount } from '../components/LinkAccount';
 import { useApp } from '../store/app';
 import { PhoneFrame } from '../components/student/Shell';
 import { canInstall, isAppleSafari, isInstalled, onInstallChange, promptInstall } from '../lib/install';
@@ -21,8 +22,8 @@ export default function Login() {
   /* กลับมาจากหน้า Google พร้อม error (เช่น อีเมลไม่อยู่ในรายชื่อเชิญ) — อ่านครั้งเดียวตอน mount */
   const [error, setError] = useState<string | null>(() => {
     const oauth = takeOAuthReturnError();
-    if (oauth) return explainOAuthError(oauth);
-    return cloudUnlinked ? t('บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ') : null;
+    // บัญชีที่ยังไม่ผูก ไม่ใช้ข้อความนี้แล้ว — หน้า LinkAccount อธิบายและพาทำต่อเอง (0023)
+    return oauth ? explainOAuthError(oauth) : null;
   });
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -132,7 +133,9 @@ export default function Login() {
             </div>
           )}
 
-          {cloudEnabled ? (
+          {cloudEnabled && cloudUnlinked ? (
+            <LinkAccount />
+          ) : cloudEnabled ? (
             <form onSubmit={goCloud} style={{ display: 'grid', gap: 10, marginTop: 20 }}>
               {/* ทางหลัก: บัญชี Google ของมหาลัย ไม่มีรหัสผ่านให้จำ · อีเมล+รหัสผ่านข้างล่างเก็บไว้ให้บัญชีสาธิต/สำรอง */}
               <button className="btn" type="button" onClick={goGoogle} disabled={googleBusy || busy}>

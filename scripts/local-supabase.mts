@@ -58,11 +58,13 @@ async function seed(db: PGlite) {
     alter table storage.objects add constraint objects_bucket_name unique (bucket_id, name);
 
     insert into teachers (id, name) values ('t1', 'อ. ทดสอบ หนึ่ง'), ('t2', 'อ. ทดสอบ สอง'), ('thead', 'หัวหน้าภาค ทดสอบ');
-    insert into groups (code, advisor_ids, student_ids) values ('TH-PT7', array['t1'], array['s1','s2','s3']);
+    insert into groups (code, advisor_ids, student_ids) values ('TH-PT7', array['t1'], array['s1','s2','s3','s4']);
     insert into students (id, code, name, "group", year, entry_year) values
       ('s1', '6604048', 'นศ. ทดสอบ หนึ่ง', 'TH-PT7', 5, 2569),
       ('s2', '6604049', 'นศ. ทดสอบ สอง',  'TH-PT7', 5, 2569),
-      ('s3', '6604050', 'นศ. ทดสอบ สาม',  'TH-PT7', 5, 2569);
+      ('s3', '6604050', 'นศ. ทดสอบ สาม',  'TH-PT7', 5, 2569),
+      -- ยังไม่มีบัญชี — ไว้ลองผูกบัญชีเองด้วยรหัส 6604051 (0023)
+      ('s4', '6604051', 'นศ. ทดสอบ สี่',  'TH-PT7', 5, 2569);
     insert into invites (email, role, student_id, teacher_id, is_admin) values
       ('s1@test.local', 'student', 's1', null, false),
       ('s2@test.local', 'student', 's2', null, false),
@@ -475,7 +477,8 @@ async function auth(db: PGlite, req: IncomingMessage, res: ServerResponse, url: 
     const html = `<!doctype html><meta charset="utf-8"><title>Google จำลอง</title>
       <body style="font:15px system-ui;padding:24px"><h1>Google จำลอง (local-supabase)</h1>
       <p>provider=${q.get('provider')} · prompt=${q.get('prompt') ?? '-'}</p>
-      <ul>${[...emails, 'outsider@student.mahidol.edu'].map(link).join('')}</ul></body>`;
+      <ul>${[...emails, 'new.student@student.mahidol.edu', 'stranger@gmail.com'].map(link).join('')}</ul>
+      <p>new.student@ = นักศึกษาที่ยังไม่ผูก (ลองใส่รหัส 6604051) · stranger@gmail.com = คนนอก ต้องเข้าไม่ได้</p></body>`;
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     return res.end(html);
   }

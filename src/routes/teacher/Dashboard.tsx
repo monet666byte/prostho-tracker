@@ -2,6 +2,7 @@ import { Archive, BellRinging, Check, Info, Stack, Users, WarningCircle } from '
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
+import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
@@ -172,6 +173,9 @@ export default function Dashboard() {
             {t('ภาคเรียน')} {termLabel(new Date())}
           </span>
         </div>
+
+        {/* นักศึกษาขอผูกบัญชี (0023) — ไม่มีคำขอ = ไม่แสดง · อยู่หน้าแรกเพราะอาจารย์ที่ปรึกษาเปิดหน้านี้ก่อนเสมอ */}
+        {!alumniPage && <LinkRequestsPanel />}
 
         {/* ป้ายบอกว่ากำลังดูของเก่า — กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ */}
         {yearView === 'alumni' && (

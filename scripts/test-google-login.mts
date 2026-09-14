@@ -50,7 +50,8 @@ await new Promise<void>((r) => web.listen(WEB_PORT, '127.0.0.1', r));
 
 const S = await startLocalSupabase(API_PORT, { quiet: true });
 // บัญชีที่ภาคเชิญไว้แต่ยังไม่เคยเข้าระบบเลย — ครั้งแรกต้องถูกสร้างผ่าน Google ได้
-await S.db.query(`insert into invites (email, role, student_id) values ('new.student@student.mahidol.edu', 'student', 's3')`);
+await S.db.exec(`insert into students (id, code, name, "group", year, entry_year) values ('s5', '6604052', 'นศ. ทดสอบ ห้า', 'TH-PT7', 5, 2569);
+  insert into invites (email, role, student_id) values ('invited.first@student.mahidol.edu', 'student', 's5')`);
 
 const profiles: string[] = [];
 async function freshBrowser(): Promise<BrowserContext> {
@@ -88,22 +89,22 @@ try {
   console.log('\n② ภาคเชิญไว้ แต่ยังไม่เคยมีบัญชี — เข้าครั้งแรกด้วย Google');
   {
     const ctx = await freshBrowser();
-    const page = await loginWithGoogle(ctx, 'new.student@student.mahidol.edu');
-    check('สร้างบัญชีและผูกกับนักศึกษาถูกคน', (await page.locator('body').innerText()).includes('นศ. ทดสอบ สาม'), page.url());
-    const linked = await S.db.query<{ student_id: string }>(`select student_id from app_users where email = 'new.student@student.mahidol.edu'`);
-    check('ฐานข้อมูลผูกบัญชีกับ s3', linked.rows[0]?.student_id === 's3', linked.rows);
+    const page = await loginWithGoogle(ctx, 'invited.first@student.mahidol.edu');
+    check('สร้างบัญชีและผูกกับนักศึกษาถูกคน', (await page.locator('body').innerText()).includes('นศ. ทดสอบ ห้า'), page.url());
+    const linked = await S.db.query<{ student_id: string }>(`select student_id from app_users where email = 'invited.first@student.mahidol.edu'`);
+    check('ฐานข้อมูลผูกบัญชีกับ s5', linked.rows[0]?.student_id === 's5', linked.rows);
     await ctx.close();
   }
 
-  console.log('\n③ อีเมลที่ไม่อยู่ในรายชื่อเชิญ');
+  console.log('\n③ อีเมลนอกมหาลัยที่ไม่อยู่ในรายชื่อเชิญ');
   {
     const ctx = await freshBrowser();
-    const page = await loginWithGoogle(ctx, 'outsider@student.mahidol.edu');
+    const page = await loginWithGoogle(ctx, 'stranger@gmail.com');
     const text = await page.locator('body').innerText();
     check('กลับมาหน้า login พร้อมข้อความว่าไม่อยู่ในรายชื่อ', text.includes('ยังไม่อยู่ในรายชื่อที่ภาควิชาเชิญ'), text.slice(0, 300));
     const u = new URL(page.url());
     check('URL สะอาด: ไม่มี error ค้าง', !u.searchParams.has('error') && !u.searchParams.has('error_description') && !u.hash.includes('error'), page.url());
-    const made = await S.db.query(`select 1 from auth.users where email = 'outsider@student.mahidol.edu'`);
+    const made = await S.db.query(`select 1 from auth.users where email = 'stranger@gmail.com'`);
     check('ไม่มีบัญชีถูกสร้างให้คนนอก', made.rows.length === 0, made.rows);
     await page.reload();
     await page.waitForTimeout(2000);
@@ -117,6 +118,43 @@ try {
     const page = await loginWithGoogle(ctx, 't1@test.local');
     check('เข้าหน้าอาจารย์', new URL(page.url()).hash.startsWith('#/teacher'), page.url());
     await ctx.close();
+  }
+
+  console.log('\n⑤ นักศึกษาที่ไม่มีในรายชื่อเชิญ ผูกบัญชีเองด้วยรหัส → อาจารย์ที่ปรึกษายืนยัน (0023)');
+  {
+    const sctx = await freshBrowser();
+    const sp = await loginWithGoogle(sctx, 'new.student@student.mahidol.edu');
+    let text = await sp.locator('body').innerText();
+    check('ขึ้นหน้าผูกบัญชี ไม่ใช่ข้อความ error', text.includes('ผูกบัญชีกับรายชื่อนักศึกษา') && !text.includes('ยังไม่อยู่ในรายชื่อที่ภาควิชาเชิญ'), text.slice(0, 300));
+    check('ยังไม่เข้าหน้านักศึกษา', !new URL(sp.url()).hash.startsWith('#/app'), sp.url());
+
+    await sp.getByLabel('รหัสนักศึกษา').fill('9999999');
+    await sp.getByRole('button', { name: 'ส่งคำขอให้อาจารย์ยืนยัน' }).click();
+    await sp.getByText('ไม่พบรหัสนักศึกษานี้').waitFor({ timeout: 10_000 }).catch(() => {});
+    check('รหัสผิด → บอกว่าไม่พบรหัส', (await sp.locator('body').innerText()).includes('ไม่พบรหัสนักศึกษานี้'));
+
+    await sp.getByLabel('รหัสนักศึกษา').fill('6604051');
+    await sp.getByRole('button', { name: 'ส่งคำขอให้อาจารย์ยืนยัน' }).click();
+    await sp.getByText('รออาจารย์ที่ปรึกษายืนยัน').waitFor({ timeout: 10_000 }).catch(() => {});
+    text = await sp.locator('body').innerText();
+    check('ส่งคำขอแล้ว เห็นชื่อตัวเองให้ตรวจ', text.includes('รออาจารย์ที่ปรึกษายืนยัน') && text.includes('นศ. ทดสอบ สี่'), text.slice(0, 400));
+
+    const tctx = await freshBrowser();
+    const tp = await loginWithGoogle(tctx, 't1@test.local');
+    await tp.getByText('นักศึกษารอยืนยันบัญชี').waitFor({ timeout: 15_000 }).catch(() => {});
+    const ttext = await tp.locator('body').innerText();
+    check('อาจารย์ที่ปรึกษาเห็นคำขอในหน้าภาพรวม', ttext.includes('นักศึกษารอยืนยันบัญชี') && ttext.includes('new.student@student.mahidol.edu'), ttext.slice(0, 300));
+    await tp.locator('.panel', { hasText: 'นักศึกษารอยืนยันบัญชี' }).getByRole('button', { name: 'ยืนยัน' }).click();
+    await tp.locator('.confirmbox').getByRole('button', { name: 'ยืนยัน' }).click();
+    await tp.waitForTimeout(2500);
+    check('ยืนยันแล้วการ์ดคำขอหายไป', !(await tp.locator('body').innerText()).includes('นักศึกษารอยืนยันบัญชี'));
+    await tctx.close();
+
+    await sp.getByRole('button', { name: 'ตรวจสถานะ' }).click();
+    await sp.waitForTimeout(5000);
+    text = await sp.locator('body').innerText();
+    check('นักศึกษาเข้าแอปได้ในชื่อตัวเอง', new URL(sp.url()).hash.startsWith('#/app') && text.includes('นศ. ทดสอบ สี่'), sp.url());
+    await sctx.close();
   }
 } finally {
   await S.close();

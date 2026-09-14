@@ -431,6 +431,119 @@ console.log('\n⑩ ตัวลบข้อมูลตัวอย่างบ�
     await left(`select 1 from students where id = 'st-TH-PT9-6604048'`) === 1 && await left(`select 1 from checkins where id = 'ci-real'`) === 1);
 }
 
+/* ── ⑪ นักศึกษาผูกบัญชีเอง + อาจารย์ยืนยัน (0023) ─────────────────────────────
+   ด่านที่ต้องแน่นที่สุด: บัญชีที่ยังไม่ผูกต้องเห็นอะไรไม่ได้เลย · ใส่รหัสเพื่อนแล้วต้องไม่ได้สิทธิ์ของเพื่อน
+   · อาจารย์กลุ่มอื่นยืนยันแทนไม่ได้ · นักศึกษายืนยันตัวเองไม่ได้ */
+console.log('\n⑪ ผูกบัญชีเองด้วยรหัสนักศึกษา (0023)');
+{
+  await db.exec(`insert into students (id, code, name, "group", year, entry_year) values ('sD', '6504004', 'นศ. ดี', 'G1', 5, 2569)`);
+  await db.exec(`insert into patients (id, name, hn, owner_student_id) values ('pD', 'ผู้ป่วยของดี', 'HN-D', 'sD')`);
+
+  const other = await signUp(db, 'someone@gmail.com');
+  check('อีเมลนอกมหาลัยที่ไม่ได้รับเชิญ ยังสร้างบัญชีไม่ได้', !other.uid, other.error ?? 'สร้างได้!');
+
+  const dee = await signUp(db, 'dee.real@student.mahidol.edu');
+  check('อีเมล @student.mahidol.edu สร้างบัญชีได้ (ยังไม่ผูก)', !!dee.uid, dee.error);
+  const D = { uid: dee.uid! };
+  const bad = await signUp(db, 'mallory@student.mahidol.edu');
+  const M = { uid: bad.uid! };
+
+  const seen = {
+    patients: await visible(db, D, `select 1 from patients`),
+    students: await visible(db, D, `select 1 from students`),
+    audit: await visible(db, D, `select 1 from audit`),
+    invites: await visible(db, D, `select 1 from invites`),
+    requests: await visible(db, D, `select 1 from link_requests`),
+  };
+  check('บัญชีที่ยังไม่ผูก เห็นอะไรไม่ได้เลย', Object.values(seen).every((n) => n <= 0), seen);
+
+  const selfLink = await as(db, D, async (tx) =>
+    (await tx.query(`insert into app_users (uid, email, role, student_id) values (auth.uid(), 'x', 'student', 'sA') returning uid`)).rows.length);
+  check('บัญชีที่ยังไม่ผูก เขียนแถว app_users ให้ตัวเองไม่ได้', !selfLink.ok || selfLink.value === 0, selfLink);
+
+  const wrong = await as(db, D, async (tx) => (await tx.query(`select request_link('9999999')`)).rows);
+  check('ใส่รหัสที่ไม่มี → ปฏิเสธพร้อมข้อความ', !wrong.ok && /ไม่พบรหัส/.test(wrong.error), wrong);
+  const taken = await as(db, D, async (tx) => (await tx.query(`select request_link('6504001')`)).rows);
+  check('ขอผูกรหัสที่มีบัญชีอยู่แล้ว (นศ. เอ) ไม่ได้', !taken.ok && /ผูกไว้แล้ว/.test(taken.error), taken);
+
+  const anonReq = await as(db, 'anon', async (tx) => (await tx.query(`select request_link('6504004')`)).rows);
+  check('คนไม่ได้ล็อกอินส่งคำขอไม่ได้', !anonReq.ok, anonReq);
+  const linkedReq = await as(db, U.A, async (tx) => (await tx.query(`select request_link('6504004')`)).rows);
+  check('บัญชีที่ผูกแล้วส่งคำขอผูกคนอื่นไม่ได้', !linkedReq.ok, linkedReq);
+
+  // เจ้าตัวกับคนแอบอ้างขอผูกรหัสเดียวกัน
+  (await db.exec(`select set_config('request.jwt.claim.sub', '', false)`));
+  const mine = await (async () => {
+    await db.exec(`set role authenticated`);
+    try {
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [D.uid]);
+      const r = (await db.query<{ j: { student_name: string } }>(`select request_link(' 6504004 ') as j`)).rows[0].j;
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [M.uid]);
+      await db.query(`select request_link('6504004')`);
+      return r;
+    } finally {
+      await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+    }
+  })();
+  check('ส่งคำขอสำเร็จ และได้ชื่อกลับมาให้ตรวจ (ตัดช่องว่างให้)', mine.student_name === 'นศ. ดี', mine);
+
+  const stillBlind = await visible(db, D, `select 1 from patients`);
+  check('ส่งคำขอแล้วแต่ยังไม่ยืนยัน → ยังไม่เห็นผู้ป่วย', stillBlind <= 0, stillBlind);
+
+  const reqs = await db.query<{ id: string; uid: string }>(`select id, uid from link_requests where student_id = 'sD'`);
+  const deeReq = reqs.rows.find((r) => r.uid === D.uid)!.id;
+  const malReq = reqs.rows.find((r) => r.uid === M.uid)!.id;
+
+  const listT2 = await as(db, U.T2, async (tx) => (await tx.query(`select * from pending_link_requests()`)).rows.length);
+  check('อาจารย์กลุ่มอื่น (G2) ไม่เห็นคำขอของกลุ่ม G1', listT2.ok && listT2.value === 0, listT2);
+  const listT1 = await as(db, U.T1, async (tx) => (await tx.query<{ same_student: number }>(`select * from pending_link_requests()`)).rows);
+  check('อาจารย์ที่ปรึกษา G1 เห็นทั้งสองคำขอ และเห็นว่าขอคนเดียวกัน 2 บัญชี',
+    listT1.ok && listT1.value.length === 2 && listT1.value.every((r) => r.same_student === 2), listT1);
+  const listStudent = await as(db, U.A, async (tx) => (await tx.query(`select * from pending_link_requests()`)).rows.length);
+  check('นักศึกษาเห็นรายการรอยืนยันไม่ได้', listStudent.ok && listStudent.value === 0, listStudent);
+
+  const t2Approve = await as(db, U.T2, async (tx) => (await tx.query(`select decide_link($1, true)`, [malReq])).rows);
+  check('อาจารย์กลุ่มอื่นยืนยันแทนไม่ได้', !t2Approve.ok, t2Approve);
+  const selfApprove = await as(db, M, async (tx) => (await tx.query(`select decide_link($1, true)`, [malReq])).rows);
+  check('คนขอยืนยันคำขอตัวเองไม่ได้', !selfApprove.ok, selfApprove);
+  const studentApprove = await as(db, U.B, async (tx) => (await tx.query(`select decide_link($1, true)`, [malReq])).rows);
+  check('นักศึกษาในกลุ่มเดียวกันยืนยันให้ไม่ได้', !studentApprove.ok, studentApprove);
+  const direct = await as(db, M, async (tx) =>
+    (await tx.query(`update link_requests set status = 'approved' where uid = auth.uid() returning id`)).rows.length);
+  check('แก้สถานะคำขอตรงๆ ไม่ได้', !direct.ok || direct.value === 0, direct);
+
+  // ยืนยันจริงต้องทำใน transaction ที่ commit — ใช้ role จริง
+  await db.exec(`set role authenticated`);
+  let approveErr = '';
+  try {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [U.T1.uid]);
+    await db.query(`select decide_link($1, true)`, [deeReq]);
+  } catch (e) {
+    approveErr = (e as Error).message;
+  } finally {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+  }
+  check('อาจารย์ที่ปรึกษายืนยันได้', approveErr === '', approveErr);
+
+  const deeRole = await as(db, D, async (tx) => (await tx.query<{ s: string }>(`select my_student_id() as s`)).rows[0].s);
+  check('ยืนยันแล้ว: บัญชีผูกกับ นศ. ดี', deeRole.ok && deeRole.value === 'sD', deeRole);
+  const deeSees = await visible(db, D, `select 1 from patients`);
+  check('ยืนยันแล้ว: เห็นผู้ป่วยของตัวเองคนเดียว', deeSees === 1, deeSees);
+  const deeTeacher = await as(db, D, async (tx) => (await tx.query<{ t: boolean }>(`select is_teacher() as t`)).rows[0].t);
+  check('ยืนยันแล้วเป็นแค่นักศึกษา ไม่ได้สิทธิ์อาจารย์', deeTeacher.ok && deeTeacher.value === false, deeTeacher);
+  const malStatus = await db.query<{ status: string }>(`select status from link_requests where id = $1`, [malReq]);
+  check('คำขอของคนแอบอ้างที่ขอคนเดียวกัน ถูกปฏิเสธให้อัตโนมัติ', malStatus.rows[0]?.status === 'rejected', malStatus.rows);
+  const malSees = await visible(db, M, `select 1 from patients`);
+  check('คนแอบอ้างยังเห็นอะไรไม่ได้', malSees <= 0, malSees);
+  const inv = await db.query<{ student_id: string }>(`select student_id from invites where email = 'dee.real@student.mahidol.edu'`);
+  check('ยืนยันแล้วเพิ่มในรายชื่อเชิญให้ด้วย (สร้างบัญชีใหม่ครั้งหน้าผูกเอง)', inv.rows[0]?.student_id === 'sD', inv.rows);
+  const trail = await db.query<{ who: string; text: string }>(`select who, text from audit where id like 'a-link-%'`);
+  check('จด audit ว่าใครยืนยันใคร', trail.rows.length === 1 && trail.rows[0].who === 'อ. หนึ่ง' && trail.rows[0].text.includes('นศ. ดี'), trail.rows);
+
+  const again = await as(db, U.T1, async (tx) => (await tx.query(`select decide_link($1, true)`, [malReq])).rows);
+  check('ยืนยันคำขอที่ถูกปฏิเสธไปแล้วซ้ำไม่ได้', !again.ok, again);
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);
