@@ -446,7 +446,9 @@ export default function Evaluate() {
 
         <div className="panel">
           <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {groupShort(group)}</h3>
-          <p className="sub">{t('ให้คะแนนผิดแก้ได้ — กดปุ่มแก้ท้ายแถว · ทุกการแก้ถูกบันทึกในประวัติ ลบไม่ได้')}</p>
+          {/* ส่วนประวัติแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69): ชิปคะแนน → ตัวเลข · ปุ่มแก้มีกรอบ → ข้อความ
+              · ปุ่มดูทั้งหมดยาวเต็มแถว → ลิงก์ · ปุ่มเลือกนักศึกษา 8 ปุ่ม → ช่องเลือกอันเดียว · คำอธิบายกราฟรวมบรรทัดเดียว */}
+          <p className="sub">{t('ให้คะแนนผิดกด “แก้” ได้ · ทุกการแก้บันทึกไว้ ลบไม่ได้')}</p>
           <table className="tbl">
             <thead>
               <tr>
@@ -471,9 +473,14 @@ export default function Evaluate() {
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
                   <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}</td>
                   <td>
-                    <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
-                      <CheckCircle size={11} weight="fill" /> {totalScore(c.scores)}/{MAX_TOTAL}
-                    </span>
+                    {(() => {
+                      const sc = totalScore(c.scores) ?? 0;
+                      return (
+                        <span className="mono" style={{ fontWeight: 600, color: sc === MAX_TOTAL ? 'var(--success-dark)' : sc < 20 ? 'var(--warning)' : 'var(--text-secondary)' }}>
+                          {sc}/{MAX_TOTAL}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td style={{ font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
                     {t(c.evaluatedBy ?? '')}
@@ -487,12 +494,11 @@ export default function Evaluate() {
                   </td>
                   <td>
                     <button
-                      className="revisebtn"
+                      className="revisebtn revisebtn--text"
                       disabled={locked}
                       title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : t('แก้คะแนนคาบนี้')}
                       onClick={() => openRevise(c)}
                     >
-                      <PencilSimple size={14} />
                       {t('แก้')}
                     </button>
                   </td>
@@ -503,26 +509,28 @@ export default function Evaluate() {
           </table>
           {evaluatedAll.length > 5 && (
             <button
-              className="btn btn--sec"
-              style={{ height: 34, marginTop: 10, fontSize: 12 }}
+              className="textbtn"
+              style={{ marginTop: 8 }}
               onClick={() => setShowAllEvaluated(!showAllEvaluated)}
             >
-              {showAllEvaluated ? t('พับเหลือ 5 แถว') : t('ดูทั้งหมด ({n} รายการ)', { n: evaluatedAll.length })}
+              {showAllEvaluated ? t('พับเหลือ 5 แถว') : t('ดูทั้งหมด ({n} รายการ)', { n: evaluatedAll.length })} {showAllEvaluated ? '▴' : '›'}
             </button>
           )}
         </div>
 
         <div className="panel" style={{ marginTop: 16 }}>
-          <h3>{t('กราฟคะแนนรายคน')}</h3>
-          <p className="sub">{t('ตัวเลข = จำนวนคาบที่ได้ 3 / 1 / 0 ของแต่ละหัวข้อ · เงาเทา = ค่าเฉลี่ยของกลุ่มไว้เทียบ · สเกลแมงมุม: ขอบวง = 3 กลางวง = 1.5')}</p>
-
-          <div className="pickrow" style={{ marginTop: 10 }}>
-            {groupStudents.map((st) => (
-              <button key={st.id} data-on={st.id === selectedId} onClick={() => setChartStudent(st.id)}>
-                {t(st.name)}
-                <span className="mono">{st.code}</span>
-              </button>
-            ))}
+          <div className="tblhead">
+            <h3>{t('กราฟคะแนนรายคน')}</h3>
+            <select
+              className="tblhead__group"
+              value={selectedId ?? ''}
+              onChange={(e) => setChartStudent(e.target.value)}
+              aria-label={t('เลือกนักศึกษา')}
+            >
+              {groupStudents.map((st) => (
+                <option key={st.id} value={st.id}>{`${t(st.name)} · ${st.code}`}</option>
+              ))}
+            </select>
           </div>
 
           {selectedRows.length === 0 ? (
@@ -573,8 +581,8 @@ export default function Evaluate() {
                     </div>
                   );
                 })() : (
-                  <p className="faint" style={{ font: '400 11px var(--font-body)', marginTop: 10 }}>
-                    {t('กดหัวข้อบนกราฟแมงมุม (เช่น Instrument) เพื่อดูกราฟคะแนนหัวข้อนั้นตรงนี้')}
+                  <p className="faint" style={{ font: '400 11.5px/1.6 var(--font-body)', marginTop: 10 }}>
+                    {t('เงาเทา = ค่าเฉลี่ยกลุ่ม · ขอบวง = 3 · กดหัวข้อบนกราฟแมงมุม (เช่น Instrument) เพื่อดูคะแนนหัวข้อนั้นรายคาบ')}
                   </p>
                 )}
               </div>

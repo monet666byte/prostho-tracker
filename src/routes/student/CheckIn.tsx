@@ -1,4 +1,4 @@
-import { CalendarCheck, CheckCircle, Clock, Exam, Export, HourglassMedium, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { CalendarCheck, CheckCircle, Clock, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
@@ -55,12 +55,6 @@ export default function CheckInPage() {
     works.forEach((w) => seen.set(w.patient.id, `${t(w.patient.name)} · HN ${w.patient.hn}`));
     return [...seen.entries()];
   }, [works]);
-
-  // เลขคาบตามลำดับวันที่ เหมือนคอลัมน์ # ในสมุด
-  const periodNo = useMemo(() => {
-    const asc = [...checkins].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
-    return new Map(asc.map((c, i) => [c.id, i + 1]));
-  }, [checkins]);
 
   const evaluated = checkins.filter((c) => c.status === 'evaluated');
   const stepsByDate = useStepsOnDates(
@@ -229,6 +223,14 @@ export default function CheckInPage() {
           <Empty icon={<CalendarCheck size={26} />} title={t('ยังไม่มีคาบที่บันทึก')} hint="" />
         )}
 
+        {/* หน้าคาบแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69): การ์ด 8 ใบ → การ์ดเดียวแถวละคาบ
+            ตัดเลขลำดับในกล่องเทา · ชิปคะแนน/รอประเมิน → ตัวอักษร (เต็ม = เขียว · รอ = ส้ม) */}
+        {checkins.length > 0 && (
+          <div className="homelabel" style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 4px -3px' }}>
+            <span>{t('คาบที่ผ่านมา')}</span><span className="mono" style={{ fontSize: 12 }}>{checkins.length}</span>
+          </div>
+        )}
+        {checkins.length > 0 && <div className="card checklist">
         {checkins.map((c) => {
           const total = totalScore(c.scores);
           const open = expanded === c.id;
@@ -239,25 +241,16 @@ export default function CheckInPage() {
               key={c.id}
               role="button"
               tabIndex={0}
-              className="card"
-              style={{ padding: '12px 14px', textAlign: 'left', cursor: 'pointer' }}
+              className="checkrow"
               onClick={() => { setExpanded(open ? null : c.id); setConfirmDelete(null); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(open ? null : c.id); setConfirmDelete(null); } }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'grid', placeItems: 'center',
-                    background: 'var(--fill)', font: '600 11px var(--font-mono)', color: 'var(--text-muted)',
-                  }}
-                >
-                  {periodNo.get(c.id)}
-                </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{thaiShort(c.date)}</span>
+                  <span style={{ display: 'block', font: '600 14.5px/1.35 var(--font-head)' }}>{thaiShort(c.date)}</span>
                   <span
                     style={{
-                      display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1,
+                      display: 'block', font: '400 12.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 1,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
                   >
@@ -265,21 +258,19 @@ export default function CheckInPage() {
                   </span>
                 </span>
                 {!c.punctual && (
-                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('สาย')}</span>
+                  <span className="checkrow__tag" style={{ color: 'var(--warning-dark)' }}>{t('สาย')}</span>
                 )}
                 {c.editedAt && c.status !== 'evaluated' && (
-                  <span className="badge" style={{ background: 'var(--fill)', color: 'var(--text-muted)' }} title={t('แก้ไขล่าสุด')}>
+                  <span className="checkrow__tag" title={t('แก้ไขล่าสุด')}>
                     {t('แก้ไข')} {thaiShort(c.editedAt)}
                   </span>
                 )}
                 {c.status === 'evaluated' ? (
-                  <span className="chip" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>
-                    <Exam size={12} weight="fill" /> {total}/{MAX_TOTAL}
+                  <span className="checkrow__score" style={{ color: total === MAX_TOTAL ? 'var(--success-dark)' : undefined }}>
+                    {total}/{MAX_TOTAL}
                   </span>
                 ) : (
-                  <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
-                    <HourglassMedium size={12} /> {t('รอประเมิน')}
-                  </span>
+                  <span className="checkrow__wait">{t('รอประเมิน')}</span>
                 )}
               </div>
 
@@ -349,13 +340,13 @@ export default function CheckInPage() {
             </div>
           );
         })}
+        </div>}
 
         <Link
           to="/app/export"
-          className="dashed"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, font: '600 12.5px var(--font-body)', color: 'var(--text-muted)' }}
+          style={{ display: 'block', textAlign: 'center', padding: '8px 0', font: '600 13px var(--font-head)', color: 'var(--accent)' }}
         >
-          <Export size={16} /> {t('ส่งออกข้อมูลชิ้นงาน (PDF / CSV)')}
+          {t('ส่งออกข้อมูลชิ้นงาน (PDF / CSV)')} ›
         </Link>
       </div>
     </Shell>

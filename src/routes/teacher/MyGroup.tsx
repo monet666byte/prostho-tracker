@@ -1,4 +1,3 @@
-import { CalendarCheck, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -15,7 +14,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
 import { groupShort, splitPersonName } from '../../domain/group';
-import { RiskLegend } from '../../components/teacher/RiskLegend';
 
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
 /* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
@@ -87,56 +85,38 @@ export default function MyGroup() {
           </div>
         </div>
 
-        <div className="kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
+        <div className="kpis kpis--strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {/* ยุบการ์ด "ติด step/เงียบหาย" มาเป็นบรรทัดสาเหตุของ "ต้องตาม" — สองการ์ดเดิมชี้คนกลุ่มเดียวกัน */}
-          <div className="kpi" style={{ borderColor: gHigh ? 'var(--danger-border)' : undefined }}>
-            <div className="kpi__label"><WarningCircle size={14} /> {t('ต้องตาม')}</div>
-            <div className="kpi__value" style={{ color: gHigh ? 'var(--danger-chart)' : 'var(--success)' }}>
+          <div className="kpi">
+            <div className="kpi__value" style={{ color: gHigh ? 'var(--danger)' : 'var(--success)' }}>
               {gHigh + gWatch}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {t('{n} คน', { n: groupRisks.length })}</span>
+              <span className="kpi__of"> / {t('{n} คน', { n: groupRisks.length })}</span>
             </div>
-            <div className="kpi__hint">
-              {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}', {
+            <div className="kpi__label">
+              {t('ต้องตาม')} · {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}', {
                 a: gStuck, b: settings.stale, c: gSilent, e: gNoCase,
                 d: Math.max(0, gHigh + gWatch - gStuck - gSilent - gNoCase),
               })}
             </div>
           </div>
-          {/* รอประเมินอยู่กลาง — งานที่ต้องทำวันนี้สำคัญสุด มีจุดแดงเตือนแบบ noti เมื่อมีคิวค้าง */}
-          <button
-            className="kpi"
-            style={{ textAlign: 'left', cursor: 'pointer', borderColor: pendingPeople ? 'var(--accent-ring)' : undefined }}
-            onClick={() => navigate('/teacher/evaluate')}
-          >
-            <div className="kpi__label" style={{ position: 'relative' }}>
-              <CalendarCheck size={14} /> {t('รอประเมิน')}
-              {pendingPeople > 0 && (
-                <span
-                  style={{
-                    marginLeft: 4, background: 'var(--danger)', color: '#fff', borderRadius: 99,
-                    padding: '1px 6px', font: '600 9.5px var(--font-mono)', animation: 'pulseRing 2s infinite',
-                  }}
-                >
-                  {pendingPeople}
-                </span>
-              )}
-            </div>
-            <div className="kpi__value" style={{ color: pendingPeople ? 'var(--accent)' : undefined }}>
-              {pendingPeople}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> {t('คน')}</span>
-            </div>
-            <div className="kpi__hint">
-              {pendingEval > pendingPeople ? t('{n} รายการ · ', { n: pendingEval }) : ''}{t('เช็คอินแล้ว รออาจารย์ให้คะแนน')} ›
-            </div>
-          </button>
           <div className="kpi">
-            <div className="kpi__label"><CheckCircle size={14} /> {t('จบเคสปีนี้')}</div>
+            <div className="kpi__value" style={{ color: pendingPeople ? 'var(--warning)' : 'var(--success-dark)' }}>
+              {pendingPeople}
+              <span className="kpi__of"> {t('คน')}</span>
+            </div>
+            <div className="kpi__label">
+              {t('รอประเมิน')}{pendingEval > pendingPeople ? ` · ${t('{n} รายการ · ', { n: pendingEval }).replace(/ · $/, '')}` : ''}
+              {pendingPeople > 0 && <> · <button className="kpi__link" onClick={() => navigate('/teacher/evaluate')}>{t('ไปประเมิน')} ›</button></>}
+            </div>
+          </div>
+          <div className="kpi">
             {/* สีเขียว = สำเร็จ — ใช้เมื่อถึงเป้าเท่านั้น ระหว่างทางเป็นสีตัวเลขปกติ */}
             <div className="kpi__value" style={{ color: groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0) >= groupRisks.length * settings.req.perYear ? 'var(--success)' : undefined }}>
               {groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0)}
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-faint)' }}> / {t('เป้า {n} ชิ้น', { n: groupRisks.length * settings.req.perYear })}</span>
+              <span className="kpi__of"> / {t('เป้า {n} ชิ้น', { n: groupRisks.length * settings.req.perYear })}</span>
             </div>
-            <div className="kpi__hint">{t('เกณฑ์รายปี คนละ {n} ชิ้น', { n: settings.req.perYear })}</div>
+            <div className="kpi__label">{t('จบเคสปีนี้')} · {t('เกณฑ์รายปี คนละ {n} ชิ้น', { n: settings.req.perYear })}</div>
           </div>
         </div>
 
@@ -144,7 +124,7 @@ export default function MyGroup() {
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
              เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ (ผู้ใช้ขอลดความรก 2 ก.ย.) */}
-          <RiskLegend />
+          <p className="sub">{t('สีจุด: เขียว = ตามแผน · ส้ม = จับตา · แดง = เสี่ยงสูง')} · {t('กดชื่อเพื่อดูงานรายคน')}</p>
           <table className="tbl">
             <thead>
               <tr>
@@ -197,7 +177,7 @@ export default function MyGroup() {
                           {(() => {
                             const [fn, ln] = splitPersonName(t(r.student.name));
                             return (
-                              <div style={{ font: '600 12px/1.35 var(--font-body)', color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                              <div className="grpname">
                                 {fn}
                                 {ln && <div style={{ fontWeight: 500 }}>{ln}</div>}
                               </div>
@@ -220,25 +200,16 @@ export default function MyGroup() {
                           <div className="worknow">
                             {/* เลขเดียวพอ: แถบ = ผ่านแล้วกี่ขั้น (มี tooltip) · ข้อความ = กำลังทำขั้นไหน
                                เดิมมี "3/10" คู่กับ "CD-4" คนอ่านเห็นเลขชนกัน (ผู้ใช้งง 2 ก.ย.) */}
-                            <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: main.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
-                              <i style={{ width: `${(main.progression / 10) * 100}%`, background: 'var(--accent)' }} />
-                            </span>
-                            <span className="badge" style={{ background: typeMeta(main.type).tint, color: typeMeta(main.type).ink, flex: 'none' }}>
-                              {typeMeta(main.type).prefix}
-                            </span>
+                            <span className="worknow__type" style={{ color: typeMeta(main.type).ink }}>{typeMeta(main.type).prefix}</span>
                             <span className="worknow__name">
                               {t('กำลังทำขั้น {n}', { n: Math.min(10, main.progression + 1) })} · {main.name}
                             </span>
                             {r.stuckPeriods >= 2 ? (
-                              <span className="chip" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)', flex: 'none' }}>
-                                {t('ติดมา {n} คาบ', { n: r.stuckPeriods })}
-                              </span>
+                              <span className="worknow__flag" style={{ color: 'var(--warning)' }}>{t('ติดมา {n} คาบ', { n: r.stuckPeriods })}</span>
                             ) : r.silentDays >= settings.stale ? (
-                              <span className="chip" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', flex: 'none' }}>
-                                {t('เงียบ {n} วัน', { n: r.silentDays })}
-                              </span>
+                              <span className="worknow__flag" style={{ color: 'var(--danger)' }}>{t('เงียบ {n} วัน', { n: r.silentDays })}</span>
                             ) : (
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: main.days })}</span>
+                              <span className="worknow__ago">{main.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: main.days })}</span>
                             )}
                             {(r.pieces.length > 1 || r.donePieces.length > 0) && (
                               <span className="worknow__more">
@@ -263,16 +234,11 @@ export default function MyGroup() {
                           <td /><td /><td />
                           <td>
                             <div className="worknow">
-                              <span className="bar" title={t('ผ่านแล้ว {p} จาก 10 ขั้น', { p: pc.progression })} style={{ height: 6, width: 90, flex: 'none' }}>
-                                <i style={{ width: `${(pc.progression / 10) * 100}%`, background: 'var(--accent)' }} />
-                              </span>
-                              <span className="badge" style={{ background: typeMeta(pc.type).tint, color: typeMeta(pc.type).ink, flex: 'none' }}>
-                                {typeMeta(pc.type).prefix}
-                              </span>
+                              <span className="worknow__type" style={{ color: typeMeta(pc.type).ink }}>{typeMeta(pc.type).prefix}</span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>
                                 {t('กำลังทำขั้น {n}', { n: Math.min(10, pc.progression + 1) })} · {pc.name}
                               </span>
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>
+                              <span className="worknow__ago">{pc.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
                           </td>
                         </tr>
@@ -283,14 +249,9 @@ export default function MyGroup() {
                           <td /><td /><td />
                           <td>
                             <div className="worknow">
-                              <span className="bar" style={{ height: 6, width: 90, flex: 'none' }}>
-                                <i style={{ width: '100%', background: 'var(--success)' }} />
-                              </span>
-                              <span className="badge" style={{ background: typeMeta(pc.type).tint, color: typeMeta(pc.type).ink, flex: 'none' }}>
-                                {typeMeta(pc.type).prefix}
-                              </span>
+                              <span className="worknow__type" style={{ color: typeMeta(pc.type).ink }}>{typeMeta(pc.type).prefix}</span>
                               <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{t('จบเคสแล้ว')} ✓</span>
-                              <span className="faint" style={{ font: '400 10px var(--font-body)', flex: 'none' }}>{t('{n} วันก่อน', { n: pc.days })}</span>
+                              <span className="worknow__ago">{pc.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
                           </td>
                         </tr>
