@@ -340,6 +340,16 @@
   margin-top: 10px; background: #fff; border: 1px solid var(--border);
   border-radius: 12px; padding: 11px 12px;
 }
+/* จังหวะหน้ารายละเอียดเคส — ผู้ใช้เลือกข้อ 2+3 จาก mock 14 ก.ย.
+   กางขั้นย่อย: กล่องเลื่อนลงนิดๆ + จางเข้า (พับกลับทันที) · ลูกศรหมุนตาม
+   เปิดหน้า: แต่ละขั้นทยอยขึ้นห่างกัน 40ms แทนการเลื่อนทั้งหน้าจากขวา — กดได้ทันทีระหว่างเล่น */
+.tl__panel { animation: panelIn 0.2s cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes panelIn { from { opacity: 0; transform: translateY(-6px) scale(0.985); } to { opacity: 1; transform: none; } }
+.tl__caret { color: var(--text-disabled); display: grid; transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1); }
+button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
+.screen:has(.tl--stagger) { animation: none; }
+.tl--stagger .tl__item { animation: itemIn 0.26s cubic-bezier(0.23, 1, 0.32, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes itemIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .tl__proc { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font: 400 11.5px/1.5 var(--font-mono); }
 
 /* ── footer ค้างล่าง ── */
@@ -364,7 +374,7 @@
   position: absolute; left: 14px; right: 14px; bottom: calc(60px + 16px + max(8px, calc(env(safe-area-inset-bottom) - 22px)));
   background: var(--toast-bg); border-radius: 14px; padding: 13px 15px;
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-toast);
-  animation: toastIn 0.22s ease; z-index: 50;
+  animation: toastIn 0.3s cubic-bezier(0.23, 1, 0.32, 1); z-index: 50;
 }
 .toast span { flex: 1; font: 500 12.5px/1.45 var(--font-body); color: #fff; }
 .toast button { font: 600 12.5px var(--font-body); color: var(--accent-on-dark); flex: none; }
@@ -659,6 +669,9 @@
   /* คนที่ตั้ง "ลดการเคลื่อนไหว" — เลิกเลื่อน/กระเพื่อม เหลือค่อยๆ ปรากฏ (ยังรู้ว่ามีอะไรโผล่มา) */
   .sheet, .toast { animation: fadeIn 0.18s ease; }
   .tl__dot--active::after { animation: none; }
+  .tl__panel, .tl--stagger .tl__item { animation: fadeIn 0.15s ease both; }
+  .tl__caret { transition: none; }
+  .screen:has(.tl--stagger) { animation: shellIn 0.15s ease; }
 }
 
 

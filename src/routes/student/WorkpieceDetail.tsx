@@ -1,4 +1,4 @@
-import { ArrowLeft, CameraPlus, CaretDown, CaretUp, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
+import { ArrowLeft, CameraPlus, CaretDown, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -197,7 +197,7 @@ export default function WorkpieceDetail() {
         </div>
       </header>
 
-      <div className="tl" style={{ paddingTop: 16 }}>
+      <div className="tl tl--stagger" style={{ paddingTop: 16 }}>
         {groups.map((g, gi) => {
           const first = g.procs[0];
           const extra = g.procs.length - 1;
@@ -205,7 +205,7 @@ export default function WorkpieceDetail() {
           const passedDate = gi === lastDoneIndex ? thaiShort(w.lastUpdatedAt) : null;
           const expanded = g.state === 'active' || openStep === g.progression;
           return (
-            <div className="tl__item" key={g.progression}>
+            <div className="tl__item" key={g.progression} style={{ '--i': gi } as React.CSSProperties}>
               <div className="tl__rail">
                 <span className={`tl__dot tl__dot--${g.state}`}>
                   {g.state === 'done' ? <Check size={14} weight="bold" /> : g.progression}
@@ -229,8 +229,8 @@ export default function WorkpieceDetail() {
                   {g.hasSelf && <SelfBadge compact />}
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {passedDate && <span className="tl__date">{passedDate}</span>}
-                    <span style={{ color: 'var(--text-disabled)', display: 'grid' }} aria-hidden="true">
-                      {expanded ? <CaretUp size={13} weight="bold" /> : <CaretDown size={13} weight="bold" />}
+                    <span className="tl__caret" aria-hidden="true">
+                      <CaretDown size={13} weight="bold" />
                     </span>
                   </span>
                 </button>
