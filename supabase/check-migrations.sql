@@ -61,5 +61,24 @@ from (
 
   union all select '0021 ปิดช่องจากการตรวจความปลอดภัย 13 ก.ย.',
     exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
+
+  -- 0022 ไม่สร้างของใหม่ — ดูผลของมัน: บัญชีสาธิตต้องไม่ใช่หัวหน้าภาค
+  union all select '0022 ถอดหัวหน้าภาคจากบัญชีสาธิต demo@',
+    not exists (select 1 from invites where lower(email) = 'demo@example.com' and is_admin)
+    and not exists (select 1 from app_users where lower(email) = 'demo@example.com' and is_admin)
+
+  -- 0023 ดูสองร่องรอยพร้อมกัน (ตาราง + trigger สมัครบัญชีรุ่นใหม่)
+  union all select '0023 นักศึกษาผูกบัญชีเอง + อาจารย์ยืนยัน',
+    to_regclass('public.link_requests') is not null
+    and exists (select 1 from pg_proc where proname = 'handle_new_user'
+                and pg_get_functiondef(oid) like '%self_link_email_ok%')
+
+  -- 0024 ดูสามร่องรอย (คอลัมน์ปี · ตัวล้างขึ้นปีใหม่ · กฎ audit ที่ครอบทุกกลุ่ม)
+  union all select '0024 ที่ปรึกษากลุ่ม (หลายท่าน · หลายกลุ่ม · ล้างเมื่อขึ้นปี)',
+    exists (select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = 'groups' and column_name = 'advisor_year')
+    and exists (select 1 from pg_proc where proname = 'reset_advisors_for_new_year')
+    and exists (select 1 from pg_policies where tablename = 'audit' and policyname = 'audit_read'
+                and qual like '%my_advised_groups%')
 ) x
 order by x.label;
