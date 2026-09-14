@@ -298,7 +298,7 @@ export default function Settings() {
               <h3>Audit log</h3>
               <p className="sub">{t('ใครแก้อะไร เมื่อไหร่ — ย้อนดูได้ทุกการเปลี่ยน step และการอนุมัติ')}</p>
               <p className="sub" style={{ marginTop: 2 }}>
-                {t('เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งภาคเป็นสิทธิ์ของหัวหน้าภาค')}
+                {t('เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งรายวิชาเป็นสิทธิ์ของหัวหน้ารายวิชา')}
               </p>
               <div style={{ display: 'grid', gap: 2, marginTop: 8, maxHeight: 320, overflowY: 'auto' }}>
                 {audit.length === 0 && (
@@ -417,7 +417,7 @@ function SettingsSyncNote() {
 const EXPORT_ROLE_LABELS: Array<[PdpaRole, string]> = [
   ['student', t('นักศึกษา — ของตัวเองเท่านั้น')],
   ['teacher', t('อาจารย์')],
-  ['admin', t('หัวหน้าภาค')],
+  ['admin', t('หัวหน้ารายวิชา')],
 ];
 
 /**
@@ -448,7 +448,7 @@ function BackupRow() {
         </span>
         {/* ปุ่มเทาโดยไม่บอกเหตุผลคือทางตัน — tooltip ไม่พอ บนมือถือไม่มี hover
             (บทเรียนเดียวกับปุ่ม "สร้างชิ้นงาน" ที่แก้ไป 10 ก.ย. 69) */}
-        {!isAdmin && <span className="setrow__hint">{t('สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค')}</span>}
+        {!isAdmin && <span className="setrow__hint">{t('สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้ารายวิชา')}</span>}
       </span>
       <button
         className="textbtn"
@@ -504,10 +504,10 @@ function PdpaPanel() {
         <ShieldCheck size={17} color="var(--warning-dark)" />
         <h3>{t('นโยบาย PDPA')}</h3>
       </div>
-      <p className="sub">{t('ค่าเริ่มต้นคือปิดทุกข้อ — เปิดได้เมื่อคณะอนุมัติแล้ว และเปิดได้เฉพาะหัวหน้าภาค')}</p>
+      <p className="sub">{t('ค่าเริ่มต้นคือปิดทุกข้อ — เปิดได้เมื่อคณะอนุมัติแล้ว และเปิดได้เฉพาะหัวหน้ารายวิชา')}</p>
       {!isAdmin && (
         <p style={{ margin: '8px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('ดูได้อย่างเดียว — เปลี่ยนได้เฉพาะหัวหน้าภาค')}
+          {t('ดูได้อย่างเดียว — เปลี่ยนได้เฉพาะหัวหน้ารายวิชา')}
         </p>
       )}
 
@@ -571,7 +571,7 @@ function PdpaPanel() {
             <span style={{ flex: 1 }}>
               <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{t('เปิดใช้การลบตามกำหนดเก็บ')}</span>
               <span style={{ display: 'block', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {t('ปิดอยู่ = ไม่มีใครลบข้อมูลรุ่นเก่าได้ แม้แต่หัวหน้าภาค')}
+                {t('ปิดอยู่ = ไม่มีใครลบข้อมูลรุ่นเก่าได้ แม้แต่หัวหน้ารายวิชา')}
               </span>
             </span>
             <button

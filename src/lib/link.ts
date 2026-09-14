@@ -32,7 +32,16 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 const offline = () => ({ ok: false as const, error: t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต') });
 /** error ที่ไม่มีข้อความจากฐานข้อมูล (เน็ตหลุด) ต้องไม่โชว์ข้อความอังกฤษดิบ */
 const messageOf = (e: { message?: string; code?: string } | null) =>
-  e?.code ? (e.message ?? '') : t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต');
+  e?.code ? serverText(e.message ?? '') : t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต');
+
+/**
+ * ข้อความ error จากฟังก์ชันบนเซิร์ฟเวอร์ (raise exception ใน migration) → คำที่แอปใช้
+ * ผู้ใช้เปลี่ยนชื่อบทบาท is_admin จาก "หัวหน้าภาค" เป็น "หัวหน้ารายวิชา" (14 ก.ย. 69)
+ * ข้อความใน migration ที่รันแล้วแก้ไม่ได้ จึงแปลงที่ฝั่งแอปแทน
+ */
+export function serverText(msg: string): string {
+  return msg.replace(/หัวหน้าภาค/g, 'หัวหน้ารายวิชา');
+}
 
 /** สถานะคำขอของฉัน · null = ยังไม่เคยส่ง */
 export async function myLinkRequest(): Promise<Result<MyLinkRequest | null>> {

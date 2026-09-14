@@ -113,7 +113,7 @@ export function LinkAccount() {
 
       {email && !student && (
         <p className="pretty" style={{ margin: 0, font: '400 12px/1.7 var(--font-body)', color: 'var(--text-body)' }}>
-          {t('บัญชีนี้ยังไม่อยู่ในรายชื่อ — อาจารย์ให้ติดต่อหัวหน้าภาคเพื่อเพิ่มรายชื่อ · นักศึกษาให้ออกแล้วเข้าใหม่ด้วยอีเมล @student.mahidol.edu')}
+          {t('บัญชีนี้ยังไม่อยู่ในรายชื่อ — อาจารย์ให้ติดต่อหัวหน้ารายวิชาเพื่อเพิ่มรายชื่อ · นักศึกษาให้ออกแล้วเข้าใหม่ด้วยอีเมล @student.mahidol.edu')}
         </p>
       )}
 

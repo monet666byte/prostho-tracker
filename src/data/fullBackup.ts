@@ -47,13 +47,13 @@ export interface FullBackupResult {
 export async function downloadFullBackup(actor: string): Promise<FullBackupResult> {
   const role = currentPdpaRole();
   if (role !== 'admin') {
-    return { ok: false, reason: 'สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค' };
+    return { ok: false, reason: 'สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้ารายวิชา' };
   }
   const perm = exportPermission(role);
   if (!perm.allowed || !perm.identified) {
     /* ไฟล์นี้ปิดบังชื่อไม่ได้ (จุดประสงค์คือกู้ข้อมูลกลับ ต้องเป็นของจริงทุกช่อง)
        ถ้าภาคยังไม่เปิดสิทธิ์แบบมีชื่อ ก็ต้องปฏิเสธ ไม่ใช่ลดรูปให้ */
-    return { ok: false, reason: 'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกแบบมีชื่อและ HN ให้หัวหน้าภาค' };
+    return { ok: false, reason: 'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกแบบมีชื่อและ HN ให้หัวหน้ารายวิชา' };
   }
 
   const tables: Record<string, unknown[]> = {};

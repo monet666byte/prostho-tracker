@@ -7,6 +7,7 @@
  */
 import { supabase } from './cloud';
 import { t } from './i18n';
+import { serverText } from './link';
 import { pullAll } from '../data/cloudSync';
 import { refreshMyGroup } from '../store/app';
 
@@ -15,7 +16,7 @@ type Result = { ok: true } | { ok: false; error: string };
 const run = async (fn: string, args: Record<string, unknown>): Promise<Result> => {
   if (!supabase) return { ok: false, error: t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต') };
   const { error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, error: error.code ? error.message : t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต') };
+  if (error) return { ok: false, error: error.code ? serverText(error.message) : t('ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต') };
   await pullAll();
   await refreshMyGroup();
   return { ok: true };

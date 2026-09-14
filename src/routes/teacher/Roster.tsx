@@ -37,7 +37,7 @@ export default function Roster() {
   const students = useAllStudents();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
   /* หน้านี้อาจารย์ทุกคนเข้าได้ (ผู้ใช้ให้เปิด 1 ก.ย. — ทุกการกระทำมี audit log)
-     แต่ "การให้สิทธิ์เข้าระบบ" ยังเป็นของหัวหน้าภาคเท่านั้น เพราะมันคือการเปิดประตูให้คนใหม่
+     แต่ "การให้สิทธิ์เข้าระบบ" ยังเป็นของหัวหน้ารายวิชาเท่านั้น เพราะมันคือการเปิดประตูให้คนใหม่
      เห็นข้อมูลนักศึกษาทั้งภาค — audit log ตามทีหลังไม่ช่วยถ้าข้อมูลรั่วไปแล้ว */
   const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
 
@@ -161,7 +161,7 @@ export default function Roster() {
         <main className="main">
           <div className="main__head"><div style={{ flex: 1 }}><h1>{t('จัดการรายชื่อ')}</h1></div></div>
           <div className="dashed" style={{ padding: '28px 20px', textAlign: 'center', font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
-            {t('หน้านี้สำหรับหัวหน้าภาคเท่านั้น')}
+            {t('หน้านี้สำหรับหัวหน้ารายวิชาเท่านั้น')}
           </div>
         </main>
       </TeacherShell>
@@ -331,7 +331,7 @@ export default function Roster() {
                         {inv.email}
                         {inv.is_admin && (
                           <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)', marginLeft: 6 }}>
-                            {t('หัวหน้าภาค')}
+                            {t('หัวหน้ารายวิชา')}
                           </span>
                         )}
                       </td>
@@ -357,7 +357,7 @@ export default function Roster() {
         </>)}
         {!isAdmin && (
           <p className="sub" style={{ marginTop: 4 }}>
-            {t('การให้สิทธิ์เข้าระบบเป็นของหัวหน้าภาค — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log')}
+            {t('การให้สิทธิ์เข้าระบบเป็นของหัวหน้ารายวิชา — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log')}
           </p>
         )}
         </>)}

@@ -51,9 +51,9 @@ export const DICT: Record<string, string> = {
   'ดาวน์โหลดไฟล์สำรองข้อมูล': 'Download backup file',
   'กำลังรวบรวม…': 'Collecting…',
   'สำรองแล้ว {n} แถว — ยังไม่รวมรูป {p} ใบ': 'Backed up {n} rows — {p} photos not included',
-  'สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้าภาค': 'Only the department head can back up the whole system',
-  'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกแบบมีชื่อและ HN ให้หัวหน้าภาค':
-    'The department has not enabled identified export for the department head',
+  'สำรองข้อมูลทั้งระบบได้เฉพาะหัวหน้ารายวิชา': 'Only the course lead can back up the whole system',
+  'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกแบบมีชื่อและ HN ให้หัวหน้ารายวิชา':
+    'The department has not enabled identified export for the course lead',
   'สำรองข้อมูลไม่สำเร็จ': 'Backup failed',
   'กรอกเลขรุ่น DTMU ก่อน แล้วระบบจะบอกว่ารุ่นนี้ขึ้นปี 5 ปีการศึกษาไหน': 'Enter the DTMU cohort number first and the system will show which academic year they start year 5',
   'ชิ้นงาน จากทั้งหมด {n} ชิ้นของรุ่นที่กำลังเรียน': 'workpieces, out of {n} belonging to cohorts currently enrolled',
@@ -72,7 +72,7 @@ export const DICT: Record<string, string> = {
   'ตั้งค่า': 'Settings',
   'นำเข้า': 'Import',
   'จบแล้ว': 'Graduated',
-  'การให้สิทธิ์เข้าระบบเป็นของหัวหน้าภาค — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log': 'Granting system access is limited to the department head — data import is open to all instructors and is recorded in the audit log',
+  'การให้สิทธิ์เข้าระบบเป็นของหัวหน้ารายวิชา — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log': 'Granting system access is limited to the course lead — data import is open to all instructors and is recorded in the audit log',
   'นำเข้าจากชีตให้ {name}: {p} ผู้ป่วย · {w} ชิ้นงาน': 'Sheet import for {name}: {p} patients · {w} workpieces',
   'รายชื่อ & นำเข้าข้อมูล': 'Roster & data import',
   'รายชื่อ & นำเข้า': 'Roster & import',
@@ -573,7 +573,7 @@ export const DICT: Record<string, string> = {
   'ต่อเซิร์ฟเวอร์ไม่ได้ — ลองใหม่เมื่อมีเน็ต': 'Cannot reach the server — try again when online',
   'ผูกบัญชีกับรายชื่อนักศึกษา': 'Link your account to the student list',
   'เข้าด้วย': 'Signed in as',
-  'บัญชีนี้ยังไม่อยู่ในรายชื่อ — อาจารย์ให้ติดต่อหัวหน้าภาคเพื่อเพิ่มรายชื่อ · นักศึกษาให้ออกแล้วเข้าใหม่ด้วยอีเมล @student.mahidol.edu': 'This account is not on the list — instructors: ask the head of department to add you · students: sign out and sign in with your @student.mahidol.edu email',
+  'บัญชีนี้ยังไม่อยู่ในรายชื่อ — อาจารย์ให้ติดต่อหัวหน้ารายวิชาเพื่อเพิ่มรายชื่อ · นักศึกษาให้ออกแล้วเข้าใหม่ด้วยอีเมล @student.mahidol.edu': 'This account is not on the list — instructors: ask the course lead to add you · students: sign out and sign in with your @student.mahidol.edu email',
   'รออาจารย์ที่ปรึกษายืนยัน': 'Waiting for your advisor to confirm',
   'อาจารย์ยืนยันแล้วแอปจะเปิดให้เอง ไม่ต้องทำอะไรเพิ่ม · ถ้าชื่อไม่ใช่คุณ กดแก้รหัส': 'The app opens by itself once your advisor confirms · if this is not you, change the code',
   'ตรวจสถานะ': 'Check status',
@@ -988,7 +988,7 @@ export const DICT: Record<string, string> = {
   'นำเข้าแล้ว {p} ผู้ป่วย · {w} ชิ้นงาน': 'Imported {p} patients · {w} workpieces',
   'นำเข้าแล้วข้อมูลจะขึ้นตู้กลางเองภายในไม่กี่วินาที · นำเข้าซ้ำไฟล์เดิมจะได้ข้อมูลซ้ำ ระวังด้วย':
     'Imported data syncs to the cloud within seconds · re-importing the same file creates duplicates, be careful',
-  'หน้านี้สำหรับหัวหน้าภาคเท่านั้น': 'This page is for the department head only',
+  'หน้านี้สำหรับหัวหน้ารายวิชาเท่านั้น': 'This page is for the course lead only',
   'ใครมีสิทธิ์เข้าระบบ และเข้าในฐานะใคร — คนที่ไม่อยู่ในรายชื่อนี้ สมัครแล้วก็ใช้งานไม่ได้':
     'Who may sign in, and as whom — anyone not on this list cannot use the system even after signing up',
   'เพิ่มคนเข้าระบบ': 'Add a person',
@@ -1001,7 +1001,7 @@ export const DICT: Record<string, string> = {
   '✓ เขียว = สมัครแล้วใช้งานได้ · นาฬิกา = เชิญไว้แต่ยังไม่ได้สมัคร':
     '✓ green = signed up and active · clock = invited but not signed up yet',
   'ฐานะ': 'Role',
-  'หัวหน้าภาค': 'Dept. head',
+  'หัวหน้ารายวิชา': 'Course lead',
   'กำลังโหลด…': 'Loading…',
   'ยังไม่มีใครในรายชื่อ': 'No entries yet',
   'สมัครแล้ว': 'Signed up',
@@ -1011,8 +1011,8 @@ export const DICT: Record<string, string> = {
   'ลบรายชื่อแล้ว — คนใหม่จะสมัครด้วยอีเมลนี้ไม่ได้': 'Removed — this email can no longer sign up',
   'ลบรายชื่อ = คนใหม่สมัครด้วยอีเมลนี้ไม่ได้ · คนที่สมัครไปแล้วต้องปิดบัญชีในหน้า Supabase อีกที':
     'Removing blocks new sign-ups with this email · already-registered accounts must also be disabled in Supabase',
-  'เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งภาคเป็นสิทธิ์ของหัวหน้าภาค':
-    'You see only your advisory group and your own actions · department-wide view is reserved for the department head',
+  'เห็นเฉพาะเรื่องของกลุ่มที่คุณดูแล และสิ่งที่คุณทำเอง · ภาพรวมทั้งรายวิชาเป็นสิทธิ์ของหัวหน้ารายวิชา':
+    'You see only your advisory group and your own actions · department-wide view is reserved for the course lead',
   'กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})': 'Viewing group {other} — not your advisory group ({mine})',
   ' · การเข้าดูถูกบันทึกไว้': ' · this access is logged',
   'กลับกลุ่มฉัน': 'Back to my group',
@@ -1341,8 +1341,8 @@ export const DICT: Record<string, string> = {
   'ไฟล์นี้มีชื่อและ HN ผู้ป่วย · การส่งออกทุกครั้งถูกบันทึกใน audit log': 'This file contains patient names and HNs · every export is recorded in the audit log',
   'ไฟล์นี้แสดงรหัสเคสแทนชื่อและ HN · การส่งออกทุกครั้งถูกบันทึกใน audit log': 'This file shows case codes instead of names and HNs · every export is recorded in the audit log',
   'นโยบาย PDPA': 'PDPA policy',
-  'ค่าเริ่มต้นคือปิดทุกข้อ — เปิดได้เมื่อคณะอนุมัติแล้ว และเปิดได้เฉพาะหัวหน้าภาค': 'Everything is off by default — only the department head can turn these on, once the faculty approves',
-  'ดูได้อย่างเดียว — เปลี่ยนได้เฉพาะหัวหน้าภาค': 'Read-only — only the department head can change these',
+  'ค่าเริ่มต้นคือปิดทุกข้อ — เปิดได้เมื่อคณะอนุมัติแล้ว และเปิดได้เฉพาะหัวหน้ารายวิชา': 'Everything is off by default — only the course lead can turn these on, once the faculty approves',
+  'ดูได้อย่างเดียว — เปลี่ยนได้เฉพาะหัวหน้ารายวิชา': 'Read-only — only the course lead can change these',
   'ใครกดส่งออกไฟล์ได้': 'Who may export a file',
   'ใครส่งออกแบบมีชื่อและ HN ผู้ป่วยได้': 'Who may export with patient names and HNs',
   'นักศึกษา — ของตัวเองเท่านั้น': 'Students — their own data only',
@@ -1351,7 +1351,7 @@ export const DICT: Record<string, string> = {
   'ต้องเปิดสิทธิ์ส่งออกก่อน': 'Enable export permission first',
   'ที่ไม่ได้ติ๊ก จะได้ไฟล์ที่แสดงรหัสเคสแทนชื่อและ HN': 'Roles not ticked receive files showing case codes instead of names and HNs',
   'เปิดใช้การลบตามกำหนดเก็บ': 'Enable retention deletion',
-  'ปิดอยู่ = ไม่มีใครลบข้อมูลรุ่นเก่าได้ แม้แต่หัวหน้าภาค': 'While off, nobody can delete old cohorts — not even the department head',
+  'ปิดอยู่ = ไม่มีใครลบข้อมูลรุ่นเก่าได้ แม้แต่หัวหน้ารายวิชา': 'While off, nobody can delete old cohorts — not even the course lead',
   'เก็บย้อนหลังกี่รุ่น': 'Cohorts to keep',
   'ตัวเลขนี้ยังไม่ใช่มติภาค — 5 เป็นค่าตั้งต้นจากที่อาจารย์เคยพูดไว้': 'Not a department decision yet — 5 is a placeholder from an earlier conversation',
   'โหมดในเครื่อง/เดโม — ข้อมูลเป็นของสมมติทั้งหมด ค่าที่ตั้งตรงนี้ไม่ถูกส่งไปไหน': 'Local/demo mode — all data is fictional and these settings go nowhere',
