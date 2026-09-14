@@ -19,12 +19,15 @@ export function cspMeta({ skip = false }: { skip?: boolean } = {}): Plugin {
   /* style-src ต้องมี 'unsafe-inline' เพราะทั้งแอปใช้ style={{…}} ของ React
      ซึ่งเป็น inline style attribute · ความเสี่ยงต่ำกว่า inline script มาก
      img-src ต้องมี blob: (รูปงานที่ถ่ายมาแสดงผ่าน object URL) และ data: (ไอคอนที่ฝังมา)
+     และ https://*.supabase.co — เครื่องที่ไม่มีสำเนารูปในเครื่อง (อาจารย์ · นศ. เครื่องที่สอง) แสดงรูปจากลิงก์ที่เซ็นแล้ว
+     ของบักเก็ต case-photos (photoStore.resolvePhotoSrc) · เดิมไม่มี = รูปงานไม่ขึ้นเลยบนเว็บจริง
+     ทุกเทสต์ในเบราว์เซอร์ใช้ bypassCSP จึงไม่มีใครเห็น (เจอ 14 ก.ย. 69 · test:photos ตรวจแล้ว)
      connect-src เปิดให้ *.supabase.co ทั้ง https และ wss (realtime ใช้ websocket) */
   const policy = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://*.supabase.co",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "worker-src 'self'",

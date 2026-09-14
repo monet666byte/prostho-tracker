@@ -460,5 +460,29 @@ console.log('\nลบชิ้นงานทิ้งระหว่างท�
   check('ไม่นับเป็นความผิดพลาด', ENV.problems.length === 0);
 }
 
+/* ── CSP ของหน้าเว็บจริงต้องยอมให้แสดงรูปจากบักเก็ต ─────────────────────────
+   เจอ 14 ก.ย. 69: เครื่องที่ไม่มีสำเนารูป (อาจารย์ · นศ. เครื่องที่สอง) ใช้ลิงก์ที่เซ็นของ Supabase เป็น <img src>
+   แต่ CSP ใน index.html ยอมแค่ 'self' data: blob: → รูปงานไม่ขึ้นเลยบนเว็บจริง (พิสูจน์ใน Chromium จริงแล้ว)
+   เทสต์ในเบราว์เซอร์ทุกชุดใช้ bypassCSP จึงมองไม่เห็น — ข้อนี้อ่านนโยบายตัวจริงจาก vite/csp.ts */
+console.log('\nนโยบาย CSP ของหน้าเว็บจริง');
+{
+  const { cspMeta } = await import(pathToFileURL(join(root, 'vite/csp.ts')).href) as
+    { cspMeta: () => { transformIndexHtml: (h: string) => string } };
+  const html = cspMeta().transformIndexHtml('<head></head>');
+  const policy = /Content-Security-Policy" content="([^"]+)"/.exec(html)?.[1] ?? '';
+  const sources = (name: string) =>
+    policy.split(';').map((d) => d.trim().split(/\s+/)).find((d) => d[0] === name)?.slice(1) ?? [];
+  const allows = (list: string[], url: string) => {
+    const u = new URL(url);
+    return list.some((s) => s === '*' || s === `${u.protocol}//${u.host}`
+      || (s.startsWith(`${u.protocol}//*.`) && u.hostname.endsWith(s.slice(`${u.protocol}//*`.length))));
+  };
+  const signed = 'https://vhufhznclqwekoyewfqn.supabase.co/storage/v1/object/sign/case-photos/st1/PT-X/w1/ph1.jpg?token=t';
+  check('อ่านนโยบาย CSP ได้', policy.length > 0);
+  check('img-src ยอมรูปจากลิงก์ที่เซ็นของ Supabase (เครื่องอาจารย์)', allows(sources('img-src'), signed), sources('img-src').join(' '));
+  check('connect-src ยอม Supabase (sync / อัปรูป / ขอลิงก์ที่เซ็น)', allows(sources('connect-src'), signed), sources('connect-src').join(' '));
+  check('img-src ยังไม่เปิดกว้างทุกเว็บ', !sources('img-src').includes('*') && !sources('img-src').includes('https:'), sources('img-src').join(' '));
+}
+
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);
