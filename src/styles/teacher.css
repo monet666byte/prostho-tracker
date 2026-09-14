@@ -1284,3 +1284,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .revisebtn.revisebtn--text:disabled { color: var(--text-disabled); }
 /* สัญลักษณ์ใต้ช่องกลุ่ม — พื้นส้มอ่อนอย่างเดียวมองไม่เห็นบนพื้นเทา ต้องมีขอบ (ไล่ตรวจธีม 14 ก.ย.) */
 .grouplegend i.groupcell--low { box-shadow: inset 0 0 0 1.5px var(--warning); }
+/* การ์ดตรวจงานรายคน (14 ก.ย. 69) — ป้ายเป็นตัวอักษรสี ไม่มีพื้นไม่มีกรอบ */
+.rvtype { font: 700 12px var(--font-head); flex: none; }
+.rvtag { font: 600 12px var(--font-head); flex: none; white-space: nowrap; }

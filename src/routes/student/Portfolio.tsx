@@ -16,7 +16,7 @@
  * และ **โชว์เฉพาะใบที่ประเมินเสร็จแล้ว** ใบที่อาจารย์กรอกค้างไว้ถือว่ายังไม่ประเมิน
  * ไม่งั้นนักศึกษาจะเห็นคะแนนกลางคันแล้วเข้าใจว่าโดนให้คะแนนต่ำ
  */
-import { BookOpen, CaretDown, CalendarCheck, CheckCircle, Circle, Printer } from '@phosphor-icons/react';
+import { CaretDown, CalendarCheck, CheckCircle, Circle, Printer } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shell } from '../../components/student/Shell';
@@ -75,13 +75,13 @@ function Row({ code, title, score, open, onToggle, children }: {
 }) {
   const graded = score !== null;
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="pfrow">
       <button
         onClick={graded ? onToggle : undefined}
         disabled={!graded}
         aria-expanded={graded ? open : undefined}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '11px 12px',
+          width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
           background: 'none', border: 0, textAlign: 'left', cursor: graded ? 'pointer' : 'default',
         }}
       >
@@ -89,8 +89,8 @@ function Row({ code, title, score, open, onToggle, children }: {
           ? <CheckCircle size={17} weight="fill" color="var(--success-dark)" style={{ flex: 'none' }} />
           : <Circle size={17} color="var(--text-disabled)" style={{ flex: 'none' }} />}
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', font: '700 11px var(--font-head)', color: 'var(--text-secondary)' }}>{code}</span>
-          <span style={{ display: 'block', font: '400 11px/1.45 var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
+          <span style={{ display: 'block', font: '700 12px var(--font-head)', color: 'var(--text-secondary)' }}>{code}</span>
+          <span style={{ display: 'block', font: '400 13px/1.45 var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
             {title}
           </span>
         </span>
@@ -100,7 +100,7 @@ function Row({ code, title, score, open, onToggle, children }: {
               WCAG 1.4.3 ต้องการ 4.5 : 1 · --text-faint ได้ 4.97 (วัดแล้ว 12 ก.ย. 69)
               ที่ 1.60 บนจอมือถือในคลินิกคือแทบมองไม่เห็น — ไม่ใช่เรื่องมาตรฐานอย่างเดียว */}
           <span style={{
-            font: graded ? '700 13px var(--font-head)' : '400 11px var(--font-body)',
+            font: graded ? '700 14px var(--font-mono)' : '400 12px var(--font-body)',
             color: graded ? 'var(--text)' : 'var(--text-faint)',
           }}>
             {graded ? score : t('ยังไม่ได้ประเมิน')}
@@ -311,8 +311,7 @@ export default function Portfolio() {
     <Shell>
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BookOpen size={18} weight="fill" color="var(--accent)" />
-          <h1 style={{ margin: 0, font: '700 15px var(--font-head)' }}>{t('สมุดของฉัน')}</h1>
+          <h1 style={{ margin: 0, font: '700 21px var(--font-head)' }}>{t('สมุดของฉัน')}</h1>
         </div>
         <p style={{ margin: '5px 0 0', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
           Clinical Performance Portfolio · {saCourseCode(classYear)} · {t('ปีการศึกษา')} {year}
@@ -323,24 +322,24 @@ export default function Portfolio() {
             {' · '}{t('ชั้นปีที่ {n}', { n: classYear })}
           </p>
         )}
-        <p style={{ margin: '9px 0 0', font: '600 12px var(--font-head)' }}>
-          {t('ประเมินแล้ว')} {doneCount}/{totalCount} {t('ใบ')}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <span className="bar" style={{ height: 8, flex: 1 }}><i style={{ width: `${(doneCount / Math.max(1, totalCount)) * 100}%`, background: 'var(--accent)' }} /></span>
+          <span style={{ font: '600 13px var(--font-mono)', flex: 'none' }}>{doneCount}/{totalCount} {t('ใบ')}</span>
+        </div>
       </header>
 
       <div style={{ padding: '14px 16px 0', display: 'grid', gap: 16 }}>
         {/* ── Section I ── */}
         <section style={{ display: 'grid', gap: 7 }}>
-          <h2 style={{ margin: 0, font: '700 12px var(--font-head)' }}>
-            Section I · <span style={{ color: 'var(--text-muted)' }}>{t('ประเมินรายคาบ')}</span>
-          </h2>
-          <Link to="/app/checkin" className="card" style={{ padding: '11px 12px', display: 'flex', alignItems: 'center', gap: 9 }}>
+          {/* สมุดแบบ "ตัดของซ้ำ" (14 ก.ย. 69 · หลักเดียวกับหน้าเกณฑ์): ใบละการ์ด 15 ใบ → การ์ดเดียวต่อหมวด แถวคั่นเส้น */}
+          <h2 className="pfhead">Section I · <span>{t('ประเมินรายคาบ')}</span></h2>
+          <Link to="/app/checkin" className="card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottomWidth: 2 }}>
             <CalendarCheck size={17} color="var(--accent)" style={{ flex: 'none' }} />
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', font: '600 12px var(--font-head)' }}>
+              <span style={{ display: 'block', font: '600 14px var(--font-head)' }}>
                 {t('อาจารย์ประเมินแล้ว {n} คาบ', { n: evaluated.length })}
               </span>
-              <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 1 }}>
+              <span style={{ display: 'block', font: '400 12.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 1 }}>
                 {t('จากที่เช็คอินไว้ {n} คาบ · แตะเพื่อดูรายคาบ', { n: checkins.length })}
               </span>
             </span>
@@ -349,9 +348,8 @@ export default function Portfolio() {
 
         {/* ── Section II ── */}
         <section style={{ display: 'grid', gap: 7 }}>
-          <h2 style={{ margin: 0, font: '700 12px var(--font-head)' }}>
-            Section II · <span style={{ color: 'var(--text-muted)' }}>{t('ตรวจและวางแผนการรักษา')}</span>
-          </h2>
+          <h2 className="pfhead">Section II · <span>{t('ตรวจและวางแผนการรักษา')}</span></h2>
+          <div className="card pfgroup">
           {SECT2_ROWS.map((r) => {
             const row = latest2.get(r.key);
             const score = !row ? null
@@ -370,21 +368,21 @@ export default function Portfolio() {
               </Row>
             );
           })}
+          </div>
         </section>
 
         {/* ── Section III ── */}
         <section style={{ display: 'grid', gap: 7 }}>
-          <h2 style={{ margin: 0, font: '700 12px var(--font-head)' }}>
-            Section III · <span style={{ color: 'var(--text-muted)' }}>{t('ความรู้และทักษะ')}</span>
-          </h2>
+          <h2 className="pfhead">Section III · <span>{t('ความรู้และทักษะ')}</span></h2>
           {(['CD', 'RPD', 'FDP'] as const).map((g) => {
             const mine = forms3.filter((f) => f.group === g);
             if (!mine.length) return null;
             return (
               <div key={g} style={{ display: 'grid', gap: 6 }}>
-                <div style={{ font: '700 10.5px var(--font-head)', color: 'var(--text-secondary)', marginTop: 3 }}>
+                <div style={{ font: '600 12.5px var(--font-head)', color: 'var(--text-faint)', margin: '4px 4px -2px' }}>
                   {S3_GROUP_TITLE[g]}
                 </div>
+                <div className="card pfgroup">
                 {mine.map((f) => {
                   const row = latest3.get(f.key);
                   return (
@@ -400,6 +398,7 @@ export default function Portfolio() {
                     </Row>
                   );
                 })}
+                </div>
               </div>
             );
           })}
@@ -407,8 +406,8 @@ export default function Portfolio() {
 
         {/* พิมพ์ได้เฉพาะตอนมีของให้พิมพ์ — ปุ่มที่กดแล้วเจอหน้าว่างแย่กว่าไม่มีปุ่ม */}
         {doneCount > 0 && (
-          <Link to="/app/portfolio/print" className="btn btn--sec" style={{ height: 42 }}>
-            <Printer size={16} weight="fill" /> {t('พิมพ์สมุดของฉัน')}
+          <Link to="/app/portfolio/print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 0', font: '600 13.5px var(--font-head)', color: 'var(--accent)' }}>
+            <Printer size={16} weight="fill" /> {t('พิมพ์สมุดของฉัน')} ›
           </Link>
         )}
 

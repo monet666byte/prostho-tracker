@@ -1,12 +1,12 @@
 import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, X } from '@phosphor-icons/react';
 import { Fragment,useEffect, useMemo, useState, useRef  } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bar, PhotoSlot, TypeBadge } from '../../components/ui/Bits';
+import { Bar, PhotoSlot } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, percentCompleted, procLabel,
+import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
 import { useAllStudents, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -203,22 +203,21 @@ export default function Review() {
                   style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    <TypeBadge type={w.type} />
-                    <span style={{ font: '600 13.5px var(--font-head)' }}>{tText(w.detail)}</span>
+                    {/* การ์ดตรวจงานแบบ "ตัดของซ้ำ" (14 ก.ย. 69): ป้ายทุกอันเป็นตัวอักษรสี ไม่มีพื้น · ตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ x/10 ชวนงง) */}
+                    <span className="rvtype" style={{ color: meta.ink }}>{meta.short}</span>
+                    <span style={{ font: '600 14.5px var(--font-head)' }}>{tText(w.detail)}</span>
                     {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
                     {w.minimumRequirement && !isReturned(w) && (
-                      <span className="badge" style={{ background: 'var(--success-tint)', color: 'var(--success-dark)' }}>{t('นับเกณฑ์')}</span>
+                      <span className="rvtag" style={{ color: 'var(--success-dark)' }}>✓ {t('นับเกณฑ์')}</span>
                     )}
                     {isStale(w, settings) && (
-                      <span className="badge" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>
-                        {t('ค้าง {d} วัน', { d: daysSinceUpdate(w) })}
-                      </span>
+                      <span className="rvtag" style={{ color: 'var(--danger)' }}>{t('ค้าง {d} วัน', { d: daysSinceUpdate(w) })}</span>
                     )}
                     {pending.has(w.id) && (
-                      <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>{t('รอ sync')}</span>
+                      <span className="rvtag" style={{ color: 'var(--warning)' }}>{t('รอ sync')}</span>
                     )}
                     {!!(review?.comment) && (
-                      <span className="badge" style={{ background: 'var(--accent-tint)', color: 'var(--accent-hover)' }}>
+                      <span className="rvtag" style={{ color: 'var(--accent)' }}>
                         <ChatCircleText size={11} weight="fill" style={{ verticalAlign: -1.5, marginRight: 3 }} />{t('คอมเมนต์แล้ว')}
                       </span>
                     )}
@@ -226,8 +225,8 @@ export default function Review() {
                         ต้องมีป้าย ไม่งั้นท่านที่ตัดสินไปก่อนไม่มีทางรู้ว่าของตัวเองถูกแทนที่ */}
                     {reviewConflicts.has(w.id) && (
                       <span
-                        className="badge"
-                        style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}
+                        className="rvtag"
+                        style={{ color: 'var(--warning)' }}
                         title={reviewConflicts.get(w.id)!
                           .map((r) => `${t(r.by ?? '')} — ${r.status === 'approved' ? t('อนุมัติ') : r.status === 'returned' ? t('ตีกลับให้แก้') : t('คอมเมนต์')}`)
                           .join(' · ')}
@@ -241,8 +240,8 @@ export default function Review() {
                     </span>
                   </div>
 
-                  <div className="mono" style={{ font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 6 }}>
-                    {t(w.patient.name)} · HN {w.patient.hn} · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
+                  <div style={{ font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)', marginTop: 5 }}>
+                    {t(w.patient.name)} · <b className="herocase__hn">HN {w.patient.hn}</b> · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
                     {/* สถานะผู้ป่วย (รอ preprosth ฯลฯ) ต้องเห็นตั้งแต่แถว ไม่ต้องกาง — ผู้ใช้ขอ 2 ก.ย. */}
                     {w.patient.note && (
                       <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>
@@ -255,12 +254,11 @@ export default function Review() {
                       แต่โหมดตัวหนังสือใหญ่บน iPhone SE เหลือที่แค่ 185px (วัดเจอ 7 ก.ย. 69) */}
                   {!isReturned(w) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10, flexWrap: 'wrap' }}>
-                    <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={8} />
+                    <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={6} />
                     <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
                       {Math.max(progression(w), 0)}/{maxProgression(w)}
                     </span>
-                    <span className="chip" style={{ background: meta.tint, color: meta.ink }}>{percentCompleted(w)}%</span>
-                    <span style={{ font: '400 11.5px var(--font-mono)', color: 'var(--text-body)', flex: 1, minWidth: 'min(140px, 100%)' }}>
+                    <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', flex: 1, minWidth: 'min(140px, 100%)' }}>
                       {cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}
                     </span>
                   </div>

@@ -991,3 +991,9 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .tl__count { font-size: 11px; }
 .tl__date { font-size: 12px; }
 .tl__self { font: 600 11.5px var(--font-body); color: var(--self); flex: none; }
+
+/* ══ สมุดของฉัน แบบ "ตัดของซ้ำ" (14 ก.ย. 69) — หมวดละการ์ด แถวคั่นเส้น ══ */
+.pfhead { margin: 4px 4px 0; font: 700 14px var(--font-head); color: var(--text); }
+.pfhead span { color: var(--text-faint); font-weight: 600; }
+.pfgroup { padding: 0; overflow: hidden; border-bottom-width: 2px !important; }
+.pfrow + .pfrow { border-top: 1px solid var(--border); }
