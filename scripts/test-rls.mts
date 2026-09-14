@@ -587,27 +587,65 @@ console.log('\n⑫ กลุ่มที่ปรึกษา (0024)');
   check('เลือกแล้วยืนยันบัญชีนักศึกษาในกลุ่มนั้นได้ (0023)', decide.ok && decide.value === true, decide);
 
   const t1 = await commitAs(U.T1, `select claim_group('G3')`);
-  const full = await commitAs(U.HEAD, `select claim_group('G3')`);
-  check('ท่านที่สองลงช่องที่สองได้', t1.ok && JSON.stringify((await slots()).groups) === '["t2","t1"]', await slots());
-  check('ครบ 2 ท่านแล้ว คนที่สามเลือกไม่ได้ (ต้องให้หัวหน้าภาคแก้)', !full.ok && /ครบ 2 ท่าน/.test(full.error), full);
+  check('ท่านที่สองลงต่อท้ายได้', t1.ok && JSON.stringify((await slots()).groups) === '["t2","t1"]', await slots());
+  const third = await commitAs(U.HEAD, `select claim_group('G3')`);
+  check('ท่านที่สามก็เลือกได้ (กลุ่มหนึ่งมีที่ปรึกษากี่ท่านก็ได้ · ผู้ใช้ยืนยัน)', third.ok && JSON.stringify((await slots()).groups) === '["t2","t1","tadmin"]', third.ok ? await slots() : third);
+
+  // อ. หนึ่ง ดูแลทั้ง G1 และ G3 — ต้องเห็นเรื่องของทั้งสองกลุ่ม ไม่ใช่แค่กลุ่มแรก
+  await db.exec(`insert into audit (id, text, at_when, student_id, group_code) values
+    ('a-g3-student', 'เรื่องของ นศ. อี', '2026-09-14T05:00:00', 'sE', null),
+    ('a-g3-group', 'ประกาศของกลุ่ม G3', '2026-09-14T05:00:00', null, 'G3')`);
+  const multi = await as(db, U.T1, async (tx) => (await tx.query<{ id: string }>(`select id from audit where id in ('a1', 'a2', 'a-g3-student', 'a-g3-group') order by id`)).rows.map((r) => r.id));
+  check('อาจารย์ที่ดูแลสองกลุ่ม เห็น audit ของทั้งสองกลุ่ม', multi.ok && JSON.stringify(multi.value) === '["a-g3-group","a-g3-student","a1","a2"]', multi);
+  const outsider = await as(db, U.C, async (tx) => (await tx.query(`select id from audit where id in ('a-g3-student', 'a-g3-group')`)).rows.length);
+  check('นักศึกษากลุ่มอื่นยังไม่เห็นเรื่องของ G3', outsider.ok && outsider.value === 0, outsider);
+  const mineAll = await as(db, U.T1, async (tx) => (await tx.query<{ g: string[] }>(`select my_advised_groups() as g`)).rows[0].g.sort());
+  // (อ. หนึ่ง ดูแลกลุ่มจากข้อ ⑩ ด้วย — ตรวจแค่ว่าครบทั้งสองกลุ่มที่ตั้งใจ)
+  check('my_advised_groups คืนทุกกลุ่มที่ดูแล', mineAll.ok && mineAll.value.includes('G1') && mineAll.value.includes('G3'), mineAll);
 
   const rel = await commitAs(U.T2, `select release_group('G3')`);
   now = await slots();
-  check('ถอนตัวได้ และช่องว่างลงทั้งสองที่', rel.ok && JSON.stringify(now.groups) === '["","t1"]' && JSON.stringify(now.students) === '[["","t1"]]', now);
+  check('ถอนตัวได้ และลงทั้งสองที่', rel.ok && JSON.stringify(now.groups) === '["t1","tadmin"]' && JSON.stringify(now.students) === '[["t1","tadmin"]]', now);
 
   const notAdmin = await commitAs(U.T1, `select set_group_advisors('G3', array['t2'])`);
   check('อาจารย์ทั่วไปตั้งที่ปรึกษาให้คนอื่นไม่ได้', !notAdmin.ok, notAdmin);
   const dedupe = await commitAs(U.HEAD, `select set_group_advisors('G3', array['t1','t1','t2'])`);
   check('หัวหน้าภาคตั้งได้ · ชื่อซ้ำถูกรวม', dedupe.ok && JSON.stringify((await slots()).groups) === '["t1","t2"]', await slots());
   const three = await commitAs(U.HEAD, `select set_group_advisors('G3', array['t1','t2','tadmin'])`);
-  check('เกิน 2 ท่านตั้งไม่ได้', !three.ok && JSON.stringify((await slots()).groups) === '["t1","t2"]', three);
+  check('หัวหน้าภาคตั้ง 3 ท่านได้', three.ok && JSON.stringify((await slots()).groups) === '["t1","t2","tadmin"]', three.ok ? await slots() : three);
   const ghost = await commitAs(U.HEAD, `select set_group_advisors('G3', array['nobody'])`);
   check('รหัสอาจารย์ที่ไม่มีอยู่ตั้งไม่ได้', !ghost.ok, ghost);
   const clear = await commitAs(U.HEAD, `select set_group_advisors('G3', array[]::text[])`);
   check('ล้างที่ปรึกษาได้ (กลับเป็นช่องว่าง 2 ช่อง)', clear.ok && JSON.stringify((await slots()).groups) === '["",""]', await slots());
 
-  const trail = await db.query<{ who: string; text: string; group_code: string }>(`select who, text, group_code from audit where id like 'a-adv-%' order by at_when`);
-  check('ทุกการเปลี่ยนจด audit พร้อมชื่อคนทำ', trail.rows.length === 5 && trail.rows.every((r) => r.group_code === 'G3' && r.who !== ''), trail.rows);
+  // ── ขึ้นปีการศึกษาใหม่ = ล้าง (ผู้ใช้เคาะ 14 ก.ย. 69 · วันที่ยังไม่เคาะ ใช้ 1 มิ.ย.) ──
+  const y = (await db.query<{ y: number }>(`select current_academic_year() as y`)).rows[0].y;
+  const expect = new Date().getMonth() >= 5 ? new Date().getFullYear() + 543 : new Date().getFullYear() + 542;
+  check('current_academic_year ตรงกับ academicYear() ของแอป', y === expect, { sql: y, app: expect });
+
+  const viaSync = await commitAs(U.T1, `update groups set advisor_ids = array['t2', ''] where code = 'G3' returning advisor_year`);
+  check('แก้ที่ปรึกษาทางอื่น (เช่นนำเข้าชีตที่ sync ขึ้นมา) ถูกประทับปีให้เอง', viaSync.ok && (viaSync.rows[0] as { advisor_year: number }).advisor_year === y, viaSync);
+  await db.exec(`update groups set advisor_year = ${y - 1} where code = 'G3'`);   // จำลองว่าเป็นของปีก่อน
+  const staleMine = await as(db, U.T2, async (tx) => (await tx.query<{ g: string[]; d: boolean; c: string[] }>(
+    `select my_advised_groups() as g, can_decide_link('sE') as d, current_advisors('G3') as c`)).rows[0]);
+  check('ที่ปรึกษาของปีก่อน: ไม่นับเป็นกลุ่มของฉัน · ยืนยันบัญชีไม่ได้', staleMine.ok && !staleMine.value.g.includes('G3') && staleMine.value.d === false && staleMine.value.c.length === 0, staleMine);
+  const staleAudit = await as(db, U.T2, async (tx) => (await tx.query(`select id from audit where id = 'a-g3-group'`)).rows.length);
+  check('ที่ปรึกษาของปีก่อน: ไม่เห็น audit ของกลุ่มนั้นแล้ว', staleAudit.ok && staleAudit.value === 0, staleAudit);
+
+  const byStudentReset = await commitAs(U.A, `select reset_advisors_for_new_year() as n`);
+  check('นักศึกษาสั่งล้างไม่ได้ (ไม่มีผล)', byStudentReset.ok && (byStudentReset.rows[0] as { n: number }).n === 0 && JSON.stringify((await slots()).groups) === '["t2",""]', byStudentReset);
+  const g1Before = (await db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'G1'`)).rows[0].a;
+  const reset = await commitAs(U.T1, `select reset_advisors_for_new_year() as n`);
+  now = await slots();
+  check('อาจารย์เปิดแอป → ล้างของปีก่อนทั้งสองที่', reset.ok && (reset.rows[0] as { n: number }).n === 1 && JSON.stringify(now.groups) === '["",""]' && JSON.stringify(now.students) === '[["",""]]', { reset, now });
+  const g1After = (await db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'G1'`)).rows[0].a;
+  check('กลุ่มที่ตั้งในปีนี้ไม่ถูกแตะ', JSON.stringify(g1Before) === JSON.stringify(g1After), { g1Before, g1After });
+  const resetAgain = await commitAs(U.T2, `select reset_advisors_for_new_year() as n`);
+  const resetRows = await db.query(`select 1 from audit where id = 'a-adv-reset-' || $1`, [y]);
+  check('เรียกซ้ำไม่ล้างซ้ำ · จด audit ครั้งเดียว', resetAgain.ok && (resetAgain.rows[0] as { n: number }).n === 0 && resetRows.rows.length === 1, { resetAgain, n: resetRows.rows.length });
+
+  const trail = await db.query<{ who: string; text: string; group_code: string }>(`select who, text, group_code from audit where id like 'a-adv-%' and id not like 'a-adv-reset-%' order by at_when`);
+  check('ทุกการเปลี่ยนจด audit พร้อมชื่อคนทำ', trail.rows.length === 7 && trail.rows.every((r) => r.group_code === 'G3' && r.who !== ''), trail.rows);
 }
 
 await db.close();

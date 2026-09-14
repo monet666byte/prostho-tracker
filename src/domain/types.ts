@@ -58,14 +58,18 @@ export interface Student {
    * ผูกกับตัวนักศึกษา ไม่ผูกกับกลุ่ม — ภาคจะย้ายกลุ่มตอนขึ้นปีหรือไม่ก็ได้
    */
   entryYear?: number;
-  advisorIds: [string, string];
+  /** รหัสอาจารย์ที่ปรึกษา — กี่ท่านก็ได้ ('' = ช่องว่างที่เก็บไว้ให้แอปรุ่นเก่า · กรองออกก่อนใช้) */
+  advisorIds: string[];
   /** ดู StudentGates — เกณฑ์จบข้อที่ไม่ใช่จำนวนชิ้นงาน */
   gates?: StudentGates;
 }
 
 export interface ClinicGroup {
   code: string; // TH-PT7
-  advisorIds: [string, string];
+  /** กี่ท่านก็ได้ — ผู้ใช้ยืนยัน 14 ก.ย. 69 (เดิมเข้าใจว่า 2 ท่าน) */
+  advisorIds: string[];
+  /** ปีการศึกษา (พ.ศ.) ที่ตั้งที่ปรึกษา — ไม่ตรงปีนี้ = ไม่มีที่ปรึกษา (0024 · อ่านผ่าน currentAdvisorIds) */
+  advisorYear?: number;
   studentIds: string[];
 }
 

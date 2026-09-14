@@ -5,13 +5,15 @@ import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
 import { ToastView } from '../ToastView';
 import { TextSizeControl } from '../TextSize';
-import { useAllCheckIns, useAllStudents, useTeacher } from '../../hooks/data';
+import { useAllCheckIns, useAllStudents, useGroups, useTeacher } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
 import { BetaBadge } from '../BetaBadge';
-import { AdvisorGroupsDialog, useAdvisorPromptCohorts } from './AdvisorGroups';
+import { AdvisorGroupsDialog, useAdvisorPrompt } from './AdvisorGroups';
+import { resetAdvisorsIfNewYear } from '../../lib/advisors';
+import { currentAdvisorIds } from '../../domain/group';
 import { groupShort, sortGroupCodes } from '../../domain/group';
 /* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
    เดิมเป็น `${BASE_URL}logo-mark.svg` = ไฟล์แยกที่ต้องวางข้าง index.html
@@ -66,22 +68,37 @@ const COHORT_NAV: NavItem[] = [
 
 /** ถามเรื่องกลุ่มที่ปรึกษาไปแล้วในการเปิดแอปครั้งนี้ — อยู่นอกคอมโพเนนต์เพราะเชลล์ถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า */
 let advisorPromptShown = false;
+let advisorResetTried = false;
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
   const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
-  const offGroup = !!myGroup && teacherGroup !== myGroup;
+  /* อาจารย์ดูแลได้หลายกลุ่ม (ผู้ใช้ยืนยัน 14 ก.ย. 69) — "กำลังดูกลุ่มอื่น" = ไม่อยู่ในกลุ่มไหนเลยที่ดูแล
+     อ่านสดจากตาราง groups (ตัวที่กฎบนเซิร์ฟเวอร์ใช้) จึงอัปเดตทันทีหลังเลือก/ถอนตัว */
+  const groupsAll = useGroups();
+  const myGroups = session?.teacherId
+    ? groupsAll.filter((g) => currentAdvisorIds(g).includes(session.teacherId)).map((g) => g.code)
+    : [];
+  const homeGroup = myGroup && myGroups.includes(myGroup) ? myGroup : myGroups[0] ?? myGroup;
+  const offGroup = !!homeGroup && !myGroups.includes(teacherGroup) && teacherGroup !== homeGroup;
   /* อาจารย์ที่ปรึกษา (0024) — มีรุ่นที่กลุ่มยังไม่มีที่ปรึกษา และเรายังไม่ได้ดูแลกลุ่มไหนในรุ่นนั้น → ถามเอง
      เปิดครั้งเดียวต่อการเปิดแอป (ปิดแล้วไม่เด้งซ้ำตอนเปลี่ยนหน้า) · ตอบ "ไม่ได้เป็นที่ปรึกษา" = ไม่ถามรุ่นนั้นอีก */
-  const promptCohorts = useAdvisorPromptCohorts();
+  const needAdvisorPrompt = useAdvisorPrompt();
   const [advisorDialog, setAdvisorDialog] = useState<null | 'prompt' | 'manage'>(null);
   useEffect(() => {
-    if (promptCohorts.length && !advisorPromptShown) {
+    if (needAdvisorPrompt && !advisorPromptShown) {
       advisorPromptShown = true;
       setAdvisorDialog('prompt');
     }
-  }, [promptCohorts.length]);
+  }, [needAdvisorPrompt]);
+  // ขึ้นปีการศึกษาใหม่ → ล้างที่ปรึกษาของปีก่อน (ครั้งเดียวต่อการเปิดแอป · เซิร์ฟเวอร์ไม่ทำซ้ำถ้าล้างแล้ว)
+  useEffect(() => {
+    if (cloudEnabled && session?.teacherId && !advisorResetTried) {
+      advisorResetTried = true;
+      void resetAdvisorsIfNewYear();
+    }
+  }, [session?.teacherId]);
   const teacher = useTeacher(session?.teacherId);
   const students = useAllStudents();
   const checkins = useAllCheckIns();
@@ -188,7 +205,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               </div>
               <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
                 {/* เดิมเขียน "· TH-PT7" ตายตัวทุกคน — ใช้กลุ่มที่ปรึกษาจริง (0024) */}
-                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')}{myGroup ? ` · ${groupShort(myGroup)}` : ''}
+                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')}{myGroups.length ? ` · ${myGroups.map(groupShort).join(', ')}` : ''}
               </div>
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
                   ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
@@ -220,18 +237,18 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <span>
             {t('กำลังดูกลุ่ม {other} — ไม่ใช่กลุ่มที่ปรึกษาของคุณ ({mine})', {
               other:groupShort(teacherGroup),
-              mine: groupShort(myGroup!),
+              mine: groupShort(homeGroup!),
             })}
             <b>{t(' · การเข้าดูถูกบันทึกไว้')}</b>
           </span>
-          <button onClick={() => setTeacherGroup(myGroup!)}>
+          <button onClick={() => setTeacherGroup(homeGroup!)}>
             <ArrowUUpLeft size={13} weight="bold" />
             {t('กลับกลุ่มฉัน')}
           </button>
         </div>
       )}
       {advisorDialog && (
-        <AdvisorGroupsDialog mode={advisorDialog} cohorts={advisorDialog === 'prompt' ? promptCohorts : undefined} onClose={() => setAdvisorDialog(null)} />
+        <AdvisorGroupsDialog mode={advisorDialog} onClose={() => setAdvisorDialog(null)} />
       )}
       <ToastView variant="desk" />
       <RoleFab low />

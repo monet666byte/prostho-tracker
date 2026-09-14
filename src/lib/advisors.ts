@@ -23,6 +23,18 @@ const run = async (fn: string, args: Record<string, unknown>): Promise<Result> =
 
 export const claimGroup = (code: string) => run('claim_group', { p_group: code });
 export const releaseGroup = (code: string) => run('release_group', { p_group: code });
-/** หัวหน้าภาคเท่านั้น · ids ว่างได้ · ไม่เกิน 2 */
+/** หัวหน้าภาคเท่านั้น · ids ว่างได้ · กี่ท่านก็ได้ */
 export const setGroupAdvisors = (code: string, ids: string[]) =>
   run('set_group_advisors', { p_group: code, p_ids: ids.filter(Boolean) });
+
+/**
+ * ขึ้นปีการศึกษาใหม่ → ล้างที่ปรึกษาของปีก่อน (0024 · เรียกซ้ำได้)
+ * กฎบนเซิร์ฟเวอร์ไม่นับของปีก่อนอยู่แล้ว ตัวนี้ทำให้ข้อมูลที่หน้าจออ่านตรงกัน · เงียบถ้าล้มหรือออฟไลน์
+ */
+export async function resetAdvisorsIfNewYear(): Promise<void> {
+  if (!supabase) return;
+  const { data, error } = await supabase.rpc('reset_advisors_for_new_year');
+  if (error || !data) return;
+  await pullAll();
+  await refreshMyGroup();
+}

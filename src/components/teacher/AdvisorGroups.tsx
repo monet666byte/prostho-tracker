@@ -1,109 +1,116 @@
-import { Check, UsersThree, WarningCircle } from '@phosphor-icons/react';
+import { CheckSquare, Square, UsersThree, WarningCircle } from '@phosphor-icons/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useRef, useState } from 'react';
 import { db } from '../../data/db';
 import { useAllStudents, useGroups } from '../../hooks/data';
 import { claimGroup, releaseGroup, setGroupAdvisors } from '../../lib/advisors';
 import { cloudEnabled } from '../../lib/cloud';
+import { academicYear } from '../../lib/date';
 import { t } from '../../lib/i18n';
-import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, cohortOf, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
-import { groupShort, sortGroupCodes } from '../../domain/group';
+import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
+import { currentAdvisorIds, groupShort, sortGroupCodes } from '../../domain/group';
 import type { Teacher } from '../../domain/types';
 import { useApp } from '../../store/app';
 
 /**
- * อาจารย์ที่ปรึกษาของกลุ่ม (0024_group_advisors.sql) — ผู้ใช้เคาะ 14 ก.ย. 69: อาจารย์เลือกเอง + หัวหน้าภาคแก้ได้
+ * อาจารย์ที่ปรึกษาของกลุ่ม (0024_group_advisors.sql)
  *
- * ถามอาจารย์เองเมื่อมีรุ่นที่ยังมีกลุ่มไม่มีที่ปรึกษา และอาจารย์คนนี้ยังไม่ได้ดูแลกลุ่มไหนในรุ่นนั้น
- * ตอบ "ไม่ได้เป็นที่ปรึกษา" แล้วไม่ถามรุ่นนั้นอีก (จำในเครื่อง) — รุ่นใหม่มาเมื่อไหร่ถามใหม่
- * ที่ปรึกษาอ่านจาก groups.advisorIds (ตัวที่กฎบนเซิร์ฟเวอร์ใช้) ไม่ใช่ของนักศึกษา
+ * ผู้ใช้เคาะ 14 ก.ย. 69:
+ *   · อาจารย์เลือกเอง แบ่งตามชั้นปี (ปี 5 / ปี 6) ติ๊ก PT ได้หลายกลุ่ม · หัวหน้าภาคแก้ได้
+ *   · กลุ่มหนึ่งมีที่ปรึกษากี่ท่านก็ได้
+ *   · ขึ้นปีการศึกษาใหม่ ล้างที่เลือกไว้ทั้งหมด ทุกคนเลือกใหม่ (วันที่ยังไม่เคาะ — ใช้ 1 มิ.ย. ไปก่อน)
+ * ที่ปรึกษาอ่านผ่าน currentAdvisorIds() เสมอ (ของปีก่อน = ไม่มี)
  */
 
 const EMPTY_TEACHERS: Teacher[] = [];
-const DISMISS_KEY = 'advisorPromptDismissed';
+const DISMISS_KEY = 'advisorPromptDismissedYear';
 
 export interface GroupRow {
   code: string;
-  cohort: number;
-  label: string;
+  /** ชั้นปีของสมาชิกตอนนี้ — 5 / 6 · น้อยกว่า 5 = รุ่นที่รับรายชื่อไว้ล่วงหน้า */
+  classYear: number;
+  cohortLabel: string;
   advisors: string[];
   /** มีแถวใน groups แล้ว — false = ยังดึงลงมาไม่ถึง (ห้ามอ่านว่า "ไม่มีที่ปรึกษา") */
   known: boolean;
 }
 
-/** กลุ่มที่ยังเรียนอยู่หรือรุ่นที่รับรายชื่อไว้ล่วงหน้า (ไม่รวมรุ่นที่จบแล้ว) พร้อมที่ปรึกษาปัจจุบัน */
+/** กลุ่มของรุ่นที่ยังเรียนอยู่ + รุ่นที่รับรายชื่อไว้ล่วงหน้า (ไม่รวมรุ่นที่จบแล้ว) */
 export function useActiveGroupRows(): GroupRow[] {
   const students = useAllStudents();
   const groups = useGroups();
   return useMemo(() => {
-    const advisorsOf = new Map(groups.map((g) => [g.code, (g.advisorIds ?? []).filter(Boolean)]));
+    const byCode = new Map(groups.map((g) => [g.code, g]));
     const codes = sortGroupCodes([...new Set(students.filter((s) => !isAlumni(s)).map((s) => s.group))], students);
     return codes.map((code) => {
       const st = students.find((s) => s.group === code)!;
-      const y = studentYear(st);
-      const label = y < CLINIC_START_YEAR
-        ? `${studentCohortLabel(st)} · ${t('ยังไม่เริ่ม')}`
-        : `${studentCohortLabel(st)} · ${t('ปี')} ${Math.min(y, CLINIC_LAST_YEAR)}`;
-      return { code, cohort: cohortOf(st), label, advisors: advisorsOf.get(code) ?? [], known: advisorsOf.has(code) };
+      const g = byCode.get(code);
+      return {
+        code,
+        classYear: Math.min(studentYear(st), CLINIC_LAST_YEAR),
+        cohortLabel: studentCohortLabel(st),
+        advisors: currentAdvisorIds(g),
+        known: !!g,
+      };
     });
   }, [students, groups]);
 }
 
-function readDismissed(): number[] {
-  try { return JSON.parse(localStorage.getItem(DISMISS_KEY) ?? '[]') as number[]; } catch { return []; }
+const sectionTitle = (y: number) => (y < CLINIC_START_YEAR ? t('รุ่นที่ยังไม่ขึ้นคลินิก') : `${t('ปี')} ${y}`);
+
+/** แบ่งกลุ่มตามชั้นปี (ปี 5 → ปี 6 → รุ่นถัดไป) — หัวข้อเดียวอาจมีสองรุ่นถ้ามีคนซ้ำชั้น จึงเก็บป้ายรุ่นไว้ด้วย */
+function bySection(rows: GroupRow[]): Array<{ year: number; cohorts: string; rows: GroupRow[] }> {
+  const years = [...new Set(rows.map((r) => r.classYear))].sort((a, b) => {
+    const rank = (y: number) => (y < CLINIC_START_YEAR ? 99 : y);
+    return rank(a) - rank(b);
+  });
+  return years.map((year) => {
+    const list = rows.filter((r) => r.classYear === year);
+    return { year, cohorts: [...new Set(list.map((r) => r.cohortLabel))].join(', '), rows: list };
+  });
 }
 
-/** รุ่นที่ควรถามอาจารย์คนนี้ · ว่าง = ไม่ต้องถาม */
-export function useAdvisorPromptCohorts(): number[] {
+function readDismissedYear(): number | null {
+  try { return Number(localStorage.getItem(DISMISS_KEY)) || null; } catch { return null; }
+}
+
+/**
+ * ควรถามอาจารย์คนนี้ไหม: ปีการศึกษานี้ยังไม่ได้เลือกกลุ่มไหนเลย และยังไม่ได้ตอบว่า "ไม่ได้เป็นที่ปรึกษา"
+ * ขึ้นปีใหม่ → ที่เลือกไว้ถูกล้าง + คำตอบ "ไม่ได้เป็น" ของปีก่อนหมดอายุ → ถามใหม่เอง
+ */
+export function useAdvisorPrompt(): boolean {
   const rows = useActiveGroupRows();
   const me = useApp((s) => s.session?.teacherId);
   const isTeacher = useApp((s) => !!s.cloudUser?.teacherId);
   return useMemo(() => {
-    if (!cloudEnabled || !isTeacher || !me) return [];
+    if (!cloudEnabled || !isTeacher || !me) return false;
     /* เครื่องใหม่: ตาราง students ลงมาก่อน groups → ทุกกลุ่มดูเหมือนไม่มีที่ปรึกษาชั่วครู่
        แล้วกล่องถามเด้งผิดๆ (เจอใน test:google-login 14 ก.ย. 69) — รอจนรู้จักทุกกลุ่มก่อน */
-    if (rows.length === 0 || rows.some((r) => !r.known)) return [];
-    const dismissed = readDismissed();
-    const cohorts = [...new Set(rows.map((r) => r.cohort))];
-    return cohorts.filter((c) => {
-      const inCohort = rows.filter((r) => r.cohort === c);
-      return !dismissed.includes(c)
-        && inCohort.some((r) => r.advisors.length === 0)
-        && !inCohort.some((r) => r.advisors.includes(me));
-    });
+    if (rows.length === 0 || rows.some((r) => !r.known)) return false;
+    if (readDismissedYear() === academicYear(new Date())) return false;
+    return !rows.some((r) => r.advisors.includes(me));
   }, [rows, me, isTeacher]);
 }
 
-/** กล่องเลือกกลุ่มที่ปรึกษา — mode 'prompt' = ระบบถามเอง · 'manage' = อาจารย์กดเปิดเอง */
-export function AdvisorGroupsDialog({ mode, cohorts, onClose }: { mode: 'prompt' | 'manage'; cohorts?: number[]; onClose: () => void }) {
+/** กล่องเลือกกลุ่มที่ปรึกษา — ติ๊กแล้วบันทึกทันที · mode 'prompt' = ระบบถามเอง · 'manage' = อาจารย์กดเปิดเอง */
+export function AdvisorGroupsDialog({ mode, onClose }: { mode: 'prompt' | 'manage'; onClose: () => void }) {
   const rows = useActiveGroupRows();
   const me = useApp((s) => s.session?.teacherId);
-  const showToast = useApp((s) => s.showToast);
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const nameOf = (id: string) => teachers.find((tc) => tc.id === id)?.name ?? id;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const guard = useRef(false);
+  const mineCount = rows.filter((r) => !!me && r.advisors.includes(me)).length;
 
-  const shown = mode === 'prompt' && cohorts?.length ? rows.filter((r) => cohorts.includes(r.cohort)) : rows;
-  const byLabel = new Map<string, GroupRow[]>();
-  shown.forEach((r) => byLabel.set(r.label, [...(byLabel.get(r.label) ?? []), r]));
-
-  async function act(code: string, kind: 'claim' | 'release') {
-    if (guard.current) return;
+  async function toggle(r: GroupRow) {
+    if (guard.current || !me) return;
     guard.current = true;
-    setBusy(code);
+    setBusy(r.code);
     setError(null);
     try {
-      const r = kind === 'claim' ? await claimGroup(code) : await releaseGroup(code);
-      if (!r.ok) { setError(r.error); return; }
-      showToast({
-        message: kind === 'claim'
-          ? t('บันทึกแล้ว — กลุ่ม {g} เป็นกลุ่มที่ปรึกษาของคุณ', { g: groupShort(code) })
-          : t('ถอนตัวจากกลุ่ม {g} แล้ว', { g: groupShort(code) }),
-        tone: 'success',
-      });
-      if (kind === 'claim' && mode === 'prompt') onClose();
+      const res = r.advisors.includes(me) ? await releaseGroup(r.code) : await claimGroup(r.code);
+      if (!res.ok) setError(res.error);
     } finally {
       guard.current = false;
       setBusy(null);
@@ -111,23 +118,19 @@ export function AdvisorGroupsDialog({ mode, cohorts, onClose }: { mode: 'prompt'
   }
 
   function notAdvisor() {
-    if (cohorts?.length) {
-      try { localStorage.setItem(DISMISS_KEY, JSON.stringify([...new Set([...readDismissed(), ...cohorts])])); } catch { /* private mode */ }
-    }
+    try { localStorage.setItem(DISMISS_KEY, String(academicYear(new Date()))); } catch { /* private mode */ }
     onClose();
   }
 
   return (
     <div className="confirmwrap" onClick={mode === 'manage' ? onClose : undefined}>
-      <div className="confirmbox" style={{ maxWidth: 520, width: '100%', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
+      <div className="confirmbox" role="dialog" aria-label={t('เลือกกลุ่มที่ปรึกษา')} style={{ maxWidth: 560, width: '100%', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', font: '700 17px var(--font-head)' }}>
           <UsersThree size={20} weight="duotone" style={{ color: 'var(--accent)' }} />
-          {mode === 'prompt' ? t('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?') : t('กลุ่มที่ปรึกษาของฉัน')}
+          {t('ปีการศึกษา {y} คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?', { y: academicYear(new Date()) })}
         </div>
         <p className="confirmbox__note" style={{ marginTop: 6 }}>
-          {mode === 'prompt'
-            ? t('มีกลุ่มที่ยังไม่มีอาจารย์ที่ปรึกษา — เลือกครั้งเดียว แอปจะเปิดกลุ่มนั้นเป็นกลุ่มของคุณ และให้คุณยืนยันบัญชีนักศึกษาในกลุ่มได้')
-            : t('เลือกหรือถอนตัวได้เอง · กลุ่มหนึ่งมีได้ 2 ท่าน · ถ้าเต็มแล้วแต่ไม่ถูกต้อง ติดต่อหัวหน้าภาค')}
+          {t('ติ๊กได้หลายกลุ่ม ทั้งปี 5 และปี 6 · บันทึกทันทีที่ติ๊ก · ขึ้นปีการศึกษาใหม่จะให้เลือกใหม่')}
         </p>
 
         {error && (
@@ -137,47 +140,56 @@ export function AdvisorGroupsDialog({ mode, cohorts, onClose }: { mode: 'prompt'
           </div>
         )}
 
-        <div style={{ maxHeight: '52vh', overflowY: 'auto', marginTop: 12, display: 'grid', gap: 14 }}>
-          {shown.length === 0 && (
+        <div style={{ maxHeight: '56vh', overflowY: 'auto', marginTop: 12, display: 'grid', gap: 16 }}>
+          {rows.length === 0 && (
             <p style={{ margin: 0, font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('ยังไม่มีกลุ่มของรุ่นที่กำลังเรียน')}</p>
           )}
-          {[...byLabel.entries()].map(([label, list]) => (
-            <div key={label}>
-              <div style={{ font: '600 11px var(--font-body)', color: 'var(--text-faint)', marginBottom: 6 }}>{label}</div>
-              <div style={{ display: 'grid', gap: 6 }}>
-                {list.map((r) => {
+          {bySection(rows).map((sec) => (
+            <section key={sec.year} aria-label={sectionTitle(sec.year)}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
+                <b style={{ font: '700 14px var(--font-head)' }}>{sectionTitle(sec.year)}</b>
+                <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>{sec.cohorts}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+                {sec.rows.map((r) => {
                   const mine = !!me && r.advisors.includes(me);
-                  const full = r.advisors.length >= 2;
+                  const others = r.advisors.filter((id) => id !== me);
                   return (
-                    <div key={r.code} style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${mine ? 'var(--accent)' : 'var(--border-2)'}`, background: mine ? 'var(--accent-tint)' : undefined, borderRadius: 12, padding: '8px 10px' }}>
-                      <b style={{ font: '700 14px var(--font-head)', minWidth: 46 }}>{groupShort(r.code)}</b>
-                      <span style={{ flex: 1, minWidth: 0, font: '400 11.5px var(--font-body)', color: r.advisors.length ? 'var(--text-body)' : 'var(--warning-dark)' }}>
-                        {r.advisors.length ? r.advisors.map(nameOf).join(' / ') : t('ยังไม่มีที่ปรึกษา')}
+                    <button
+                      key={r.code}
+                      role="checkbox"
+                      aria-checked={mine}
+                      aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)}`}
+                      disabled={!!busy}
+                      onClick={() => toggle(r)}
+                      style={{
+                        display: 'flex', gap: 8, alignItems: 'flex-start', textAlign: 'left', padding: '8px 10px', borderRadius: 12,
+                        border: `1px solid ${mine ? 'var(--accent)' : 'var(--border-2)'}`, background: mine ? 'var(--accent-tint)' : '#fff',
+                        opacity: busy && busy !== r.code ? 0.6 : 1,
+                      }}
+                    >
+                      {mine
+                        ? <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent)', flex: 'none', marginTop: 1 }} />
+                        : <Square size={18} style={{ color: 'var(--text-faint)', flex: 'none', marginTop: 1 }} />}
+                      <span style={{ minWidth: 0 }}>
+                        <b style={{ display: 'block', font: '700 13px var(--font-head)' }}>{groupShort(r.code)}</b>
+                        <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: others.length ? 'var(--text-muted)' : 'var(--text-faint)' }}>
+                          {busy === r.code ? t('กำลังบันทึก…') : others.length ? others.map(nameOf).join(' / ') : t('ยังไม่มีท่านอื่น')}
+                        </span>
                       </span>
-                      {mine ? (
-                        <button className="btn btn--sec" style={{ width: 'auto', height: 34, padding: '0 12px' }} disabled={!!busy} onClick={() => act(r.code, 'release')}>
-                          {t('ถอนตัว')}
-                        </button>
-                      ) : (
-                        <button className="btn" style={{ width: 'auto', height: 34, padding: '0 12px' }} disabled={!!busy || full} onClick={() => act(r.code, 'claim')}
-                          title={full ? t('กลุ่มนี้มีอาจารย์ที่ปรึกษาครบ 2 ท่านแล้ว') : undefined}>
-                          <Check size={14} weight="bold" />
-                          {full ? t('ครบแล้ว') : t('ฉันดูแลกลุ่มนี้')}
-                        </button>
-                      )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
         </div>
 
         <div className="confirmbox__actions">
-          {mode === 'prompt' ? (
-            <button className="btn btn--sec" onClick={notAdvisor}>{t('ไม่ได้เป็นที่ปรึกษากลุ่มในรุ่นนี้')}</button>
+          {mode === 'prompt' && mineCount === 0 ? (
+            <button className="btn btn--sec" onClick={notAdvisor}>{t('ปีนี้ไม่ได้เป็นที่ปรึกษากลุ่มไหน')}</button>
           ) : (
-            <button className="btn btn--sec" onClick={onClose}>{t('ปิด')}</button>
+            <button className="btn" onClick={onClose}>{t('เสร็จแล้ว')}{mineCount ? ` · ${t('{n} กลุ่ม', { n: mineCount })}` : ''}</button>
           )}
         </div>
       </div>
@@ -185,23 +197,22 @@ export function AdvisorGroupsDialog({ mode, cohorts, onClose }: { mode: 'prompt'
   );
 }
 
-/** หัวหน้าภาค: ตั้งที่ปรึกษาทุกกลุ่ม (อยู่ในหน้ารายชื่อ) */
+/** หัวหน้าภาค: ตั้งที่ปรึกษาทุกกลุ่ม (อยู่ในหน้ารายชื่อ) — กี่ท่านก็ได้ · เพิ่ม/เอาออกแล้วกดบันทึก */
 export function AdvisorEditor() {
   const rows = useActiveGroupRows();
   const showToast = useApp((s) => s.showToast);
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
   const sorted = useMemo(() => [...teachers].sort((a, b) => a.name.localeCompare(b.name, 'th')), [teachers]);
-  const [draft, setDraft] = useState<Record<string, [string, string]>>({});
+  const nameOf = (id: string) => teachers.find((tc) => tc.id === id)?.name ?? id;
+  const [draft, setDraft] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!cloudEnabled || rows.length === 0) return null;
 
-  const valueOf = (r: GroupRow): [string, string] => draft[r.code] ?? [r.advisors[0] ?? '', r.advisors[1] ?? ''];
-  const changed = (r: GroupRow) => {
-    const [a, b] = valueOf(r);
-    return a !== (r.advisors[0] ?? '') || b !== (r.advisors[1] ?? '');
-  };
+  const valueOf = (r: GroupRow): string[] => draft[r.code] ?? r.advisors;
+  const changed = (r: GroupRow) => valueOf(r).join('|') !== r.advisors.join('|');
+  const edit = (r: GroupRow, next: string[]) => setDraft((d) => ({ ...d, [r.code]: next }));
 
   async function save(r: GroupRow) {
     setBusy(r.code);
@@ -215,34 +226,50 @@ export function AdvisorEditor() {
 
   return (
     <div className="panel" style={{ marginBottom: 16 }}>
-      <h3><UsersThree size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('อาจารย์ที่ปรึกษาแต่ละกลุ่ม')}</h3>
-      <p className="sub">{t('อาจารย์เลือกกลุ่มเองได้ตอนเข้าแอป · ตรงนี้ไว้ตรวจและแก้ให้ถูก · กลุ่มหนึ่งมีได้ 2 ท่าน')}</p>
+      <h3><UsersThree size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{t('อาจารย์ที่ปรึกษาแต่ละกลุ่ม · ปีการศึกษา {y}', { y: academicYear(new Date()) })}</h3>
+      <p className="sub">{t('อาจารย์เลือกกลุ่มเองได้ตอนเข้าแอป · ตรงนี้ไว้ตรวจและแก้ให้ถูก · กลุ่มหนึ่งมีกี่ท่านก็ได้ · ขึ้นปีการศึกษาใหม่ล้างให้เลือกใหม่')}</p>
       {error && (
         <div role="alert" style={{ marginTop: 10, borderRadius: 12, padding: '10px 12px', background: 'var(--danger-tint)', color: 'var(--danger-dark)', font: '500 12px var(--font-body)' }}>{error}</div>
       )}
-      <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
-        {rows.map((r) => {
-          const [a, b] = valueOf(r);
-          const pick = (slot: 0 | 1, v: string) => setDraft((d) => ({ ...d, [r.code]: slot === 0 ? [v, valueOf(r)[1]] : [valueOf(r)[0], v] }));
-          return (
-            <div key={r.code} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ minWidth: 150, font: '500 12px var(--font-body)' }}>
-                <b style={{ font: '700 13px var(--font-head)' }}>{groupShort(r.code)}</b> <span style={{ color: 'var(--text-faint)' }}>· {r.label}</span>
-              </span>
-              {([0, 1] as const).map((slot) => (
-                <select key={slot} className="input" style={{ flex: '1 1 150px', height: 36 }} value={slot === 0 ? a : b}
-                  onChange={(e) => pick(slot, e.target.value)} aria-label={`${groupShort(r.code)} ${t('ที่ปรึกษา')} ${slot + 1}`}>
-                  <option value="">{t('— ไม่มี —')}</option>
-                  {sorted.map((tc) => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
-                </select>
-              ))}
-              <button className="btn" style={{ width: 'auto', height: 36, padding: '0 14px' }} disabled={!changed(r) || busy === r.code} onClick={() => save(r)}>
-                {t('บันทึก')}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      {bySection(rows).map((sec) => (
+        <div key={sec.year} style={{ marginTop: 14 }}>
+          <div style={{ font: '700 13px var(--font-head)', marginBottom: 6 }}>
+            {sectionTitle(sec.year)} <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>{sec.cohorts}</span>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {sec.rows.map((r) => {
+              const ids = valueOf(r);
+              const addable = sorted.filter((tc) => !ids.includes(tc.id));
+              return (
+                <div key={r.code} data-group={r.code} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid var(--border-2)', paddingBottom: 8 }}>
+                  <b style={{ font: '700 13px var(--font-head)', minWidth: 48 }}>{groupShort(r.code)}</b>
+                  <span style={{ flex: '1 1 220px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {ids.length === 0 && <span style={{ font: '400 11.5px var(--font-body)', color: 'var(--warning-dark)' }}>{t('ยังไม่มีที่ปรึกษา')}</span>}
+                    {ids.map((id) => (
+                      <span key={id} className="chip" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', height: 28, padding: '0 6px 0 10px', background: 'var(--fill)', font: '500 12px var(--font-body)' }}>
+                        {nameOf(id)}
+                        <button aria-label={`${t('เอาออก')} ${nameOf(id)}`} onClick={() => edit(r, ids.filter((x) => x !== id))}
+                          style={{ display: 'grid', placeItems: 'center', width: 20, height: 20, borderRadius: 10, color: 'var(--text-muted)' }}>×</button>
+                      </span>
+                    ))}
+                    {addable.length > 0 && (
+                      <select className="input" style={{ width: 'auto', height: 30, fontSize: 12 }} value=""
+                        aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)} ${t('เพิ่มที่ปรึกษา')}`}
+                        onChange={(e) => { if (e.target.value) edit(r, [...ids, e.target.value]); }}>
+                        <option value="">{t('+ เพิ่มอาจารย์')}</option>
+                        {addable.map((tc) => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
+                      </select>
+                    )}
+                  </span>
+                  <button className="btn" style={{ width: 'auto', height: 34, padding: '0 14px' }} disabled={!changed(r) || busy === r.code} onClick={() => save(r)}>
+                    {t('บันทึก')}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

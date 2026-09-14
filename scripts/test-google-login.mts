@@ -158,46 +158,61 @@ try {
     await sctx.close();
   }
 
-  console.log('\n⑥ รุ่นใหม่ยังไม่มีที่ปรึกษา → อาจารย์เลือกเอง · หัวหน้าภาคแก้ได้ (0024)');
+  console.log('\n⑥ ขึ้นปีการศึกษาใหม่ → ล้างที่ปรึกษา → อาจารย์ติ๊กเลือกใหม่ได้หลายกลุ่ม · หัวหน้าภาคแก้ได้ (0024)');
   {
+    const y = (await S.db.query<{ y: number }>(`select current_academic_year() as y`)).rows[0].y;
     await S.db.exec(`
       insert into groups (code, advisor_ids, student_ids) values ('TH56-PT1', array['',''], array['n1']), ('TH56-PT2', array['',''], array['n2']);
       insert into students (id, code, name, "group", year, entry_year, advisor_ids) values
         ('n1', '6704001', 'นศ. รุ่นใหม่ หนึ่ง', 'TH56-PT1', 5, 2570, array['','']),
         ('n2', '6704002', 'นศ. รุ่นใหม่ สอง', 'TH56-PT2', 5, 2570, array['',''])`);
+    // จำลองว่าที่ปรึกษาของ PT7 (อ. ทดสอบ หนึ่ง) ตั้งไว้ปีก่อน
+    await S.db.exec(`update groups set advisor_year = ${y - 1} where code = 'TH-PT7'`);
 
     const tctx = await freshBrowser();
     const tp = await loginWithGoogle(tctx, 't1@test.local');
-    await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').waitFor({ timeout: 15_000 }).catch(() => {});
-    check('อาจารย์ถูกถามเรื่องกลุ่มที่ปรึกษาของรุ่นใหม่', await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible());
-    await tp.locator('.confirmbox div', { hasText: /^PT1/ }).getByRole('button', { name: 'ฉันดูแลกลุ่มนี้' }).first().click();
-    await tp.waitForTimeout(3000);
-    const g1 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'TH56-PT1'`);
-    const s1 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from students where id = 'n1'`);
-    check('เลือกแล้ว ลงเซิร์ฟเวอร์ทั้ง groups และ students', g1.rows[0]?.a.includes('t1') && s1.rows[0]?.a.includes('t1'), { g: g1.rows, s: s1.rows });
-    check('กล่องถามปิดเอง', !(await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+    const dialog = tp.getByRole('dialog', { name: 'เลือกกลุ่มที่ปรึกษา' });
+    await dialog.waitFor({ timeout: 15_000 }).catch(() => {});
+    const pt7 = await S.db.query<{ a: string[]; y: number }>(`select advisor_ids as a, advisor_year as y from groups where code = 'TH-PT7'`);
+    check('เปิดแอป → ล้างที่ปรึกษาของปีก่อนบนเซิร์ฟเวอร์', JSON.stringify(pt7.rows[0]?.a) === '["",""]' && pt7.rows[0]?.y === y, pt7.rows);
+    check('อาจารย์ที่ยังไม่มีกลุ่มในปีนี้ ถูกถามให้เลือก', await dialog.isVisible());
+    const text = await dialog.innerText();
+    check('กล่องแบ่งตามชั้นปี', text.includes('ปี 5') && text.includes('รุ่นที่ยังไม่ขึ้นคลินิก'), text.slice(0, 300));
+
+    await dialog.getByRole('checkbox', { name: 'ปี 5 PT7' }).click();
+    await tp.waitForTimeout(2500);
+    await dialog.getByRole('checkbox', { name: 'รุ่นที่ยังไม่ขึ้นคลินิก PT1' }).click();
+    await tp.waitForTimeout(2500);
+    check('ติ๊กแล้วขึ้นว่าเลือกไว้', await dialog.getByRole('checkbox', { name: 'ปี 5 PT7' }).getAttribute('aria-checked') === 'true'
+      && await dialog.getByRole('checkbox', { name: 'รุ่นที่ยังไม่ขึ้นคลินิก PT1' }).getAttribute('aria-checked') === 'true');
+    const picked = await S.db.query<{ code: string; a: string[] }>(`select code, advisor_ids as a from groups where code in ('TH-PT7', 'TH56-PT1') order by code`);
+    const pickedS = await S.db.query<{ n: number }>(`select count(*)::int as n from students where "group" in ('TH-PT7', 'TH56-PT1') and not ('t1' = any(advisor_ids))`);
+    check('เลือกได้หลายกลุ่ม ลงเซิร์ฟเวอร์ครบทั้ง groups และ students', picked.rows.every((r) => r.a.includes('t1')) && picked.rows.length === 2 && pickedS.rows[0].n === 0, { g: picked.rows, sMissing: pickedS.rows });
+    await dialog.getByRole('button', { name: /เสร็จแล้ว/ }).click();
     await tp.reload();
     await tp.waitForTimeout(5000);
-    check('เปิดแอปใหม่ ไม่ถามซ้ำ (ดูแลกลุ่มในรุ่นนั้นแล้ว)', !(await tp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+    check('เปิดแอปใหม่ ไม่ถามซ้ำ (ปีนี้เลือกแล้ว)', !(await tp.getByRole('dialog', { name: 'เลือกกลุ่มที่ปรึกษา' }).isVisible()));
     await tctx.close();
 
     const hctx = await freshBrowser();
     const hp = await loginWithGoogle(hctx, 'head@test.local');
-    await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').waitFor({ timeout: 15_000 }).catch(() => {});
-    check('หัวหน้าภาค (ยังไม่ได้ดูแลกลุ่มไหนในรุ่นนั้น) ถูกถามด้วย', await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible());
-    await hp.getByRole('button', { name: 'ไม่ได้เป็นที่ปรึกษากลุ่มในรุ่นนี้' }).click();
+    const hd = hp.getByRole('dialog', { name: 'เลือกกลุ่มที่ปรึกษา' });
+    await hd.waitFor({ timeout: 15_000 }).catch(() => {});
+    check('หัวหน้าภาค (ยังไม่มีกลุ่มในปีนี้) ถูกถามด้วย', await hd.isVisible());
+    await hd.getByRole('button', { name: 'ปีนี้ไม่ได้เป็นที่ปรึกษากลุ่มไหน' }).click();
     await hp.reload();
     await hp.waitForTimeout(5000);
-    check('ตอบว่าไม่ได้เป็นที่ปรึกษา → ไม่ถามรุ่นนั้นอีก', !(await hp.getByText('คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?').isVisible()));
+    check('ตอบว่าปีนี้ไม่ได้เป็นที่ปรึกษา → ไม่ถามอีกในปีนี้', !(await hp.getByRole('dialog', { name: 'เลือกกลุ่มที่ปรึกษา' }).isVisible()));
 
     await hp.evaluate(() => { location.hash = '#/teacher/roster'; });
-    await hp.getByText('อาจารย์ที่ปรึกษาแต่ละกลุ่ม').waitFor({ timeout: 15_000 });
-    await hp.getByLabel('PT2 ที่ปรึกษา 1').selectOption('t2');
-    await hp.getByLabel('PT2 ที่ปรึกษา 1').locator('xpath=..').getByRole('button', { name: 'บันทึก' }).click();
+    await hp.getByText(/อาจารย์ที่ปรึกษาแต่ละกลุ่ม/).waitFor({ timeout: 15_000 });
+    const row = hp.locator('[data-group="TH56-PT1"]');
+    await row.getByRole('combobox').selectOption('t2');
+    await row.getByRole('button', { name: 'บันทึก' }).click();
     await hp.waitForTimeout(3000);
-    const g2 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'TH56-PT2'`);
-    const s2 = await S.db.query<{ a: string[] }>(`select advisor_ids as a from students where id = 'n2'`);
-    check('หัวหน้าภาคตั้งที่ปรึกษาจากหน้ารายชื่อได้', JSON.stringify(g2.rows[0]?.a) === '["t2",""]' && JSON.stringify(s2.rows[0]?.a) === '["t2",""]', { g: g2.rows, s: s2.rows });
+    const g = await S.db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'TH56-PT1'`);
+    const st = await S.db.query<{ a: string[] }>(`select advisor_ids as a from students where id = 'n1'`);
+    check('หัวหน้าภาคเพิ่มที่ปรึกษาท่านที่สองจากหน้ารายชื่อได้', JSON.stringify(g.rows[0]?.a) === '["t1","t2"]' && JSON.stringify(st.rows[0]?.a) === '["t1","t2"]', { g: g.rows, s: st.rows });
     await hctx.close();
   }
 } finally {

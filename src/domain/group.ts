@@ -11,7 +11,8 @@
  * ชั้นปีมาจาก studentYear() ของสมาชิกเสมอ (ดู domain/cohort.ts) ซึ่งเลื่อนเองตามปีการศึกษา
  * ต่างจากรหัสกลุ่มที่แช่แข็งอยู่กับที่ตอนสร้าง — กลุ่มเดิมจะมีสมาชิกเป็นปี 6 ทั้งกลุ่มเมื่อขึ้นปีใหม่
  */
-import type { Student } from './types';
+import type { ClinicGroup, Student } from './types';
+import { academicYear } from '../lib/date';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, cohortOf, studentYear } from './cohort';
 
 /** 'TH-PT7' / 'TH6-PT7' / 'TH55-PT7' → 'PT7' — ใช้ทุกจุดที่โชว์ชื่อกลุ่ม (ครอบทั้งสองแบบ) */
@@ -100,4 +101,17 @@ export function sortGroupCodes(
       : a.cohort !== b.cohort ? b.cohort - a.cohort
       : a.n - b.n)
     .map((g) => g.code);
+}
+
+/**
+ * อาจารย์ที่ปรึกษาที่ "ใช้ได้ปีนี้" ของกลุ่ม (0024 · ตรงกับ current_advisors() บนเซิร์ฟเวอร์)
+ *
+ * ผู้ใช้เคาะ 14 ก.ย. 69: ขึ้นปีการศึกษาใหม่ ล้างที่เลือกไว้ทั้งหมด → ของปีก่อนถือว่าไม่มี
+ * advisorYear ว่าง = แถวจากก่อนติดตั้ง 0024 (หรือโหมดเดโม) → ยังเชื่อตามเดิม ไม่งั้นที่ปรึกษาหายหมดทันที
+ * ⚠️ ที่ไหนอ่านที่ปรึกษาเพื่อ "ตัดสิน" อะไร ใช้ตัวนี้ ห้ามอ่าน advisorIds ตรง
+ */
+export function currentAdvisorIds(g: Pick<ClinicGroup, 'advisorIds' | 'advisorYear'> | undefined, asOf: Date = new Date()): string[] {
+  if (!g) return [];
+  if (g.advisorYear != null && g.advisorYear !== academicYear(asOf)) return [];
+  return (g.advisorIds ?? []).filter(Boolean);
 }

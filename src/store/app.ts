@@ -14,7 +14,7 @@ import { requestPersistentStorage } from '../lib/storagePersist';
 import { getAppUser, hasCloudSession, signInWithPassword, signOutCloud, type AppUser } from '../lib/auth';
 import type { Role, Settings } from '../domain/types';
 import type { PdpaRole } from '../data/pdpaSync';
-import { groupShort } from '../domain/group';
+import { currentAdvisorIds, groupShort } from '../domain/group';
 
 /** studentId สำหรับโหมดเดโม/local — ปกติคือนักศึกษาเดโม แต่ถ้าถูกแทนด้วยรุ่นจริง
  *  (นำเข้าทั้งรุ่นจากชีต) ให้ใช้คนแรกของรุ่นตามรหัส — กันหน้า นศ. เปิดมาว่างเปล่า */
@@ -125,7 +125,7 @@ export function useCanSwitchRole(): boolean {
 /** กลุ่มที่อาจารย์คนนี้เป็นที่ปรึกษา — ใช้เป็นหน้าเริ่มต้น จะได้ไม่เผลอทำงานผิดกลุ่ม */
 async function findMyGroup(teacherId: string): Promise<string | null> {
   const groups = await db.groups.toArray();
-  return groups.find((g) => g.advisorIds.includes(teacherId))?.code ?? null;
+  return groups.find((g) => currentAdvisorIds(g).includes(teacherId))?.code ?? null;
 }
 
 /**
@@ -432,16 +432,23 @@ export const useApp = create<AppState>((set, get) => ({
 
   setTeacherGroup(code) {
     const mine = get().myGroup;
+    const teacherId = get().session?.teacherId;
     try { localStorage.setItem('teacherGroup', code); } catch { /* private mode */ }
     set({ teacherGroup: code });
     // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง = จดไว้ใน audit log
     // (ไม่ได้ห้าม เพราะอาจารย์เวรต้องข้ามกลุ่มได้จริง — แต่ต้องมีร่องรอยว่าใครดูอะไร)
+    // ⚠️ อาจารย์ดูแลได้หลายกลุ่ม (ผู้ใช้ยืนยัน 14 ก.ย. 69) — เทียบกับทุกกลุ่มที่ดูแล ไม่ใช่แค่ myGroup
+    //    เดิมเปิดกลุ่มที่สองของตัวเองแล้วจด audit ผิดว่า "ไม่ใช่กลุ่มที่ปรึกษา" ซึ่งลบไม่ได้
     if (mine && code !== mine) {
-      void logAudit(
-        `เปิดดูข้อมูลกลุ่ม ${groupShort(code)} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`,
-        get().actorName,
-        { group: code },
-      );
+      void (async () => {
+        const g = await db.groups.get(code);
+        if (teacherId && currentAdvisorIds(g).includes(teacherId)) return;
+        await logAudit(
+          `เปิดดูข้อมูลกลุ่ม ${groupShort(code)} (ไม่ใช่กลุ่มที่ปรึกษาของตัวเอง)`,
+          get().actorName,
+          { group: code },
+        );
+      })();
     }
   },
 
