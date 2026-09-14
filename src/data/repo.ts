@@ -1153,6 +1153,36 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
 }
 
 
+/**
+ * บันทึกรายชื่ออาจารย์จากแท็บ "อาจารย์" ของแบบฟอร์ม (ผู้ใช้ขอ 15 ก.ย. 69)
+ * id มาจากหน้าจอ (id ในรายชื่อเชิญเดิม หรือสร้างจากอีเมล — teacherIdFromEmail) · มีอยู่แล้ว = อัปเดตชื่อ
+ * ไม่มีชื่ออังกฤษมาในรอบนี้ = คงของเดิม · สิทธิ์เข้าระบบ (invites) หน้าจอทำต่อเอง เพราะต้องต่อเซิร์ฟเวอร์
+ */
+export async function importTeachers(
+  rows: ReadonlyArray<{ id: string; name: string; title?: string; nameEn?: string }>,
+  by: string,
+): Promise<{ added: number; updated: number }> {
+  const prev = await db.teachers.bulkGet(rows.map((r) => r.id));
+  let added = 0;
+  const toPut = rows.map((r, i) => {
+    const old = prev[i];
+    if (!old) added++;
+    return {
+      ...(old ?? {}),
+      id: r.id,
+      name: r.name,
+      ...(r.title ? { title: r.title } : {}),
+      ...(r.nameEn ? { nameEn: r.nameEn } : {}),
+    };
+  });
+  await db.teachers.bulkPut(toPut);
+  const updated = rows.length - added;
+  // audit ไม่ใส่ชื่อ/อีเมล — จำนวนพอให้ตามย้อนได้ว่าใครนำเข้าเมื่อไหร่
+  await logAudit(`นำเข้ารายชื่ออาจารย์: เพิ่ม ${added} ท่าน · อัปเดต ${updated} ท่าน`, by);
+  return { added, updated };
+}
+
+
 /* ── นำเข้าทั้งรุ่นจากชีตจริง (local เท่านั้น) ─────────────────────────────
    ล้างข้อมูลเดโมออกก่อน (คงตาราง teachers/settings/audit ไว้ — session อาจารย์ไม่หลุด)
    แล้วลงรายชื่อนักศึกษา+กลุ่มจากแท็บ Student list ของชีต */

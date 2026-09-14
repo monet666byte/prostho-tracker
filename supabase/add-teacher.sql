@@ -29,7 +29,7 @@ p as (
     i.is_admin,
     coalesce(
       (select v.teacher_id from invites v where lower(v.email) = lower(trim(i.email)) and v.teacher_id is not null),
-      'tc-' || substr(md5(lower(trim(i.email))), 1, 10)
+      'tc-' || substr(encode(sha256(convert_to(lower(trim(i.email)), 'UTF8')), 'hex'), 1, 10)
     ) as teacher_id
   from input i
   where trim(i.email) like '%_@_%.__%' and trim(i.name) <> ''

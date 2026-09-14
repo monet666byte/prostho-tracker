@@ -165,3 +165,118 @@ export function parseRoster(text: string): RosterParseResult {
   });
   return { rows, errors };
 }
+
+/* ══ แท็บ "อาจารย์" ของแบบฟอร์มขอรายชื่อ (ผู้ใช้ขอ 15 ก.ย. 69 — เดิมต้องเพิ่มอาจารย์ด้วย SQL ทีละท่าน) ══
+   หัวตาราง: คำนำหน้า / ตำแหน่ง · ชื่อ-นามสกุล (ไทย) * · ชื่อ-นามสกุล (อังกฤษ) · อีเมล * · บทบาท * · กลุ่มที่ปรึกษา
+   กลุ่มที่ปรึกษาไม่อ่าน — อาจารย์เลือกเองในแอป และระบบล้างทุกปีการศึกษา (0024) */
+
+export interface TeacherRosterRow {
+  /** อีเมลตัวเล็กทั้งหมด — ใช้ให้สิทธิ์เข้าระบบ */
+  email: string;
+  /** ชื่อที่แสดง = คำนำหน้า + ชื่อไทย (แบบเดียวกับชื่ออาจารย์เดิมในระบบ "อ. …") */
+  name: string;
+  title?: string;
+  nameEn?: string;
+  /** บทบาท "หัวหน้ารายวิชา" */
+  isAdmin: boolean;
+}
+
+export interface TeacherRosterParseResult {
+  rows: TeacherRosterRow[];
+  errors: Array<{ line: number; text: string; reason: string }>;
+}
+
+/** แถวตัวอย่างในแท็บอาจารย์ของแบบฟอร์ม — ภาคอาจลืมลบ */
+const TEACHER_TEMPLATE_EXAMPLE = { email: 'sommut.jai@mahidol.edu', name: 'สมมติ ใจดี' };
+
+type TCol = 'title' | 'name' | 'nameEn' | 'email' | 'role' | 'skip';
+
+function teacherHeaderColumns(cells: string[]): TCol[] | null {
+  const cols = cells.map((raw): TCol => {
+    const c = raw.replace(/\*/g, '').trim().toLowerCase();
+    if (!c) return 'skip';
+    if (/กลุ่ม|group/.test(c)) return 'skip';
+    if (/คำนำหน้า|ตำแหน่ง|prefix|title/.test(c)) return 'title';
+    if (/บทบาท|role/.test(c)) return 'role';
+    if (/อังกฤษ|english|name.?en/.test(c)) return 'nameEn';
+    if (/อีเมล|e-?mail/.test(c)) return 'email';
+    if (/ชื่อ|name/.test(c)) return 'name';
+    return 'skip';
+  });
+  const has = (k: TCol) => cols.includes(k);
+  return has('name') && has('email') && has('role') ? cols : null;
+}
+
+/** ข้อความที่วางมาเป็นแท็บอาจารย์ไหม — หน้ารายชื่อใช้เลือกว่าจะอ่านแบบไหน (ช่องวางช่องเดียวกับนักศึกษา) */
+export function looksLikeTeacherRoster(text: string): boolean {
+  const first = text.split(/\r?\n/).find((l) => l.trim());
+  if (!first) return false;
+  const cells = first.includes('\t') ? first.split('\t') : first.split(',');
+  return teacherHeaderColumns(cells) !== null;
+}
+
+export function parseTeacherRoster(text: string): TeacherRosterParseResult {
+  const rows: TeacherRosterRow[] = [];
+  const errors: TeacherRosterParseResult['errors'] = [];
+  const seen = new Set<string>();
+  const lines = text.split(/\r?\n/);
+  const firstIdx = lines.findIndex((l) => l.trim());
+  const split = (line: string) => (line.includes('\t') ? line.split('\t') : line.split(',')).map((c) => c.trim());
+  const header = firstIdx >= 0 ? teacherHeaderColumns(split(lines[firstIdx])) : null;
+  if (!header) {
+    if (firstIdx >= 0) errors.push({ line: firstIdx + 1, text: lines[firstIdx].trim().slice(0, 40), reason: 'ต้องก๊อปหัวตารางของแท็บ "อาจารย์" มาด้วย' });
+    return { rows, errors };
+  }
+
+  lines.forEach((raw, i) => {
+    if (i <= firstIdx || !raw.trim()) return;
+    const cells = split(raw);
+    if (cells.every((c) => !c)) return;
+    const line = raw.trim();
+    const fail = (reason: string) => errors.push({ line: i + 1, text: line.slice(0, 40), reason });
+    const get = (k: TCol) => cells[header.indexOf(k)] ?? '';
+
+    const thai = get('name');
+    const email = get('email').toLowerCase();
+    const role = get('role');
+    const title = get('title');
+    const nameEn = get('nameEn');
+
+    if (!thai) return void fail('ไม่พบชื่อไทย');
+    if (!email) return void fail('ไม่พบอีเมล');
+    if (!isEmailCell(email)) return void fail('อีเมลไม่ถูกต้อง');
+    /* บทบาทว่างหรือพิมพ์เอง = ไม่เดา — "หัวหน้ารายวิชา" คือสิทธิ์เพิ่มคน/สำรองข้อมูลทั้งระบบ
+       เดาผิดทาง "ให้" แพงกว่าเดาผิดทาง "ไม่ให้" มาก จึงให้แก้ในไฟล์แล้ววางใหม่ */
+    if (role !== 'อาจารย์' && role !== 'หัวหน้ารายวิชา') return void fail('บทบาทต้องเป็น "อาจารย์" หรือ "หัวหน้ารายวิชา"');
+    if (seen.has(email)) return void fail('อีเมลซ้ำกับบรรทัดก่อนหน้า');
+    const name = [title, thai].filter(Boolean).join(' ');
+    if (name.length > MAX_NAME_LENGTH || nameEn.length > MAX_NAME_LENGTH) {
+      return void fail(`ชื่อยาวเกิน ${MAX_NAME_LENGTH} ตัวอักษร — ตรวจตัวคั่นในบรรทัดนี้`);
+    }
+    if (email === TEACHER_TEMPLATE_EXAMPLE.email && thai === TEACHER_TEMPLATE_EXAMPLE.name) {
+      return void fail('แถวตัวอย่างในแบบฟอร์ม — ข้ามให้แล้ว');
+    }
+    seen.add(email);
+    rows.push({
+      email,
+      name,
+      ...(title ? { title } : {}),
+      ...(nameEn ? { nameEn } : {}),
+      isAdmin: role === 'หัวหน้ารายวิชา',
+    });
+  });
+  return { rows, errors };
+}
+
+/**
+ * id อาจารย์ที่สร้างจากอีเมล — ต้องตรงกับ supabase/add-teacher.sql
+ * (`'tc-' || substr(encode(sha256(convert_to(email,'UTF8')),'hex'),1,10)`)
+ * เพิ่มคนเดียวกันจากสองทางต้องได้แถวเดียวกัน ไม่ใช่อาจารย์ซ้ำสองคน
+ * ไม่มีชื่อคนอยู่ใน id — id ไหลลง audit และ URL
+ */
+export async function teacherIdFromEmail(email: string): Promise<string> {
+  const bytes = new TextEncoder().encode(email.trim().toLowerCase());
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hex = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `tc-${hex.slice(0, 10)}`;
+}

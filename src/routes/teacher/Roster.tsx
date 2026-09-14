@@ -17,7 +17,8 @@ import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
-import { importRoster, parseRoster } from '../../data/repo';
+import { importRoster, importTeachers, parseRoster } from '../../data/repo';
+import { looksLikeTeacherRoster, parseTeacherRoster, teacherIdFromEmail } from '../../lib/rosterParse';
 import type { RosterRow } from '../../data/repo';
 import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
@@ -54,7 +55,57 @@ export default function Roster() {
   const [dtmu, setDtmu] = useState('');
   const [rosterText, setRosterText] = useState('');
   const [importing, setImporting] = useState(false);
-  const parsed = useMemo(() => (rosterText.trim() ? parseRoster(rosterText) : null), [rosterText]);
+  /* ช่องวางช่องเดียวกัน — ก๊อปแท็บ "อาจารย์" ของแบบฟอร์มมาวาง ระบบดูจากหัวตารางแล้วอ่านเป็นรายชื่ออาจารย์ (15 ก.ย. 69) */
+  const teacherMode = useMemo(() => looksLikeTeacherRoster(rosterText), [rosterText]);
+  const parsed = useMemo(() => (rosterText.trim() && !teacherMode ? parseRoster(rosterText) : null), [rosterText, teacherMode]);
+  const parsedTeachers = useMemo(() => (teacherMode ? parseTeacherRoster(rosterText) : null), [rosterText, teacherMode]);
+
+  /**
+   * นำเข้าอาจารย์: ① แถว teachers (ชื่อไทย/อังกฤษ) ② อีเมลลงรายชื่อเชิญ = กดปุ่ม Google แล้วเข้าได้เลย
+   * เฉพาะหัวหน้ารายวิชา — เป็นการให้สิทธิ์เข้าระบบ
+   * อีเมลที่อยู่ในรายชื่อเชิญแล้วห้ามทับ (เหมือนฝั่งนักศึกษา) — กันไฟล์ที่กรอกบทบาทผิดไปถอดสิทธิ์หัวหน้ารายวิชาของคนที่ตั้งไว้แล้ว
+   * (รวมถึงตัวคนที่กำลังกดเอง) · อยากเปลี่ยนสิทธิ์คนเดิมให้ใช้ supabase/add-teacher.sql
+   */
+  async function doImportTeachers() {
+    if (!parsedTeachers?.rows.length || !isAdmin) return;
+    // ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดรายชื่อเชิญไม่เสร็จ = ยังไม่รู้ id เดิมของอีเมลที่เชิญไว้แล้ว → สร้างอาจารย์ซ้ำได้
+    if (supabase && invites === null) {
+      showToast({ message: t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่'), tone: 'warning' });
+      return;
+    }
+    setImporting(true);
+    try {
+      const invitedId = new Map((invites ?? []).filter((v) => v.teacher_id).map((v) => [v.email.toLowerCase(), v.teacher_id!]));
+      const rows = await Promise.all(parsedTeachers.rows.map(async (r) => ({
+        ...r, id: invitedId.get(r.email) ?? await teacherIdFromEmail(r.email),
+      })));
+      const res = await importTeachers(rows, currentActor());
+      let note = '';
+      let tone: 'success' | 'warning' = 'success';
+      if (supabase) {
+        const { data, error: e } = await supabase
+          .from('invites')
+          .upsert(
+            rows.map((r) => ({ email: r.email, role: 'teacher' as const, student_id: null, teacher_id: r.id, is_admin: r.isAdmin })),
+            { onConflict: 'email', ignoreDuplicates: true, defaultToNull: false },
+          )
+          .select('email');
+        if (e) {
+          note = ` · ${t('ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}', { e: e.message })}`;
+          tone = 'warning';
+        } else {
+          const added = data?.length ?? 0;
+          note = ` · ${t('ให้สิทธิ์เข้าระบบ {n} อีเมล', { n: added })}`
+            + (rows.length - added ? ` · ${t('ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว (สิทธิ์เดิมไม่เปลี่ยน)', { n: rows.length - added })}` : '');
+          void load();
+        }
+      }
+      setRosterText('');
+      showToast({ message: t('นำเข้าอาจารย์แล้ว — เพิ่ม {a} ท่าน · อัปเดต {b} ท่าน', { a: res.added, b: res.updated }) + note, tone });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function doImportRoster() {
     if (!parsed?.rows.length || !dtmu) return;
@@ -228,11 +279,11 @@ export default function Roster() {
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
-            <span className="sub">{t('ก๊อปทั้งตารางจากแบบฟอร์มขอรายชื่อ (รวมหัวตาราง) หรือวาง รหัส, ชื่อ, กลุ่ม')}</span>
+            <span className="sub">{t('ก๊อปทั้งตารางจากแบบฟอร์มขอรายชื่อ รวมหัวตาราง — แท็บนักศึกษาหรือแท็บอาจารย์ก็ได้')}</span>
           </div>
 
-          <div className="rosterimport">
-            <label className="field">
+          <div className={`rosterimport${teacherMode ? ' rosterimport--single' : ''}`}>
+            {!teacherMode && <label className="field">
               <span>{t('รุ่น (DTMU)')}</span>
               <input
                 className="input"
@@ -248,7 +299,7 @@ export default function Roster() {
                   ? t('→ ขึ้นปี 5 ปีการศึกษา {y}', { y: entryYearFromDtmu(Number(dtmu)) })
                   : t('กรอกเลขรุ่นก่อน')}
               </small>
-            </label>
+            </label>}
             <label className="field">
               <span>{t('รายชื่อ')}</span>
               <textarea
@@ -275,6 +326,36 @@ export default function Roster() {
             </div>
           )}
 
+          {parsedTeachers && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ margin: 0, font: '500 12px var(--font-body)', color: parsedTeachers.rows.length ? 'var(--success-dark)' : 'var(--text-muted)' }}>
+                {t('แท็บอาจารย์ · อ่านได้ {n} ท่าน', { n: parsedTeachers.rows.length })}
+                {parsedTeachers.rows.some((r) => r.isAdmin) && ` · ${t('หัวหน้ารายวิชา {n} ท่าน', { n: parsedTeachers.rows.filter((r) => r.isAdmin).length })}`}
+                {parsedTeachers.errors.length > 0 && ` · ${t('ข้ามไป {n} บรรทัด', { n: parsedTeachers.errors.length })}`}
+              </p>
+              {parsedTeachers.errors.slice(0, 5).map((e) => (
+                <p key={e.line} style={{ margin: '4px 0 0', font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
+                  {t('บรรทัด')} {e.line}: {e.text} — {e.reason}
+                </p>
+              ))}
+              {!isAdmin && (
+                <p style={{ margin: '6px 0 0', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
+                  {t('นำเข้าอาจารย์ได้เฉพาะหัวหน้ารายวิชา — เป็นการให้สิทธิ์เข้าระบบ')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {teacherMode ? (
+            <button
+              className="btn"
+              style={{ marginTop: 12, height: 42, width: 'auto', padding: '0 18px' }}
+              disabled={!parsedTeachers?.rows.length || !isAdmin || importing}
+              onClick={doImportTeachers}
+            >
+              {importing ? t('กำลังนำเข้า…') : t('นำเข้าอาจารย์ {n} ท่าน', { n: parsedTeachers?.rows.length ?? 0 })}
+            </button>
+          ) : (
           <button
             className="btn"
             style={{ marginTop: 12, height: 42, width: 'auto', padding: '0 18px' }}
@@ -283,6 +364,7 @@ export default function Roster() {
           >
             {importing ? t('กำลังนำเข้า…') : t('นำเข้ารายชื่อ')}
           </button>
+          )}
         </div>
 
         {isAdmin && (<>

@@ -669,6 +669,42 @@ console.log('\n⑬ ชื่อภาษาอังกฤษ (0025)');
   check('check-migrations.sql ตอบว่า 0025 รันแล้ว', !!row && row['สถานะ'].startsWith('✓'), row);
 }
 
+/* ── เพิ่มอาจารย์: SQL (add-teacher.sql) กับแอป (แท็บอาจารย์ในแบบฟอร์ม) ต้องได้ id เดียวกัน · 15 ก.ย. 69 ── */
+console.log('\nเพิ่มอาจารย์ — add-teacher.sql กับหน้ารายชื่อในแอป');
+{
+  const { readFileSync } = await import('node:fs');
+  const { teacherIdFromEmail } = await import('../src/lib/rosterParse.ts');
+  const sqlFile = readFileSync(join(root, 'supabase/add-teacher.sql'), 'utf8');
+  const withRows = (rows: string) => sqlFile.replace("('name.sur@mahidol.edu', 'อ.ทพ. ชื่อ นามสกุล', 'Dr. Firstname Lastname', false)", rows);
+
+  const raw = await db.query<{ 'ผล': string }>(sqlFile);
+  check('กด Run ทั้งที่ยังเป็นค่าตัวอย่าง → ไม่บันทึก', raw.rows[0]?.['ผล'].startsWith('✗')
+    && (await db.query(`select 1 from invites where email like 'name%.sur@mahidol.edu'`)).rows.length === 0, raw.rows);
+
+  const r = await db.query<{ 'id อาจารย์': string }>(withRows("('New.Teacher@Mahidol.edu', 'อ.ทพ. ใหม่', 'Dr New', false)"));
+  const jsId = await teacherIdFromEmail('new.teacher@mahidol.edu');
+  check('id จาก SQL = id จากแอป (คนเดียวกันเพิ่มสองทางไม่ซ้ำ)', r.rows[0]?.['id อาจารย์'] === jsId, { sql: r.rows[0], jsId });
+  await db.query(withRows("('new.teacher@mahidol.edu', 'อ.ทพ. ใหม่ แก้ชื่อ', '', false)"));
+  const tr = await db.query<{ name: string; name_en: string | null }>(`select name, name_en from teachers where id = $1`, [jsId]);
+  check('รันซ้ำ: แก้ชื่อไทยได้ · ชื่ออังกฤษว่างไม่ลบของเดิม · ไม่สร้างแถวซ้ำ',
+    tr.rows.length === 1 && tr.rows[0].name === 'อ.ทพ. ใหม่ แก้ชื่อ' && tr.rows[0].name_en === 'Dr New', tr.rows);
+
+  /* ทางแอป: หัวหน้ารายวิชาเขียน teachers + invites เอง (RLS จริง) · อาจารย์ทั่วไปให้สิทธิ์คนใหม่ไม่ได้ */
+  const appId = await teacherIdFromEmail('app.teacher@mahidol.edu');
+  const byHead = await as(db, U.HEAD, async (tx) => {
+    await tx.query(`insert into teachers (id, name) values ($1, 'อ. แอป')`, [appId]);
+    return (await tx.query(`insert into invites (email, role, teacher_id, is_admin) values ('app.teacher@mahidol.edu', 'teacher', $1, false) on conflict (email) do nothing returning email`, [appId])).rows.length;
+  });
+  check('หัวหน้ารายวิชาเพิ่มอาจารย์ + เชิญอีเมลจากแอปได้', byHead.ok && byHead.value === 1, byHead);
+  const byTeacher = await as(db, U.T1, async (tx) =>
+    (await tx.query(`insert into invites (email, role, teacher_id, is_admin) values ('sneak@mahidol.edu', 'teacher', 'tc-x', true) returning email`)).rows.length);
+  check('อาจารย์ทั่วไปเชิญคนเข้าระบบ (และตั้งหัวหน้ารายวิชา) ไม่ได้', !byTeacher.ok || byTeacher.value === 0, byTeacher);
+  // as() ย้อนกลับเสมอ — ทดสอบการผูกบัญชีกับอาจารย์ที่เพิ่มด้วย SQL ข้างบน (แถวอยู่จริง)
+  const signed = await signUp(db, 'New.Teacher@mahidol.edu');
+  const linked = await db.query<{ teacher_id: string; role: string }>(`select teacher_id, role from app_users where uid = $1`, [signed.uid ?? null]);
+  check('อาจารย์ที่เพิ่มแล้ว กดสมัคร (อีเมลตัวใหญ่เล็กต่างกันได้) แล้วผูกเป็นอาจารย์คนนั้นทันที', linked.rows[0]?.teacher_id === jsId && linked.rows[0]?.role === 'teacher', { signed, rows: linked.rows });
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);

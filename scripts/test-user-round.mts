@@ -17,7 +17,7 @@ import { PROCS, RECALL, TYPES } from '../src/domain/catalog.ts';
 import { caseCount, maxProgression, procList } from '../src/domain/rules.ts';
 import { groupNumberOf, sortGroupCodes } from '../src/domain/group.ts';
 import { riskRows } from '../src/domain/analytics.ts';
-import { parseRoster } from '../src/lib/rosterParse.ts';
+import { looksLikeTeacherRoster, parseRoster, parseTeacherRoster } from '../src/lib/rosterParse.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { Settings, Student, WorkType } from '../src/domain/types.ts';
 
@@ -239,6 +239,32 @@ console.log('\nนำเข้ารายชื่อ — ตัวกรอง
     form.rows.length === 2 && form.errors.length === 3
       && form.errors.some((e) => /กลุ่ม/.test(e.reason)) && form.errors.some((e) => /อีเมล/.test(e.reason)),
     form.errors);
+
+  /* แท็บ "อาจารย์" ของแบบฟอร์มเดียวกัน — วางในช่องเดียวกับนักศึกษา แอปดูจากหัวตาราง (15 ก.ย. 69) */
+  const TH = 'คำนำหน้า / ตำแหน่ง\tชื่อ-นามสกุล (ไทย) *\tชื่อ-นามสกุล (อังกฤษ)\tอีเมล *\tบทบาท *\tกลุ่มที่ปรึกษา';
+  const tText = [
+    TH,
+    'อ.ทพ.\tสมมติ ใจดี\tSommut Jaidee\tsommut.jai@mahidol.edu\tอาจารย์\tปี 5 PT1',
+    'ผศ.ทพ.\tวิภา รักษ์ฟัน\tWipa Rakfan\tWipa.Rak@Mahidol.edu\tหัวหน้ารายวิชา\t',
+    '\tสมศักดิ์ ยิ้มแย้ม\t\tsomsak.yim@gmail.com\tอาจารย์',
+    'อ.\tบทบาทว่าง\t\tno.role@mahidol.edu\t\t',
+    'อ.\tอีเมลผิด\t\tไม่ใช่อีเมล\tอาจารย์\t',
+    'อ.\tซ้ำ\t\twipa.rak@mahidol.edu\tอาจารย์\t',
+    '\t\t\t\t\t',
+  ].join('\n');
+  ok('แท็บอาจารย์: รู้จากหัวตาราง · แท็บนักศึกษาไม่ถูกอ่านเป็นอาจารย์',
+    looksLikeTeacherRoster(tText) && !looksLikeTeacherRoster([H, '6604101\tนางสาว\tกานดา ใจงาม\t\t\t56\tPT3'].join('\n')));
+  const tf = parseTeacherRoster(tText);
+  const wipa = tf.rows.find((r) => r.email === 'wipa.rak@mahidol.edu');
+  ok('แท็บอาจารย์: ชื่อที่แสดงมีคำนำหน้า · ชื่ออังกฤษ · อีเมลตัวเล็ก · หัวหน้ารายวิชา',
+    wipa?.name === 'ผศ.ทพ. วิภา รักษ์ฟัน' && wipa.nameEn === 'Wipa Rakfan' && wipa.isAdmin && wipa.title === 'ผศ.ทพ.', wipa);
+  const somsak = tf.rows.find((r) => r.email === 'somsak.yim@gmail.com');
+  ok('แท็บอาจารย์: ไม่มีคำนำหน้า/ชื่ออังกฤษ ก็เข้าได้ · บทบาทอาจารย์ = ไม่ใช่หัวหน้า',
+    somsak?.name === 'สมศักดิ์ ยิ้มแย้ม' && !somsak.isAdmin && !('nameEn' in somsak), somsak);
+  ok('แท็บอาจารย์: แถวตัวอย่าง · บทบาทว่าง (ไม่เดาสิทธิ์) · อีเมลผิด · อีเมลซ้ำ ตกพร้อมเหตุผล',
+    tf.rows.length === 2 && tf.errors.length === 4
+      && tf.errors.some((e) => /ตัวอย่าง/.test(e.reason)) && tf.errors.some((e) => /บทบาท/.test(e.reason))
+      && tf.errors.some((e) => /อีเมลไม่ถูก/.test(e.reason)) && tf.errors.some((e) => /ซ้ำ/.test(e.reason)), tf.errors);
 
   const noHeader = parseRoster('6604201, นาย, ปิติ ยินดี, Piti Yindee, piti.yin@student.mahidol.edu, PT2');
   ok('ไม่มีหัวตาราง: ยังแยกชื่ออังกฤษกับอีเมลออกจากชื่อไทยได้',
