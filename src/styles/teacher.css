@@ -1587,13 +1587,15 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @media (prefers-reduced-motion: reduce) { .panel--flash { animation: none; } }
 
 /* ─── สรุปวันนี้ + วงงานที่กำลังทำ (ผู้ใช้เลือก mock 15 ก.ย. 69 · แทนกล่องตัวเลข 4 ตัว) ─── */
-.todayrow { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; margin-bottom: 18px; align-items: start; }
+.todayrow { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-bottom: 18px; align-items: stretch; }
 @media (max-width: 980px) { .todayrow { grid-template-columns: minmax(0, 1fr); } }
 /* ขอบรุ้ง = แผ่นสีรุ้งใต้การ์ด หมุนด้วย transform แล้วมีพื้นการ์ดทับเหลือขอบ 1.5px
    เดิมหมุนด้วย @property ใน border-image → เบราว์เซอร์ต้องวาดการ์ดใหม่ทุกเฟรม ผู้ใช้บอกเปิดหน้าแล้วแลค (Safari · 15 ก.ย. 69)
    transform หมุนบนการ์ดจอได้เลย ไม่ต้องวาดใหม่ */
 .todaycard {
   position: relative; isolation: isolate; overflow: hidden; border: 0;
+  /* Safari ตัดขอบมนของลูกที่หมุนอยู่ไม่ครบบางเฟรม (ขอบรุ้งหายเป็นช่วง) — mask บังคับให้ตัดตามมุมมนทุกเฟรม */
+  -webkit-mask-image: linear-gradient(#000, #000);
   display: grid; gap: 2px; align-content: start;
   box-shadow: 0 8px 30px -16px rgba(124, 92, 255, 0.4);
 }
@@ -1634,28 +1636,28 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .todaycard__ic--good { background: var(--success-tint, #dcfae6); color: var(--success-dark); }
 .todaycard__go { margin-left: auto; padding-left: 8px; font: 600 12.5px var(--font-body); color: var(--accent); white-space: nowrap; }
 
-.donutpanel h3 { margin-bottom: 6px; }
-.typedonut { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: center; }
-@media (max-width: 420px) {
-  .typedonut { grid-template-columns: 1fr; justify-items: center; }
-  .typedonut__legend { grid-template-columns: 1fr 1fr; width: 100%; }
-}
-.typedonut svg { width: 150px; height: 150px; overflow: visible; }
+.donutpanel { display: grid; align-content: center; }
+.typedonut { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 14px; align-items: center; }
+@media (max-width: 380px) { .typedonut { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; } .typedonut svg { width: 96px; height: 96px; } }
+.typedonut svg { width: 116px; height: 116px; overflow: visible; }
+.typedonut__side { display: grid; gap: 8px; min-width: 0; }
 .typedonut__track { fill: none; stroke: var(--fill); stroke-width: 17; }
 .typedonut__seg { fill: none; stroke-width: 17; cursor: pointer; transition: stroke-dasharray 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, stroke-width 0.2s; }
 .typedonut--hot .typedonut__seg { opacity: 0.22; }
 .typedonut--hot .typedonut__seg--on { opacity: 1; stroke-width: 21; }
 .typedonut__n { font: 700 30px var(--font-head); fill: var(--text); }
-.typedonut__sub { font: 400 11px var(--font-body); fill: var(--text-faint); }
-.typedonut__legend { display: grid; gap: 2px; align-content: center; }
+.staledetail { font: 500 11px var(--font-body); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.h3count { font-weight: 500; color: var(--text-faint); }
+.typedonut__sub { font: 500 14px var(--font-body); fill: var(--text-faint); }
+.typedonut__legend { display: grid; grid-template-columns: 1fr 1fr; gap: 0 4px; align-content: center; }
 .typedonut__legend button {
   display: flex; align-items: center; gap: 8px; padding: 5px 6px; border: 0; border-radius: 8px; background: none;
-  font: 500 13px var(--font-body); color: var(--text-secondary); cursor: pointer; text-align: left;
+  font: 500 12px var(--font-body); color: var(--text-secondary); cursor: pointer; text-align: left; white-space: nowrap;
 }
 @media (hover: hover) { .typedonut__legend button:hover { background: var(--fill); } }
 .typedonut__legend button[aria-pressed='true'] { background: var(--fill); color: var(--text); }
 .typedonut__legend i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-.typedonut__foot { grid-column: 1 / -1; justify-self: stretch; padding: 8px 6px 0; border-top: 1px dashed var(--border); font: 400 11.5px var(--font-body); color: var(--text-faint); }
+.typedonut__foot { padding: 6px 6px 0; border-top: 1px dashed var(--border); font: 400 11.5px var(--font-body); color: var(--text-faint); }
 @media (prefers-reduced-motion: reduce) {
   .todaycard--live::before { animation: none; }
   .typedonut__seg { transition: opacity 0.2s; }
@@ -1668,3 +1670,33 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 }
 .stalepill i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .staledays--pill { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--danger-tint, #fef3f2); font-family: var(--font-head); font-weight: 700; }
+
+/* ─── แถบซ้ายพับเหลือไอคอน (ผู้ใช้ขอ 15 ก.ย. 69) · เฉพาะจอที่แถบอยู่ด้านซ้าย (มือถือเป็นแถบบนอยู่แล้ว) ─── */
+.side__railbtn, .side__railgroup { display: none; }
+.side__logo b { white-space: nowrap; min-width: 0; }
+@media (min-width: 781px) {
+  .side { transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.22s; }
+  .side__railbtn {
+    display: grid; place-items: center; margin-left: auto; width: 26px; height: 26px; flex: none;
+    border: 0; border-radius: 8px; background: var(--fill); color: var(--text-muted); cursor: pointer;
+  }
+  @media (hover: hover) { .side__railbtn:hover { background: var(--accent-tint); color: var(--accent); } }
+  .side__railbtn:focus-visible, .side__railgroup:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .side__railbtn svg { transition: transform 0.22s; }
+
+  .side.side--rail { width: 68px; padding-left: 8px; padding-right: 8px; overflow-x: hidden; }
+  .side--rail .side__logo { flex-direction: column; gap: 10px; padding: 0 0 12px; }
+  .side--rail .side__logo b, .side--rail .navlabel, .side--rail .navlabel--short, .side--rail .side__section,
+  .side--rail .mygroup, .side--rail .linkbtn, .side--rail .side__foot { display: none !important; }
+  .side--rail .side__railbtn { margin: 0; }
+  .side--rail .side__railbtn svg { transform: rotate(180deg); }
+  .side--rail .side__railgroup {
+    display: block; width: 100%; margin: 0 0 4px; padding: 6px 0 8px; border: 0; border-bottom: 1px solid var(--border);
+    background: none; font: 700 12px var(--font-head); color: var(--text); cursor: pointer;
+  }
+  .side--rail .sidebox { padding: 5px 4px; }
+  .side--rail a, .side--rail button.navitem { justify-content: center; padding: 9px 0; position: relative; }
+  .side--rail a svg { width: 19px; height: 19px; }
+  .side--rail .count { position: absolute; top: 2px; right: 3px; margin: 0; min-width: 16px; height: 16px; font-size: 9.5px; line-height: 16px; padding: 0 4px; }
+}
+@media (prefers-reduced-motion: reduce) { .side, .side__railbtn svg { transition: none; } }

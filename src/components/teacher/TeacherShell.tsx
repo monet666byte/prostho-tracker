@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -71,6 +71,12 @@ const COHORT_NAV: NavItem[] = [
 
 /** ถามเรื่องกลุ่มที่ปรึกษาไปแล้วในการเปิดแอปครั้งนี้ — อยู่นอกคอมโพเนนต์เพราะเชลล์ถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า */
 let advisorPromptShown = false;
+
+/* แถบซ้ายพับเหลือไอคอน (ผู้ใช้ขอ 15 ก.ย. 69) — จำไว้ในเครื่อง · ค่าเริ่มต้นกางไว้ (อ่านชื่อเมนูได้ทันที) */
+const RAIL_KEY = 'pt-side-rail';
+function readRail(): boolean {
+  try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; }
+}
 let advisorResetTried = false;
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
@@ -89,6 +95,11 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
      เปิดครั้งเดียวต่อการเปิดแอป (ปิดแล้วไม่เด้งซ้ำตอนเปลี่ยนหน้า) · ตอบ "ไม่ได้เป็นที่ปรึกษา" = ไม่ถามรุ่นนั้นอีก */
   const needAdvisorPrompt = useAdvisorPrompt();
   const [advisorDialog, setAdvisorDialog] = useState<null | 'prompt' | 'manage'>(null);
+  const [rail, setRail] = useState(readRail);
+  const toggleRail = () => setRail((r) => {
+    try { localStorage.setItem(RAIL_KEY, r ? '0' : '1'); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
+    return !r;
+  });
   useEffect(() => {
     if (needAdvisorPrompt && !advisorPromptShown) {
       advisorPromptShown = true;
@@ -142,7 +153,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
     <div className="deskwrap">
       <DemoBar />
       <div className="window">
-        <aside className="side">
+        <aside className={`side${rail ? ' side--rail' : ''}`}>
           <div className="side__logo">
             {/* logo-mark = ไอคอนแอปเวอร์ชันสำหรับขนาดเล็ก (พื้นน้ำเงิน เส้นขาวหนา)
                 ตัวเต็ม icon.svg เส้นบางบนพื้นขาว พอย่อเหลือ 30px แทบมองไม่เห็น (ผู้ใช้แจ้ง 2 ก.ย.) */}
@@ -155,6 +166,15 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             />
             {/* ชื่อฝั่งอาจารย์ตามที่ผู้ใช้เคาะ 2 ก.ย. (แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยนภายหลัง) */}
             <b>Prosth Mahidol</b>
+            <button
+              className="side__railbtn"
+              onClick={toggleRail}
+              aria-expanded={!rail}
+              aria-label={rail ? t('กางแถบเมนู') : t('พับแถบเมนู')}
+              title={rail ? t('กางแถบเมนู') : t('พับแถบเมนู')}
+            >
+              <CaretDoubleLeft size={14} weight="bold" />
+            </button>
           </div>
 
           {/* แถบซ้ายแบบ B (ผู้ใช้เลือก 14 ก.ย. 69 — เดิม "ดูกลืนไปหมด แบ่งไม่ชัด")
@@ -162,7 +182,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               ตั้งค่า & ข้อมูล แยกออกมาเป็นหมวดของตัวเอง ไม่ปนกับงานดูข้อมูล */}
           <div className="sidebox sidebox--group">
           <label className="mygroup">
-            <span className="mygroup__label">{t('กลุ่มที่ดูแล')}</span>
+            {/* ป้าย "กลุ่มที่ดูแล" ซ่อนจากจอ (ตัดตัวเทา 15 ก.ย. 69) แต่โปรแกรมอ่านหน้าจอยังอ่านเป็นชื่อช่องเลือก */}
+            <span className="mygroup__label sronly">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
               {groupCodes.map((code) => (
                 /* ชั้นปีเกิน 6 = รุ่นที่เรียนจบไปแล้ว — เขียน "จบแล้ว" ไม่ใช่ "ปี 7" ซึ่งไม่มีจริง */
@@ -172,6 +193,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               ))}
             </select>
           </label>
+          {/* พับแถบแล้วเหลือรหัสกลุ่ม · กดแล้วกางออกให้เลือกกลุ่ม */}
+          <button className="side__railgroup" onClick={toggleRail} title={t('กลุ่มที่ดูแล')}>{groupShort(teacherGroup)}</button>
           {cloudEnabled && session?.teacherId && (
             <button className="linkbtn" onClick={() => setAdvisorDialog('manage')}
               style={{ margin: '-4px 0 8px 12px', font: '500 10.5px var(--font-body)', color: 'var(--accent)', textAlign: 'left' }}>
@@ -180,13 +203,12 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           )}
 
           <div className="side__cluster">
-            {GROUP_NAV.map(({ key, label, short, to, Icon, sect }) => (
-              <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
+            {GROUP_NAV.map(({ key, label, short, to, Icon }) => (
+              <NavLink key={key} to={to} className={key === active ? 'on' : undefined} title={rail ? label : undefined}>
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
                 <span className="navlabel">{label}</span>
                 <span className="navlabel--short">{short ?? label}</span>
-                {/* เลขหัวข้อในเล่ม — ไม่แปลภาษา เพราะเป็นชื่อเฉพาะบนสมุดที่เป็นภาษาอังกฤษอยู่แล้ว */}
-                {sect && <span className="navsect" title={`Section ${sect}`}>{sect}</span>}
+                {/* เลข I / II / III ข้างเมนูตัดออก — ชื่อเมนูบอกอยู่แล้ว (ผู้ใช้เลือกข้อ 9 · 15 ก.ย. 69) */}
                 {key === 'evaluate' && pendingEval > 0 && (
                   <span className="count" title={t('นักศึกษา {n} คนรอประเมิน', { n: pendingEval })}>{pendingEval}</span>
                 )}
@@ -199,7 +221,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           <div className="sidebox">
             <div className="side__section">{t('ทั้งชั้นปี')}</div>
             {COHORT_NAV.filter((n) => !SETUP_KEYS.includes(n.key)).map(({ key, label, short, to, Icon }) => (
-              <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
+              <NavLink key={key} to={to} className={key === active ? 'on' : undefined} title={rail ? label : undefined}>
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
                 <span className="navlabel">{label}</span>
                 <span className="navlabel--short">{short ?? label}</span>
@@ -208,7 +230,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
           </div>
           <div className="side__section side__section--loose">{t('ตั้งค่า & ข้อมูล')}</div>
           {COHORT_NAV.filter((n) => SETUP_KEYS.includes(n.key)).map(({ key, label, short, to, Icon }) => (
-            <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
+            <NavLink key={key} to={to} className={key === active ? 'on' : undefined} title={rail ? label : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               <span className="navlabel">{label}</span>
               <span className="navlabel--short">{short ?? label}</span>
@@ -222,10 +244,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 <span style={{ font: '600 12.5px var(--font-head)' }}>{personName(teacher, 'อ. Liv')}</span>
                 <BetaBadge compact />
               </div>
-              <div style={{ font: '400 10px var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {/* เดิมเขียน "· TH-PT7" ตายตัวทุกคน — ใช้กลุ่มที่ปรึกษาจริง (0024) */}
-                {t(teacher?.title ?? 'อาจารย์ที่ปรึกษากลุ่ม')}{myGroups.length ? ` · ${myGroups.map(groupShort).join(', ')}` : ''}
-              </div>
+              {/* บรรทัด "อาจารย์ที่ปรึกษากลุ่ม · PT7" ตัดออก — ซ้ำกับกล่องกลุ่มด้านบน (ตัดตัวเทา 15 ก.ย. 69) */}
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
                   ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
               <button

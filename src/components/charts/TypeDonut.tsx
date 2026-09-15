@@ -59,8 +59,9 @@ export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; coun
           ))}
         </g>
         <text className="typedonut__n" textAnchor="middle" y={8}>{pick ? pick.count : total}</text>
-        <text className="typedonut__sub" textAnchor="middle" y={26}>{pick ? typeChipLabel(pick.type) : t('ชิ้นทั้งหมด')}</text>
+        <text className="typedonut__sub" textAnchor="middle" y={26}>{pick ? typeChipLabel(pick.type) : t('งานที่กำลังทำ')}</text>
       </svg>
+      <div className="typedonut__side">
       <div className="typedonut__legend">
         {items.filter((x) => x.count > 0).map((x) => (
           <button key={x.type} aria-pressed={hot === x.type} {...bind(x.type)} onFocus={() => setHot(x.type)} onBlur={() => setHot(null)}>
@@ -70,6 +71,7 @@ export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; coun
         ))}
       </div>
       {foot && <small className="typedonut__foot">{foot}</small>}
+      </div>
     </div>
   );
 }

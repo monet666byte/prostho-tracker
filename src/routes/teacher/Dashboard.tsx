@@ -15,7 +15,6 @@ import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useTeacher } from '../../hooks/data';
 import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
-import { thaiShort } from '../../lib/date';
 import { personName, t, tText } from '../../lib/i18n';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { useApp } from '../../store/app';
@@ -24,14 +23,6 @@ import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
 import { groupShort, groupYearOf, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
-
-/** "2569/1" จากวันที่จริง — เทอม 1 มิ.ย.–ต.ค. · เทอม 2 พ.ย.–มี.ค. · ฤดูร้อน เม.ย.–พ.ค. */
-function termLabel(d: Date): string {
-  const m = d.getMonth(); // 0 = ม.ค.
-  const term = m >= 5 && m <= 9 ? 1 : m >= 10 || m <= 2 ? 2 : 3;
-  const be = d.getFullYear() + 543 - (m < 5 ? 1 : 0); // ก่อน มิ.ย. ยังเป็นปีการศึกษาก่อนหน้า
-  return `${be}/${term}`;
-}
 
 /* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
 const EMPTY_TEACHERS: Teacher[] = [];
@@ -162,11 +153,6 @@ export default function Dashboard() {
     [allStudents],
   );
 
-  // รุ่นที่กำลังแสดงอยู่ (ตามตัวกรองชั้นปี) — โชว์เป็นป้ายข้างหัวเรื่อง
-  const cohortsShown = useMemo(() => {
-    const labels = [...new Set(students.map((s) => studentCohortLabel(s)))].sort().reverse();
-    return labels.join(' · ');
-  }, [students]);
 
   /* ชื่อที่ปรึกษาต่อกลุ่ม — อ่านจาก advisorIds ของนักศึกษาในกลุ่มนั้น */
   const teachersAll = useLiveQuery(() => db.teachers.toArray(), [], EMPTY_TEACHERS) ?? EMPTY_TEACHERS;
@@ -248,7 +234,8 @@ export default function Dashboard() {
   if (today.doneThisWeek > 0 && todayLines.length < 3) {
     todayLines.push({ key: 'done', tone: 'good', icon: 'good', text: <>{t('สัปดาห์นี้จบเคส')} <b>{t('{n} ชิ้น', { n: today.doneThisWeek })}</b></> });
   }
-  const yearScopeLabel = yearView === 'all' ? t('ทั้งชั้นปี') : t('ปี {n}', { n: yearView });
+  // "ทั้งหมด" ไม่ใช่ "ปี 5" — ไม่ซ้ำกับแท็บปีด้านบน (ผู้ใช้เลือกข้อ 3) · ขอบเขตจริงยังตามแท็บปีเหมือนเดิม
+  const yearScopeLabel = t('ทั้งหมด');
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
@@ -269,30 +256,20 @@ export default function Dashboard() {
               {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
               {/* ตัวคั่นที่มองไม่เห็น — ช่องว่างบนจอมาจาก margin ของชิป แต่โปรแกรมอ่านหน้าจออ่านข้อความติดกัน
                   เป็น "ภาพรวมทุกชั้นปีDTMU55" (เจอตอนไล่ใช้จริง 13 ก.ย. 69) · หน้าตาบนจอไม่เปลี่ยน */}
-              {cohortsShown && !isAlumniView && <><span className="sronly"> · </span><span className="cohortchip">{cohortsShown}</span></>}
             </h1>
-            <p>
-              {/* ป้ายบอกว่ากำลังดูของเก่า — กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ · เดิมเป็นกล่องเหลือง ย้ายมาบรรทัดใต้หัวข้อ (14 ก.ย. 69) */}
-              {isAlumniView
-                ? t('ดูได้อย่างเดียว แก้ไขไม่ได้ · {a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })
-                : <>{t('{a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })} · {thaiShort(new Date())} {t('{time} น.', { time: new Date().toTimeString().slice(0, 5) })}</>}
-            </p>
+            {/* หัวหน้าเหลือชื่อหน้า + แท็บปี (ผู้ใช้เลือกข้อ 2 · 15 ก.ย. 69 — ตัดเลขรุ่น · จำนวนคน/กลุ่ม · เวลา · ภาคเรียน)
+                เหลือบรรทัดเตือนของรุ่นที่จบแล้วอย่างเดียว กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ */}
+            {isAlumniView && <p>{t('ดูได้อย่างเดียว แก้ไขไม่ได้ · {a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })}</p>}
           </div>
           {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
               — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
           {!alumniPage && <YearSeg view={yearView} onChange={setYearView} />}
-          {isAlumniView ? (
-            !alumniLoading && alumniCohorts.length > 0 && (
-              <div className="seg seg--sm seg--tight" aria-label={t('เลือกรุ่น')}>
-                {alumniCohorts.map((c) => (
-                  <button key={c} data-on={(cohortPick ?? alumniCohorts[0]) === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
-                ))}
-              </div>
-            )
-          ) : (
-            <span className="chip" style={{ height: 34, padding: '0 14px', font: '600 12px var(--font-body)', background: 'var(--fill)', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
-              {t('ภาคเรียน')} {termLabel(new Date())}
-            </span>
+          {isAlumniView && !alumniLoading && alumniCohorts.length > 0 && (
+            <div className="seg seg--sm seg--tight" aria-label={t('เลือกรุ่น')}>
+              {alumniCohorts.map((c) => (
+                <button key={c} data-on={(cohortPick ?? alumniCohorts[0]) === c} onClick={() => setCohortPick(c)}>{cohortLabel(c)}</button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -351,8 +328,8 @@ export default function Dashboard() {
                 ] : [{ key: 'year', label: yearScopeLabel, on: true }]}
               />
               {/* วงงานที่กำลังทำแทนกล่องตัวเลข 4 ตัวเดิม · เลขจบเคสสะสมย้ายมาเป็นบรรทัดเล็กใต้วง (ผู้ใช้ตกลง 15 ก.ย. 69) */}
-              <section className="panel donutpanel">
-                <h3>{t('งานที่กำลังทำ')}</h3>
+              {/* ไม่มีหัวข้อแยก — ชื่ออยู่กลางวง · วงเล็กลงให้สูงเท่ากล่องสรุป ไม่เหลือที่โล่ง (ผู้ใช้หงุดหงิดช่องว่าง 15 ก.ย. 69) */}
+              <section className="panel donutpanel" aria-label={t('งานที่กำลังทำ')}>
                 <TypeDonut
                   items={activeByType}
                   foot={t('จบแล้วปี {y} · {a} จาก {b} ชิ้น', { y: yearly.year, a: yearly.piecesDone, b: yearly.piecesGoal })}
@@ -362,7 +339,6 @@ export default function Dashboard() {
             )}
 
             {!isAlumniView && (<>
-            <div className="homelabel tlabel">{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</div>
             <div className="panel groupstrip" ref={stripRef}>
               {/* เดิม 24 กล่องขอบหนา มีหลอดทุกใบ → ช่องไม่มีกรอบ แถวละปี · ต่ำกว่า 55% เป็นช่องสีส้ม (เดิมแค่เปลี่ยนสีตัวเลข ตามองข้าม)
                   กลุ่มที่อาจารย์ดูแลมีป้าย "กลุ่มคุณ" (ผู้ใช้ขอให้ชัด 14 ก.ย.) · กลุ่มที่เลือกดูอยู่มีกรอบบาง */}
@@ -460,17 +436,8 @@ export default function Dashboard() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-                <p className="sub">
-                  {query
-                    ? t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })
-                    : <>
-                        {/* เหลือแค่ที่ปรึกษา — รุ่น/ชั้นปี/จำนวนคน ซ้ำกับหัวเรื่องและ dropdown อยู่แล้ว
-                            (ผู้ใช้ขอตัดออก 2 ก.ย.) */}
-                        {advisorsOf(selected?.code ?? '')
-                          ? <>{t('อาจารย์ที่ปรึกษา')} <b>{advisorsOf(selected?.code ?? '')}</b></>
-                          : t('{n} คน', { n: selected?.students.length ?? 0 })}
-                      </>}
-                </p>
+                {/* ชื่อที่ปรึกษาใต้หัวตารางตัดออก — ชี้การ์ดกลุ่มก็เห็น (ผู้ใช้ขอตัดตัวเทา 15 ก.ย. 69) · เหลือบอกผลค้นหาทั้งรุ่น */}
+                {query && <p className="sub">{t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })}</p>}
                 <table className="tbl">
                   <thead>
                     <tr>
@@ -549,8 +516,7 @@ export default function Dashboard() {
               {!isAlumniView && (
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
-                <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}</h3>
-                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}</p>
+                <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}<span className="h3count"> · {stale.length}</span></h3>
                 <table className="tbl">
                   <tbody>
                     {stale.slice(0, 5).map((r) => {
@@ -565,7 +531,8 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td>
-                            <div style={{ font: '500 11px var(--font-body)' }}>{tText(r.workpiece.detail)}</div>
+                            {/* ชื่องานยาวเหลือบรรทัดเดียว … ชื่อเต็มชี้ดูได้ (ผู้ใช้เลือกข้อ 7) */}
+                            <div className="staledetail" title={tText(r.workpiece.detail)}>{tText(r.workpiece.detail)}</div>
                             {/* รหัสขั้นยาวตัวพิมพ์ดีดเหลือป้ายสั้น "● Post-core · step 6" · ชื่อขั้นเต็มอยู่ใน title (ผู้ใช้เลือก B2 15 ก.ย. 69) */}
                             <span className="stalepill" title={cur ? procLabel(r.workpiece.type, cur) : undefined}>
                               <i style={{ background: typeMeta(r.workpiece.type).color }} />

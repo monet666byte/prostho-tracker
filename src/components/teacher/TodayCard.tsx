@@ -40,7 +40,6 @@ export function TodayCard({ name, summary, lines, scopes }: { name: string; summ
         <h3 className="todaycard__head">
           <span className="todaycard__orb" aria-hidden />
           <span>{greeting()}{name && ` ${name}`}</span>
-          <span className="todaycard__label">{t('สรุปวันนี้')}</span>
         </h3>
         <div className="todaycard__scope" role="group" aria-label={t('สรุปของ')}>
           {scopes.map((sc) => sc.onPick
