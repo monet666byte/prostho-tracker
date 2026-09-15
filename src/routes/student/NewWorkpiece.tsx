@@ -7,6 +7,7 @@ import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, TYPES, orderOf, typeMeta } from '
 import { maxProgression } from '../../domain/rules';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
+import { usePatientNamesOn } from '../../hooks/data';
 import { toISODate } from '../../lib/date';
 import { currentActor, useApp } from '../../store/app';
 
@@ -30,6 +31,8 @@ export default function NewWorkpiece() {
   const [min, setMin] = useState(true);
   const [more, setMore] = useState(false);
   const [name, setName] = useState('');
+  /* สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) = ไม่มีช่องชื่อ ไม่บังคับกรอก */
+  const namesOn = usePatientNamesOn();
   const [hn, setHn] = useState('');
   // ชื่อกับ HN เป็นตัวระบุผู้ป่วย ขาดไม่ได้ — ตัวนำเข้าจากชีตก็ตีแถวที่ไม่มี HN เป็นใช้ไม่ได้เหมือนกัน
   const [sexAge, setSexAge] = useState('');
@@ -46,7 +49,7 @@ export default function NewWorkpiece() {
      แต่เดิมไม่ได้บังคับ ผลคือได้แถวที่ชื่อเคสขึ้นว่า "— Recall Fixed" / "— Crown (PFM)"
      ทั้งในหน้าคนไข้ หน้าตรวจงานของอาจารย์ และใบรายงาน A4 ที่เอาไปลงนาม
      (เจอ 10 ก.ย. 69) — ไม่มีใครรู้ว่าเคสนั้นคือฟันซี่ไหน */
-  const canSave = name.trim().length > 0 && hn.trim().length > 0 && (!needsTooth || tooth.trim().length > 0);
+  const canSave = (!namesOn || name.trim().length > 0) && hn.trim().length > 0 && (!needsTooth || tooth.trim().length > 0);
 
   async function submit() {
     // กันกดรัว — เดิมกด 3 ที ได้ผู้ป่วย 3 คน ชิ้นงาน 6 ชิ้น แล้วนับเข้าเกณฑ์เกินจริง
@@ -56,7 +59,7 @@ export default function NewWorkpiece() {
     try {
     const created = await createWorkpieces({
       studentId: session.studentId,
-      patientName: name,
+      patientName: namesOn ? name : '',
       hn,
       sexAge,
       type,
@@ -97,7 +100,7 @@ export default function NewWorkpiece() {
                 /* ต่อด้วยจุลภาคเท่านั้น — คำเชื่อมภาษาไทยอย่าง " และ " ถ้าใส่ลงพจนานุกรม
                    tText() จะไปแทนที่มันในข้อความอื่นทั้งแอปด้วย */
                 what: [
-                  !name.trim() && t('ชื่อผู้ป่วย'),
+                  namesOn && !name.trim() && t('ชื่อผู้ป่วย'),
                   !hn.trim() && t('HN'),
                   needsTooth && !tooth.trim() && t('ซี่ฟัน'),
                 ].filter(Boolean).join(t(', ')),
@@ -222,10 +225,10 @@ export default function NewWorkpiece() {
         <div className="card formcard">
           {/* aria-label ทุกช่อง — placeholder หายทันทีที่เริ่มพิมพ์ และโปรแกรมอ่านหน้าจอไม่อ่านให้
               คนที่กลับมากรอกต่อจะไม่รู้ว่าช่องไหนคืออะไร (WCAG 1.3.1 · 3.3.2) */}
-          <label className="formfield">
+          {namesOn && <label className="formfield">
             <small>{t('ชื่อผู้ป่วย')}</small>
             <input aria-label={t('ชื่อผู้ป่วย')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('สมมติ เช่น ผู้ป่วย E')} />
-          </label>
+          </label>}
           <div className="formpair">
             <label className="formfield">
               <small>HN</small>

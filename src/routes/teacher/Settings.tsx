@@ -483,6 +483,8 @@ function PdpaPanel() {
   const [saving, setSaving] = useState(false);
   useEffect(() => onPdpaPolicy(() => setPol(pdpaPolicy())), []);
   const isAdmin = currentPdpaRole() === 'admin';
+  /* เปิดใช้ชื่อผู้ป่วย = เริ่มเก็บข้อมูลที่ระบุตัวคนไข้ได้มากขึ้น → ถามซ้ำก่อน · ปิดกดได้ทันที (ฝั่งปลอดภัย) */
+  const [confirmNames, setConfirmNames] = useState(false);
 
   async function apply(patch: Partial<PdpaPolicy>) {
     setSaving(true);
@@ -512,6 +514,41 @@ function PdpaPanel() {
       )}
 
       <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+        {/* สวิตช์ "ใช้ชื่อผู้ป่วย" (0026 · ผู้ใช้เลือกแบบ A 15 ก.ย. 69) — นำร่องใช้แค่ HN */}
+        <div style={{ borderBottom: '1px solid var(--divider)', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', font: '600 12.5px var(--font-body)' }}>{t('ใช้ชื่อผู้ป่วย')}</span>
+              <span style={{ display: 'block', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)', marginTop: 2 }}>
+                {pol.patientNames
+                  ? t('เปิดอยู่ = นักศึกษากรอกชื่อผู้ป่วยได้ และแสดงชื่อในแอป')
+                  : t('ปิดอยู่ = ไม่เก็บชื่อผู้ป่วยเลย ใช้ HN แทนทุกหน้า · เซิร์ฟเวอร์ล้างชื่อที่ส่งมาให้เอง')}
+              </span>
+            </span>
+            <button
+              className="qchip"
+              data-on={pol.patientNames}
+              disabled={!isAdmin || saving}
+              onClick={() => (pol.patientNames ? void apply({ patientNames: false }) : setConfirmNames(true))}
+            >
+              {pol.patientNames ? t('เปิดอยู่') : t('ปิดอยู่')}
+            </button>
+          </div>
+          {confirmNames && !pol.patientNames && (
+            <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--warning-tint, #fff4d6)' }}>
+              <p style={{ margin: 0, font: '500 11.5px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
+                {t('เปิดแล้วระบบจะเริ่มเก็บชื่อผู้ป่วย — ทำเมื่อภาค/คณะอนุมัติให้ใช้ชื่อเต็มแล้วเท่านั้น')}
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="qchip" disabled={saving} onClick={() => setConfirmNames(false)}>{t('ยกเลิก')}</button>
+                <button className="qchip" data-on disabled={saving} onClick={() => { setConfirmNames(false); void apply({ patientNames: true }); }}>
+                  {t('ยืนยันเปิดใช้ชื่อ')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div>
           <div style={{ font: '600 12px var(--font-body)' }}>{t('ใครกดส่งออกไฟล์ได้')}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>

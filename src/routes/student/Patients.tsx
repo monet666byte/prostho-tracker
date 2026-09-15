@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
-import { usePending, useWorkpieces } from '../../hooks/data';
+import { usePatientNamesOn, usePending, useWorkpieces } from '../../hooks/data';
+import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned, isActiveWork } from '../../domain/rules';
@@ -56,6 +57,7 @@ function MiniRow({
 }
 
 function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | null; onCancel: () => void; onConfirm: () => void }) {
+  const namesOn = usePatientNamesOn();
   if (!target) return null;
   const hasProgress = target.procIndex >= 0;
   return (
@@ -76,7 +78,7 @@ function DeleteSheet({ target, onCancel, onConfirm }: { target: WorkpieceView | 
             <p style={{ margin: '5px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-body)' }}>
               {tText(target.detail)}
               <span style={{ display: 'block', font: '400 10.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 2 }}>
-                {t(target.patient.name)} · HN {target.patient.hn}
+                {patientWithHn(target.patient, namesOn, t)}
               </span>
             </p>
           </div>
@@ -110,6 +112,7 @@ export default function Patients() {
   // แก้สถานะผู้ป่วย (รอ preprosth / รอถอนฟัน ฯลฯ) — id ที่กำลังแก้ + ข้อความร่าง
   const [noteEdit, setNoteEdit] = useState<{ id: string; text: string } | null>(null);
   const works = useWorkpieces(session?.studentId);
+  const namesOn = usePatientNamesOn();
   const pending = usePending();
   const [editing, setEditing] = useState(false);
   const [target, setTarget] = useState<WorkpieceView | null>(null);
@@ -179,9 +182,9 @@ export default function Patients() {
               <div className="rowcard__head">
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-                    <b className="herocase__hn">HN {patient.hn}</b> · {tSexAge(patient.sexAge)}
+                    {namesOn && <><b className="herocase__hn">HN {patient.hn}</b> · </>}{tSexAge(patient.sexAge)}
                   </span>
-                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{t(patient.name)}</span>
+                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{patientTitle(patient, namesOn, t)}</span>
                   {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย (ผู้ใช้ขอ 2 ก.ย.) */}
                   {noteEdit?.id !== patient.id && (patient.note || editing) && (
                     <button

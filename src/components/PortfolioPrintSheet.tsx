@@ -15,6 +15,7 @@ import { S3_FULL_SCORE, s3Points, sect3Form } from '../domain/sect3';
 import { SheetBoundary } from './SheetBoundary';
 import { thaiShort } from '../lib/date';
 import { personName, t } from '../lib/i18n';
+import { patientNamesOn } from '../data/pdpaSync';
 import type { Sect2Record, Sect3Record, Student } from '../domain/types';
 
 const PORTFOLIO_TITLE = 'Clinical Performance Portfolio';
@@ -42,7 +43,8 @@ function Head({ section, code, student }: { section: string; code: string; stude
 function CaseLine({ row }: { row: Sect2Record | Sect3Record }) {
   return (
     <div className="pffield">
-      <span>Patient full name <b>{row.patientName ?? ''}</b></span>
+      {/* ไม่ใช้ชื่อผู้ป่วย (นำร่อง · 0026) = เว้นว่างให้เขียนมือ แม้มีชื่อค้างในเครื่อง */}
+      <span>Patient full name <b>{patientNamesOn() ? row.patientName ?? '' : ''}</b></span>
       <span>H.N. <b className="mono">{row.hn ?? ''}</b></span>
       {'typeOfWorks' in row && row.typeOfWorks ? <span>Type of works <b>{row.typeOfWorks}</b></span> : null}
     </div>

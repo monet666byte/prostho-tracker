@@ -13,7 +13,7 @@
  * และเงื่อนไขจบ sect2Removable ก็ติ๊กผ่านจากใบที่กรอกด้วยเคสงานติดแน่น
  */
 import { useMemo } from 'react';
-import { useWorkpieces } from '../../hooks/data';
+import { usePatientNamesOn, useWorkpieces } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import type { WorkType } from '../../domain/types';
 
@@ -50,6 +50,7 @@ export function CasePicker({ studentId, scope, patientName, hn, onPick }: {
   onPick: (c: PickedCase) => void;
 }) {
   const works = useWorkpieces(studentId);
+  const namesOn = usePatientNamesOn();
   /* ผู้ป่วยคนเดียวอาจมีหลายชิ้นงาน — รวมเป็นรายคน แล้วเก็บชื่องานไว้ให้ครบทุกชิ้น
      แต่เก็บเฉพาะชิ้นที่เข้ากับใบนี้ ไม่งั้นผู้ป่วยที่มีทั้งงานถอดได้และงานติดแน่น
      จะเติมชื่องานอีกฝั่งพ่วงมาด้วย */
@@ -58,12 +59,13 @@ export function CasePicker({ studentId, scope, patientName, hn, onPick }: {
     const byPatient = new Map<string, PickedCase>();
     for (const w of works) {
       if (!allow.includes(w.type)) continue;
-      const cur = byPatient.get(w.patient.id) ?? { name: w.patient.name, hn: w.patient.hn, works: [] };
+      /* ไม่ใช้ชื่อ (นำร่อง · 0026) = ไม่ส่งชื่อที่อาจค้างในเครื่องไปเติมลงใบประเมิน */
+      const cur = byPatient.get(w.patient.id) ?? { name: namesOn ? w.patient.name : '', hn: w.patient.hn, works: [] };
       if (!cur.works.includes(w.detail)) cur.works.push(w.detail);
       byPatient.set(w.patient.id, cur);
     }
     return [...byPatient.values()];
-  }, [works, scope]);
+  }, [works, scope, namesOn]);
 
   const label = t(SCOPE_LABEL[scope]);
 
@@ -72,7 +74,9 @@ export function CasePicker({ studentId, scope, patientName, hn, onPick }: {
   if (!cases.length) {
     return (
       <span style={{ display: 'block', font: '500 10.5px var(--font-body)', color: 'var(--text-faint)', marginTop: 12 }}>
-        {t('นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ชื่อผู้ป่วยเองได้', { k: label })}
+        {namesOn
+          ? t('นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ชื่อผู้ป่วยเองได้', { k: label })
+          : t('นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ HN เองได้', { k: label })}
       </span>
     );
   }
@@ -88,12 +92,11 @@ export function CasePicker({ studentId, scope, patientName, hn, onPick }: {
             key={c.hn + c.name}
             type="button"
             className="chipbtn"
-            data-on={c.hn === hn && c.name === patientName}
+            data-on={c.hn === hn && (!namesOn || c.name === patientName)}
             title={c.works.join(' · ')}
             onClick={() => onPick(c)}
           >
-            <b>{c.name}</b>
-            <span style={{ font: '400 10px var(--font-mono)', opacity: 0.75 }}>{c.hn}</span>
+            {c.name ? <><b>{c.name}</b><span style={{ font: '400 10px var(--font-mono)', opacity: 0.75 }}>{c.hn}</span></> : <b className="mono">HN {c.hn}</b>}
           </button>
         ))}
       </div>

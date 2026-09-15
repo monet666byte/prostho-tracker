@@ -17,6 +17,13 @@ import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type
 import { cohortOfRoster, replaceWithRoster } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { groupShort } from '../../domain/group';
+import { patientNamesOn } from '../../data/pdpaSync';
+
+/** สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) = ชื่อจากชีตเก่าไม่ลงเครื่องเลย (เซิร์ฟเวอร์ล้างซ้ำอีกชั้น)
+ *  id ผู้ป่วยคำนวณจากชื่อไปแล้วตอนอ่านชีต จึงนำเข้าซ้ำยังไม่เกิดผู้ป่วยซ้ำ */
+function withoutNamesIfOff<T extends { name: string }>(rows: T[]): T[] {
+  return patientNamesOn() ? rows : rows.map((p) => ({ ...p, name: '' }));
+}
 
 export function ImportSheetBody() {
   const { cloudUser, showToast, touch } = useApp();
@@ -73,7 +80,7 @@ export function ImportSheetBody() {
     setSaving(true);
     try {
       await db.transaction('rw', [db.patients, db.workpieces], async () => {
-        await db.patients.bulkPut(result.patients);
+        await db.patients.bulkPut(withoutNamesIfOff(result.patients));
         await db.workpieces.bulkPut(result.workpieces);
       });
       // ⚠️ เดิมการนำเข้านี้ไม่ทิ้งร่องรอยเลย — พอเปิดให้อาจารย์ทุกคนใช้ ต้องรู้ว่าใครนำเข้าให้ใคร
@@ -247,7 +254,7 @@ export function ImportSheetBody() {
                       const p = result!.patients.find((x) => x.id === w.patientId);
                       return (
                         <tr key={w.id}>
-                          <td style={{ font: '500 11.5px var(--font-body)' }}>{p?.name}</td>
+                          <td style={{ font: '500 11.5px var(--font-body)' }}>{patientNamesOn() ? p?.name : '—'}</td>
                           <td className="mono" style={{ fontSize: 11 }}>{p?.hn}</td>
                           <td>
                             <span className="badge" style={{ background: typeMeta(w.type).tint, color: typeMeta(w.type).ink }}>
@@ -424,7 +431,7 @@ function WholeCohortImport() {
         for (const b of g.res.blocks) {
           if (!b.studentId) continue;
           await db.transaction('rw', [db.patients, db.workpieces, db.students], async () => {
-            await db.patients.bulkPut(b.result.patients);
+            await db.patients.bulkPut(withoutNamesIfOff(b.result.patients));
             await db.workpieces.bulkPut(b.result.workpieces);
             // ข้อกำหนด Sect II / Design RPD จากคอลัมน์รายคนในชีต
             if (b.gates) await db.students.update(b.studentId!, { gates: b.gates });

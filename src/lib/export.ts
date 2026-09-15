@@ -49,6 +49,8 @@ export function passedProgressions(w: WorkpieceView): boolean[] {
  */
 export interface CsvOptions {
   identified: boolean;
+  /** สวิตช์ "ใช้ชื่อผู้ป่วย" (0026) — ปิด = ช่องชื่อว่างเสมอ แม้มีชื่อค้างในเครื่อง (ไม่ระบุ = ใช้ชื่อตามเดิม) */
+  namesOn?: boolean;
 }
 
 export function toCsvRows(works: WorkpieceView[], opt: CsvOptions): string[][] {
@@ -60,7 +62,9 @@ export function toCsvRows(works: WorkpieceView[], opt: CsvOptions): string[][] {
 
     return [
       String(i + 1),
-      opt.identified ? w.patient.name : `${caseCode(w.patient.id)} (${maskedName(w.patient.name)})`,
+      opt.namesOn === false
+        ? (opt.identified ? '' : caseCode(w.patient.id))
+        : opt.identified ? w.patient.name : `${caseCode(w.patient.id)} (${maskedName(w.patient.name)})`,
       opt.identified ? w.patient.hn : maskedHn(w.patient.hn),
       w.detail,
       toSheetDate(w.acceptedDate),
@@ -198,6 +202,6 @@ export async function exportCsv(req: ExportRequest): Promise<ExportResult> {
   }
 
   // ② จดผ่านแล้วค่อยสร้างไฟล์
-  downloadCsv(req.works, req.filename, { identified });
+  downloadCsv(req.works, req.filename, { identified, namesOn: pdpaPolicy().patientNames });
   return { ok: true, identified, downgraded };
 }

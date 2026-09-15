@@ -8,7 +8,7 @@ import { evaluateCheckIn, reviseCheckIn, setCheckInPunctual } from '../../data/r
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, supersededBy, supersededTitle, totalScore } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
-  useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, useStepsOnDates, useTeacher,
+  useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, usePatientNamesOn, useStepsOnDates, useTeacher,
 } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
@@ -75,6 +75,7 @@ export default function Evaluate() {
   const students = useAllStudents();
   const patients = useAllPatients();
   const idLevel = useIdentityLevel('session-eval');
+  const namesOn = usePatientNamesOn();
   const checkins = useAllCheckIns();
 
   const group = useApp((st) => st.teacherGroup);
@@ -354,7 +355,7 @@ export default function Evaluate() {
                       {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
                           ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
                       {patient && (() => {
-                        const lb = patientLabel(patient, idLevel);
+                        const lb = patientLabel(patient, idLevel, namesOn);
                         return (
                           <span className="mono evalpatient">
                             {' · '}{t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}

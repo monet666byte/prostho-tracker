@@ -1446,4 +1446,13 @@ export const DICT: Record<string, string> = {
   'ไม่พบตารางรายชื่อในไฟล์นี้ — ต้องมีหัวตารางแบบแบบฟอร์มขอรายชื่อ (รหัส · ชื่อ · กลุ่ม หรือ ชื่อ · อีเมล · บทบาท)': 'No roster table found in this file — it needs the request form headers (ID · name · group, or name · email · role)',
   'ไม่ใส่อีเมล = นักศึกษาผูกบัญชีเองด้วยรหัส แล้วรออาจารย์ที่ปรึกษายืนยัน': 'No email = the student links their account by ID and waits for advisor approval',
   'ไฟล์นี้ยังไม่มีรายชื่อ — มีแต่แถวตัวอย่าง ตรวจว่าเลือกไฟล์ที่ภาคกรอกแล้ว': 'This file has no names yet — only the example rows. Check you picked the completed file',
+
+  /* ── สวิตช์ใช้ชื่อผู้ป่วย (0026) ── */
+  'ใช้ชื่อผู้ป่วย': 'Use patient names',
+  'เปิดอยู่ = นักศึกษากรอกชื่อผู้ป่วยได้ และแสดงชื่อในแอป': 'On = students can enter patient names and names are shown in the app',
+  'ปิดอยู่ = ไม่เก็บชื่อผู้ป่วยเลย ใช้ HN แทนทุกหน้า · เซิร์ฟเวอร์ล้างชื่อที่ส่งมาให้เอง': 'Off = patient names are never stored; HN is used everywhere · the server strips any name sent',
+  'เปิดแล้วระบบจะเริ่มเก็บชื่อผู้ป่วย — ทำเมื่อภาค/คณะอนุมัติให้ใช้ชื่อเต็มแล้วเท่านั้น': 'Turning this on starts storing patient names — only do so once the department/faculty has approved full names',
+  'ยืนยันเปิดใช้ชื่อ': 'Confirm: use names',
+  'ค้น HN · ซี่ฟัน · ประเภทงาน': 'Search HN · tooth · work type',
+  'นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ HN เองได้': 'This student has no {k} case yet — you can type the HN in',
 };

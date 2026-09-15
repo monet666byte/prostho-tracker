@@ -5,10 +5,11 @@ import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
-import { useCheckIns, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
+import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
-import { personName, t } from '../../lib/i18n';
+import { personName, t, tSexAge } from '../../lib/i18n';
+import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { typeMeta } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
@@ -50,6 +51,7 @@ function HeroCard({
   stale: boolean;
   onPass: () => void;
 }) {
+  const namesOn = usePatientNamesOn();
   const cur = currentProc(w);
   const next = nextProc(w);
   const prog = Math.max(progression(w), 0);
@@ -63,7 +65,10 @@ function HeroCard({
       <div className="herocase__top">
         <span className="dot" style={{ background: typeMeta(w.type).color }} />
         <span className="herocase__line">
-          {typeMeta(w.type).short}{w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''} · <b className="herocase__hn">HN {w.patient.hn}</b>
+          {typeMeta(w.type).short}{w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''} · {namesOn
+            ? <b className="herocase__hn">HN {w.patient.hn}</b>
+            /* ไม่ใช้ชื่อ (นำร่อง) = HN ขึ้นเป็นหัวเรื่องแล้ว บรรทัดนี้บอกเพศ/อายุแทน ช่วยแยกคนไข้ */
+            : tSexAge(w.patient.sexAge)}
         </span>
         <span className="herocase__meta">{relative(w.lastUpdatedAt)}</span>
       </div>
@@ -81,7 +86,7 @@ function HeroCard({
       <div className="herocase__lead">
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว ไม่ต้องซ้ำในบรรทัดนี้ */}
-          <Link to={`/app/work/${w.id}`} className="herocase__name">{t(w.patient.name)}</Link>
+          <Link to={`/app/work/${w.id}`} className="herocase__name">{patientTitle(w.patient, namesOn, t)}</Link>
         </div>
         {next && <Ring value={prog} max={max} />}
       </div>
@@ -142,6 +147,7 @@ function greeting() {
 
 export default function Home() {
   const { session, settings, openSheet, showToast, touch } = useApp();
+  const namesOn = usePatientNamesOn();
   const student = useStudent(session?.studentId);
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
@@ -219,7 +225,7 @@ export default function Home() {
   const askNoPatient = askActs.includes(NO_PATIENT_ACTIVITY);
   const askPatients = useMemo(() => {
     const seen = new Map<string, string>();
-    works.forEach((w) => seen.set(w.patient.id, `${t(w.patient.name)} · HN ${w.patient.hn}`));
+    works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
     return [...seen.entries()];
   }, [works]);
 
@@ -378,7 +384,7 @@ export default function Home() {
               {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555) */}
               {checkedInToday && (
                 <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
-                  {cheerLine(works, checkins, settings)}
+                  {cheerLine(works, checkins, settings, undefined, namesOn)}
                 </span>
               )}
             </span>
@@ -409,7 +415,7 @@ export default function Home() {
               <span className="minirow__top">
                 <span className="dot" style={{ background: meta.color }} />
                 <span className="minirow__name">
-                  {t(w.patient.name)}
+                  {patientTitle(w.patient, namesOn, t)}
                   {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
                   {' · '}<span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
                 </span>

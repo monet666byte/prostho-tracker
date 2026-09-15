@@ -27,6 +27,11 @@ export interface PdpaPolicy {
   exportIdentifiedRoles: PdpaRole[];
   /** หน้าที่ไม่ได้ทำงานกับเคสตรงๆ ให้แสดงแค่รหัสเคส */
   maskByDefault: boolean;
+  /**
+   * ใช้ชื่อผู้ป่วยไหม (0026 · ผู้ใช้เลือก 15 ก.ย. 69) — ปิด = นำร่องเก็บแค่ HN
+   * ปิดอยู่: ฟอร์มไม่มีช่องชื่อ · หน้าจอแสดง HN แทนชื่อ · เซิร์ฟเวอร์ล้างชื่อทุกครั้งที่เขียน
+   */
+  patientNames: boolean;
 }
 
 /**
@@ -39,6 +44,7 @@ export const LOCKED_POLICY: PdpaPolicy = {
   exportRoles: [],
   exportIdentifiedRoles: [],
   maskByDefault: true,
+  patientNames: false,
 };
 
 /**
@@ -52,6 +58,8 @@ export const DEMO_POLICY: PdpaPolicy = {
   exportRoles: ['student', 'teacher', 'admin'],
   exportIdentifiedRoles: ['student', 'teacher', 'admin'],
   maskByDefault: true,
+  // เดโมมีแต่ชื่อสมมติ — คงหน้าตาเดิมไว้ให้คนดูเดโมเห็นว่าระบบรองรับชื่อ
+  patientNames: true,
 };
 
 const KEY = 'pdpaPolicy';
@@ -61,6 +69,9 @@ const listeners = new Set<() => void>();
 
 /** ค่าที่ใช้อยู่ตอนนี้ (อ่านทันที ไม่ยิงเน็ต) */
 export const pdpaPolicy = (): PdpaPolicy => cached;
+
+/** สวิตช์ "ใช้ชื่อผู้ป่วย" ตอนนี้ — ที่เขียนข้อมูล (repo / นำเข้าชีต) ใช้ล้างชื่อก่อนลงเครื่อง */
+export const patientNamesOn = (): boolean => cached.patientNames;
 
 export function onPdpaPolicy(fn: () => void): () => void {
   listeners.add(fn);
@@ -78,6 +89,7 @@ type Row = {
   export_roles?: string[];
   export_identified_roles?: string[];
   mask_by_default?: boolean;
+  patient_names?: boolean;
 };
 
 const asRoles = (v: unknown): PdpaRole[] =>
@@ -93,6 +105,8 @@ function fromRow(row: Row): PdpaPolicy {
     exportIdentifiedRoles: asRoles(row.export_identified_roles),
     // ไม่มีค่า = ปิดบังไว้ก่อน
     maskByDefault: row.mask_by_default !== false,
+    // ไม่มีค่า (ยังไม่รัน 0026) = ไม่ใช้ชื่อ — ฝั่งปลอดภัย
+    patientNames: row.patient_names === true,
   };
 }
 
@@ -109,11 +123,13 @@ export async function loadCachedPolicy(): Promise<void> {
 /** ดึงนโยบายล่าสุดจากเซิร์ฟเวอร์ — cloudSync เรียกตอนเปิดแอปและทุกรอบ sync */
 export async function pullPdpaPolicy(): Promise<void> {
   if (!cloudEnabled || !supabase) return;
-  const { data, error } = await supabase
-    .from('pdpa_policy')
-    .select('retention_enabled, retention_cohorts, export_roles, export_identified_roles, mask_by_default')
-    .eq('id', 'app')
-    .maybeSingle();
+  const cols = 'retention_enabled, retention_cohorts, export_roles, export_identified_roles, mask_by_default';
+  let { data, error } = await supabase.from('pdpa_policy').select(`${cols}, patient_names`).eq('id', 'app').maybeSingle();
+  /* เซิร์ฟเวอร์ที่ยังไม่รัน 0026 ไม่มีคอลัมน์นี้ → ทั้งคำขอตก แล้วนโยบายส่งออกทั้งชุดจะค้างที่ "ล็อก" ไปด้วย
+     จึงถามใหม่แบบไม่มีคอลัมน์ใหม่ · patientNames ได้ false ตาม fromRow */
+  if (error && /patient_names/.test(error.message)) {
+    ({ data, error } = await supabase.from('pdpa_policy').select(cols).eq('id', 'app').maybeSingle());
+  }
   // ยังไม่ได้รัน 0016 (ตารางไม่มี) → คงค่าที่ล็อกไว้ ไม่ใช่เปิดให้ผ่าน
   if (error || !data) return;
   const next = fromRow(data as Row);
@@ -138,6 +154,8 @@ export async function savePdpaPolicy(patch: Partial<PdpaPolicy>, by: string): Pr
     export_roles: next.exportRoles,
     export_identified_roles: next.exportIdentifiedRoles,
     mask_by_default: next.maskByDefault,
+    // ส่งเฉพาะตอนสลับสวิตช์นี้ — เซิร์ฟเวอร์ที่ยังไม่รัน 0026 จะได้ยังแก้นโยบายข้ออื่นได้
+    ...('patientNames' in patch ? { patient_names: next.patientNames } : {}),
     updated_by: by,
   }).eq('id', 'app');
   if (error) return { error: error.message };

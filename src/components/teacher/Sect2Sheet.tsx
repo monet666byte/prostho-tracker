@@ -19,6 +19,7 @@ import { deleteSect2, saveSect2 } from '../../data/repo';
 import { CasePicker, type CaseScope } from './CasePicker';
 import { thaiShort, toISODate } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
+import { usePatientNamesOn } from '../../hooks/data';
 import { currentActor } from '../../store/app';
 import type { Sect2Record, Student } from '../../domain/types';
 
@@ -47,6 +48,7 @@ function CaseFields({ studentId, scope, patientName, hn, typeOfWorks, at, set }:
   patientName: string; hn: string; typeOfWorks: string; at: string;
   set: (k: 'patientName' | 'hn' | 'typeOfWorks' | 'at', v: string) => void;
 }) {
+  const namesOn = usePatientNamesOn();
   return (
     <>
       <CasePicker
@@ -57,10 +59,11 @@ function CaseFields({ studentId, scope, patientName, hn, typeOfWorks, at, set }:
         onPick={(c) => { set('patientName', c.name); set('hn', c.hn); set('typeOfWorks', c.works.join(', ')); }}
       />
     <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', marginTop: 10 }}>
-      <label className="field">
+      {/* ไม่ใช้ชื่อผู้ป่วย (นำร่อง · 0026) = ไม่มีช่องให้พิมพ์ · ใบที่พิมพ์ออกมาเขียนชื่อด้วยมือได้ */}
+      {namesOn && <label className="field">
         <span>{t('ชื่อผู้ป่วย')}</span>
         <input className="input" value={patientName} onChange={(e) => set('patientName', e.target.value)} placeholder={t('ตามที่เขียนในฟอร์ม')} />
-      </label>
+      </label>}
       <label className="field">
         <span>H.N.</span>
         <input className="input mono" value={hn} onChange={(e) => set('hn', e.target.value)} />

@@ -85,5 +85,11 @@ from (
   union all select '0025 ชื่อภาษาอังกฤษ (นักศึกษา + อาจารย์)',
     (select count(*) from information_schema.columns
      where table_schema = 'public' and table_name in ('students', 'teachers') and column_name = 'name_en') = 2
+
+  -- 0026 สวิตช์ใช้ชื่อผู้ป่วย: คอลัมน์ + trigger ล้างชื่อ
+  union all select '0026 สวิตช์ใช้ชื่อผู้ป่วย (นำร่องใช้แค่ HN)',
+    exists (select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = 'pdpa_policy' and column_name = 'patient_names')
+    and exists (select 1 from pg_trigger where tgname = 'zz_zz_strip_patient_name')
 ) x
 order by x.label;

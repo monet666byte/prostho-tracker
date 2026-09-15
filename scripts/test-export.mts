@@ -168,6 +168,11 @@ console.log('\n② ไฟล์แบบปิดบัง ต้องไม่
   ok('มีรหัสเคสแทน', masked.includes('PT-'));
   const full = m.buildCsv(W, { identified: true });
   ok('ไฟล์แบบมีชื่อ เห็นครบตามที่ตั้งใจ', full.includes(PATIENT.name) && full.includes(PATIENT.hn));
+  /* สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) — ชื่อที่ค้างในเครื่องต้องไม่หลุดลงไฟล์ ไม่ว่าจะมีสิทธิ์แบบไหน */
+  const noNames = m.buildCsv(W, { identified: true, namesOn: false });
+  ok('ปิดใช้ชื่อ + ไฟล์แบบมีชื่อ → ไม่มีชื่อ แต่ HN ยังอยู่', !noNames.includes(PATIENT.name) && noNames.includes(PATIENT.hn));
+  const noNamesMasked = m.buildCsv(W, { identified: false, namesOn: false });
+  ok('ปิดใช้ชื่อ + ไฟล์ปิดบัง → ไม่มีอักษรย่อชื่อ', !noNamesMasked.includes('ส. ใ.') && noNamesMasked.includes('PT-'));
 }
 
 console.log('\n③ ช่องหมายเหตุที่นักศึกษาพิมพ์เอง ต้องไม่ทำร้ายคนเปิดไฟล์');

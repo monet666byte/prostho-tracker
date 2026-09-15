@@ -6,8 +6,9 @@ import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { typeMeta } from '../../domain/catalog';
 import { currentProc, maxProgression, progression } from '../../domain/rules';
-import { useWorkpieces } from '../../hooks/data';
-import { t, tText } from '../../lib/i18n';
+import { usePatientNamesOn, useWorkpieces } from '../../hooks/data';
+import { patientTitle } from '../../lib/privacy';
+import { t, tSexAge, tText } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 
@@ -15,6 +16,7 @@ export default function Search() {
   const navigate = useNavigate();
   const session = useApp((s) => s.session);
   const works = useWorkpieces(session?.studentId);
+  const namesOn = usePatientNamesOn();
   const [query, setQuery] = useState('');
 
   /**
@@ -33,7 +35,7 @@ export default function Search() {
     const q = query.trim().toLowerCase();
     if (!q) return works;
     return works.filter((w) =>
-      [w.patient.name, w.patient.hn, w.detail, w.tooth ?? '', typeMeta(w.type).full, typeMeta(w.type).short]
+      [namesOn ? w.patient.name : '', w.patient.hn, w.detail, w.tooth ?? '', typeMeta(w.type).full, typeMeta(w.type).short]
         .join(' ')
         .toLowerCase()
         .includes(q),
@@ -57,7 +59,7 @@ export default function Search() {
               aria-label={t('ค้นหาเคส')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('ค้นชื่อผู้ป่วย · HN · ซี่ฟัน · ประเภทงาน')}
+              placeholder={namesOn ? t('ค้นชื่อผู้ป่วย · HN · ซี่ฟัน · ประเภทงาน') : t('ค้น HN · ซี่ฟัน · ประเภทงาน')}
               style={{
                 width: '100%', height: 46, borderRadius: 12, background: 'var(--fill)', border: 0,
                 padding: '0 38px 0 38px', font: '400 13px var(--font-body)', outline: 'none',
@@ -100,9 +102,9 @@ export default function Search() {
               <div className="rowcard__head">
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
-                    <b className="herocase__hn">HN {w.patient.hn}</b>
+                    {namesOn ? <b className="herocase__hn">HN {w.patient.hn}</b> : tSexAge(w.patient.sexAge)}
                   </span>
-                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{t(w.patient.name)}</span>
+                  <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{patientTitle(w.patient, namesOn, t)}</span>
                 </span>
               </div>
               <div className="singlerow">

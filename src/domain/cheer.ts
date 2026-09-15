@@ -9,6 +9,7 @@
  */
 import { t } from '../lib/i18n';
 import { toISODate } from '../lib/date';
+import { patientTitle } from '../lib/privacy';
 import { currentProc, isActiveWork, isComplete, maxProgression, nextProc, progression, yearlyRows } from './rules';
 import type { CheckIn, Settings, WorkpieceView } from './types';
 
@@ -46,8 +47,12 @@ export function cheerLine(
   checkins: CheckIn[],
   settings: Settings,
   now = new Date(),
+  /** สวิตช์ "ใช้ชื่อผู้ป่วย" (0026) — ปิด = เรียกผู้ป่วยด้วย HN ("เคสของผู้ป่วย HN 123") */
+  namesOn = true,
 ): string {
   const today = toISODate(now);
+  const who = (p: WorkpieceView['patient']) =>
+    namesOn && p.name.trim() ? t(p.name) : `${t('ผู้ป่วย')} ${patientTitle(p, false)}`;
   /* ต้องใช้ isActiveWork ไม่ใช่ !isComplete — เคสที่ "คืนเคส" ไปแล้วก็ยังไม่จบเหมือนกัน
      ถ้านับรวม หน้าแรกจะขึ้นว่า "เคสของผู้ป่วย X เหลือขั้นเดียวก็จบแล้ว โชคดีกับคาบนี้ครับ"
      ให้กับเคสที่นักศึกษาคืนไปแล้ว — พูดถึงงานที่ไม่มีอยู่จริง และค้างแบบนั้นตลอดไป
@@ -61,10 +66,10 @@ export function cheerLine(
     .filter((x) => x.remaining > 0 && Math.max(progression(x.w), 0) > 0)
     .sort((a, b) => a.remaining - b.remaining)[0];
   if (nearest && nearest.remaining === 1) {
-    return t('{p} เหลือขั้นเดียวก็จบเคสแล้ว — โชคดีกับคาบนี้ครับ 🍀', { p: t(nearest.w.patient.name) });
+    return t('{p} เหลือขั้นเดียวก็จบเคสแล้ว — โชคดีกับคาบนี้ครับ 🍀', { p: who(nearest.w.patient) });
   }
   if (nearest && nearest.remaining <= 3) {
-    return t('เคสของ{p} ใกล้จบแล้ว เหลืออีก {n} ขั้น — ค่อยๆ เก็บครับ', { p: t(nearest.w.patient.name), n: nearest.remaining });
+    return t('เคสของ{p} ใกล้จบแล้ว เหลืออีก {n} ขั้น — ค่อยๆ เก็บครับ', { p: who(nearest.w.patient), n: nearest.remaining });
   }
 
   // 3. เช็คอินวันนี้แล้วและระบุผู้ป่วย — บอกคิวของวันนี้ + goodluck
@@ -75,7 +80,7 @@ export function cheerLine(
       .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0];
     const next = w ? nextProc(w) : null;
     if (w && next) {
-      return t('วันนี้คิว {s} ของ{p} — โชคดีกับคาบนี้ครับ 🍀', { s: next.name, p: t(w.patient.name) });
+      return t('วันนี้คิว {s} ของ{p} — โชคดีกับคาบนี้ครับ 🍀', { s: next.name, p: who(w.patient) });
     }
   }
 
@@ -96,7 +101,7 @@ export function cheerLine(
     .filter((w) => isComplete(w) && w.completedAt && daysSince(w.completedAt) <= 7)
     .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))[0];
   if (justDone) {
-    return t('ยอดเยี่ยมมาก — ปิดเคสของ{p} ได้แล้ว ภูมิใจได้เลยครับ', { p: t(justDone.patient.name) });
+    return t('ยอดเยี่ยมมาก — ปิดเคสของ{p} ได้แล้ว ภูมิใจได้เลยครับ', { p: who(justDone.patient) });
   }
 
   // 6. เกณฑ์รายปีครบแล้ว

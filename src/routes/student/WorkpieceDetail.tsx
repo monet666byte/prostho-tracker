@@ -8,16 +8,18 @@ import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { typeMeta } from '../../domain/catalog';
 import {
   maxProgression, nextProc, progression, stepGroups, isReturned } from '../../domain/rules';
-import { usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
+import { usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
+import { patientTitle } from '../../lib/privacy';
 import { setWorkpieceReturned } from '../../data/repo';
 import { thaiShort } from '../../lib/date';
-import { t } from '../../lib/i18n';
+import { t, tSexAge } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 
 export default function WorkpieceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const w = useWorkpiece(id);
+  const namesOn = usePatientNamesOn();
   const pending = usePending();
   const { openSheet, showToast, touch } = useApp();
   // step ที่ผู้ใช้กดกางดูเอง (นอกเหนือจาก step ที่กำลังทำซึ่งกางอยู่แล้ว)
@@ -155,7 +157,7 @@ export default function WorkpieceDetail() {
           {/* หัวหน้าแบบหน้าแรก (ผู้ใช้เลือก mock 4A · 14 ก.ย. 69): ชื่อผู้ป่วยเป็นหัวเรื่อง
               ชิปประเภท/ขากรรไกร/ซี่ → บรรทัดเทาบรรทัดเดียวพร้อม HN กึ่งหนา · ชิป minimum requirement → ข้อความเขียว
               ตัดหัวข้อ "CD / Complicated APD" ตัวใหญ่ (ซ้ำกับบรรทัดเทา) */}
-          <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)' }}>{t(w.patient.name)}</h1>
+          <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)' }}>{patientTitle(w.patient, namesOn, t)}</h1>
           {/* เคยมีปุ่มเมนู ⋯ ตรงนี้ แต่ไม่เคยผูกอะไรเลย (กดแล้วเงียบ) — เอาออกจนกว่าจะมีเมนูจริง
               การลบชิ้นงานทำได้ที่หน้าคนไข้ (โหมดแก้ไข) */}
         </div>
@@ -167,7 +169,7 @@ export default function WorkpieceDetail() {
             {w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
             {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}
             {w.kennedy ? ` · ${w.kennedy}` : ''}
-            {' · '}<b className="herocase__hn">HN {w.patient.hn}</b>
+            {namesOn ? <>{' · '}<b className="herocase__hn">HN {w.patient.hn}</b></> : <>{' · '}{tSexAge(w.patient.sexAge)}</>}
             {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
           </span>
         </div>

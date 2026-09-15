@@ -11,7 +11,7 @@
  *   · cheer.ts    — ข้อความบนหน้าแรกของนักศึกษา พูดผิดคือพูดถึงเคสที่เขาคืนไปแล้ว
  */
 import {
-  caseCode, identityLevelFor, maskedHn, maskedName, patientLabel,
+  caseCode, identityLevelFor, maskedHn, maskedName, patientLabel, patientTitle, patientWithHn,
   type IdentitySurface, type PatientLike,
 } from '../src/lib/privacy.ts';
 import {
@@ -315,6 +315,23 @@ console.log('\nidentityLevelFor — หน้าไหนเห็นอะไ�
     la.name !== lb.name, `${la.name} / ${lb.name}`);
   ok('ป้ายที่ปิดบังแล้วไม่มีชื่อเต็มและไม่มี HN หลุด',
     !la.name.includes('สมชาย') && !la.hn.includes('111'), `${la.name} · ${la.hn}`);
+}
+
+console.log('\nสวิตช์ "ใช้ชื่อผู้ป่วย" (0026) — นำร่องใช้แค่ HN');
+{
+  const P = { id: 'pt-x', name: 'สมหญิง จริงจัง', hn: '6612345' };
+  ok('ปิด → หัวเรื่องเป็น HN ไม่ใช่ชื่อ แม้มีชื่อค้างในเครื่อง', patientTitle(P, false) === 'HN 6612345', patientTitle(P, false));
+  ok('ปิด → บรรทัด "ชื่อ · HN" ไม่มีชื่อ และไม่เขียน HN ซ้ำสองรอบ', patientWithHn(P, false) === 'HN 6612345', patientWithHn(P, false));
+  ok('เปิด → ชื่อตามปกติ', patientTitle(P, true) === P.name && patientWithHn(P, true) === `${P.name} · HN 6612345`);
+  ok('เปิด แต่เคสนำร่องไม่มีชื่อ → HN แทนช่องว่าง', patientTitle({ ...P, name: '' }, true) === 'HN 6612345');
+  ok('ไม่มีทั้งชื่อและ HN → รหัสเคส ไม่ใช่ว่างเปล่า', patientTitle({ ...P, name: '', hn: '' }, false) === caseCode(P.id));
+  const full = patientLabel(P, 'full', false);
+  const ini = patientLabel(P, 'initials', false);
+  ok('ป้ายหน้าอาจารย์: ปิดชื่อ + ระดับเต็ม → HN ไม่มีชื่อ', full.name === 'HN 6612345' && !JSON.stringify(full).includes('สม'), full);
+  ok('ป้ายหน้าอาจารย์: ปิดชื่อ + ระดับปิดบัง → รหัสเคสล้วน ไม่มีอักษรย่อ', ini.name === caseCode(P.id) && !JSON.stringify(ini).includes('ส.'), ini);
+  const near = view('CD', 9, { patient: patient('pA', 'ผู้ป่วย A') });
+  const line = cheerLine([near], [], S, NOW, false);
+  ok('ข้อความหน้าแรกตอนปิดชื่อ ไม่เอ่ยชื่อผู้ป่วย', !line.includes('ผู้ป่วย A') && line.includes('HN'), line);
 }
 
 console.log(bad ? `\n❌ ไม่ผ่าน ${bad} ข้อ` : '\n✅ ผ่านหมด');

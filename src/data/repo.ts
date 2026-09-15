@@ -6,7 +6,7 @@
 import { CATALOG_VERSION, dentureLabel, typeMeta } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
-import { pdpaPolicy } from './pdpaSync';
+import { patientNamesOn, pdpaPolicy } from './pdpaSync';
 import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushNow, pendingPushCount } from './cloudSync';
@@ -295,7 +295,8 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   if (!existing) {
     await db.patients.add({
       id: patientId,
-      name: input.patientName.trim() || 'ผู้ป่วยใหม่',
+      /* สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) = ไม่เก็บชื่อตั้งแต่ในเครื่อง · หน้าจอแสดง HN แทนชื่อที่ว่าง */
+      name: patientNamesOn() ? input.patientName.trim() : '',
       // เดิมช่องว่างจะได้ HN ปลอม "DEMO-1234" — ผู้ป่วยจริงที่ไม่มี HN จริง
       // จับคู่กับแฟ้มของโรงพยาบาลไม่ได้ และคนละคนที่เว้นว่างเหมือนกันจะกลายเป็นคนละ HN
       // ฟอร์มบังคับกรอกแล้ว ตรงนี้กันไว้อีกชั้นเฉยๆ
@@ -1459,7 +1460,7 @@ export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3
     formKey: input.formKey,
     academicYear: input.academicYear,
     classYear: input.classYear,
-    patientName: input.patientName?.trim() || undefined,
+    patientName: (patientNamesOn() && input.patientName?.trim()) || undefined,
     hn: input.hn?.trim() || undefined,
     workpieceId: input.workpieceId,
     grades: input.grades,
@@ -1558,7 +1559,7 @@ export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2
     formKey: input.formKey,
     academicYear: input.academicYear,
     classYear: input.classYear,
-    patientName: input.patientName?.trim() || undefined,
+    patientName: (patientNamesOn() && input.patientName?.trim()) || undefined,
     hn: input.hn?.trim() || undefined,
     typeOfWorks: input.typeOfWorks?.trim() || undefined,
     workpieceId: input.workpieceId,

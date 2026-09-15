@@ -8,7 +8,7 @@ import { setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
-import { useAllStudents, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
+import { useAllStudents, usePatientNamesOn, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
@@ -50,6 +50,7 @@ export default function Review() {
   const activeId = studentId ?? groupStudents[0]?.id;
   const active = groupStudents.find((s) => s.id === activeId);
   const works = useWorkpieces(activeId);
+  const namesOn = usePatientNamesOn();
 
   /**
    * รูปงานจริงของแต่ละชิ้น — เดิมตรงนี้เป็นช่องรูปเปล่า 2 ช่องกับป้ายว่า
@@ -241,7 +242,7 @@ export default function Review() {
                   </div>
 
                   <div style={{ font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)', marginTop: 5 }}>
-                    {t(w.patient.name)} · <b className="herocase__hn">HN {w.patient.hn}</b> · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
+                    {namesOn && w.patient.name.trim() && <>{t(w.patient.name)} · </>}<b className="herocase__hn">HN {w.patient.hn}</b> · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
                     {/* สถานะผู้ป่วย (รอ preprosth ฯลฯ) ต้องเห็นตั้งแต่แถว ไม่ต้องกาง — ผู้ใช้ขอ 2 ก.ย. */}
                     {w.patient.note && (
                       <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>

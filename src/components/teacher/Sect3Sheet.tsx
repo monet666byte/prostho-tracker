@@ -13,6 +13,7 @@ import {
 import { deleteSect3, saveSect3 } from '../../data/repo';
 import { thaiShort, toISODate } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
+import { usePatientNamesOn } from '../../hooks/data';
 import { CasePicker } from './CasePicker';
 import { currentActor } from '../../store/app';
 import type { Sect3Record, Student } from '../../domain/types';
@@ -86,6 +87,7 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   const cur = history.find((r) => r.id === editing);
   const [grades, setGrades] = useState<Record<string, S3Grade>>(cur?.grades ?? {});
   const [patientName, setPatientName] = useState(cur?.patientName ?? '');
+  const namesOn = usePatientNamesOn();
   const [hn, setHn] = useState(cur?.hn ?? '');
   const [at, setAt] = useState(cur?.at ?? toISODate(new Date()));
   const [busy, setBusy] = useState(false);
@@ -211,10 +213,11 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
       />
 
       <div style={{ display: 'grid', gap: 9, gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', marginTop: 10 }}>
-        <label className="field">
+        {/* ไม่ใช้ชื่อผู้ป่วย (นำร่อง · 0026) = ไม่มีช่องให้พิมพ์ */}
+        {namesOn && <label className="field">
           <span>{t('ชื่อผู้ป่วย')}</span>
           <input className="input" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder={t('ตามที่เขียนในฟอร์ม')} />
-        </label>
+        </label>}
         <label className="field">
           <span>H.N.</span>
           <input className="input mono" value={hn} onChange={(e) => setHn(e.target.value)} />

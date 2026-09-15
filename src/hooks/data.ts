@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { onPdpaPolicy, pdpaPolicy } from '../data/pdpaSync';
+import { onPdpaPolicy, patientNamesOn, pdpaPolicy } from '../data/pdpaSync';
 import { identityLevelFor, type IdentityLevel, type IdentitySurface } from '../lib/privacy';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -189,6 +189,11 @@ export function useSect2(studentId?: string, academicYear?: number) {
  * ไม่ใช่ต้องปิดแอปเปิดใหม่ — หน้าจอที่ยังเปิดค้างอยู่คือหน้าจอที่กำลังมีคนดูข้อมูลอยู่
  * ตารางว่าหน้าไหนได้ระดับไหน อยู่ที่ `lib/privacy.ts → identityLevelFor()` ที่เดียว
  */
+/** สวิตช์ "ใช้ชื่อผู้ป่วย" ของภาค (0026) แบบสด — ใช้คู่กับ patientTitle() / patientWithHn() ใน lib/privacy.ts */
+export function usePatientNamesOn(): boolean {
+  return useSyncExternalStore(onPdpaPolicy, patientNamesOn, patientNamesOn);
+}
+
 export function useIdentityLevel(surface: IdentitySurface): IdentityLevel {
   const pol = useSyncExternalStore(onPdpaPolicy, pdpaPolicy, pdpaPolicy);
   return identityLevelFor(surface, pol.maskByDefault);

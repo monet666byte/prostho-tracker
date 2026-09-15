@@ -105,8 +105,8 @@ for (const [needle, rel] of [
 
 // ของที่เป็นเบราว์เซอร์ล้วน → ของปลอมที่คุมจากเทสต์
 swap(
-  "import { pdpaPolicy } from './pdpaSync';",
-  `const pdpaPolicy = () => ({ retentionEnabled: false, retentionCohorts: 5, exportRoles: [], exportIdentifiedRoles: [], maskByDefault: true });`,
+  "import { patientNamesOn, pdpaPolicy } from './pdpaSync';",
+  `const pdpaPolicy = () => ({ retentionEnabled: false, retentionCohorts: 5, exportRoles: [], exportIdentifiedRoles: [], maskByDefault: true, patientNames: true });\nconst patientNamesOn = () => true;`,
 );
 swap(
   "import { cloudEnabled, supabase } from '../lib/cloud';",

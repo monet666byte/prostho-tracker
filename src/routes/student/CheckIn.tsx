@@ -5,7 +5,8 @@ import { Empty } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
 import { addCheckIn, deleteCheckIn, updateCheckIn } from '../../data/repo';
 import { ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
-import { useCheckIns, useStepsOnDates, useWorkpieces } from '../../hooks/data';
+import { useCheckIns, usePatientNamesOn, useStepsOnDates, useWorkpieces } from '../../hooks/data';
+import { patientWithHn } from '../../lib/privacy';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { isComplete } from '../../domain/rules';
@@ -15,6 +16,7 @@ export default function CheckInPage() {
   const { session, showToast } = useApp();
   const checkins = useCheckIns(session?.studentId);
   const works = useWorkpieces(session?.studentId);
+  const namesOn = usePatientNamesOn();
   const [formOpen, setFormOpen] = useState(false);
   // เช็คอินด่วนจากหน้าแรกยังไม่มีกิจกรรม — เปิดฟอร์มโหมดเติมรายละเอียดให้คาบเดิมแทนการสร้างใหม่
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function CheckInPage() {
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
   const patients = useMemo(() => {
     const seen = new Map<string, string>();
-    works.forEach((w) => seen.set(w.patient.id, `${t(w.patient.name)} · HN ${w.patient.hn}`));
+    works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
     return [...seen.entries()];
   }, [works]);
 

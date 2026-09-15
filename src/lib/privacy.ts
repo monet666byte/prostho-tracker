@@ -77,6 +77,23 @@ export function maskedHn(hn: string): string {
   return hn ? '••••••' : '';
 }
 
+/**
+ * ชื่อที่ใช้เรียกผู้ป่วยบนหน้าจอ — สวิตช์ "ใช้ชื่อผู้ป่วย" (pdpa_policy.patient_names · 0026)
+ * ปิดอยู่ (นำร่อง) หรือไม่มีชื่อ → "HN 1234567" · ไม่มีทั้งชื่อและ HN → รหัสเคส
+ * ชื่อที่ยังค้างในเครื่องก่อนเซิร์ฟเวอร์ล้าง ก็ไม่แสดงเมื่อสวิตช์ปิด — ห้ามพึ่ง "ข้อมูลว่าง" อย่างเดียว
+ * ผ่าน t() เพื่อให้ชื่อสมมติในเดโม ("ผู้ป่วย A") ยังแปลได้
+ */
+export function patientTitle(p: PatientLike, namesOn: boolean, tr: (s: string) => string = (s) => s): string {
+  if (namesOn && p.name?.trim()) return tr(p.name);
+  return p.hn ? `HN ${p.hn}` : caseCode(p.id);
+}
+
+/** ชื่อ + HN ในบรรทัดเดียว ("สมชาย · HN 123") — ไม่ใช้ชื่อ = "HN 123" ไม่ซ้ำสองรอบ */
+export function patientWithHn(p: PatientLike, namesOn: boolean, tr: (s: string) => string = (s) => s): string {
+  if (namesOn && p.name?.trim()) return p.hn ? `${tr(p.name)} · HN ${p.hn}` : tr(p.name);
+  return patientTitle(p, false);
+}
+
 /** ระดับที่หน้าจอ/ไฟล์หนึ่งได้เห็น */
 export type IdentityLevel =
   | 'code'      // เห็นแค่รหัสเคส — หน้าภาพรวม / วิเคราะห์ / สรุปกลุ่ม
@@ -90,7 +107,11 @@ export interface PatientLike {
 }
 
 /** ป้ายชื่อผู้ป่วยตามระดับสิทธิ์ของหน้านั้น — จุดเดียวที่ตัดสินว่าจะโชว์อะไร */
-export function patientLabel(p: PatientLike, level: IdentityLevel): { name: string; hn: string } {
+export function patientLabel(p: PatientLike, level: IdentityLevel, namesOn = true): { name: string; hn: string } {
+  /* ไม่ใช้ชื่อ (นำร่อง · 0026): หน้าที่เห็นเต็มได้ HN เป็นชื่อเรียก · หน้าที่ปิดบังได้แค่รหัสเคส (ไม่มีอักษรย่อให้ย่อ) */
+  if (!namesOn || !p.name?.trim()) {
+    return level === 'full' ? { name: patientTitle(p, false), hn: '' } : { name: caseCode(p.id), hn: maskedHn(p.hn) };
+  }
   if (level === 'full') return { name: p.name, hn: p.hn };
   if (level === 'initials') return { name: `${caseCode(p.id)} · ${maskedName(p.name)}`, hn: maskedHn(p.hn) };
   return { name: caseCode(p.id), hn: maskedHn(p.hn) };

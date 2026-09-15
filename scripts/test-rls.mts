@@ -705,6 +705,62 @@ console.log('\nเพิ่มอาจารย์ — add-teacher.sql กั�
   check('อาจารย์ที่เพิ่มแล้ว กดสมัคร (อีเมลตัวใหญ่เล็กต่างกันได้) แล้วผูกเป็นอาจารย์คนนั้นทันที', linked.rows[0]?.teacher_id === jsId && linked.rows[0]?.role === 'teacher', { signed, rows: linked.rows });
 }
 
+/* ── ⑭ สวิตช์ "ใช้ชื่อผู้ป่วย" (0026) — นำร่องเก็บแค่ HN ──────────────────────── */
+console.log('\n⑭ ไม่เก็บชื่อผู้ป่วย (0026)');
+{
+  const commit = async (who: { uid: string }, sql: string, params: unknown[] = []) => {
+    await db.exec(`set role authenticated`);
+    try {
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who.uid]);
+      return { ok: true as const, rows: (await db.query(sql, params)).rows as Record<string, unknown>[] };
+    } catch (e) {
+      return { ok: false as const, error: (e as Error).message };
+    } finally {
+      await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+    }
+  };
+  const pol = await db.query<{ v: boolean }>(`select patient_names as v from pdpa_policy where id = 'app'`);
+  check('ค่าเริ่มต้น = ไม่เก็บชื่อ', pol.rows[0]?.v === false, pol.rows);
+
+  const add = await commit(U.A, `insert into patients (id, name, hn, owner_student_id) values ('pN1', 'สมหญิง จริงจัง', 'HN-N1', 'sA') returning name, hn`);
+  check('นักศึกษาเปิดเคสพร้อมชื่อ → ชื่อถูกล้างที่เซิร์ฟเวอร์ · HN อยู่ครบ',
+    add.ok && add.rows[0]?.name === '' && add.rows[0]?.hn === 'HN-N1', add);
+  /* จำลองชื่อที่กรอกไว้ก่อนรัน 0026 — ปิด trigger ชั่วคราวแล้วเขียนตรง (seed ของไฟล์นี้รันหลัง migration จึงไม่มีชื่อค้าง) */
+  await db.exec(`alter table patients disable trigger zz_zz_strip_patient_name;
+    update patients set name = 'ผู้ป่วยของเอ' where id = 'pA'; update patients set name = 'ผู้ป่วยของบี' where id = 'pB';
+    alter table patients enable trigger zz_zz_strip_patient_name;`);
+  const old = await db.query<{ name: string }>(`select name from patients where id = 'pA'`);
+  check('ชื่อที่ค้างอยู่ไม่ถูกลบเงียบๆ จนกว่าจะมีการเขียนแถวนั้น', old.rows[0]?.name === 'ผู้ป่วยของเอ', old.rows);
+  const touch = await commit(U.A, `update patients set note = 'x' where id = 'pA' returning name`);
+  check('แก้แถวเดิม (แอปรุ่นเก่าส่งชื่อกลับมา) → ชื่อถูกล้างไปด้วย', touch.ok && touch.rows[0]?.name === '', touch);
+
+  const s2 = await commit(U.T1, `insert into sect2_records (id, student_id, form_key, academic_year, class_year, patient_name, hn, by_who, at_when)
+    values ('s2N', 'sA', 'removable', 2569, 5, 'สมหญิง จริงจัง', 'HN-N1', 'อ. หนึ่ง', '2026-09-15') returning patient_name, hn`);
+  check('ใบ Section II ที่อาจารย์กรอกชื่อ → ชื่อถูกล้าง · HN อยู่', s2.ok && s2.rows[0]?.patient_name === null && s2.rows[0]?.hn === 'HN-N1', s2);
+
+  const byTeacher = await commit(U.T1, `update pdpa_policy set patient_names = true where id = 'app' returning 1`);
+  check('อาจารย์ที่ไม่ใช่หัวหน้ารายวิชาเปิดสวิตช์ไม่ได้', !byTeacher.ok || byTeacher.rows.length === 0, byTeacher);
+  const byStudent = await commit(U.A, `update pdpa_policy set patient_names = true where id = 'app' returning 1`);
+  check('นักศึกษาเปิดสวิตช์ไม่ได้', !byStudent.ok || byStudent.rows.length === 0, byStudent);
+
+  const cleared = await db.query<{ n: number }>(`select count(*)::int as n from patients where name <> ''`);
+  const script = (await import('node:fs')).readFileSync(new URL('../supabase/clear-patient-names.sql', import.meta.url), 'utf8');
+  await db.query(script);
+  const after = await db.query<{ n: number }>(`select count(*)::int as n from patients where name <> ''`);
+  check('clear-patient-names.sql ลบชื่อที่ค้างจนเหลือ 0 (HN ไม่หาย)',
+    cleared.rows[0].n > 0 && after.rows[0].n === 0 && (await db.query(`select 1 from patients where hn = 'HN-B'`)).rows.length === 1,
+    { before: cleared.rows[0].n, after: after.rows[0].n });
+
+  const on = await commit(U.HEAD, `update pdpa_policy set patient_names = true where id = 'app' returning 1`);
+  check('หัวหน้ารายวิชาเปิดสวิตช์ได้', on.ok && on.rows.length === 1, on);
+  const named = await commit(U.A, `update patients set name = 'สมหญิง จริงจัง' where id = 'pN1' returning name`);
+  check('เปิดแล้ว → เติมชื่อได้ตามปกติ', named.ok && named.rows[0]?.name === 'สมหญิง จริงจัง', named);
+  const guarded = await db.query<{ label: string }>(script);
+  check('สวิตช์เปิดอยู่ → สคริปต์ลบชื่อไม่ลบอะไร',
+    (await db.query(`select 1 from patients where id = 'pN1' and name = 'สมหญิง จริงจัง'`)).rows.length === 1, guarded.rows);
+  await db.exec(`update pdpa_policy set patient_names = false where id = 'app'`);
+}
+
 await db.close();
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);
