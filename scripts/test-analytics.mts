@@ -14,7 +14,7 @@
  */
 import {
   bottleneckByStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
-  headline, periodsLeftNow, profile, averageProfile, heatmapRows, riskRows,
+  headline, periodsLeftNow, profile, averageProfile, heatmapRows, riskRows, riskByGroup,
   selfPerformedRows, throughputByMonth,
 } from '../src/domain/analytics.ts';
 import { procList } from '../src/domain/rules.ts';
@@ -429,6 +429,22 @@ console.log('\nส่วนที่เหลือ — ระบบเพิ่
     `${cd.done}/${cd.available}`);
   const recall = selfPerformedRows([S1], [finished('RRM')])[0];
   ok('Recall ไม่มี lab ให้ทำเอง → 0/0', recall.available === 0);
+}
+
+/* ── riskByGroup — จุดคนในช่องกลุ่มหน้าภาพรวมต้องตรงกับหน้าสรุปกลุ่ม ── */
+console.log('\nriskByGroup');
+{
+  const A = { ...S1, id: 'ga', group: 'TH-PT1' };
+  const B = { ...S1, id: 'gb', group: 'TH-PT1' };
+  const C = { ...S1, id: 'gc', group: 'TH-PT2' };
+  const done3 = ['CD', 'RPD', 'CB'].map((t) => finished(t as WorkType, { studentId: 'ga' }));
+  const rows = riskRows([A, B, C], done3, S, [], [], NOW);
+  const m = riskByGroup(rows);
+  const pt1 = m.get('TH-PT1')!;
+  ok('นับต่อกลุ่ม: PT1 มี 2 คน · PT2 มี 1 คน', pt1.levels.length === 2 && m.get('TH-PT2')!.levels.length === 1);
+  ok('ตรงกับ riskRows ทีละคน (ครบเกณฑ์ = ok · ไม่มีงาน = high)', pt1.ok === 1 && pt1.high === 1, pt1);
+  ok('จุดเรียง เสี่ยง ก่อน ตามแผน', pt1.levels[0] === 'high' && pt1.levels[1] === 'ok', pt1.levels);
+  ok('ไม่มีแถว → Map ว่าง', riskByGroup([]).size === 0);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

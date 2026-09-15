@@ -6,10 +6,10 @@ import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
-import { bottleneckByStep } from '../../domain/analytics';
+import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
-import { useAllCheckIns, useAllStudents, useAllWorkpieces } from '../../hooks/data';
+import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const allStudents = useAllStudents();
   const allWorks = useAllWorkpieces();
   const everyCheckIn = useAllCheckIns();
+  const everyUpdate = useAllProgressUpdates();
   // ตัวกรองชั้นปี — กรองที่ต้นทางสามลิสต์นี้ ทุกกราฟ/ตารางข้างล่างได้ผลตามอัตโนมัติ
   const myGroup = useApp((st) => st.myGroup);
   // ป้าย "กลุ่มคุณ" บนช่องกลุ่ม — กลุ่มที่ผูกกับบัญชี ถ้ายังไม่รู้ (เดโม/บัญชียังไม่ผูก) ใช้กลุ่มที่เลือกไว้ในแถบซ้าย "กลุ่มที่ดูแล"
@@ -113,6 +114,11 @@ export default function Dashboard() {
   }, [peek]);
 
   const summaries = useMemo(() => summarizeAll(students, works, settings), [students, works, settings]);
+  /* จุดคนในกล่องตัวเลขของช่องกลุ่ม — สีเสี่ยงตัวเดียวกับหน้าสรุปกลุ่ม (riskRows) ตัวเลขสองหน้าจึงตรงกัน */
+  const groupRisk = useMemo(
+    () => riskByGroup(riskRows(students, works, settings, allCheckIns, everyUpdate)),
+    [students, works, settings, allCheckIns, everyUpdate],
+  );
   const groups = useMemo(() => summarizeGroups(summaries), [summaries]);
   const selected = groups.find((g) => g.code === group) ?? groups[0];
   const stale = useMemo(() => staleRows(students, works, settings), [students, works, settings]);
@@ -289,10 +295,11 @@ export default function Dashboard() {
                         {list[0]?.students[0] && <small>{studentCohortLabel(list[0].students[0].student)}</small>}
                       </div>
                     )}
-                    {list.map((g) => {
+                    {list.map((g, gi) => {
                       const lagging = g.percent < 55;
                       const mine = g.code === ownGroup;
                       const advisors = advisorsOf(g.code);
+                      const risk = groupRisk.get(g.code);
                       /* ตัวเลข % อยู่ในกล่องเล็กตอนชี้เมาส์/จิ้ม (ผู้ใช้เลือก 15 ก.ย. 69 — "ตัวเลขเต็มไปหมด")
                          ช่องเหลือชื่อกลุ่ม + หลอด · ต่ำกว่า 55% ยังเป็นช่องส้มให้เห็นโดยไม่ต้องชี้ */
                       return (
@@ -301,15 +308,31 @@ export default function Dashboard() {
                           className={`groupcell groupcell--bar${lagging ? ' groupcell--low' : ''}${mine ? ' groupcell--mine' : ''}${g.code === group ? ' groupcell--on' : ''}${peek === g.code ? ' groupcell--peek' : ''}`}
                           aria-pressed={g.code === group}
                           aria-label={`${groupShort(g.code)} ${g.percent}%`}
+                          style={{ '--gi': gi, '--gr': yr === 6 ? 1 : 0 } as React.CSSProperties}
                           onClick={() => { setGroup(g.code); setPeek(g.code); }}
                         >
                           {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
                           <span className="groupcell__code">{groupShort(g.code)}</span>
-                          <span className="groupcell__bar" aria-hidden><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /></span>
+                          {/* ช่องสูงเผื่อหลอดตอนขยายไว้แล้ว — ชี้เมาส์แล้วแถว/การ์ดไม่ยืดหด (ผู้ใช้ขอ 15 ก.ย. 69) */}
+                          <span className="groupcell__slot" aria-hidden>
+                            <span className="groupcell__bar"><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /><em>{g.percent}%</em></span>
+                          </span>
                           <span className="groupcell__tip" role="tooltip">
                             <b>{g.percent}%</b>
                             {groupShort(g.code)} · {t('{n} คน', { n: g.students.length })}
                             {lagging && <em>{t('ต่ำกว่า 55%')}</em>}
+                            {risk && risk.levels.length > 0 && (
+                              <>
+                                <span className="groupcell__ppl">
+                                  {risk.levels.map((lv, i) => <i key={i} data-risk={lv} style={{ '--k': i } as React.CSSProperties} />)}
+                                </span>
+                                <small>
+                                  {t('ทัน {a}/{b}', { a: risk.ok, b: risk.levels.length })}
+                                  {risk.high > 0 && ` · ${t('เสี่ยง {n}', { n: risk.high })}`}
+                                  {risk.medium > 0 && ` · ${t('จับตา {n}', { n: risk.medium })}`}
+                                </small>
+                              </>
+                            )}
                             {advisors && <small>{advisors}</small>}
                           </span>
                         </button>

@@ -109,6 +109,24 @@ export function periodsLeftNow(settings: Settings, now = new Date()): number {
   return Math.round(monthsRemaining(now) * 4.33 * (settings.periodsPerWeek || 2));
 }
 
+/**
+ * สีเสี่ยงของนักศึกษาต่อกลุ่ม — จุดคนในกล่องตัวเลขของช่องกลุ่มหน้าภาพรวม (ผู้ใช้เลือก 15 ก.ย. 69)
+ * อ่านจาก riskRows ตัวเดียวกับหน้าสรุปกลุ่ม → จุดแดงหน้าภาพรวม = จุดแดงในหน้ากลุ่มเสมอ
+ * levels เรียง เสี่ยง → จับตา → ตามแผน ให้จุดที่ต้องสนใจขึ้นก่อน
+ */
+export function riskByGroup(rows: RiskRow[]): Map<string, { high: number; medium: number; ok: number; levels: RiskLevel[] }> {
+  const out = new Map<string, { high: number; medium: number; ok: number; levels: RiskLevel[] }>();
+  const rank: Record<RiskLevel, number> = { high: 0, medium: 1, ok: 2 };
+  for (const r of rows) {
+    const g = out.get(r.student.group) ?? { high: 0, medium: 0, ok: 0, levels: [] };
+    g[r.risk]++;
+    g.levels.push(r.risk);
+    out.set(r.student.group, g);
+  }
+  out.forEach((g) => g.levels.sort((a, b) => rank[a] - rank[b]));
+  return out;
+}
+
 export function riskRows(
   students: Student[],
   works: Workpiece[],
