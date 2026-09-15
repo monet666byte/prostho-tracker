@@ -1455,4 +1455,6 @@ export const DICT: Record<string, string> = {
   'ยืนยันเปิดใช้ชื่อ': 'Confirm: use names',
   'ค้น HN · ซี่ฟัน · ประเภทงาน': 'Search HN · tooth · work type',
   'นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ HN เองได้': 'This student has no {k} case yet — you can type the HN in',
+  /* ── กล่องคำขอว่าง + ป้ายบันทึกแล้ว ── */
+  'ยังไม่มีคำขอ — นักศึกษาที่เข้าด้วยอีเมลที่ไม่อยู่ในรายชื่อ แล้วกรอกรหัสนักศึกษา จะมาขึ้นที่นี่': 'No requests yet — students who sign in with an email not on the list and enter their student ID will appear here',
 };

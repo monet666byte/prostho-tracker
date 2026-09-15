@@ -1,4 +1,4 @@
-import { CheckSquare, Square, UsersThree, WarningCircle } from '@phosphor-icons/react';
+import { Check, CheckSquare, Square, UsersThree, WarningCircle } from '@phosphor-icons/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useRef, useState } from 'react';
 import { db } from '../../data/db';
@@ -261,9 +261,16 @@ export function AdvisorEditor() {
                       </select>
                     )}
                   </span>
-                  <button className="btn" style={{ width: 'auto', height: 34, padding: '0 14px' }} disabled={!changed(r) || busy === r.code} onClick={() => save(r)}>
-                    {t('บันทึก')}
-                  </button>
+                  {/* ไม่มีอะไรแก้ = ข้อความ "บันทึกแล้ว" แทนปุ่มเทา — ปุ่มเทาดูเหมือนระบบค้าง (ผู้ใช้ถาม 15 ก.ย. 69) */}
+                  {changed(r) || busy === r.code ? (
+                    <button className="btn" style={{ width: 'auto', height: 34, padding: '0 14px' }} disabled={busy === r.code} onClick={() => save(r)}>
+                      {busy === r.code ? t('กำลังบันทึก…') : t('บันทึก')}
+                    </button>
+                  ) : r.advisors.length > 0 ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 34, font: '600 12px var(--font-body)', color: 'var(--success-dark)' }}>
+                      <Check size={14} weight="bold" />{t('บันทึกแล้ว')}
+                    </span>
+                  ) : null}
                 </div>
               );
             })}

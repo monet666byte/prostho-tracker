@@ -222,7 +222,7 @@ export default function Roster() {
 
         {tab === 'sheet' && <ImportSheetBody />}
 
-        {tab === 'people' && <LinkRequestsPanel />}
+        {tab === 'people' && <LinkRequestsPanel alwaysShow />}
         {tab === 'people' && isAdmin && <AdvisorEditor />}
 
         {tab === 'people' && error && (

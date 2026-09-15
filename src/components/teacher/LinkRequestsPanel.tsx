@@ -10,9 +10,10 @@ import { useApp } from '../../store/app';
 /**
  * นักศึกษาที่ขอผูกบัญชีรออาจารย์ยืนยัน (0023_link_requests.sql)
  * เซิร์ฟเวอร์กรองให้แล้วว่าใครเห็นอะไร: อาจารย์ที่ปรึกษาเห็นกลุ่มตัวเอง · หัวหน้าภาคเห็นทั้งหมด
- * ไม่มีคำขอ = ไม่แสดงอะไรเลย (ไม่กินที่หน้าภาพรวม)
+ * ไม่มีคำขอ: หน้าภาพรวมไม่แสดงอะไรเลย (ไม่กินที่) · หน้ารายชื่อ (alwaysShow) แสดงกล่องว่าง
+ * — ผู้ใช้หากล่องนี้ไม่เจอเพราะมันหายไปตอนไม่มีคำขอ ไม่รู้ว่าคำขอจะมาโผล่ตรงไหน (15 ก.ย. 69)
  */
-export function LinkRequestsPanel() {
+export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
   const showToast = useApp((s) => s.showToast);
   const [rows, setRows] = useState<PendingLink[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,21 @@ export function LinkRequestsPanel() {
     }
   }
 
-  if (!cloudEnabled || (rows.length === 0 && !error)) return null;
+  if (!cloudEnabled || (rows.length === 0 && !error && !alwaysShow)) return null;
+
+  if (rows.length === 0 && !error) {
+    return (
+      <div className="panel" style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0 }}>
+          <IdentificationCard size={16} style={{ verticalAlign: -3, marginRight: 6 }} />
+          {t('นักศึกษารอยืนยันบัญชี')}
+        </h3>
+        <span className="sub" style={{ margin: 0 }}>
+          {t('ยังไม่มีคำขอ — นักศึกษาที่เข้าด้วยอีเมลที่ไม่อยู่ในรายชื่อ แล้วกรอกรหัสนักศึกษา จะมาขึ้นที่นี่')}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="panel" style={{ marginBottom: 16 }}>
