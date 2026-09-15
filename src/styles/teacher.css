@@ -1462,3 +1462,5 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 }
 /* กล่องตัวเลขลอยเหนือช่อง — แผงนี้ห้ามตัดขอบ (แผงอื่นเลื่อนแนวนอนได้ตอนตัวหนังสือใหญ่) */
 .panel.groupstrip, :root[data-zoom='xl'] .panel.groupstrip { overflow: visible; }
+/* ช่องที่ชี้/จิ้มลอยเหนือช่องอื่น — เดิมป้าย "กลุ่มคุณ" ของช่องถัดไปทะลุขึ้นมาทับกล่องตัวเลข (ผู้ใช้เจอ 15 ก.ย. 69) */
+.groupcell--bar:hover, .groupcell--peek, .groupcell--bar:focus-visible { z-index: 20; }
