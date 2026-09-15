@@ -17,14 +17,14 @@ import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
-import { importRoster, importTeachers, parseRoster } from '../../data/repo';
-import { looksLikeTeacherRoster, parseTeacherRoster, teacherIdFromEmail } from '../../lib/rosterParse';
-import type { RosterRow } from '../../data/repo';
+import { parseRoster } from '../../data/repo';
+import { looksLikeTeacherRoster, parseTeacherRoster } from '../../lib/rosterParse';
+import { applyStudents, applyTeachers } from '../../data/rosterApply';
+import { AddPersonPanel, FileImportPanel, importSummary } from '../../components/teacher/RosterImportPanels';
 import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
 import { groupShort } from '../../domain/group';
 import type { Student } from '../../domain/types';
-import { academicYear } from '../../lib/date';
 
 interface Invite {
   email: string;
@@ -66,42 +66,27 @@ export default function Roster() {
    * อีเมลที่อยู่ในรายชื่อเชิญแล้วห้ามทับ (เหมือนฝั่งนักศึกษา) — กันไฟล์ที่กรอกบทบาทผิดไปถอดสิทธิ์หัวหน้ารายวิชาของคนที่ตั้งไว้แล้ว
    * (รวมถึงตัวคนที่กำลังกดเอง) · อยากเปลี่ยนสิทธิ์คนเดิมให้ใช้ supabase/add-teacher.sql
    */
+  /* อีเมล → teacher_id ที่เชิญไว้แล้ว · null = ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดไม่เสร็จ (ยังไม่รู้ id เดิม → สร้างอาจารย์ซ้ำได้) */
+  const invitedTeacherId = useMemo<ReadonlyMap<string, string> | null>(() => {
+    if (!supabase) return new Map();
+    if (invites === null) return null;
+    return new Map(invites.filter((v) => v.teacher_id).map((v) => [v.email.toLowerCase(), v.teacher_id!]));
+  }, [invites]);
+
+  /* ช่องวางข้อความ (ทางสำรองของปุ่มเลือกไฟล์) — ลงข้อมูลผ่าน data/rosterApply ตัวเดียวกับไฟล์และฟอร์มเพิ่มทีละคน */
   async function doImportTeachers() {
     if (!parsedTeachers?.rows.length || !isAdmin) return;
-    // ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดรายชื่อเชิญไม่เสร็จ = ยังไม่รู้ id เดิมของอีเมลที่เชิญไว้แล้ว → สร้างอาจารย์ซ้ำได้
-    if (supabase && invites === null) {
+    if (invitedTeacherId === null) {
       showToast({ message: t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่'), tone: 'warning' });
       return;
     }
     setImporting(true);
     try {
-      const invitedId = new Map((invites ?? []).filter((v) => v.teacher_id).map((v) => [v.email.toLowerCase(), v.teacher_id!]));
-      const rows = await Promise.all(parsedTeachers.rows.map(async (r) => ({
-        ...r, id: invitedId.get(r.email) ?? await teacherIdFromEmail(r.email),
-      })));
-      const res = await importTeachers(rows, currentActor());
-      let note = '';
-      let tone: 'success' | 'warning' = 'success';
-      if (supabase) {
-        const { data, error: e } = await supabase
-          .from('invites')
-          .upsert(
-            rows.map((r) => ({ email: r.email, role: 'teacher' as const, student_id: null, teacher_id: r.id, is_admin: r.isAdmin })),
-            { onConflict: 'email', ignoreDuplicates: true, defaultToNull: false },
-          )
-          .select('email');
-        if (e) {
-          note = ` · ${t('ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}', { e: e.message })}`;
-          tone = 'warning';
-        } else {
-          const added = data?.length ?? 0;
-          note = ` · ${t('ให้สิทธิ์เข้าระบบ {n} อีเมล', { n: added })}`
-            + (rows.length - added ? ` · ${t('ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว (สิทธิ์เดิมไม่เปลี่ยน)', { n: rows.length - added })}` : '');
-          void load();
-        }
-      }
+      const res = await applyTeachers(parsedTeachers.rows, invitedTeacherId, currentActor());
       setRosterText('');
-      showToast({ message: t('นำเข้าอาจารย์แล้ว — เพิ่ม {a} ท่าน · อัปเดต {b} ท่าน', { a: res.added, b: res.updated }) + note, tone });
+      const sum = importSummary(null, res);
+      showToast({ message: t('นำเข้าแล้ว') + ' — ' + sum.message, tone: sum.warn ? 'warning' : 'success' });
+      void load();
     } finally {
       setImporting(false);
     }
@@ -111,48 +96,22 @@ export default function Roster() {
     if (!parsed?.rows.length || !dtmu) return;
     setImporting(true);
     try {
-      const res = await importRoster(parsed.rows, Number(dtmu), currentActor());
+      const res = await applyStudents(parsed.rows, Number(dtmu), currentActor());
       setRosterText('');
-      const invited = await inviteRosterEmails(parsed.rows, res.idByCode);
-      // รุ่นที่ยังไม่ถึงปีขึ้นคลินิกจะยังไม่โผล่ในตัวกรองปี 5/6 — บอกไว้กันเข้าใจว่านำเข้าไม่สำเร็จ
-      const startsLater = res.cohort > academicYear(new Date());
-      const base = startsLater
-        ? t('นำเข้าแล้ว {a} คน — จะเริ่มแสดงเป็นชั้นปี 5 ในปีการศึกษา {y}', { a: res.added + res.updated, y: res.cohort })
-        : t('นำเข้าแล้ว — เพิ่ม {a} คน · อัปเดต {b} คน', { a: res.added, b: res.updated });
-      const inviteNote = !invited ? ''
-        : invited.error ? ` · ${t('ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}', { e: invited.error })}`
-        : ` · ${t('ให้สิทธิ์เข้าระบบ {n} อีเมล', { n: invited.added })}`
-          + (invited.skipped ? ` · ${t('ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว', { n: invited.skipped })}` : '');
-      showToast({ message: base + inviteNote, tone: invited?.error ? 'warning' : 'success' });
-      if (invited && !invited.error) void load();
+      const sum = importSummary(res, null);
+      showToast({ message: t('นำเข้าแล้ว') + ' — ' + sum.message, tone: sum.warn ? 'warning' : 'success' });
+      if (res.invites) void load();
     } finally {
       setImporting(false);
     }
-  }
-  /**
-   * อีเมลที่มากับรายชื่อ → ใส่รายชื่อเชิญให้เลย นักศึกษาเข้าด้วย Google ได้ทันทีโดยไม่ต้องรออาจารย์ยืนยัน
-   * อีเมลที่อยู่ในรายชื่อเชิญแล้วห้ามทับ (ignoreDuplicates) — อาจเป็นของคนอื่นที่ภาคตั้งไว้ถูกแล้ว
-   * ทับแล้วบัญชีนั้นจะไปผูกกับนักศึกษาอีกคนโดยไม่มีใครเห็น
-   * null = ไม่มีอีเมลในรายชื่อ หรือไม่ได้ต่อเซิร์ฟเวอร์ (โหมดเดโมไม่มีรายชื่อเชิญ)
-   */
-  async function inviteRosterEmails(rows: RosterRow[], idByCode: Record<string, string>) {
-    const invites = rows.flatMap((r) => (r.email && idByCode[r.code]
-      ? [{ email: r.email.toLowerCase(), role: 'student' as const, student_id: idByCode[r.code], teacher_id: null }]
-      : []));
-    if (!supabase || !invites.length) return null;
-    const { data, error: e } = await supabase
-      .from('invites')
-      .upsert(invites, { onConflict: 'email', ignoreDuplicates: true, defaultToNull: false })
-      .select('email');
-    if (e) return { added: 0, skipped: 0, error: e.message };
-    const added = data?.length ?? 0;
-    return { added, skipped: invites.length - added, error: null };
   }
 
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [personId, setPersonId] = useState('');
   // ยืนยันก่อนลบ — เดิมกดถังขยะทีเดียวหายเลย ไอคอนเล็กๆ ในตารางกดพลาดง่ายมากบน iPad
   const [confirmDel, setConfirmDel] = useState<Invite | null>(null);
+  /* ฟอร์มผูกอีเมลกับคนที่มีอยู่แล้ว — ใช้น้อย ซ่อนไว้หลังลิงก์ในแผง "เพิ่มทีละคน" (ผู้ใช้งงว่าช่องนี้เพิ่มคนใหม่ไม่ได้ 15 ก.ย.) */
+  const [showLink, setShowLink] = useState(false);
 
   async function load() {
     if (!supabase || !isAdmin) return;
@@ -274,11 +233,17 @@ export default function Roster() {
 
         {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
         {tab === 'people' && (<>
+        <FileImportPanel invitedTeacherId={invitedTeacherId} onDone={() => void load()} />
+        <AddPersonPanel invitedTeacherId={invitedTeacherId} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
+
+        {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ (ผู้ใช้เลือก 15 ก.ย. 69) */}
+        <details className="roster-more" open={rosterText.trim() !== '' || undefined}>
+        <summary>{t('หรือก๊อปตารางมาวางเอง')}</summary>
         {/* ไอคอนหน้าหัวข้อ + คำอธิบายยาว → หัวข้อกับคำอธิบายบรรทัดเดียว · ช่องรุ่นกับช่องวางอยู่แถวเดียวกัน
             (ผู้ใช้เลือก mock 14 ก.ย. 69) */}
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
-            <h3>{t('นำเข้ารายชื่อรุ่นใหม่')}</h3>
+            <h3>{t('วางรายชื่อ')}</h3>
             <span className="sub">{t('ก๊อปทั้งตารางจากแบบฟอร์มขอรายชื่อ รวมหัวตาราง — แท็บนักศึกษาหรือแท็บอาจารย์ก็ได้')}</span>
           </div>
 
@@ -367,11 +332,13 @@ export default function Roster() {
           )}
         </div>
 
+        </details>
+
         {isAdmin && (<>
-        <div className="panel" style={{ marginBottom: 16 }}>
+        {showLink && <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
-            <h3>{t('เพิ่มคนเข้าระบบ')}</h3>
-            <span className="sub">{t('ใส่อีเมลที่จะใช้สมัคร แล้วเลือกว่าเป็นใคร')}</span>
+            <h3>{t('ผูกอีเมลกับคนที่มีในระบบแล้ว')}</h3>
+            <span className="sub">{t('เช่น อาจารย์อยากเข้าด้วยอีกอีเมล — คนใหม่ใช้ "เพิ่มทีละคน" ด้านบน')}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 12 }}>
             <label className="field" style={{ flex: '1 1 240px' }}>
@@ -399,8 +366,11 @@ export default function Roster() {
             <button className="btn" style={{ width: 'auto', padding: '0 18px', height: 44 }} disabled={busy || !email.trim() || !personId} onClick={addInvite}>
               {t('+ เพิ่ม')}
             </button>
+            <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px', height: 44 }} onClick={() => setShowLink(false)}>
+              {t('ปิด')}
+            </button>
           </div>
-        </div>
+        </div>}
 
         <div className="panel">
           <div className="panelhead">

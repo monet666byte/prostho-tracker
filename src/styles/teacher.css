@@ -1394,6 +1394,25 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @media (hover: hover) { .filebtn:not([data-disabled='true']):hover { background: var(--bg-subtle); } }
 .rosterimport--single { grid-template-columns: minmax(0, 1fr); }
 
+/* ── หน้ารายชื่อ: เลือกไฟล์ Excel + เพิ่มทีละคน (15 ก.ย. 69) ── */
+.rosterfile { margin-top: 12px; }
+.rosterfile__name { margin: 0 0 8px; font: 600 12.5px var(--font-mono); color: var(--text-secondary); word-break: break-all; }
+.rosterfile__sum { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; }
+.rosterfile__sum li { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; background: var(--fill); min-width: 160px; }
+.rosterfile__sum li[data-on='false'] { opacity: .55; }
+.rosterfile__sum b { font: 700 15px var(--font-head); color: var(--text); }
+.rosterfile__sum span { font: 500 11.5px var(--font-body); color: var(--text-muted); }
+.rosterfile__issues { margin-top: 10px; }
+.rosterfile__issues p { margin: 3px 0 0; font: 500 12px var(--font-body); color: var(--warning-dark); overflow-wrap: anywhere; }
+.rosterfile__issues p.mono { font: 400 11px var(--font-mono); }
+.rosterfile__err { margin: 10px 0 0; font: 500 12px var(--font-body); color: var(--danger-dark); }
+.addperson { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 10px; align-items: end; }
+.roster-more { margin-top: 4px; }
+.roster-more > summary { cursor: pointer; font: 600 12.5px var(--font-body); color: var(--text-muted); min-height: 34px; display: flex; align-items: center; gap: 6px; list-style: none; }
+.roster-more > summary::-webkit-details-marker { display: none; }
+.roster-more > summary::before { content: '▸'; font-size: 11px; transition: transform .15s; }
+.roster-more[open] > summary::before { transform: rotate(90deg); }
+
 /* ══ ช่องกลุ่มแบบหลอด — ตัวเลข % โผล่ตอนชี้เมาส์ (คอม) หรือจิ้ม (ไอแพด) · ผู้ใช้เลือก 15 ก.ย. 69 ══ */
 .groupcell--bar { gap: 0; padding: 10px 6px 11px; }
 .groupcell--bar .groupcell__code { font: 600 12.5px var(--font-head); color: var(--text-secondary); }

@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: 'index.html',
         /* หน้านโยบายความเป็นส่วนตัวเป็นไฟล์นิ่งแยก (Google เปิดดูตอนตรวจแอป) — ห้ามให้ service worker
            ตอบด้วยหน้าแอปแทน และไม่เก็บลงแคช จะได้เห็นฉบับล่าสุดเสมอเมื่อแก้เนื้อหา */
-        navigateFallbackDenylist: [/^\/privacy\.html$/],
+        navigateFallbackDenylist: [/^\/privacy\.html$/, /\.xlsx$/],
         globIgnores: ['**/privacy.html'],
       },
       devOptions: { enabled: false },

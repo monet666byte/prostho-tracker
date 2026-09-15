@@ -17,7 +17,9 @@ import { PROCS, RECALL, TYPES } from '../src/domain/catalog.ts';
 import { caseCount, maxProgression, procList } from '../src/domain/rules.ts';
 import { groupNumberOf, sortGroupCodes } from '../src/domain/group.ts';
 import { riskRows } from '../src/domain/analytics.ts';
-import { looksLikeTeacherRoster, parseRoster, parseTeacherRoster } from '../src/lib/rosterParse.ts';
+import { looksLikeStudentRoster, looksLikeTeacherRoster, parseRoster, parseTeacherRoster } from '../src/lib/rosterParse.ts';
+import { readXlsx, tableToTsv } from '../src/lib/xlsxRead.ts';
+import { readFileSync } from 'node:fs';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { Settings, Student, WorkType } from '../src/domain/types.ts';
 
@@ -214,7 +216,7 @@ console.log('\nนำเข้ารายชื่อ — ตัวกรอง
   ok('คั่นด้วยแท็บอ่านได้ (คนก๊อปจาก Excel มาตรงๆ)',
     mixed.rows.some((r) => r.code === '6604004' && r.group === 'PT12'));
 
-  /* แบบฟอร์มขอรายชื่อ (docs/prostho-roster-request-template.xlsx) ก๊อปทั้งตารางจาก Excel = คั่นแท็บ + หัวตาราง
+  /* แบบฟอร์มขอรายชื่อ (public/prostho-roster-request-template.xlsx) ก๊อปทั้งตารางจาก Excel = คั่นแท็บ + หัวตาราง
      มีช่องว่างได้ (คำนำหน้า · ชื่ออังกฤษ · อีเมล) — เดาทีละเซลล์จะหยิบ "นาย" มาเป็นชื่อ */
   const H = 'รหัสนักศึกษา *\tคำนำหน้า\tชื่อ-นามสกุล (ไทย) *\tชื่อ-นามสกุล (อังกฤษ)\tอีเมลมหาวิทยาลัย\tรุ่น DTMU *\tกลุ่มคลินิก *';
   const form = parseRoster([
@@ -298,6 +300,35 @@ console.log('\nสีเสี่ยงของรุ่นที่ยัง�
   const current = riskRows([mk('c1', 2569)], [], S, [], [], NOW);
   ok('ปี 5 ปีนี้ที่ยังไม่มีเคสเลย → ยังต้องเป็นเสี่ยงสูงเหมือนเดิม',
     current[0].risk === 'high', `${current[0].risk} · ${current[0].reason}`);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   ⑧ ปุ่ม "เลือกไฟล์ Excel" — อ่านแบบฟอร์มจริงที่ส่งให้ภาค (public/prostho-roster-request-template.xlsx)
+   ตัวอ่าน .xlsx เขียนเอง (lib/xlsxRead.ts) · แก้แบบฟอร์มเมื่อไหร่ ข้อนี้ต้องยังผ่าน
+   ═══════════════════════════════════════════════════════════════════════════ */
+console.log('\nอ่านไฟล์ Excel แบบฟอร์มขอรายชื่อ');
+{
+  const file = readFileSync(new URL('../public/prostho-roster-request-template.xlsx', import.meta.url));
+  const sheets = await readXlsx(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+  ok('อ่านได้ครบสามแผ่นตามลำดับ', sheets.map((x) => x.name).join(',') === 'คำอธิบาย,นักศึกษา,อาจารย์', sheets.map((x) => x.name).join(','));
+  const text = (name: string) => tableToTsv(sheets.find((x) => x.name === name)?.rows ?? []);
+  ok('แผ่นคำอธิบายไม่ถูกอ่านเป็นรายชื่อ (ไม่งั้นทุกบรรทัดขึ้นเป็นข้อผิดพลาด)',
+    !looksLikeStudentRoster(text('คำอธิบาย')) && !looksLikeTeacherRoster(text('คำอธิบาย')));
+  ok('แผ่นนักศึกษา → ตัวอ่านนักศึกษา · แผ่นอาจารย์ → ตัวอ่านอาจารย์',
+    looksLikeStudentRoster(text('นักศึกษา')) && !looksLikeTeacherRoster(text('นักศึกษา'))
+      && looksLikeTeacherRoster(text('อาจารย์')) && !looksLikeStudentRoster(text('อาจารย์')));
+  const st = parseRoster(text('นักศึกษา'));
+  ok('แบบฟอร์มเปล่า: นักศึกษา 0 คน · แถวตัวอย่างถูกข้ามพร้อมเหตุผล · 150 แถวสีเหลืองที่ว่างไม่นับเป็นข้อผิดพลาด',
+    st.rows.length === 0 && st.errors.length === 1 && /ตัวอย่าง/.test(st.errors[0].reason), JSON.stringify(st.errors));
+  const tc = parseTeacherRoster(text('อาจารย์'));
+  ok('แบบฟอร์มเปล่า: อาจารย์ 0 ท่าน · แถวตัวอย่างถูกข้าม',
+    tc.rows.length === 0 && tc.errors.length === 1 && /ตัวอย่าง/.test(tc.errors[0].reason), JSON.stringify(tc.errors));
+  ok('รหัสนักศึกษาในแถวตัวอย่างอ่านเป็นข้อความ 7 หลักตรงตัว',
+    sheets[1].rows[1]?.[0] === '6604999', sheets[1].rows[1]?.[0]);
+
+  let broken = '';
+  try { await readXlsx(new TextEncoder().encode('ไม่ใช่ไฟล์ excel').buffer as ArrayBuffer); } catch (e) { broken = (e as Error).message; }
+  ok('ไฟล์ที่ไม่ใช่ .xlsx → ข้อความไทยบอกว่าต้องทำอะไร ไม่ใช่ error อังกฤษดิบ', /xlsx/.test(broken) && /[\u0E00-\u0E7F]/.test(broken), broken);
 }
 
 console.log(bad === 0 ? '\n✅ ผ่านหมด' : `\n❌ ตก ${bad} ข้อ`);

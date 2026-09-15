@@ -51,7 +51,7 @@ const isLatinName = (c: string) => /^[A-Za-z][A-Za-z .'\-]*$/.test(c) && !isGrou
 const isThaiPrefix = (c: string) => /^(นาย|นางสาว|นาง|น\.ส\.)$/.test(c);
 
 /**
- * แถวตัวอย่างในแบบฟอร์มขอรายชื่อ (docs/prostho-roster-request-template.xlsx)
+ * แถวตัวอย่างในแบบฟอร์มขอรายชื่อ (public/prostho-roster-request-template.xlsx)
  * ภาคอาจลืมลบ — ถ้าหลุดเข้าไปจะได้นักศึกษาปลอมชื่อ "สมมติ ตัวอย่าง" ในรายชื่อจริง
  */
 const TEMPLATE_EXAMPLE = { code: '6604999', name: 'สมมติ ตัวอย่าง' };
@@ -78,6 +78,13 @@ function headerColumns(cells: string[]): Col[] | null {
   });
   const has = (k: Col) => cols.includes(k);
   return has('code') && has('name') && has('group') ? cols : null;
+}
+
+/** ข้อความที่วางมามีหัวตารางแบบแท็บ "นักศึกษา" ไหม — ตอนอ่านไฟล์ Excel ใช้แยกแผ่นรายชื่อออกจากแผ่นคำอธิบาย */
+export function looksLikeStudentRoster(text: string): boolean {
+  const first = text.split(/\r?\n/).find((l) => l.trim());
+  if (!first) return false;
+  return headerColumns(first.includes('\t') ? first.split('\t') : first.split(',')) !== null;
 }
 
 export function parseRoster(text: string): RosterParseResult {
