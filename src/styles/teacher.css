@@ -1534,9 +1534,9 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @media (prefers-reduced-motion: reduce) { .grpcard { animation: none; } .grptable tbody tr { transition: none; } }
 
 /* ══ หน้าวิเคราะห์: แผนที่เคสมีชีวิต (ผู้ใช้เลือก 15 ก.ย. 69) ══
-   จุดเด้งขึ้นพร้อมกันตอนเปิดหน้า (ไม่ไล่ทีละคอลัมน์ — ผู้ใช้ขอ) · ชี้คอลัมน์ → คอลัมน์อื่นจาง + การ์ดสรุป · กดทั้งคอลัมน์ได้ */
+   จุดเด้งขึ้นไล่ทีละคอลัมน์ตอนเปิดหน้า · ชี้คอลัมน์ → คอลัมน์อื่นจาง + การ์ดสรุป (แถวประเภทในการ์ดขึ้นพร้อมกัน ไม่ไล่ — ผู้ใช้ขอ) · กดทั้งคอลัมน์ได้ */
 .casemap-wrap { position: relative; }
-.casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--c, 0) * 60ms); }
 @keyframes casemapDotIn { from { opacity: 0; transform: scale(0.3); } }
 .casemap-wrap--lively .casemap__col { cursor: pointer; border-radius: 10px; transition: opacity 0.2s, background-color 0.2s; }
 .casemap-wrap--lively .casemap__col[data-focus='true'] { background: color-mix(in srgb, var(--accent) 6%, transparent); }
