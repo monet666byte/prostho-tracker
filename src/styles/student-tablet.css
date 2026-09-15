@@ -1,0 +1,81 @@
+/* ══ ฝั่งนักศึกษาบน iPad — แบบ B (ผู้ใช้เลือกจาก mock 15 ก.ย. 69) ══════════════════════
+   ที่ผู้ใช้เจอ: "layout ตอนทำ iPad มันแปลกๆ"
+   · แถบล่างยืดเต็มจอ 1180px แต่เนื้อหากว้าง 980px อยู่กลางจอ — ขอบสองอย่างไม่ตรงกัน
+   · ไอคอน 5 อันห่างกันมาก · แถบความคืบหน้ายืดยาวทั้งแถว · แผ่นเช็คอินกว้างเต็มจอ
+   แบบ B: แถบล่าง → แถบเมนูด้านซ้าย · เนื้อหาเป็นคอลัมน์กลางจอ · หน้าแรกแนวนอนแบ่ง 2 คอลัมน์
+
+   ขอบเขต: เฉพาะจอสัมผัสกว้าง 768–1400px (iPad) — มือถือ และกรอบเดโมบนคอม (เมาส์) ไม่เปลี่ยนเลย
+   แยกไฟล์ไว้ไม่ให้ชนกับงานใน student.css · import หลัง student.css/teacher.css
+   จึงชนะกฎความเจาะจงเท่ากันในไฟล์นั้นได้ด้วยลำดับ */
+
+/* ── ใช้ทุกขนาดจอ: คอลัมน์ของหน้าแรก ──
+   มือถือซ้อนกันเป็นกองเดียว ระยะ 10px เท่ากับกองเดิมก่อนแบ่งคอลัมน์ */
+.homecol { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; }
+
+.siderail { display: none; }
+
+@media (min-width: 768px) and (max-width: 1400px) and (pointer: coarse) {
+  :root { --rail-w: 92px; --col-w: 720px; }
+
+  /* กรอบเต็มจอ ไม่ล็อก 700/980px อีก — คอลัมน์กลางจอย้ายไปคุมที่เนื้อหาแทน
+     เว้นที่ซ้ายให้แถบเมนู (แถบเป็น fixed เพราะ .phone ไม่มี transform บนจอสัมผัส) */
+  .phone { max-width: none; }
+  .phone--rail { padding-left: calc(var(--rail-w) + env(safe-area-inset-left)); }
+
+  .siderail {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 40;
+    width: calc(var(--rail-w) + env(safe-area-inset-left));
+    padding: calc(20px + env(safe-area-inset-top)) 0 calc(20px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+  .siderail a {
+    width: 74px; padding: 10px 0 8px; border-radius: 16px;
+    display: grid; justify-items: center; gap: 3px;
+    color: var(--text-faint); font: 500 12px var(--font-body);
+    transition: background 0.15s, color 0.15s;
+  }
+  .siderail a.on { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
+  .siderail a:active svg { transform: scale(0.9); }
+  .siderail svg { transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1); }
+  .siderail a:focus-visible { outline-offset: -2px; }
+
+  /* แถบล่างแคปซูลไม่ใช้บน iPad (ต้องเจาะจงเท่า .phone .tabbar ใน student.css) */
+  .phone .tabbar { display: none; }
+
+  /* เนื้อหาเป็นคอลัมน์กลางจอ — หัวเรื่องแบบกระจกอยู่ในคอลัมน์เดียวกัน ขอบซ้ายตรงกับการ์ด */
+  .screenfill { max-width: var(--col-w); margin-inline: auto; }
+  /* พื้นกระจกของหัวเรื่องต้องยาวเต็มจอ ไม่งั้นเห็นเป็นกล่องสีอ่อนลอยกลางจอ (ถ่ายรูปเจอ 15 ก.ย.)
+     เงาทึบขยายออกข้าง แล้ว clip-path ตัดส่วนบน/ล่างทิ้ง · แถบเมนูซ้ายอยู่ชั้นบนกว่า จึงไม่โดนทับ */
+  .s-header { box-shadow: 0 0 0 100vmax var(--glass-bg); clip-path: inset(0 -100vmax); }
+  /* ไม่มีแถบล่างแล้ว เหลือเผื่อปุ่มลอยมุมขวาล่าง (เดโม) กับแถบขีดขาว */
+  .screen { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .screen--plain { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .rolefab { bottom: calc(18px + env(safe-area-inset-bottom)); }
+
+  /* ปุ่มค้างล่างของหน้าย่อย — กว้างเท่าคอลัมน์ ไม่ยาวเต็มจอ */
+  .phone > .footer { padding-inline: max(16px, calc((100% - var(--col-w)) / 2 + 16px)); }
+
+  /* แผ่นเลื่อนขึ้น (เช็คอิน · ยืนยันผ่าน step) — กว้างพอดีอ่าน อยู่กลางพื้นที่เนื้อหา */
+  .backdrop { justify-content: center; padding-left: calc(var(--rail-w) + env(safe-area-inset-left)); }
+  .sheet { max-width: 620px; }
+
+  /* toast ไม่ต้องหนีแถบล่างแล้ว · กว้างเท่าคอลัมน์ อยู่กลางพื้นที่เนื้อหา */
+  .toast {
+    left: calc(var(--rail-w) + env(safe-area-inset-left)); right: 0;
+    width: min(560px, calc(100% - var(--rail-w) - 32px)); margin-inline: auto;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+/* แนวนอน: หน้าแรกแบ่ง 2 คอลัมน์ ซ้าย "งานถัดไป" · ขวา "สะสม + ของฉัน"
+   หน้าอื่นยังคอลัมน์เดียว 720px — รายการ/ฟอร์มยาวเกินนี้อ่านยาก */
+@media (min-width: 1000px) and (max-width: 1400px) and (pointer: coarse) {
+  .screenfill:has(> .homegrid) { max-width: 1060px; }
+  .homegrid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) !important; gap: 18px !important; padding-inline: 20px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siderail a, .siderail svg { transition: none; }
+}

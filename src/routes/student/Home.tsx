@@ -361,7 +361,10 @@ export default function Home() {
 
 
       {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
-      <div style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+      {/* homegrid/homecol: มือถือซ้อนเป็นกองเดียวเหมือนเดิม · iPad แนวนอนแยกซ้าย "งานถัดไป" ขวา "สะสม + ของฉัน"
+          (ผู้ใช้เลือก mock B 15 ก.ย. 69 · กฎอยู่ใน student-tablet.css) */}
+      <div className="homegrid" style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+      <div className="homecol">
       {(() => {
         const inner = (
           <>
@@ -436,7 +439,9 @@ export default function Home() {
           </div>
         );
       })}
+      </div>
 
+      <div className="homecol">
       <div className="homelabel">{t('สะสมมาแล้ว')}</div>
       <div style={{ display: 'flex', gap: 11 }}>
         <button className="card" style={statBox} onClick={() => navigate('/app/patients')}>
@@ -530,6 +535,7 @@ export default function Home() {
         </span>
       </Link>
       )}
+      </div>
       </div>
     </Shell>
   );

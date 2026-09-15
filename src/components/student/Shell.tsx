@@ -45,11 +45,11 @@ function usePhoneScale(): number {
   return scale;
 }
 
-export function PhoneFrame({ children }: { children: ReactNode }) {
+export function PhoneFrame({ children, rail = false }: { children: ReactNode; rail?: boolean }) {
   const scale = usePhoneScale();
   return (
     <div className="phonewrap" style={{ height: PHONE_OUTER * scale, display: 'flex', justifyContent: 'center' }}>
-      <div className="phone" style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
+      <div className={rail ? 'phone phone--rail' : 'phone'} style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}>
         {children}
       </div>
     </div>
@@ -104,6 +104,26 @@ function TabBar() {
   );
 }
 
+/* แถบเมนูด้านซ้ายสำหรับ iPad (ผู้ใช้เลือก mock B 15 ก.ย. 69)
+   จอกว้างแถบล่างยืดเต็มจอ ไอคอนห่างกันมาก ขอบไม่ตรงกับเนื้อหาที่อยู่กลางจอ
+   แท็บเดียวกับแถบล่าง แต่มีป้ายชื่อใต้ไอคอนเพราะที่เหลือ · แสดง/ซ่อนด้วย CSS ใน student-tablet.css
+   (มือถือและกรอบเดโมบนคอมยังใช้แถบล่างเหมือนเดิม) */
+function SideRail() {
+  return (
+    <nav className="siderail" aria-label={t('เมนู')}>
+      {TABS.map(({ to, label, Icon, end }) => (
+        <NavLink key={to} to={to} end={end} className={({ isActive }) => (isActive ? 'on' : undefined)}>
+          {({ isActive }) => (
+            <>
+              <Icon size={26} weight={isActive ? 'fill' : 'regular'} aria-hidden />
+              <span>{label}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
 
 /**
  * ติดธง data-scrolled ให้ตัวที่เลื่อน — หัวเรื่องใช้โชว์เส้นคั่นเฉพาะตอนมีเนื้อหาข้างหลัง
@@ -119,8 +139,9 @@ export function Shell({ children, footer, overlay }: { children: ReactNode; foot
   return (
     <div className="canvas">
       <DemoBar />
-      <PhoneFrame>
+      <PhoneFrame rail>
         <StatusBar />
+        <SideRail />
         <div className="screen screen--pad" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
         <TabBar />
@@ -137,8 +158,10 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
   return (
     <div className="canvas">
       <DemoBar />
-      <PhoneFrame>
+      {/* หน้าย่อย (รายละเอียดเคส ฯลฯ) มีแถบซ้ายด้วยบน iPad — ไม่งั้นเมนูหายๆ โผล่ๆ ทุกครั้งที่กดเข้าเคส */}
+      <PhoneFrame rail>
         <StatusBar />
+        <SideRail />
         <div className="screen screen--plain" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
         <ToastView />
