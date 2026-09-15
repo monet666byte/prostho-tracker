@@ -272,6 +272,16 @@ console.log('\nนำเข้ารายชื่อ — ตัวกรอง
   ok('ไม่มีหัวตาราง: ยังแยกชื่ออังกฤษกับอีเมลออกจากชื่อไทยได้',
     noHeader.rows[0]?.name === 'ปิติ ยินดี' && noHeader.rows[0]?.nameEn === 'Piti Yindee' && noHeader.rows[0]?.email === 'piti.yin@student.mahidol.edu',
     noHeader.rows[0]);
+  /* ตรวจซ้ำ 15 ก.ย. 69 — สามรูที่ทำให้คนหาย/ข้อมูลเพี้ยนเงียบๆ */
+  const dupMail = parseRoster([H, '6604301\t\tก ข\t\ta@student.mahidol.edu\t56\tPT1', '6604302\t\tค ง\t\tA@student.mahidol.edu\t56\tPT1'].join('\n'));
+  ok('อีเมลซ้ำสองคน → คนที่สองตกพร้อมเหตุผล (ไม่งั้นรายชื่อเชิญเก็บคนแรก คนที่สองเข้าไม่ได้เงียบๆ)',
+    dupMail.rows.length === 1 && dupMail.errors.some((e) => /อีเมลซ้ำ/.test(e.reason)), JSON.stringify(dupMail.errors));
+  const numbered = parseRoster(['9\t6604009\tนาย\tสมชาย ใจดี\tPT1', '10\t6604010\tนาง\tมานี มีนา\tPT1'].join('\n'));
+  ok('วางแบบมีคอลัมน์ลำดับที่ (ไม่มีหัวตาราง) → ลำดับไม่กลายเป็นชื่อหรือรุ่น DTMU10',
+    numbered.rows.length === 2 && numbered.rows[0].name === 'สมชาย ใจดี' && numbered.rows[1].name === 'มานี มีนา' && numbered.rows.every((r) => r.dtmu === undefined),
+    JSON.stringify(numbered.rows));
+  const pt01 = parseRoster('6604401, นศ. ก, PT01');
+  ok('PT01 → PT1 (ไม่เกิดกลุ่มคู่ TH56-PT01)', pt01.rows[0]?.group === 'PT1', pt01.rows[0]?.group);
   const latinOnly = parseRoster('6604202, Liv, PT2');
   ok('ไม่มีหัวตาราง + มีแต่ชื่ออังกฤษ → ใช้เป็นชื่อหลัก (รายชื่อเก่ายังนำเข้าได้)',
     latinOnly.rows[0]?.name === 'Liv' && !latinOnly.rows[0]?.nameEn, latinOnly.rows[0]);
@@ -325,6 +335,38 @@ console.log('\nอ่านไฟล์ Excel แบบฟอร์มขอร�
     tc.rows.length === 0 && tc.errors.length === 1 && /ตัวอย่าง/.test(tc.errors[0].reason), JSON.stringify(tc.errors));
   ok('รหัสนักศึกษาในแถวตัวอย่างอ่านเป็นข้อความ 7 หลักตรงตัว',
     sheets[1].rows[1]?.[0] === '6604999', sheets[1].rows[1]?.[0]);
+
+  /* <si/> ปิดตัวเอง (บางโปรแกรมเขียนแบบนี้) ต้องนับเป็นหนึ่งช่อง — ไม่งั้นทุกชื่อหลังจากนั้นเลื่อนไปหยิบของเซลล์อื่น */
+  {
+    /* ซิปแบบไม่บีบอัด (stored) สร้างเองในเทสต์ — ไม่ต้องพึ่งไลบรารี · ตัวอ่านไม่ตรวจ CRC */
+    const enc = new TextEncoder();
+    const storedZip = (files: Record<string, string>): ArrayBuffer => {
+      const parts: number[] = []; const central: number[] = []; let count = 0;
+      const u16 = (a: number[], v: number) => a.push(v & 255, (v >> 8) & 255);
+      const u32 = (a: number[], v: number) => a.push(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255);
+      for (const [name, text] of Object.entries(files)) {
+        const nb = [...enc.encode(name)]; const db = [...enc.encode(text)]; const off = parts.length;
+        u32(parts, 0x04034b50); u16(parts, 20); u16(parts, 0); u16(parts, 0); u16(parts, 0); u16(parts, 0);
+        u32(parts, 0); u32(parts, db.length); u32(parts, db.length); u16(parts, nb.length); u16(parts, 0);
+        parts.push(...nb, ...db);
+        u32(central, 0x02014b50); u16(central, 20); u16(central, 20); u16(central, 0); u16(central, 0); u16(central, 0); u16(central, 0);
+        u32(central, 0); u32(central, db.length); u32(central, db.length); u16(central, nb.length); u16(central, 0); u16(central, 0);
+        u16(central, 0); u16(central, 0); u32(central, 0); u32(central, off); central.push(...nb);
+        count++;
+      }
+      const cdOff = parts.length; const all = [...parts, ...central];
+      u32(all, 0x06054b50); u16(all, 0); u16(all, 0); u16(all, count); u16(all, count); u32(all, central.length); u32(all, cdOff); u16(all, 0);
+      return new Uint8Array(all).buffer;
+    };
+    const zip = storedZip({
+      'xl/workbook.xml': '<workbook><sheets><sheet name="นักศึกษา" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+      'xl/sharedStrings.xml': '<sst><si/><si><t>6604001</t></si><si><t>สมชาย ใจดี</t></si></sst>',
+      'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>1</v></c><c r="B1" t="s"><v>2</v></c><c r="C1" t="s"><v>0</v></c></row></sheetData></worksheet>',
+    });
+    const got = await readXlsx(zip);
+    ok('<si/> ว่างไม่ทำให้ลำดับข้อความเลื่อน', JSON.stringify(got[0].rows[0]) === JSON.stringify(['6604001', 'สมชาย ใจดี', '']), JSON.stringify(got[0].rows[0]));
+  }
 
   let broken = '';
   try { await readXlsx(new TextEncoder().encode('ไม่ใช่ไฟล์ excel').buffer as ArrayBuffer); } catch (e) { broken = (e as Error).message; }

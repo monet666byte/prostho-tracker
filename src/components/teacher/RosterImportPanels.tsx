@@ -18,7 +18,8 @@ import {
 import type { RosterRow, TeacherRosterRow } from '../../lib/rosterParse';
 import { readXlsx, tableToTsv } from '../../lib/xlsxRead';
 import { applyStudents, applyTeachers, needsDtmu } from '../../data/rosterApply';
-import type { InviteOutcome, StudentApplyResult, TeacherApplyResult } from '../../data/rosterApply';
+import type { InviteIndex, InviteOutcome, StudentApplyResult, TeacherApplyResult } from '../../data/rosterApply';
+import { db } from '../../data/db';
 
 type Issue = { sheet: string; line: number; text: string; reason: string };
 
@@ -31,6 +32,9 @@ export function importSummary(st: StudentApplyResult | null, tc: TeacherApplyRes
       : t('นักศึกษา: เพิ่ม {a} · อัปเดต {b}', { a: st.added, b: st.updated }));
   }
   if (tc) parts.push(t('อาจารย์: เพิ่ม {a} · อัปเดต {b}', { a: tc.added, b: tc.updated }));
+  if (tc?.invitedAsStudent.length) {
+    parts.push(t('ไม่ได้เพิ่มเป็นอาจารย์ {n} อีเมล เพราะเชิญไว้แล้วในฐานะนักศึกษา: {e}', { n: tc.invitedAsStudent.length, e: tc.invitedAsStudent.join(', ') }));
+  }
   const inv: InviteOutcome[] = [st?.invites, tc?.invites].filter((x): x is InviteOutcome => !!x);
   const err = inv.find((x) => x.error)?.error;
   if (err) parts.push(t('ให้สิทธิ์ด้วยอีเมลไม่สำเร็จ: {e}', { e: err }));
@@ -40,14 +44,26 @@ export function importSummary(st: StudentApplyResult | null, tc: TeacherApplyRes
     parts.push(t('ให้สิทธิ์เข้าระบบ {n} อีเมล', { n: added })
       + (skipped ? ` · ${t('ข้าม {n} อีเมลที่อยู่ในรายชื่ออยู่แล้ว (สิทธิ์เดิมไม่เปลี่ยน)', { n: skipped })}` : ''));
   }
-  return { message: parts.join(' · '), warn: !!err };
+  return { message: parts.join(' · '), warn: !!err || !!tc?.invitedAsStudent.length };
 }
 
 interface Shared {
-  /** อีเมล → teacher_id ที่เชิญไว้แล้ว · null = ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดไม่เสร็จ */
-  invitedTeacherId: ReadonlyMap<string, string> | null;
-  /** โหลดรายชื่อเชิญใหม่หลังนำเข้า */
+  /** รายชื่อเชิญที่มีอยู่ · null = ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดไม่เสร็จ (หรือโหลดไม่ได้ — ดู invitesError) */
+  invited: InviteIndex | null;
+  /** โหลดรายชื่อเชิญไม่ได้ — ต้องบอกและให้กดลองใหม่ ไม่ใช่ "รอสักครู่" ตลอดไป */
+  invitesError: string | null;
+  /** โหลดรายชื่อเชิญใหม่ (หลังนำเข้า / กดลองใหม่) */
   onDone: () => void;
+}
+
+/** ข้อความรอ/โหลดไม่ได้ของรายชื่อเชิญ พร้อมปุ่มลองใหม่ */
+function InvitesWait({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  return (
+    <p className={error ? 'rosterfile__err' : 'rosterimport__hint'} style={{ marginTop: 8 }}>
+      {error ? `${t('โหลดรายชื่อเชิญไม่ได้')} — ${error} ` : t('รอโหลดรายชื่อเชิญสักครู่…')}
+      {error && <button className="linkbtn" onClick={onRetry}>{t('ลองใหม่')}</button>}
+    </p>
+  );
 }
 
 /* ══ ① เลือกไฟล์ Excel ══════════════════════════════════════════════════════ */
@@ -57,9 +73,13 @@ interface FilePreview {
   students: RosterRow[];
   teachers: TeacherRosterRow[];
   issues: Issue[];
+  /** นักศึกษาที่รหัสมีในระบบแล้ว (นำเข้า = อัปเดต) */
+  existing?: number;
+  /** คนเดิมที่ชื่อ/กลุ่มจะเปลี่ยนตามไฟล์ */
+  changed?: string[];
 }
 
-export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
+export function FileImportPanel({ invited, invitesError, onDone }: Shared) {
   const { showToast } = useApp();
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<FilePreview | null>(null);
@@ -99,6 +119,23 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
         seen.add(r.code);
         return true;
       });
+      /* อีเมลเดียวกันทั้งแท็บอาจารย์และแท็บนักศึกษา — รายชื่อเชิญเก็บได้บทบาทเดียว · อาจารย์ลงก่อน
+         จึงตัดอีเมลออกจากแถวนักศึกษา (คนยังเข้ารายชื่อ แต่ต้องผูกบัญชีด้วยรหัสแทน) และบอกไว้ ไม่ปล่อยให้หายเงียบ */
+      const teacherEmails = new Set(p.teachers.map((r) => r.email));
+      p.students = p.students.map((r) => {
+        if (!r.email || !teacherEmails.has(r.email)) return r;
+        p.issues.push({ sheet: '', line: 0, text: `${r.code} ${r.email}`, reason: 'อีเมลนี้อยู่ในแท็บอาจารย์ด้วย — ไม่ใส่อีเมลให้นักศึกษาคนนี้' });
+        const { email: _drop, ...rest } = r;
+        return rest;
+      });
+      /* รหัสที่มีในระบบแล้ว = นำเข้าแล้วจะแก้ชื่อ/กลุ่มของคนเดิม — ต้องเห็นก่อนกดยืนยัน */
+      const codes = new Set(p.students.map((r) => r.code));
+      const existing = codes.size ? await db.students.where('code').anyOf([...codes]).toArray() : [];
+      const byCode = new Map(p.students.map((r) => [r.code, r]));
+      p.changed = existing
+        .filter((st) => { const r = byCode.get(st.code)!; return st.name !== r.name || !st.group.endsWith(`-${r.group}`); })
+        .map((st) => `${st.code} ${st.name} → ${byCode.get(st.code)!.name} · ${byCode.get(st.code)!.group}`);
+      p.existing = existing.length;
       if (recognized && !p.students.length && !p.teachers.length && !p.issues.length) {
         setReadError(t('ไฟล์นี้ยังไม่มีรายชื่อ — มีแต่แถวตัวอย่าง ตรวจว่าเลือกไฟล์ที่ภาคกรอกแล้ว'));
         return;
@@ -116,7 +153,7 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
   }
 
   const missingDtmu = !!preview && needsDtmu(preview.students);
-  const waitingInvites = !!preview?.teachers.length && invitedTeacherId === null;
+  const waitingInvites = !!preview?.teachers.length && invited === null;
   const canImport = !!preview && (preview.students.length + preview.teachers.length > 0)
     && (!missingDtmu || !!Number(dtmu)) && !waitingInvites && !busy;
 
@@ -125,7 +162,7 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
     setBusy(true);
     try {
       /* อาจารย์ก่อน — ถ้าเซิร์ฟเวอร์ปฏิเสธกลางทาง นักศึกษายังไม่ถูกแตะ ลองใหม่ได้ทั้งไฟล์ (นำเข้าซ้ำ = อัปเดต ไม่สร้างซ้ำ) */
-      const tc = preview.teachers.length ? await applyTeachers(preview.teachers, invitedTeacherId ?? new Map(), currentActor()) : null;
+      const tc = preview.teachers.length ? await applyTeachers(preview.teachers, invited ?? new Map(), currentActor()) : null;
       const st = preview.students.length ? await applyStudents(preview.students, Number(dtmu) || null, currentActor()) : null;
       const s = importSummary(st, tc);
       showToast({ message: t('นำเข้าแล้ว') + ' — ' + s.message, tone: s.warn ? 'warning' : 'success' });
@@ -195,6 +232,13 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
             </div>
           )}
 
+          {!!preview.existing && (
+            <div className="rosterfile__issues">
+              <p>{t('มีในระบบแล้ว {n} คน — นำเข้าแล้วจะอัปเดตตามไฟล์', { n: preview.existing })}{preview.changed?.length ? ` · ${t('ชื่อหรือกลุ่มจะเปลี่ยน {n} คน', { n: preview.changed.length })}` : ''}</p>
+              {preview.changed?.slice(0, 5).map((c) => <p key={c} className="mono">{c}</p>)}
+            </div>
+          )}
+
           {missingDtmu && (
             <label className="field" style={{ maxWidth: 220, marginTop: 10 }}>
               <span>{t('บางแถวไม่มีรุ่น — กรอกเลขรุ่น (DTMU)')}</span>
@@ -202,7 +246,7 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
               {Number(dtmu) > 0 && <small className="rosterimport__hint">{t('→ ขึ้นปี 5 ปีการศึกษา {y}', { y: entryYearFromDtmu(Number(dtmu)) })}</small>}
             </label>
           )}
-          {waitingInvites && <p className="rosterimport__hint" style={{ marginTop: 8 }}>{t('รอโหลดรายชื่อเชิญสักครู่…')}</p>}
+          {waitingInvites && <InvitesWait error={invitesError} onRetry={onDone} />}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button className="btn" style={{ height: 44, width: 'auto', padding: '0 18px' }} disabled={!canImport} onClick={confirm}>
@@ -223,7 +267,7 @@ export function FileImportPanel({ invitedTeacherId, onDone }: Shared) {
 const GROUPS = Array.from({ length: 12 }, (_, i) => `PT${i + 1}`);
 const clean = (s: string) => s.replace(/[\t\r\n,]+/g, ' ').trim();
 
-export function AddPersonPanel({ invitedTeacherId, onDone, onLinkExisting }: Shared & { onLinkExisting: () => void }) {
+export function AddPersonPanel({ invited, invitesError, onDone, onLinkExisting }: Shared & { onLinkExisting: () => void }) {
   const { showToast } = useApp();
   const [kind, setKind] = useState<'teacher' | 'student'>('teacher');
   const [f, setF] = useState({ email: '', name: '', nameEn: '', role: 'อาจารย์', code: '', dtmu: '', group: '' });
@@ -239,14 +283,17 @@ export function AddPersonPanel({ invitedTeacherId, onDone, onLinkExisting }: Sha
     setBusy(true);
     try {
       if (kind === 'teacher') {
-        if (invitedTeacherId === null) { setProblem(t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่')); return; }
+        if (invited === null) { setProblem(invitesError ? `${t('โหลดรายชื่อเชิญไม่ได้')} — ${invitesError}` : t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่')); return; }
         const r = parseTeacherRoster(`ชื่อ\tชื่ออังกฤษ\tอีเมล\tบทบาท\n${[f.name, f.nameEn, f.email, f.role].map(clean).join('\t')}`);
         if (!r.rows.length) { setProblem(r.errors[0]?.reason ?? t('กรอกข้อมูลให้ครบ')); return; }
-        tc = await applyTeachers(r.rows, invitedTeacherId, currentActor());
+        tc = await applyTeachers(r.rows, invited, currentActor());
       } else {
         const r = parseRoster(`รหัส\tชื่อ\tชื่ออังกฤษ\tอีเมล\tรุ่น\tกลุ่ม\n${[f.code, f.name, f.nameEn, f.email, f.dtmu, f.group].map(clean).join('\t')}`);
         if (!r.rows.length) { setProblem(r.errors[0]?.reason ?? t('กรอกข้อมูลให้ครบ')); return; }
         if (needsDtmu(r.rows)) { setProblem(t('กรอกเลขรุ่น (DTMU)')); return; }
+        /* ฟอร์มนี้มีไว้เพิ่ม "คนใหม่" — รหัสที่มีแล้วจะกลายเป็นแก้ชื่อ/ย้ายกลุ่มของคนเดิม (พิมพ์รหัสผิดตัวเดียวก็ทับเพื่อน) */
+        const dup = await db.students.where('code').equals(r.rows[0].code).first();
+        if (dup) { setProblem(t('รหัส {c} มีในระบบแล้ว ({n}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง', { c: dup.code, n: dup.name })); return; }
         st = await applyStudents(r.rows, null, currentActor());
       }
       const s = importSummary(st, tc);

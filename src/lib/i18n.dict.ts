@@ -1469,4 +1469,13 @@ export const DICT: Record<string, string> = {
   'นักศึกษาคนนี้ยังไม่มีเคส{k} — พิมพ์ HN เองได้': 'This student has no {k} case yet — you can type the HN in',
   /* ── กล่องคำขอว่าง + ป้ายบันทึกแล้ว ── */
   'ยังไม่มีคำขอ — นักศึกษาที่เข้าด้วยอีเมลที่ไม่อยู่ในรายชื่อ แล้วกรอกรหัสนักศึกษา จะมาขึ้นที่นี่': 'No requests yet — students who sign in with an email not on the list and enter their student ID will appear here',
+  /* ── ตรวจซ้ำ 15 ก.ย.: นำเข้ารายชื่อ ── */
+  'ไม่ได้เพิ่มเป็นอาจารย์ {n} อีเมล เพราะเชิญไว้แล้วในฐานะนักศึกษา: {e}': 'Did not add {n} instructor emails because they are already invited as students: {e}',
+  'โหลดรายชื่อเชิญไม่ได้': 'Could not load the invite list',
+  'ลองใหม่': 'Try again',
+  'มีในระบบแล้ว {n} คน — นำเข้าแล้วจะอัปเดตตามไฟล์': '{n} already in the system — importing will update them from the file',
+  'ชื่อหรือกลุ่มจะเปลี่ยน {n} คน': 'name or group changes for {n}',
+  'รหัส {c} มีในระบบแล้ว ({n}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง': 'ID {c} already exists ({n}) — update existing people via file import, or check the ID',
+  'นำเข้าไม่สำเร็จ': 'Import failed',
+  'กำลังโหลดคำขอผูกบัญชี…': 'Loading account link requests…',
 };

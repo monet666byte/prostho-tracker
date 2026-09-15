@@ -147,18 +147,19 @@ export async function savePdpaPolicy(patch: Partial<PdpaPolicy>, by: string): Pr
     setPolicy({ ...cached, ...patch });
     return {};
   }
-  const next = { ...cached, ...patch };
-  const { error } = await supabase.from('pdpa_policy').update({
-    retention_enabled: next.retentionEnabled,
-    retention_cohorts: next.retentionCohorts,
-    export_roles: next.exportRoles,
-    export_identified_roles: next.exportIdentifiedRoles,
-    mask_by_default: next.maskByDefault,
-    // ส่งเฉพาะตอนสลับสวิตช์นี้ — เซิร์ฟเวอร์ที่ยังไม่รัน 0026 จะได้ยังแก้นโยบายข้ออื่นได้
-    ...('patientNames' in patch ? { patient_names: next.patientNames } : {}),
-    updated_by: by,
-  }).eq('id', 'app');
+  /* ส่งเฉพาะคอลัมน์ที่กดเปลี่ยน — เดิมส่งทุกช่องจากค่าในเครื่อง ถ้าเครื่องยังไม่ได้ดึงนโยบายล่าสุด
+     (เครื่องใหม่ = LOCKED_POLICY / อีกคนเพิ่งแก้) การกดสวิตช์หนึ่งตัวจะย้อนสวิตช์ตัวอื่นบนเซิร์ฟเวอร์กลับ (ตรวจซ้ำ 15 ก.ย. 69) */
+  const cols: Record<string, unknown> = { updated_by: by };
+  if ('retentionEnabled' in patch) cols.retention_enabled = patch.retentionEnabled;
+  if ('retentionCohorts' in patch) cols.retention_cohorts = patch.retentionCohorts;
+  if ('exportRoles' in patch) cols.export_roles = patch.exportRoles;
+  if ('exportIdentifiedRoles' in patch) cols.export_identified_roles = patch.exportIdentifiedRoles;
+  if ('maskByDefault' in patch) cols.mask_by_default = patch.maskByDefault;
+  if ('patientNames' in patch) cols.patient_names = patch.patientNames;
+  const { data, error } = await supabase.from('pdpa_policy').update(cols).eq('id', 'app').select('id');
   if (error) return { error: error.message };
+  // ไม่มีแถวไหนถูกแก้ = ไม่มีสิทธิ์/ไม่มีแถว — ห้ามทำเหมือนสำเร็จ
+  if (!data?.length) return { error: 'เซิร์ฟเวอร์ไม่ได้บันทึก (ไม่มีสิทธิ์หรือไม่พบนโยบาย)' };
   await pullPdpaPolicy();
   return {};
 }

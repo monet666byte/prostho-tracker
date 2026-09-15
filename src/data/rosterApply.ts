@@ -33,7 +33,12 @@ export interface TeacherApplyResult {
   added: number;
   updated: number;
   invites: InviteOutcome | null;
+  /** อีเมลที่เชิญไว้แล้วในฐานะนักศึกษา — ไม่สร้างอาจารย์ให้ (สร้างไปก็ล็อกอินไม่ได้ และค้างอยู่ในรายชื่ออาจารย์) */
+  invitedAsStudent: string[];
 }
+
+/** รายชื่อเชิญที่มีอยู่แล้ว: อีเมล (ตัวเล็ก) → บทบาท + teacher_id */
+export type InviteIndex = ReadonlyMap<string, { role: 'student' | 'teacher'; teacherId: string | null }>;
 
 type InviteRow = { email: string; role: 'student' | 'teacher'; student_id: string | null; teacher_id: string | null; is_admin?: boolean };
 
@@ -81,17 +86,17 @@ export async function applyStudents(rows: RosterRow[], fallbackDtmu: number | nu
 
 /**
  * ลงอาจารย์ — ① แถว teachers (ชื่อไทย/อังกฤษ) ② อีเมลลงรายชื่อเชิญ
- * @param invitedTeacherId อีเมล → teacher_id ที่เชิญไว้แล้ว (จากตาราง invites) · ต่อเซิร์ฟเวอร์อยู่ต้องโหลดเสร็จก่อนเรียก
+ * @param invited รายชื่อเชิญที่มีอยู่ (จากตาราง invites) · ต่อเซิร์ฟเวอร์อยู่ต้องโหลดเสร็จก่อนเรียก
  */
-export async function applyTeachers(
-  rows: TeacherRosterRow[], invitedTeacherId: ReadonlyMap<string, string>, by: string,
-): Promise<TeacherApplyResult> {
-  const withId = await Promise.all(rows.map(async (r) => ({
-    ...r, id: invitedTeacherId.get(r.email) ?? await teacherIdFromEmail(r.email),
+export async function applyTeachers(rows: TeacherRosterRow[], invited: InviteIndex, by: string): Promise<TeacherApplyResult> {
+  const invitedAsStudent = rows.filter((r) => invited.get(r.email)?.role === 'student').map((r) => r.email);
+  const usable = rows.filter((r) => invited.get(r.email)?.role !== 'student');
+  const withId = await Promise.all(usable.map(async (r) => ({
+    ...r, id: invited.get(r.email)?.teacherId ?? await teacherIdFromEmail(r.email),
   })));
-  const res = await importTeachers(withId, by);
+  const res = withId.length ? await importTeachers(withId, by) : { added: 0, updated: 0 };
   const invites = await upsertInvites(withId.map((r) => ({
     email: r.email, role: 'teacher' as const, student_id: null, teacher_id: r.id, is_admin: r.isAdmin,
   })));
-  return { ...res, invites };
+  return { ...res, invites, invitedAsStudent };
 }

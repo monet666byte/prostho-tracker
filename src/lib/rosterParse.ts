@@ -34,6 +34,9 @@ export interface RosterParseResult {
  */
 /** จำนวนกลุ่มคลินิกของภาค (PT1–PT12 · ผู้ใช้ยืนยัน 1 ก.ย. 69) */
 const CLINIC_GROUP_COUNT = 12;
+/** รุ่นที่เป็นไปได้ (DTMU) — ใช้แยก "เลขรุ่น" ออกจาก "เลขลำดับ" ตอนไม่มีหัวตาราง */
+const DTMU_MIN = 40;
+const DTMU_MAX = 99;
 /** ชื่อ-นามสกุลไทยเต็มยศยังไม่เกินนี้ — ยาวกว่านี้คือแถวที่อ่านผิด */
 const MAX_NAME_LENGTH = 120;
 
@@ -91,6 +94,7 @@ export function parseRoster(text: string): RosterParseResult {
   const rows: RosterRow[] = [];
   const errors: RosterParseResult['errors'] = [];
   const seen = new Set<string>();
+  const seenEmail = new Set<string>();
 
   const lines = text.split(/\r?\n/);
   const firstIdx = lines.findIndex((l) => l.trim());
@@ -123,7 +127,9 @@ export function parseRoster(text: string): RosterParseResult {
       email = get('email') || undefined;
       group = isGroupCell(get('group')) ? get('group') : undefined;
       dtmuCell = get('dtmu') || undefined;
-      if (dtmuCell && !isDtmuCell(dtmuCell)) return void fail('รุ่น DTMU ต้องเป็นเลข 2 หลัก เช่น 56');
+      if (dtmuCell && (!isDtmuCell(dtmuCell) || Number(dtmuCell.replace(/\D/g, '')) < DTMU_MIN)) {
+        return void fail('รุ่น DTMU ต้องเป็นเลข 2 หลัก เช่น 56');
+      }
     } else {
       const cells = line.split(/\t|,|\s{2,}/).map((c) => c.trim()).filter(Boolean);
       // ข้ามหัวตาราง: ไม่มีเซลล์ไหนขึ้นต้นด้วยตัวเลข 7 หลัก
@@ -138,9 +144,12 @@ export function parseRoster(text: string): RosterParseResult {
          แล้วกลุ่มนั้นไปโผล่ในตัวเลือก "กลุ่มที่ดูแล" ของอาจารย์ทุกคนถาวร (ทดลองแล้ว 10 ก.ย. 69)
          ถ้าวันหน้าภาคเพิ่มกลุ่ม แก้ CLINIC_GROUP_COUNT ที่เดียว — บรรทัดที่ตกจะมีเหตุผลบอกในรายงาน */
       group = cells.find(isGroupCell);
-      dtmuCell = cells.find((c) => isDtmuCell(c) && c !== code);
+      /* ไม่มีหัวตาราง = เดาจากหน้าตาเซลล์ — เลข 2 หลักอาจเป็น "ลำดับที่" (10, 11…) ไม่ใช่รุ่น
+         รับเฉพาะ DTMU นำหน้า หรือเลขในช่วงรุ่นที่เป็นไปได้ · ไม่งั้นแถวที่ 10 ได้รุ่น DTMU10 เงียบๆ (ตรวจซ้ำ 15 ก.ย. 69) */
+      dtmuCell = cells.find((c) => c !== code && isDtmuCell(c) && (/^DTMU/i.test(c) || (Number(c) >= DTMU_MIN && Number(c) <= DTMU_MAX)));
+      const isNumberOnly = (c: string) => /^\d+$/.test(c);
       email = cells.find(isEmailCell);
-      const rest = cells.filter((c) => c !== code && c !== group && c !== dtmuCell && c !== email && !isThaiPrefix(c));
+      const rest = cells.filter((c) => c !== code && c !== group && c !== dtmuCell && c !== email && !isThaiPrefix(c) && !isNumberOnly(c));
       /* ไม่มีหัวตาราง: ช่องตัวอักษรละตินคือชื่ออังกฤษ — แต่ถ้าไม่มีช่องอื่นเลย ถือว่าเป็นชื่อหลัก (รายชื่อเก่าที่พิมพ์อังกฤษ) */
       const latin = rest.find(isLatinName);
       const other = rest.find((c) => c !== latin);
@@ -157,16 +166,20 @@ export function parseRoster(text: string): RosterParseResult {
       return void fail(`ชื่อยาวเกิน ${MAX_NAME_LENGTH} ตัวอักษร — ตรวจตัวคั่นในบรรทัดนี้`);
     }
     if (email && !isEmailCell(email)) return void fail('อีเมลไม่ถูกต้อง');
+    /* อีเมลเดียวผูกได้คนเดียว — ปล่อยผ่าน รายชื่อเชิญจะเก็บแค่คนแรก แล้วคนที่สองเข้าระบบไม่ได้โดยไม่มีใครรู้ */
+    if (email && seenEmail.has(email.toLowerCase())) return void fail('อีเมลซ้ำกับบรรทัดก่อนหน้า');
     if (code === TEMPLATE_EXAMPLE.code && name === TEMPLATE_EXAMPLE.name) {
       return void fail('แถวตัวอย่างในแบบฟอร์ม — ข้ามให้แล้ว');
     }
     seen.add(code);
+    if (email) seenEmail.add(email.toLowerCase());
     rows.push({
       code,
       name,
       ...(nameEn ? { nameEn } : {}),
       ...(email ? { email: email.toLowerCase() } : {}),
-      group: group.toUpperCase().replace(/^TH\d*-/, ''),
+      /* PT01 → PT1 — ไม่งั้นได้กลุ่มใหม่ TH56-PT01 คู่กับ TH56-PT1 */
+      group: `PT${Number(/PT(\d{1,2})$/i.exec(group)![1])}`,
       dtmu: dtmuCell ? Number(dtmuCell.replace(/\D/g, '')) : undefined,
     });
   });

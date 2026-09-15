@@ -25,6 +25,11 @@ function withoutNamesIfOff<T extends { name: string }>(rows: T[]): T[] {
   return patientNamesOn() ? rows : rows.map((p) => ({ ...p, name: '' }));
 }
 
+/** ค่าในรายงานแถวที่มีปัญหา — แถว "ไม่มี HN" ใส่ชื่อผู้ป่วยจากชีตไว้ในช่องนี้ (lib/sheetImport) ต้องไม่โชว์ตอนปิดใช้ชื่อ */
+function issueValue(i: { column: string; value: string; problem: string }): string {
+  return !patientNamesOn() && i.column === 'HN' && i.problem.startsWith('ไม่มี HN —') ? '—' : i.value;
+}
+
 export function ImportSheetBody() {
   const { cloudUser, showToast, touch } = useApp();
   const students = useAllStudents();
@@ -86,10 +91,9 @@ export function ImportSheetBody() {
       // ⚠️ เดิมการนำเข้านี้ไม่ทิ้งร่องรอยเลย — พอเปิดให้อาจารย์ทุกคนใช้ ต้องรู้ว่าใครนำเข้าให้ใคร
       // (การนำเข้าเขียนทับงานเดิมของนักศึกษาได้ จึงต้องตามย้อนได้เสมอ)
       const who = students.find((st) => st.id === studentId);
+      /* audit เก็บภาษาไทยเสมอ — แถวลบ/แก้ไม่ได้ และต้องอ่านตรงกันทุกเครื่อง (ห้ามผ่าน t() / personName ที่เปลี่ยนตามภาษา) */
       await logAudit(
-        t('นำเข้าจากชีตให้ {name}: {p} ผู้ป่วย · {w} ชิ้นงาน', {
-          name: personName(who, ''), p: result.patients.length, w: result.workpieces.length,
-        }),
+        `นำเข้าจากชีตให้ ${who?.name ?? studentId}: ${result.patients.length} ผู้ป่วย · ${result.workpieces.length} ชิ้นงาน`,
         currentActor(),
         { studentId },
       );
@@ -224,7 +228,7 @@ export function ImportSheetBody() {
                         <tr key={k}>
                           <td className="mono">{i.row}</td>
                           <td style={{ font: '500 11.5px var(--font-body)' }}>{i.column}</td>
-                          <td className="mono" style={{ fontSize: 11, color: 'var(--danger-dark)' }}>{i.value}</td>
+                          <td className="mono" style={{ fontSize: 11, color: 'var(--danger-dark)' }}>{issueValue(i)}</td>
                           <td style={{ font: '400 11.5px/1.5 var(--font-body)', color: 'var(--text-muted)' }}>{i.problem}</td>
                         </tr>
                       ))}
@@ -542,7 +546,7 @@ function WholeCohortImport() {
           <div style={{ flexBasis: '100%', maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
             {allIssues.slice(0, 60).map((x, i) => (
               <div key={i} style={{ font: '400 11px/1.6 var(--font-mono)', color: 'var(--text-muted)' }}>
-                [{x.g} · {x.code}] {t('แถว')}{x.i.row} {x.i.column}: {x.i.value.slice(0, 28)} → {x.i.problem}
+                [{x.g} · {x.code}] {t('แถว')}{x.i.row} {x.i.column}: {issueValue(x.i).slice(0, 28)} → {x.i.problem}
               </div>
             ))}
             {allIssues.length > 60 && <div className="sub">… {allIssues.length - 60} {t('รายการ')}</div>}

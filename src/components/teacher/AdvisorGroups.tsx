@@ -215,12 +215,17 @@ export function AdvisorEditor() {
   const edit = (r: GroupRow, next: string[]) => setDraft((d) => ({ ...d, [r.code]: next }));
 
   async function save(r: GroupRow) {
+    const sent = valueOf(r);
     setBusy(r.code);
     setError(null);
-    const res = await setGroupAdvisors(r.code, valueOf(r));
+    const res = await setGroupAdvisors(r.code, sent);
     setBusy(null);
     if (!res.ok) { setError(res.error); return; }
-    setDraft((d) => { const n = { ...d }; delete n[r.code]; return n; });
+    /* ล้างร่างเฉพาะเมื่อยังเป็นชุดที่ส่งไป — ถ้าระหว่างรอมีคนเพิ่ม/เอาออกอีก ต้องเก็บไว้ให้กดบันทึกรอบใหม่ */
+    setDraft((d) => {
+      if ((d[r.code] ?? []).join('|') !== sent.join('|')) return d;
+      const n = { ...d }; delete n[r.code]; return n;
+    });
     showToast({ message: t('บันทึกที่ปรึกษากลุ่ม {g} แล้ว', { g: groupShort(r.code) }), tone: 'success' });
   }
 
@@ -248,12 +253,12 @@ export function AdvisorEditor() {
                     {ids.map((id) => (
                       <span key={id} className="chip" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', height: 28, padding: '0 6px 0 10px', background: 'var(--fill)', font: '500 12px var(--font-body)' }}>
                         {nameOf(id)}
-                        <button aria-label={`${t('เอาออก')} ${nameOf(id)}`} onClick={() => edit(r, ids.filter((x) => x !== id))}
+                        <button aria-label={`${t('เอาออก')} ${nameOf(id)}`} disabled={busy === r.code} onClick={() => edit(r, ids.filter((x) => x !== id))}
                           style={{ display: 'grid', placeItems: 'center', width: 20, height: 20, borderRadius: 10, color: 'var(--text-muted)' }}>×</button>
                       </span>
                     ))}
                     {addable.length > 0 && (
-                      <select className="input" style={{ width: 'auto', height: 30, fontSize: 12 }} value=""
+                      <select className="input" style={{ width: 'auto', height: 30, fontSize: 12 }} value="" disabled={busy === r.code}
                         aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)} ${t('เพิ่มที่ปรึกษา')}`}
                         onChange={(e) => { if (e.target.value) edit(r, [...ids, e.target.value]); }}>
                         <option value="">{t('+ เพิ่มอาจารย์')}</option>

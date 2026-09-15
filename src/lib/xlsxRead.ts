@@ -21,6 +21,10 @@ const FAIL = 'อ่านไฟล์นี้ไม่ได้ — ต้อ�
 /* ── zip ─────────────────────────────────────────────────────────────────── */
 
 async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
+  /* Safari ก่อน 16.4 (iPad รุ่นเก่าที่ไม่อัปเดต) ไม่มีตัวคลายซิป — บอกทางออกเป็นภาษาคน ไม่ใช่ ReferenceError อังกฤษ */
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('เบราว์เซอร์นี้เปิดไฟล์ Excel ไม่ได้ — อัปเดต Safari/iPadOS หรือใช้ Chrome · หรือก๊อปตารางมาวางในช่อง "หรือก๊อปตารางมาวางเอง" แทน');
+  }
   const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
@@ -135,7 +139,9 @@ export async function readXlsx(buf: ArrayBuffer): Promise<SheetTable[]> {
     const tg = attr(m[0], 'Target');
     if (id && tg) target.set(id, tg.startsWith('/') ? tg.slice(1) : `xl/${tg}`);
   }
-  const shared = [...(files.get('xl/sharedStrings.xml') ?? '').matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => runText(m[1]));
+  /* <si/> (ข้อความว่างที่บางโปรแกรมเขียนแบบปิดตัวเอง) ต้องนับเป็นหนึ่งช่องด้วย — ข้ามไปแล้วลำดับเลื่อนทั้งไฟล์
+     ชื่อทุกคนหลังจากนั้นจะไปหยิบข้อความของอีกเซลล์มาแทนโดยไม่มี error (ตรวจซ้ำ 15 ก.ย. 69) */
+  const shared = [...(files.get('xl/sharedStrings.xml') ?? '').matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)].map((m) => runText(m[1] ?? ''));
 
   const sheets: SheetTable[] = [];
   for (const m of wb.matchAll(/<sheet\b[^>]*>/g)) {

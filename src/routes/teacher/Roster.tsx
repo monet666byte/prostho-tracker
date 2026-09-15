@@ -19,7 +19,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { parseRoster } from '../../data/repo';
 import { looksLikeTeacherRoster, parseTeacherRoster } from '../../lib/rosterParse';
-import { applyStudents, applyTeachers } from '../../data/rosterApply';
+import { applyStudents, applyTeachers, type InviteIndex } from '../../data/rosterApply';
 import { AddPersonPanel, FileImportPanel, importSummary } from '../../components/teacher/RosterImportPanels';
 import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
@@ -66,27 +66,30 @@ export default function Roster() {
    * อีเมลที่อยู่ในรายชื่อเชิญแล้วห้ามทับ (เหมือนฝั่งนักศึกษา) — กันไฟล์ที่กรอกบทบาทผิดไปถอดสิทธิ์หัวหน้ารายวิชาของคนที่ตั้งไว้แล้ว
    * (รวมถึงตัวคนที่กำลังกดเอง) · อยากเปลี่ยนสิทธิ์คนเดิมให้ใช้ supabase/add-teacher.sql
    */
-  /* อีเมล → teacher_id ที่เชิญไว้แล้ว · null = ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดไม่เสร็จ (ยังไม่รู้ id เดิม → สร้างอาจารย์ซ้ำได้) */
-  const invitedTeacherId = useMemo<ReadonlyMap<string, string> | null>(() => {
+  /* รายชื่อเชิญที่มีอยู่ (อีเมล → บทบาท/teacher_id) · null = ต่อเซิร์ฟเวอร์อยู่แต่ยังโหลดไม่เสร็จ (ยังไม่รู้ id เดิม → สร้างอาจารย์ซ้ำได้) */
+  const invitedIndex = useMemo<InviteIndex | null>(() => {
     if (!supabase) return new Map();
     if (invites === null) return null;
-    return new Map(invites.filter((v) => v.teacher_id).map((v) => [v.email.toLowerCase(), v.teacher_id!]));
+    return new Map(invites.map((v) => [v.email.toLowerCase(), { role: v.role, teacherId: v.teacher_id }]));
   }, [invites]);
 
   /* ช่องวางข้อความ (ทางสำรองของปุ่มเลือกไฟล์) — ลงข้อมูลผ่าน data/rosterApply ตัวเดียวกับไฟล์และฟอร์มเพิ่มทีละคน */
   async function doImportTeachers() {
     if (!parsedTeachers?.rows.length || !isAdmin) return;
-    if (invitedTeacherId === null) {
-      showToast({ message: t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่'), tone: 'warning' });
+    if (invitedIndex === null) {
+      showToast({ message: error ? `${t('โหลดรายชื่อเชิญไม่ได้')} — ${error}` : t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่'), tone: 'warning' });
+      if (error) void load();
       return;
     }
     setImporting(true);
     try {
-      const res = await applyTeachers(parsedTeachers.rows, invitedTeacherId, currentActor());
+      const res = await applyTeachers(parsedTeachers.rows, invitedIndex, currentActor());
       setRosterText('');
       const sum = importSummary(null, res);
       showToast({ message: t('นำเข้าแล้ว') + ' — ' + sum.message, tone: sum.warn ? 'warning' : 'success' });
       void load();
+    } catch (e) {
+      showToast({ message: `${t('นำเข้าไม่สำเร็จ')} — ${e instanceof Error ? e.message : String(e)}`, tone: 'warning' });
     } finally {
       setImporting(false);
     }
@@ -101,6 +104,8 @@ export default function Roster() {
       const sum = importSummary(res, null);
       showToast({ message: t('นำเข้าแล้ว') + ' — ' + sum.message, tone: sum.warn ? 'warning' : 'success' });
       if (res.invites) void load();
+    } catch (e) {
+      showToast({ message: `${t('นำเข้าไม่สำเร็จ')} — ${e instanceof Error ? e.message : String(e)}`, tone: 'warning' });
     } finally {
       setImporting(false);
     }
@@ -120,6 +125,7 @@ export default function Roster() {
       supabase.from('app_users').select('email'),
     ]);
     if (inv.error) { setError(inv.error.message); return; }
+    setError(null);
     setInvites(inv.data as Invite[]);
     setLinked(new Set(((app.data ?? []) as { email: string }[]).map((r) => r.email.toLowerCase())));
   }
@@ -233,8 +239,8 @@ export default function Roster() {
 
         {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
         {tab === 'people' && (<>
-        <FileImportPanel invitedTeacherId={invitedTeacherId} onDone={() => void load()} />
-        <AddPersonPanel invitedTeacherId={invitedTeacherId} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
+        <FileImportPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} />
+        <AddPersonPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
 
         {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ (ผู้ใช้เลือก 15 ก.ย. 69) */}
         <details className="roster-more" open={rosterText.trim() !== '' || undefined}>
@@ -357,6 +363,8 @@ export default function Roster() {
               options={peopleGroups.flatMap(([label, list]) => list.map((p) => ({
                 id: p.id,
                 name: personName(p),
+                /* ค้นได้ทั้งชื่อไทยและอังกฤษ ไม่ว่าแอปเปิดภาษาไหน */
+                alt: `${p.name} ${p.nameEn ?? ''}`,
                 code: 'code' in p ? (p as { code: string }).code : '',
                 group: label,
               })))}
@@ -473,7 +481,7 @@ export default function Roster() {
  * พิมพ์รหัสหรือชื่อ → รายการ 8 อันแรกที่ตรง · ลูกศรขึ้นลง + Enter เลือกได้
  */
 function PersonPicker({ options, value, onChange }: {
-  options: Array<{ id: string; name: string; code: string; group: string }>;
+  options: Array<{ id: string; name: string; alt?: string; code: string; group: string }>;
   value: string;
   onChange: (id: string) => void;
 }) {
@@ -484,7 +492,7 @@ function PersonPicker({ options, value, onChange }: {
   const [hi, setHi] = useState(0);
   const needle = q.trim().toLowerCase();
   const matches = (needle
-    ? options.filter((o) => `${o.code} ${o.name} ${o.group}`.toLowerCase().includes(needle))
+    ? options.filter((o) => `${o.code} ${o.name} ${o.alt ?? ''} ${o.group}`.toLowerCase().includes(needle))
     : options).slice(0, 8);
 
   function pick(id: string) {

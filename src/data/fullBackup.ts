@@ -17,6 +17,7 @@
 import { db } from './db';
 import { logAudit } from './repo';
 import { exportPermission } from '../lib/export';
+import { patientNamesOn } from './pdpaSync';
 import { currentPdpaRole } from '../store/app';
 
 /** ตารางที่ใส่ลงไฟล์ — ชื่อเดียวกับตาราง Dexie (ดู db.ts) */
@@ -59,8 +60,13 @@ export async function downloadFullBackup(actor: string): Promise<FullBackupResul
   const tables: Record<string, unknown[]> = {};
   const counts: Record<string, number> = {};
   let rows = 0;
+  /* สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) — ชื่อที่ยังค้างในเครื่องก่อนเซิร์ฟเวอร์ล้าง ต้องไม่หลุดลงไฟล์สำรอง
+     (เซิร์ฟเวอร์ไม่มีชื่ออยู่แล้ว ไฟล์สำรองจึงไม่ควรมีมากกว่าเซิร์ฟเวอร์) */
+  const namesOff = !patientNamesOn();
   for (const name of TABLES) {
-    const all = await db.table(name).toArray();
+    let all = await db.table(name).toArray();
+    if (namesOff && name === 'patients') all = all.map((p: Record<string, unknown>) => ({ ...p, name: '' }));
+    if (namesOff && (name === 'sect2' || name === 'sect3')) all = all.map((r: Record<string, unknown>) => ({ ...r, patientName: undefined }));
     tables[name] = all;
     counts[name] = all.length;
     rows += all.length;

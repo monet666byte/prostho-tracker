@@ -17,6 +17,8 @@ export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean
   const showToast = useApp((s) => s.showToast);
   const [rows, setRows] = useState<PendingLink[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /* ยังไม่เคยโหลดเสร็จ = ห้ามบอกว่า "ยังไม่มีคำขอ" (อาจมีอยู่แต่ยังโหลดไม่ถึง) */
+  const [loaded, setLoaded] = useState(false);
   const [confirm, setConfirm] = useState<{ row: PendingLink; approve: boolean } | null>(null);
   const guard = useRef(false);
 
@@ -24,6 +26,7 @@ export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean
     const r = await pendingLinkRequests();
     if (r.ok) { setRows(r.value); setError(null); }
     else setError(r.error);
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -57,6 +60,13 @@ export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean
   if (!cloudEnabled || (rows.length === 0 && !error && !alwaysShow)) return null;
 
   if (rows.length === 0 && !error) {
+    if (!loaded) {
+      return (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <span className="sub" style={{ margin: 0 }}>{t('กำลังโหลดคำขอผูกบัญชี…')}</span>
+        </div>
+      );
+    }
     return (
       <div className="panel" style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0 }}>

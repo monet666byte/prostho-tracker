@@ -617,7 +617,8 @@ globalThis.document = { createElement: () => ({ click() {} }) };
       .replace("import { db } from './db';", '')
       .replace("import { logAudit } from './repo';", '')
       .replace("import { exportPermission } from '../lib/export';", '')
-      .replace("import { currentPdpaRole } from '../store/app';", '');
+      .replace("import { currentPdpaRole } from '../store/app';", '')
+      .replace("import { patientNamesOn } from './pdpaSync';", "const patientNamesOn = () => (globalThis as any).__NAMES_ON__ !== false;");
     const dir = mkdtempSync(join(tmpdir(), `fullbackup-${nth++}-`));
     const f = join(dir, 'mod.mts');
     writeFileSync(f, FB_PRELUDE(role, allowed, identified) + src);
@@ -663,6 +664,15 @@ globalThis.document = { createElement: () => ({ click() {} }) };
     check('ไฟล์บอกไว้ในตัวเองว่าไม่รวมไบต์รูป', /photosNotIncluded/.test(body) && /case-photos/.test(body));
     check('บอกจำนวนรูปที่ไม่ได้อยู่ในไฟล์ กลับไปให้หน้าจอโชว์',
       res.photosNotIncluded === 1, String(res.photosNotIncluded));
+  }
+  // ⑤ สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) — ชื่อที่ค้างในเครื่องต้องไม่หลุดลงไฟล์สำรอง แต่ HN ยังอยู่
+  {
+    (globalThis as never as { __NAMES_ON__: boolean }).__NAMES_ON__ = false;
+    const m = await load('admin', true, true);
+    const res = await m.downloadFullBackup('หัวหน้าภาค');
+    const body = g.__FILES__.at(-1)?.body ?? '';
+    check('ปิดใช้ชื่อ → ไฟล์สำรองไม่มีชื่อผู้ป่วย แต่ยังมี HN', res.ok === true && !body.includes('ผู้ป่วย A') && body.includes('HN-1'));
+    (globalThis as never as { __NAMES_ON__: boolean }).__NAMES_ON__ = true;
   }
 }
 
