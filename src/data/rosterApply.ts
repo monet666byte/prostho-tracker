@@ -11,6 +11,38 @@ import { supabase } from '../lib/cloud';
 import { teacherIdFromEmail } from '../lib/rosterParse';
 import type { RosterRow, TeacherRosterRow } from '../lib/rosterParse';
 import { importRoster, importTeachers } from './repo';
+import { pullAll } from './cloudSync';
+import { db } from './db';
+
+/**
+ * ก่อนนำเข้า: แถวที่มีอยู่บนเซิร์ฟเวอร์แล้ว ต้องมีในเครื่องด้วย (ตรวจซ้ำ 15 ก.ย. 69)
+ *
+ * ทำไม: importRoster / importTeachers ตัดสินว่า "คนเดิม หรือคนใหม่" จากข้อมูลในเครื่อง
+ * เครื่องที่เพิ่งล็อกอินและยังดึงข้อมูลรอบแรกไม่เสร็จ จะมองคนเดิมเป็นคนใหม่ → ส่งแถวใหม่ทั้งแถวขึ้นไปทับ
+ * = ชื่ออังกฤษ / ตำแหน่ง / ที่ปรึกษาของกลุ่มบนเซิร์ฟเวอร์ถูกล้างเงียบๆ
+ * จึงดึงข้อมูลก่อน แล้วถามเซิร์ฟเวอร์ตรงๆ ว่ามีแถวไหนที่เครื่องนี้ยังไม่มี · มี = หยุด ไม่เขียนอะไรเลย
+ */
+async function assertLocalCaughtUp(q: { studentCodes?: string[]; groupCodes?: string[]; teacherIds?: string[] }): Promise<void> {
+  if (!supabase) return;
+  await pullAll();
+  const chunks = <T,>(xs: T[]) => Array.from({ length: Math.ceil(xs.length / 100) }, (_, i) => xs.slice(i * 100, i * 100 + 100));
+  const NOT_READY = 'ข้อมูลในเครื่องยังดึงจากเซิร์ฟเวอร์ไม่ครบ — รอสักครู่แล้วกดอีกครั้ง (ยังไม่ได้บันทึกอะไร)';
+  const check = async (table: 'students' | 'groups' | 'teachers', col: 'code' | 'id', values: string[] | undefined) => {
+    for (const part of chunks([...new Set(values ?? [])])) {
+      const { data, error } = await supabase!.from(table).select(col).in(col, part);
+      if (error) throw new Error(`${NOT_READY} · ${error.message}`);
+      const onServer = (data ?? []).map((r) => String((r as Record<string, unknown>)[col]));
+      if (!onServer.length) continue;
+      const local = table === 'students'
+        ? new Set((await db.students.where('code').anyOf(onServer).toArray()).map((s) => s.code))
+        : new Set((await db.table(table).bulkGet(onServer)).filter(Boolean).map((r) => String((r as Record<string, unknown>)[col])));
+      if (onServer.some((v) => !local.has(v))) throw new Error(NOT_READY);
+    }
+  };
+  await check('students', 'code', q.studentCodes);
+  await check('groups', 'code', q.groupCodes);
+  await check('teachers', 'id', q.teacherIds);
+}
 
 export interface InviteOutcome {
   /** อีเมลที่เพิ่มเข้ารายชื่อเชิญรอบนี้ */
@@ -60,12 +92,24 @@ export const needsDtmu = (rows: ReadonlyArray<RosterRow>) => rows.some((r) => !r
  * ลงนักศึกษา — แยกตามรุ่นในแต่ละแถว (ไฟล์เดียวอาจมีหลายรุ่น) · แถวที่ไม่มีรุ่นใช้ fallbackDtmu
  * @throws เมื่อมีแถวไม่มีรุ่นและไม่ได้ให้ fallbackDtmu — หน้าจอต้องเช็ค needsDtmu ก่อน
  */
-export async function applyStudents(rows: RosterRow[], fallbackDtmu: number | null, by: string): Promise<StudentApplyResult> {
+export async function applyStudents(
+  rows: RosterRow[], fallbackDtmu: number | null, by: string,
+  opt: { onlyNew?: boolean } = {},
+): Promise<StudentApplyResult> {
   const byDtmu = new Map<number, RosterRow[]>();
   for (const r of rows) {
     const d = r.dtmu ?? fallbackDtmu;
     if (!d) throw new Error('บางแถวไม่มีเลขรุ่น — กรอกเลขรุ่นก่อน');
     byDtmu.set(d, [...(byDtmu.get(d) ?? []), r]);
+  }
+  await assertLocalCaughtUp({
+    studentCodes: rows.map((r) => r.code),
+    groupCodes: [...byDtmu].flatMap(([d, rs]) => rs.map((r) => `TH${d}-${r.group}`)),
+  });
+  /* ฟอร์มเพิ่มทีละคน = คนใหม่เท่านั้น · เช็คหลังดึงข้อมูลแล้ว (เช็คก่อนดึง เครื่องที่ยังไม่มีแถวของเพื่อนจะปล่อยให้ทับได้ — เจอตอนลองจริง 15 ก.ย. 69) */
+  if (opt.onlyNew) {
+    const dup = await db.students.where('code').anyOf(rows.map((r) => r.code)).first();
+    if (dup) throw new Error(`รหัส ${dup.code} มีในระบบแล้ว (${dup.name}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง`);
   }
   let added = 0;
   let updated = 0;
@@ -94,6 +138,7 @@ export async function applyTeachers(rows: TeacherRosterRow[], invited: InviteInd
   const withId = await Promise.all(usable.map(async (r) => ({
     ...r, id: invited.get(r.email)?.teacherId ?? await teacherIdFromEmail(r.email),
   })));
+  if (withId.length) await assertLocalCaughtUp({ teacherIds: withId.map((r) => r.id) });
   const res = withId.length ? await importTeachers(withId, by) : { added: 0, updated: 0 };
   const invites = await upsertInvites(withId.map((r) => ({
     email: r.email, role: 'teacher' as const, student_id: null, teacher_id: r.id, is_admin: r.isAdmin,

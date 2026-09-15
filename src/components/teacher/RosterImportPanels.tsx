@@ -286,15 +286,18 @@ export function AddPersonPanel({ invited, invitesError, onDone, onLinkExisting }
         if (invited === null) { setProblem(invitesError ? `${t('โหลดรายชื่อเชิญไม่ได้')} — ${invitesError}` : t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่')); return; }
         const r = parseTeacherRoster(`ชื่อ\tชื่ออังกฤษ\tอีเมล\tบทบาท\n${[f.name, f.nameEn, f.email, f.role].map(clean).join('\t')}`);
         if (!r.rows.length) { setProblem(r.errors[0]?.reason ?? t('กรอกข้อมูลให้ครบ')); return; }
+        /* คนใหม่เท่านั้น — อีเมลที่เชิญไว้แล้วจะไปแก้ชื่อคนเดิมโดยสิทธิ์ไม่เปลี่ยน ซึ่งไม่ใช่สิ่งที่คนกรอกฟอร์มนี้ตั้งใจ */
+        if (invited.has(r.rows[0].email)) { setProblem(t('อีเมลนี้อยู่ในรายชื่อแล้ว — ดูในตาราง "รายชื่อทั้งหมด" ด้านล่าง')); return; }
         tc = await applyTeachers(r.rows, invited, currentActor());
       } else {
         const r = parseRoster(`รหัส\tชื่อ\tชื่ออังกฤษ\tอีเมล\tรุ่น\tกลุ่ม\n${[f.code, f.name, f.nameEn, f.email, f.dtmu, f.group].map(clean).join('\t')}`);
         if (!r.rows.length) { setProblem(r.errors[0]?.reason ?? t('กรอกข้อมูลให้ครบ')); return; }
         if (needsDtmu(r.rows)) { setProblem(t('กรอกเลขรุ่น (DTMU)')); return; }
-        /* ฟอร์มนี้มีไว้เพิ่ม "คนใหม่" — รหัสที่มีแล้วจะกลายเป็นแก้ชื่อ/ย้ายกลุ่มของคนเดิม (พิมพ์รหัสผิดตัวเดียวก็ทับเพื่อน) */
+        /* ฟอร์มนี้มีไว้เพิ่ม "คนใหม่" — รหัสที่มีแล้วจะกลายเป็นแก้ชื่อ/ย้ายกลุ่มของคนเดิม (พิมพ์รหัสผิดตัวเดียวก็ทับเพื่อน)
+           เช็คเร็วในเครื่องก่อน แล้ว applyStudents เช็คซ้ำหลังดึงข้อมูลล่าสุด */
         const dup = await db.students.where('code').equals(r.rows[0].code).first();
         if (dup) { setProblem(t('รหัส {c} มีในระบบแล้ว ({n}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง', { c: dup.code, n: dup.name })); return; }
-        st = await applyStudents(r.rows, null, currentActor());
+        st = await applyStudents(r.rows, null, currentActor(), { onlyNew: true });
       }
       const s = importSummary(st, tc);
       showToast({ message: t('เพิ่มแล้ว') + ' — ' + s.message, tone: s.warn ? 'warning' : 'success' });

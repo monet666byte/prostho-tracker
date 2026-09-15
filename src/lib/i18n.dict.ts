@@ -1480,4 +1480,6 @@ export const DICT: Record<string, string> = {
   'รหัส {c} มีในระบบแล้ว ({n}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง': 'ID {c} already exists ({n}) — update existing people via file import, or check the ID',
   'นำเข้าไม่สำเร็จ': 'Import failed',
   'กำลังโหลดคำขอผูกบัญชี…': 'Loading account link requests…',
+  'บันทึกกลุ่ม {g} บนเซิร์ฟเวอร์แล้ว แต่เครื่องนี้ยังดึงข้อมูลกลับมาไม่ได้ — รีเฟรชหน้าเพื่อดูค่าจริง': 'Saved group {g} on the server, but this device could not fetch it back yet — refresh to see the actual value',
+  'อีเมลนี้อยู่ในรายชื่อแล้ว — ดูในตาราง "รายชื่อทั้งหมด" ด้านล่าง': 'This email is already on the list — see the "All people" table below',
 };

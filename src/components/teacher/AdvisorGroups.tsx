@@ -221,6 +221,13 @@ export function AdvisorEditor() {
     const res = await setGroupAdvisors(r.code, sent);
     setBusy(null);
     if (!res.ok) { setError(res.error); return; }
+    /* เซิร์ฟเวอร์รับแล้ว แต่รอบดึงข้อมูลอาจตกระหว่างทาง (เน็ตหลุด) — ถ้าในเครื่องยังไม่ใช่ชุดที่ส่งไป
+       ห้ามขึ้น "บันทึกแล้ว" ทับชื่อเก่า (ป้ายหลอก) · เก็บร่างไว้และบอกตรงๆ (ตรวจซ้ำ 15 ก.ย. 69) */
+    const nowLocal = currentAdvisorIds(await db.groups.get(r.code));
+    if ([...nowLocal].sort().join('|') !== sent.filter(Boolean).sort().join('|')) {
+      setError(t('บันทึกกลุ่ม {g} บนเซิร์ฟเวอร์แล้ว แต่เครื่องนี้ยังดึงข้อมูลกลับมาไม่ได้ — รีเฟรชหน้าเพื่อดูค่าจริง', { g: groupShort(r.code) }));
+      return;
+    }
     /* ล้างร่างเฉพาะเมื่อยังเป็นชุดที่ส่งไป — ถ้าระหว่างรอมีคนเพิ่ม/เอาออกอีก ต้องเก็บไว้ให้กดบันทึกรอบใหม่ */
     setDraft((d) => {
       if ((d[r.code] ?? []).join('|') !== sent.join('|')) return d;
