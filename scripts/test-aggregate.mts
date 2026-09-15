@@ -15,8 +15,9 @@ import {
   staleRows, summarizeAll, summarizeGroups, summarizeStudent, alumniOverview,
 } from '../src/domain/aggregate.ts';
 import { procList } from '../src/domain/rules.ts';
+import { todaySummary } from '../src/domain/today.ts';
 import { readDefaultSettings } from './test-helpers.mts';
-import type { Student, WorkType, Workpiece } from '../src/domain/types.ts';
+import type { CheckIn, Student, WorkType, Workpiece } from '../src/domain/types.ts';
 
 let bad = 0;
 const ok = (name: string, cond: boolean, extra: unknown = '') => {
@@ -255,6 +256,48 @@ console.log('\nalumniOverview');
   ok('ครบเกณฑ์สะสม 1 คน (a) · b ไม่ครบ', o.reqComplete === 1, String(o.reqComplete));
   ok('ทั้งหมด = 10 ชิ้น', o.total === 10, String(o.total));
   ok('ลิสต์ว่างไม่พัง', alumniOverview([], []).students === 0);
+}
+
+/* ── 8. todaySummary (กล่อง "สรุปวันนี้" หน้าภาพรวม) ──────────────────────── */
+console.log('\ntodaySummary');
+{
+  const now = new Date();
+  const ci = (studentId: string, days: number, status = 'pending') =>
+    ({ id: `c${++seq}`, studentId, date: daysAgo(days).slice(0, 10), status, punctual: true, noPatient: false, activities: [] }) as unknown as CheckIn;
+  const a = student({ id: 'ta' }), b = student({ id: 'tb' }), outsider = student({ id: 'tz' });
+  const works = [
+    wp('CD', { studentId: 'ta', lastUpdatedAt: daysAgo(40) }),
+    wp('RPD', { studentId: 'tb', lastUpdatedAt: daysAgo(30) }),
+    wp('CD', { studentId: 'tb', lastUpdatedAt: daysAgo(1) }),
+    wp('CD', { studentId: 'tb', lastUpdatedAt: daysAgo(90), returned: true } as Partial<Workpiece>),
+    wp('CB', { studentId: 'tz', lastUpdatedAt: daysAgo(99) }),
+    finished('PC', { studentId: 'ta', completedAt: daysAgo(2) }),
+    finished('CB', { studentId: 'ta', completedAt: daysAgo(2), fromSheet: true }),
+    finished('CD', { studentId: 'tb', completedAt: daysAgo(20) }),
+  ];
+  const checkins = [ci('ta', 3), ci('ta', 1), ci('tb', 0), ci('tb', 9, 'evaluated'), ci('tz', 30)];
+  const risk = [{ studentId: 'ta', risk: 'high' as const }, { studentId: 'tb', risk: 'medium' as const }, { studentId: 'tz', risk: 'high' as const }];
+  const s = todaySummary({ students: [a, b], works, checkins, settings: S, risk, now });
+  ok('รอประเมินนับเป็นคน ไม่ใช่คาบ (ta 2 คาบ + tb 1 คาบ = 2 คน)', s.pendingPeople === 2, s.pendingPeople);
+  ok('คาบที่ประเมินแล้วไม่นับ · คาบรอเก่าสุด = 3 วัน (ของคนนอกขอบเขตไม่นับ)', s.oldestPendingDays === 3, s.oldestPendingDays);
+  ok('คนเสี่ยงนับเฉพาะในขอบเขต', s.highRisk === 1, s.highRisk);
+  ok('งานค้างใช้กติกาเดียวกับ isStale — เคสคืนแล้ว/คนนอกไม่นับ', s.stale === 2, s.stale);
+  ok('งานค้างตรงกับ staleRows ของหน้าเดียวกัน', s.stale === staleRows([a, b], works, S).length);
+  ok('จบเคสสัปดาห์นี้ไม่นับงานจากชีต และไม่นับที่จบเกิน 7 วัน', s.doneThisWeek === 1, s.doneThisWeek);
+  ok('มีเรื่องต้องดู', s.needsAttention);
+  ok('step ที่งานค้างกองมากสุดมีค่า', s.staleTop !== null && s.staleTop.progression === 0, JSON.stringify(s.staleTop));
+}
+{
+  const g = [{ code: 'A', percent: 70, year: 5 }, { code: 'B', percent: 40, year: 6 }, { code: 'C', percent: 54, year: 5 }, { code: 'D', percent: 55, year: 5 }];
+  const s = todaySummary({ students: [], works: [], checkins: [], settings: S, risk: [], groups: g });
+  ok('กลุ่มต่ำกว่า 55% เรียงจากต่ำสุด · 55 พอดีไม่นับ', s.lowGroups.map((x) => x.code).join(',') === 'B,C', s.lowGroups.map((x) => x.code).join(','));
+  ok('มีกลุ่มต่ำกว่าเกณฑ์ = มีเรื่องต้องดู', s.needsAttention);
+}
+{
+  const st = student({ id: 'calm' });
+  const s = todaySummary({ students: [st], works: [wp('CD', { studentId: 'calm' })], checkins: [], settings: S, risk: [{ studentId: 'calm', risk: 'ok' }] });
+  ok('ไม่มีอะไรค้าง → ไม่มีเรื่องน่าห่วง', !s.needsAttention && s.stale === 0 && s.staleTop === null);
+  ok('ลิสต์ว่างไม่พัง', todaySummary({ students: [], works: [], checkins: [], settings: S, risk: [] }).pendingPeople === 0);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

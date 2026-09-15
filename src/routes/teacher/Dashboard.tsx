@@ -4,6 +4,9 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
+import { TodayCard, type TodayLine } from '../../components/teacher/TodayCard';
+import { TypeDonut } from '../../components/charts/TypeDonut';
+import { todaySummary } from '../../domain/today';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
@@ -96,7 +99,6 @@ export default function Dashboard() {
   );
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
   const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
-  const allCheckIns = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
 
   const group = useApp((st) => st.teacherGroup);
   const setGroup = useApp((st) => st.setTeacherGroup);
@@ -107,17 +109,23 @@ export default function Dashboard() {
   /* กล่องตัวเลขของช่องกลุ่มที่เพิ่งจิ้ม (ไอแพดไม่มี hover) — แตะที่อื่นแล้วปิด */
   const [peek, setPeek] = useState<string | null>(null);
   const studentsRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const stepsRef = useRef<HTMLDivElement>(null);
+  const isAdmin = useApp((st) => !!st.cloudUser?.isAdmin);
+  /** เลื่อนไปการ์ดแล้วกะพริบหนึ่งครั้ง — ใช้ร่วมกันระหว่างปุ่มในการ์ดกลุ่มกับบรรทัดในสรุปวันนี้ */
+  const scrollFlash = (el: HTMLElement | null, block: ScrollLogicalPosition = 'start') => {
+    if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block });
+    el.classList.remove('panel--flash');
+    void el.offsetWidth;
+    el.classList.add('panel--flash');
+  };
   const goToStudents = (code: string) => {
     setGroup(code);
     setQuery('');
     setPeek(null);
-    const el = studentsRef.current;
-    if (!el) return;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    el.classList.remove('panel--flash');
-    void el.offsetWidth;
-    el.classList.add('panel--flash');
+    scrollFlash(studentsRef.current);
   };
   useEffect(() => {
     if (!peek) return;
@@ -128,10 +136,13 @@ export default function Dashboard() {
 
   const summaries = useMemo(() => summarizeAll(students, works, settings), [students, works, settings]);
   /* จุดคนในกล่องตัวเลขของช่องกลุ่ม — สีเสี่ยงตัวเดียวกับหน้าสรุปกลุ่ม (riskRows) ตัวเลขสองหน้าจึงตรงกัน */
-  const groupRisk = useMemo(
-    () => riskByGroup(riskRows(students, works, settings, allCheckIns, everyUpdate)),
-    [students, works, settings, allCheckIns, everyUpdate],
+  const activeStudents = useMemo(() => allStudents.filter((s) => isActiveStudent(s)), [allStudents]);
+  /* คิดสีเสี่ยงครั้งเดียวจากทุกคนที่ยังเรียน — การ์ดกลุ่มกรองตามชั้นปีที่ดู · สรุปวันนี้ของที่ปรึกษาใช้กลุ่มตัวเองเสมอ (ไม่ขึ้นกับแท็บปี) */
+  const riskAll = useMemo(
+    () => riskRows(activeStudents, allWorks, settings, everyCheckIn, everyUpdate),
+    [activeStudents, allWorks, settings, everyCheckIn, everyUpdate],
   );
+  const groupRisk = useMemo(() => riskByGroup(riskAll.filter((r) => stuIds.has(r.student.id))), [riskAll, stuIds]);
   const groups = useMemo(() => summarizeGroups(summaries), [summaries]);
   const selected = groups.find((g) => g.code === group) ?? groups[0];
   const stale = useMemo(() => staleRows(students, works, settings), [students, works, settings]);
@@ -167,10 +178,71 @@ export default function Dashboard() {
     };
   }, [teachersAll, allStudents]);
 
-  const activePieces = works.filter(isActiveWork).length;
   const isAlumniView = yearView === 'alumni';
   const alumni = useMemo(() => alumniOverview(summaries, works), [summaries, works]);
-  const pendingEval = new Set(allCheckIns.filter((c) => c.status === 'pending').map((c) => c.studentId)).size;
+  const activeByType = useMemo(() => countByType(works.filter(isActiveWork)), [works]);
+
+  /* สรุปวันนี้ (ผู้ใช้เลือก 15 ก.ย. 69) — หัวหน้ารายวิชา/ยังไม่มีกลุ่ม = ทั้งชั้นปีที่ดูอยู่ · ที่ปรึกษา = กลุ่มตัวเอง */
+  const groupScope = !isAdmin && !!ownGroup && activeStudents.some((s) => s.group === ownGroup);
+  const today = useMemo(() => {
+    const scopeStudents = groupScope ? activeStudents.filter((s) => s.group === ownGroup) : students;
+    return todaySummary({
+      students: scopeStudents,
+      works: allWorks,
+      checkins: everyCheckIn,
+      settings,
+      risk: riskAll.map((r) => ({ studentId: r.student.id, risk: r.risk })),
+      groups: groupScope ? undefined : groups,
+    });
+  }, [groupScope, activeStudents, ownGroup, students, allWorks, everyCheckIn, settings, riskAll, groups]);
+  const groupName = (code: string, year: number) => (yearView === 'all' ? `${groupShort(code)} ${t('ปี {n}', { n: year })}` : groupShort(code));
+  const todayLines: TodayLine[] = [];
+  if (today.pendingPeople > 0) {
+    todayLines.push({
+      key: 'eval', tone: 'do', icon: 'eval',
+      text: <>{t('รอประเมิน')} <b>{t('{n} คน', { n: today.pendingPeople })}</b> · {today.oldestPendingDays > 0 ? t('เก่าสุด {d} วันก่อน', { d: today.oldestPendingDays }) : t('วันนี้')}</>,
+      go: { label: t('ไปประเมิน'), onClick: () => navigate('/teacher/evaluate') },
+    });
+  }
+  if (groupScope) {
+    if (today.highRisk > 0 || today.stale > 0) {
+      todayLines.push({
+        key: 'risk', tone: 'warn', icon: today.highRisk > 0 ? 'warn' : 'stale',
+        text: today.highRisk > 0
+          ? <>{t('เสี่ยงไม่ทันเกณฑ์')} <b>{t('{n} คน', { n: today.highRisk })}</b>{today.stale > 0 && <> · {t('งานค้างเกิน {d} วัน', { d: settings.stale })} {t('{n} ชิ้น', { n: today.stale })}</>}</>
+          : <>{t('งานค้างเกิน {d} วัน', { d: settings.stale })} <b>{t('{n} ชิ้น', { n: today.stale })}</b></>,
+        go: { label: t('ดูรายชื่อ'), onClick: () => goToStudents(ownGroup!) },
+      });
+    }
+  } else {
+    if (today.lowGroups.length > 0 || today.highRisk > 0) {
+      const low = today.lowGroups;
+      todayLines.push({
+        key: 'low', tone: 'warn', icon: 'warn',
+        text: low.length > 0
+          ? <>{t('ต่ำกว่า 55%')}: <b>{low.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}{low.length > 3 ? ` +${low.length - 3}` : ''}</b>{today.highRisk > 0 && <> · {t('เสี่ยงรวม {n} คน', { n: today.highRisk })}</>}</>
+          : <>{t('เสี่ยงไม่ทันเกณฑ์')} <b>{t('{n} คน', { n: today.highRisk })}</b></>,
+        go: low.length > 0
+          ? { label: t('ดูกลุ่ม'), onClick: () => { scrollFlash(stripRef.current, 'center'); setGroup(low[0].code); setPeek(low[0].code); } }
+          : undefined,
+      });
+    }
+    if (today.stale > 0 && today.staleTop) {
+      const top = today.staleTop;
+      todayLines.push({
+        key: 'stale', tone: 'warn', icon: 'stale',
+        text: <>{t('งานค้างเกิน {d} วัน', { d: settings.stale })} <b>{t('{n} ชิ้น', { n: today.stale })}</b> · {t('ส่วนใหญ่ติด step {n}', { n: top.progression })}</>,
+        go: { label: t('ดูในกราฟ'), onClick: () => { setStepType(top.type); setOpenStep(top.progression); scrollFlash(stepsRef.current, 'center'); } },
+      });
+    }
+  }
+  if (!today.needsAttention) {
+    todayLines.unshift({ key: 'calm', tone: 'good', icon: 'good', text: t('วันนี้ไม่มีอะไรน่าห่วง') });
+  }
+  if (today.doneThisWeek > 0 && todayLines.length < 3) {
+    todayLines.push({ key: 'done', tone: 'good', icon: 'good', text: <>{t('สัปดาห์นี้จบเคส')} <b>{t('{n} ชิ้น', { n: today.doneThisWeek })}</b></> });
+  }
+  const todayScope = groupScope ? groupShort(ownGroup!) : yearView === 'all' ? t('ทั้งชั้นปี') : t('ปี {n}', { n: yearView });
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
@@ -261,40 +333,22 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-            <div className="kpis kpis--strip">
-              <div className="kpi">
-                <div className="kpi__value">
-                  {activePieces}
-                  <span className="kpi__of"> / {works.length}</span>
-                </div>
-                <div className="kpi__label">{t('ชิ้นงานที่กำลังทำ')}</div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__value" style={{ color: yearly.piecesDone >= yearly.piecesGoal ? 'var(--success)' : undefined }}>
-                  {yearly.piecesDone}
-                  <span className="kpi__of"> / {yearly.piecesGoal}</span>
-                </div>
-                <div className="kpi__label">{t('จบเคสสะสมปี')} {yearly.year}</div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__value" style={{ color: stale.length > 0 ? 'var(--danger)' : undefined }}>{stale.length}</div>
-                <div className="kpi__label">
-                  {t('เคสค้าง >')} {settings.stale} {t('วัน')} · {t('กระจายใน {n} กลุ่ม', { n: new Set(stale.map((s) => s.student.group)).size })}
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__value" style={{ color: pendingEval > 0 ? 'var(--warning)' : 'var(--success-dark)' }}>{pendingEval}</div>
-                <div className="kpi__label">
-                  {t('นักศึกษารอประเมิน')}
-                  {pendingEval > 0 && <> · <button className="kpi__link" onClick={() => navigate('/teacher/evaluate')}>{t('ไปประเมิน')} ›</button></>}
-                </div>
-              </div>
+            <div className="todayrow">
+              <TodayCard scope={todayScope} summary={today} lines={todayLines.slice(0, 3)} />
+              {/* วงงานที่กำลังทำแทนกล่องตัวเลข 4 ตัวเดิม · เลขจบเคสสะสมย้ายมาเป็นบรรทัดเล็กใต้วง (ผู้ใช้ตกลง 15 ก.ย. 69) */}
+              <section className="panel donutpanel">
+                <h3>{t('งานที่กำลังทำ')}</h3>
+                <TypeDonut
+                  items={activeByType}
+                  foot={t('จบแล้วปี {y} · {a} จาก {b} ชิ้น', { y: yearly.year, a: yearly.piecesDone, b: yearly.piecesGoal })}
+                />
+              </section>
             </div>
             )}
 
             {!isAlumniView && (<>
             <div className="homelabel tlabel">{t('กลุ่มคลินิก')} · {groups.length} {t('กลุ่ม')}</div>
-            <div className="panel groupstrip">
+            <div className="panel groupstrip" ref={stripRef}>
               {/* เดิม 24 กล่องขอบหนา มีหลอดทุกใบ → ช่องไม่มีกรอบ แถวละปี · ต่ำกว่า 55% เป็นช่องสีส้ม (เดิมแค่เปลี่ยนสีตัวเลข ตามองข้าม)
                   กลุ่มที่อาจารย์ดูแลมีป้าย "กลุ่มคุณ" (ผู้ใช้ขอให้ชัด 14 ก.ย.) · กลุ่มที่เลือกดูอยู่มีกรอบบาง */}
               {(yearView === 'all' ? [5, 6] : [null]).map((yr) => {
@@ -363,10 +417,6 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-            </div>
-            <div className="grouplegend">
-              <span><i className="groupcell--low" />{t('ต่ำกว่า 55%')}</span>
-              {ownGroup && <span><i className="groupcell--mine" />{t('กลุ่มที่คุณดูแล')}</span>}
             </div>
             </>)}
 
@@ -532,7 +582,7 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
-                <div className="panel">
+                <div className="panel" ref={stepsRef} style={{ scrollMarginTop: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <h3>{t('ชิ้นงานคงค้าง จำแนกตามขั้นงาน')}</h3>
