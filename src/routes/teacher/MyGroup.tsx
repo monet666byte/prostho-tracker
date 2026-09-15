@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { DivergingBars } from '../../components/charts/Diverging';
@@ -28,6 +28,21 @@ export default function MyGroup() {
   const updatesAll = useAllProgressUpdates();
   const navigate = useNavigate();
   const [openRow, setOpenRow] = useState<string | null>(null);
+  /* การ์ดงานในมือตอนชี้แถว (ผู้ใช้เลือก mock 15 ก.ย. 69) — แถวไม่ขยับ มีแค่พื้นขาว + การ์ดโผล่
+     จอสัมผัสไม่มี hover จึงไม่ขึ้นการ์ด — ใช้ ▾ กางแถวแทนเหมือนเดิม */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [peek, setPeek] = useState<{ id: string; x: number; y: number; ax: number } | null>(null);
+  const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches;
+  const peekRow = (id: string, cell: HTMLElement | null) => {
+    const panel = panelRef.current;
+    if (!canHover || !panel || !cell) return;
+    const pb = panel.getBoundingClientRect();
+    const cb = cell.getBoundingClientRect();
+    const W = 240;
+    const want = cb.left - pb.left + 12;
+    const x = Math.max(8, Math.min(pb.width - W - 8, want));
+    setPeek({ id, x, y: cb.top - pb.top - 8, ax: want - x + 24 });
+  };
 
   const risks = useMemo(
     () => riskRows(students, works, settings, checkinsAll, updatesAll),
@@ -120,12 +135,12 @@ export default function MyGroup() {
           </div>
         </div>
 
-        <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel grppanel" ref={panelRef} style={{ marginTop: 18 }} onMouseLeave={() => setPeek(null)}>
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
              เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ (ผู้ใช้ขอลดความรก 2 ก.ย.) */}
           <p className="sub">{t('สีจุด: เขียว = ตามแผน · ส้ม = จับตา · แดง = เสี่ยงสูง')} · {t('กดชื่อเพื่อดูงานรายคน')}</p>
-          <table className="tbl">
+          <table className={`tbl grptable${peek ? ' grptable--peek' : ''}`}>
             <thead>
               <tr>
                 <th style={{ width: 14 }} />
@@ -144,7 +159,8 @@ export default function MyGroup() {
                 return (
                   <Fragment key={r.student.id}>
                     <tr
-                      title={t(r.reason)}
+                      className={peek?.id === r.student.id ? 'grprow--focus' : undefined}
+                      onMouseEnter={(e) => peekRow(r.student.id, e.currentTarget.querySelector<HTMLElement>('.worknow'))}
                       onClick={() => (r.pieces.length > 1 || r.donePieces.length > 0) && setOpenRow(open ? null : r.student.id)}
                       onKeyDown={(e) => {
                         if ((e.key === 'Enter' || e.key === ' ') && (r.pieces.length > 1 || r.donePieces.length > 0)) {
@@ -212,13 +228,16 @@ export default function MyGroup() {
                               <span className="worknow__ago">{main.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: main.days })}</span>
                             )}
                             {(r.pieces.length > 1 || r.donePieces.length > 0) && (
-                              <span className="worknow__more">
-                                {open
-                                  ? t('ซ่อน') + ' ▴'
-                                  : [
-                                      r.pieces.length > 1 ? t('+{n} งาน', { n: r.pieces.length - 1 }) : '',
-                                      r.donePieces.length ? t('จบแล้ว {n}', { n: r.donePieces.length }) : '',
-                                    ].filter(Boolean).join(' · ') + ' ▾'}
+                              /* หลอดจิ๋วชิ้นละหลอดแทน "+2 งาน · จบแล้ว 1" — ตัวเลขอยู่ในการ์ดตอนชี้ */
+                              <span className="worknow__more worknow__minis" aria-label={[
+                                r.pieces.length > 1 ? t('+{n} งาน', { n: r.pieces.length - 1 }) : '',
+                                r.donePieces.length ? t('จบแล้ว {n}', { n: r.donePieces.length }) : '',
+                              ].filter(Boolean).join(' · ')}>
+                                {r.pieces.map((pc) => (
+                                  <i key={pc.id}><em style={{ width: `${Math.round((pc.progression / Math.max(1, pc.max)) * 100)}%`, background: typeMeta(pc.type).color }} /></i>
+                                ))}
+                                {r.donePieces.map((pc) => <i key={pc.id}><em style={{ width: '100%', background: 'var(--success)' }} /></i>)}
+                                <span>{open ? '▴' : '▾'}</span>
                               </span>
                             )}
                           </div>
@@ -261,6 +280,32 @@ export default function MyGroup() {
               })}
             </tbody>
           </table>
+          {(() => {
+            const r = peek && groupRisks.find((x) => x.student.id === peek.id);
+            if (!peek || !r) return null;
+            return (
+              <div className="grpcard" role="tooltip" style={{ left: peek.x, top: peek.y, '--ax': `${peek.ax}px` } as React.CSSProperties}>
+                <b>{personName(r.student)}</b>
+                <small>{t('งานในมือ {a} ชิ้น · จบแล้ว {b}', { a: r.pieces.length, b: r.donePieces.length })}</small>
+                {r.pieces.map((pc, i) => (
+                  <span className="grpcard__pc" key={pc.id} style={{ '--k': i } as React.CSSProperties}>
+                    <span style={{ color: '#9db4ff' }}>{typeMeta(pc.type).prefix}</span>
+                    <span className="grpcard__tr"><i style={{ width: `${Math.round((pc.progression / Math.max(1, pc.max)) * 100)}%` }} /></span>
+                    <span className="grpcard__d">{pc.days === 0 ? t('วันนี้') : t('{n} วัน', { n: pc.days })}</span>
+                  </span>
+                ))}
+                {r.donePieces.map((pc, i) => (
+                  <span className="grpcard__pc" key={pc.id} style={{ '--k': r.pieces.length + i } as React.CSSProperties}>
+                    <span style={{ color: '#6ce9a6' }}>{typeMeta(pc.type).prefix}</span>
+                    <span className="grpcard__tr"><i style={{ width: '100%', background: '#12b76a' }} /></span>
+                    <span className="grpcard__d">{t('จบเคสแล้ว')}</span>
+                  </span>
+                ))}
+                {r.stuckPeriods >= 2 && <small className="grpcard__warn">{t('ติดมา {n} คาบ', { n: r.stuckPeriods })}</small>}
+                {r.risk !== 'ok' && <small>{t(r.reason)}</small>}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="panel" style={{ marginTop: 16 }}>

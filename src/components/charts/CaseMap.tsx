@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { orderOf, typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
 import { t, tText } from '../../lib/i18n';
@@ -19,7 +19,7 @@ function shortStep(name: string): string {
   return words.join(' ');
 }
 
-export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLegend = true, showStaleLegend = true, stepNames }: {
+export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLegend = true, showStaleLegend = true, stepNames, lively = false }: {
   dots: CaseDot[];
   staleDays: number;
   /** ปิดเมื่อหน้าแม่มี legend สีอยู่แล้ว (เช่นปุ่มประเภทที่มีจุดสี+จำนวน) */
@@ -31,8 +31,23 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
   /** ถ้าส่งมา: เลขแกนใต้กราฟกดได้ (เปิดรายละเอียดขั้นตอนของ step นั้น) */
   onStepClick?: (n: number) => void;
   activeStep?: number | null;
+  /** หน้าวิเคราะห์: จุดเด้งขึ้นพร้อมกันตอนเปิด · ชี้คอลัมน์แล้วคอลัมน์อื่นจาง + การ์ดสรุป (ผู้ใช้เลือก 15 ก.ย. 69) */
+  lively?: boolean;
 }) {
   const [hover, setHover] = useState<CaseDot | null>(null);
+  const [colPeek, setColPeek] = useState<{ n: number; x: number; y: number; ax: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches;
+  const peekCol = (n: number, el: HTMLElement | null) => {
+    const wrap = wrapRef.current;
+    if (!lively || !canHover || !wrap || !el) return;
+    const wb = wrap.getBoundingClientRect();
+    const cb = el.getBoundingClientRect();
+    const W = 200;
+    const want = cb.left - wb.left + cb.width / 2 - W / 2;
+    const x = Math.max(0, Math.min(wb.width - W, want));
+    setColPeek({ n, x, y: cb.top - wb.top - 8, ax: W / 2 + (want - x) });
+  };
 
   // เรียงสีให้เกาะกลุ่มกันในแต่ละกอง (ตามลำดับประเภทงาน) และดันตัวค้างขึ้นบนสุดของกลุ่มตัวเอง
   const columns = Array.from({ length: 11 }, (_, i) => ({
@@ -47,10 +62,16 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
   const tallest = Math.max(1, ...columns.map((c) => c.items.length));
 
   return (
-    <div>
-      <div className="casemap" style={{ '--rows': Math.ceil(tallest / 5) } as never}>
+    <div ref={wrapRef} className={lively ? 'casemap-wrap casemap-wrap--lively' : undefined} onMouseLeave={() => setColPeek(null)}>
+      <div className={`casemap${colPeek ? ' casemap--peek' : ''}`} style={{ '--rows': Math.ceil(tallest / 5) } as never}>
         {columns.map((col) => (
-          <div className="casemap__col" key={col.progression}>
+          <div
+            className="casemap__col"
+            key={col.progression}
+            data-focus={colPeek?.n === col.progression}
+            onMouseEnter={(e) => peekCol(col.progression, e.currentTarget.querySelector<HTMLElement>('.casemap__dots'))}
+            onClick={lively && onStepClick ? () => onStepClick(col.progression) : undefined}
+          >
             <span className="casemap__count">{col.items.length || ''}</span>
             <span className="casemap__dots">
               {col.items.map((d) => (
@@ -68,8 +89,8 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
             {onStepClick ? (
               <button
                 className="casemap__step"
-                data-on={activeStep === col.progression}
-                onClick={() => onStepClick(col.progression)}
+                data-on={activeStep === col.progression || colPeek?.n === col.progression}
+                onClick={(e) => { e.stopPropagation(); onStepClick(col.progression); }}
                 title={`ดูขั้นตอนใน step ${col.progression}`}
                 style={{ cursor: 'pointer' }}
               >
@@ -82,6 +103,26 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
           </div>
         ))}
       </div>
+
+      {colPeek && (() => {
+        const items = columns[colPeek.n]?.items ?? [];
+        const byType = typesPresent(items).map((ty) => ({ ty, n: items.filter((d) => d.type === ty).length }));
+        const stale = items.filter((d) => d.stale).length;
+        return (
+          <div className="casemap__card" role="tooltip" style={{ left: colPeek.x, top: colPeek.y, '--ax': `${colPeek.ax}px` } as React.CSSProperties}>
+            <b>Step {colPeek.n} · {t('{n} ชิ้น', { n: items.length })}</b>
+            {stale > 0 && <small className="casemap__cardwarn">{t('ค้างเกิน {d} วัน {n} ชิ้น', { d: staleDays, n: stale })}</small>}
+            {byType.map(({ ty, n }) => (
+              <span className="casemap__cardrow" key={ty}>
+                <span style={{ color: '#c8d4ff' }}>{typeChipLabel(ty)}</span>
+                <span className="casemap__cardtr"><i style={{ width: `${items.length ? Math.round((n / items.length) * 100) : 0}%`, background: typeMeta(ty).color }} /></span>
+                <span className="casemap__cardn">{n}</span>
+              </span>
+            ))}
+            {onStepClick && items.length > 0 && <small className="casemap__cardgo">{t('กดเพื่อดูขั้นตอน')} ›</small>}
+          </div>
+        );
+      })()}
 
       <div className="chartlegend">
         {showTypeLegend && typesPresent(dots).map((t) => (

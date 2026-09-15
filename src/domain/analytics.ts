@@ -77,7 +77,7 @@ export interface RiskRow {
   /** ชื่อเต็มของ step ที่กำลังทำ เช่น "RPD-6 · Mounting on articulator" */
   currentStepLabel: string;
   /** งานที่ยังไม่จบทุกชิ้น เรียงตามที่แตะล่าสุด — ให้อาจารย์กดกางดู/เลือกได้เมื่อมีหลายงาน */
-  pieces: Array<{ id: string; type: WorkType; code: string; name: string; progression: number; days: number }>;
+  pieces: Array<{ id: string; type: WorkType; code: string; name: string; progression: number; days: number; /** ขั้นสุดท้ายของงานนี้ (Recall = 3) — ใช้วาดหลอด ห้ามตรึง 10 */ max: number }>;
   /** งานที่จบแล้ว — โชว์ตอนกาง ให้เลขรวม (piecesDone/piecesTotal) นับด้วยตาได้ครบ */
   donePieces: Array<{ id: string; type: WorkType; days: number }>;
   /** เคสที่ยังขาด (ต้องรับเพิ่ม) ถึงจะครบเกณฑ์รายปี */
@@ -194,6 +194,7 @@ export function riskRows(
             name: next ? next.name : (lang === 'en' ? 'awaiting case closure' : 'รอปิดเคส'),
             progression: Math.max(0, progression(w)),
             days: Math.max(0, Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)),
+            max: maxProgression(w),
           };
         });
       const currentStepLabel = current

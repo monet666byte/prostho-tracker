@@ -1,5 +1,5 @@
 import { BellRinging, Check } from '@phosphor-icons/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
@@ -106,6 +106,19 @@ export default function Dashboard() {
   const [pinged, setPinged] = useState<Record<string, boolean>>({});
   /* กล่องตัวเลขของช่องกลุ่มที่เพิ่งจิ้ม (ไอแพดไม่มี hover) — แตะที่อื่นแล้วปิด */
   const [peek, setPeek] = useState<string | null>(null);
+  const studentsRef = useRef<HTMLDivElement>(null);
+  const goToStudents = (code: string) => {
+    setGroup(code);
+    setQuery('');
+    setPeek(null);
+    const el = studentsRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    el.classList.remove('panel--flash');
+    void el.offsetWidth;
+    el.classList.add('panel--flash');
+  };
   useEffect(() => {
     if (!peek) return;
     const close = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.groupcell')) setPeek(null); };
@@ -303,20 +316,25 @@ export default function Dashboard() {
                       /* ตัวเลข % อยู่ในกล่องเล็กตอนชี้เมาส์/จิ้ม (ผู้ใช้เลือก 15 ก.ย. 69 — "ตัวเลขเต็มไปหมด")
                          ช่องเหลือชื่อกลุ่ม + หลอด · ต่ำกว่า 55% ยังเป็นช่องส้มให้เห็นโดยไม่ต้องชี้ */
                       return (
-                        <button
+                        /* ห่อด้วย div — ปุ่ม "ดูรายชื่อ" ในการ์ดต้องไม่อยู่ในปุ่มช่อง (ปุ่มซ้อนปุ่มใช้ไม่ได้) */
+                        <div
                           key={g.code}
                           className={`groupcell groupcell--bar${lagging ? ' groupcell--low' : ''}${mine ? ' groupcell--mine' : ''}${g.code === group ? ' groupcell--on' : ''}${peek === g.code ? ' groupcell--peek' : ''}`}
-                          aria-pressed={g.code === group}
-                          aria-label={`${groupShort(g.code)} ${g.percent}%`}
                           style={{ '--gi': gi, '--gr': yr === 6 ? 1 : 0 } as React.CSSProperties}
-                          onClick={() => { setGroup(g.code); setPeek(g.code); }}
                         >
-                          {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
-                          <span className="groupcell__code">{groupShort(g.code)}</span>
-                          {/* ช่องสูงเผื่อหลอดตอนขยายไว้แล้ว — ชี้เมาส์แล้วแถว/การ์ดไม่ยืดหด (ผู้ใช้ขอ 15 ก.ย. 69) */}
-                          <span className="groupcell__slot" aria-hidden>
-                            <span className="groupcell__bar"><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /><em>{g.percent}%</em></span>
-                          </span>
+                          <button
+                            className="groupcell__hit"
+                            aria-pressed={g.code === group}
+                            aria-label={`${groupShort(g.code)} ${g.percent}%`}
+                            onClick={() => { setGroup(g.code); setPeek(g.code); }}
+                          >
+                            {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
+                            <span className="groupcell__code">{groupShort(g.code)}</span>
+                            {/* ช่องสูงเผื่อหลอดตอนขยายไว้แล้ว — ชี้เมาส์แล้วแถว/การ์ดไม่ยืดหด (ผู้ใช้ขอ 15 ก.ย. 69) */}
+                            <span className="groupcell__slot" aria-hidden>
+                              <span className="groupcell__bar"><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /><em>{g.percent}%</em></span>
+                            </span>
+                          </button>
                           <span className="groupcell__tip" role="tooltip">
                             <b>{g.percent}%</b>
                             {groupShort(g.code)} · {t('{n} คน', { n: g.students.length })}
@@ -334,8 +352,12 @@ export default function Dashboard() {
                               </>
                             )}
                             {advisors && <small>{advisors}</small>}
+                            {/* จิ้ม/กดแล้วเท่านั้น (ชี้เมาส์เฉยๆ การ์ดดูอย่างเดียว) — พาลงไปตารางนักศึกษาของกลุ่มนี้ (ผู้ใช้เลือก 15 ก.ย. 69) */}
+                            {peek === g.code && (
+                              <button className="groupcell__go" onClick={() => goToStudents(g.code)}>{t('ดูรายชื่อ')} ›</button>
+                            )}
                           </span>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -350,7 +372,7 @@ export default function Dashboard() {
 
             <div style={{ display: 'grid', gridTemplateColumns: isAlumniView ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16 }}>
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
-              <div className="panel">
+              <div className="panel" ref={studentsRef} style={{ scrollMarginTop: 16 }}>
                 {/* เลือกกลุ่มได้จากในการ์ดนี้เลย ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่มด้านบน
                     + ค้นหาข้ามทุกกลุ่มในรุ่น (ผู้ใช้ขอ 1 ก.ย.: หาคนที่อยู่กลุ่มอื่นไม่เจอ) */}
                 <div className="tblhead">

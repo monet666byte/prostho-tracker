@@ -129,6 +129,7 @@ export default function Analytics() {
             staleDays={settings.stale}
             showTypeLegend={false}
             showStaleLegend={false}
+            lively
             stepNames={stepType === 'all' ? undefined : buckets.map((b) => b.label)}
             onStepClick={(n) => setOpenStep(shownStep === n ? -1 : n)}
             activeStep={shownStep}
