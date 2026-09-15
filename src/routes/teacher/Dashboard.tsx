@@ -343,7 +343,8 @@ export default function Dashboard() {
               <TodayCard
                 name={me ? personName(me) : ''}
                 summary={today}
-                lines={todayLines.slice(0, 3)}
+                /* ยังไม่มีรายชื่อในเครื่อง (เครื่องใหม่กำลังซิงก์) = ยังไม่รู้ ห้ามขึ้น "ไม่มีอะไรน่าห่วง" */
+                lines={activeStudents.length ? todayLines.slice(0, 3) : []}
                 scopes={hasOwnGroup ? [
                   { key: 'group', label: groupShort(ownGroup!), on: groupScope, onPick: () => setScopePick('group') },
                   { key: 'year', label: yearScopeLabel, on: !groupScope, onPick: () => setScopePick('year') },

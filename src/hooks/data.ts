@@ -10,7 +10,32 @@ import {
   listSect2, listSect3, listSelfAssessments, listWorkpieces, pendingIds, stepsOnDate,
 } from '../data/repo';
 import { sortWorkpieces } from '../domain/rules';
-import type { Photo, Review, WorkpieceView } from '../domain/types';
+import type { Photo, Review, Teacher, WorkpieceView } from '../domain/types';
+import { useApp } from '../store/app';
+
+/**
+ * ภาพล่าสุดของทั้งตาราง — เปิดหน้าใหม่ได้ข้อมูลเดิมทันที แทนที่จะวาดหน้า "ว่าง" หนึ่งจังหวะก่อน
+ *
+ * useLiveQuery คืนค่าเริ่มต้น ([]) ในเรนเดอร์แรกของทุกหน้า แล้วค่อยได้ข้อมูลจริงเฟรมถัดไป
+ * ผลคือกดเมนู "ภาพรวม"/"วิเคราะห์รวม" แล้วเห็นหน้าเลข 0 · "ไม่มีอะไรน่าห่วง" · กราฟว่าง แวบหนึ่ง
+ * (ผู้ใช้เห็นเป็นกระตุกทั้งบนคอมและไอแพด 15 ก.ย. 69 · จับได้จากเฟรมจอ) — และเลข 0 คือป้ายหลอกด้วย
+ *
+ * ภาพเก็บผูกกับ "ใครล็อกอิน + revision" — สลับบัญชี / รีเซ็ตข้อมูล = ทิ้งทั้งหมด ไม่เอาของคนก่อนมาโชว์
+ * ข้อมูลสดยังมาจาก useLiveQuery เหมือนเดิม ภาพนี้แค่ใช้แทนเฟรมแรกระหว่างรอ
+ */
+const snapshots = new Map<string, unknown[]>();
+let snapshotScope = '';
+const EMPTY_ROWS: never[] = [];
+function useTableSnapshot<T>(name: string, query: () => Promise<T[]>): T[] {
+  const scope = useApp((st) => `${st.session?.role ?? ''}|${st.session?.teacherId ?? ''}|${st.session?.studentId ?? ''}|${st.revision}`);
+  if (scope !== snapshotScope) { snapshots.clear(); snapshotScope = scope; }
+  const live = useLiveQuery(async () => {
+    const rows = await query();
+    if (scope === snapshotScope) snapshots.set(name, rows);
+    return rows;
+  }, [scope]);
+  return live ?? (snapshots.get(name) as T[] | undefined) ?? EMPTY_ROWS;
+}
 
 export function useWorkpieces(studentId: string | undefined): WorkpieceView[] {
   return (
@@ -90,16 +115,23 @@ export function useStudent(id: string | undefined) {
   return useLiveQuery(async () => (id ? db.students.get(id) : undefined), [id], undefined);
 }
 
-export function useTeacher(id: string | undefined) {
-  return useLiveQuery(async () => (id ? db.teachers.get(id) : undefined), [id], undefined);
+/* ชื่ออาจารย์ที่เคยอ่านแล้ว — คำทักทายบนสรุปวันนี้ไม่ต้องขึ้นว่างแล้วค่อยเด้งชื่อตามมาทุกครั้งที่เปลี่ยนหน้า */
+const teacherSeen = new Map<string, Teacher | undefined>();
+export function useTeacher(id: string | undefined): Teacher | undefined {
+  const live = useLiveQuery(async (): Promise<Teacher | undefined> => {
+    const tc = id ? await db.teachers.get(id) : undefined;
+    if (id) teacherSeen.set(id, tc);
+    return tc;
+  }, [id]);
+  return live ?? (id ? teacherSeen.get(id) : undefined);
 }
 
 export function useAllStudents() {
-  return useLiveQuery(() => db.students.toArray(), [], []) ?? [];
+  return useTableSnapshot('students', () => db.students.toArray());
 }
 
 export function useAllWorkpieces() {
-  return useLiveQuery(() => db.workpieces.toArray(), [], []) ?? [];
+  return useTableSnapshot('workpieces', () => db.workpieces.toArray());
 }
 
 
@@ -128,20 +160,20 @@ export function useStepsOnDates(pairs: Array<{ studentId: string; date: string }
 }
 
 export function useAllProgressUpdates() {
-  return useLiveQuery(() => db.updates.toArray(), [], []) ?? [];
+  return useTableSnapshot('updates', () => db.updates.toArray());
 }
 
 export function useAllCheckIns() {
-  return useLiveQuery(() => listAllCheckIns(), [], []) ?? [];
+  return useTableSnapshot('checkins', () => listAllCheckIns());
 }
 
 
 export function useAllPatients() {
-  return useLiveQuery(() => db.patients.toArray(), [], []) ?? [];
+  return useTableSnapshot('patients', () => db.patients.toArray());
 }
 
 export function useGroups() {
-  return useLiveQuery(() => db.groups.toArray(), [], []) ?? [];
+  return useTableSnapshot('groups', () => db.groups.toArray());
 }
 
 /** แบบประเมินตนเองของ นศ. คนหนึ่ง ในปีการศึกษาหนึ่ง */
