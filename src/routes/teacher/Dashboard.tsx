@@ -197,23 +197,23 @@ export default function Dashboard() {
     });
   }
   if (groupScope) {
-    if (today.highRisk > 0 || today.stale > 0) {
+    if (today.followUp > 0 || today.stale > 0) {
       todayLines.push({
-        key: 'risk', tone: 'warn', icon: today.highRisk > 0 ? 'warn' : 'stale',
-        text: today.highRisk > 0
-          ? <>{t('เสี่ยงไม่ทันเกณฑ์')} <b>{t('{n} คน', { n: today.highRisk })}</b>{today.stale > 0 && <> · {t('งานค้างเกิน {d} วัน', { d: settings.stale })} {t('{n} ชิ้น', { n: today.stale })}</>}</>
+        key: 'risk', tone: 'warn', icon: today.followUp > 0 ? 'warn' : 'stale',
+        text: today.followUp > 0
+          ? <>{t('ต้องตาม')} <b>{t('{n} คน', { n: today.followUp })}</b>{today.stale > 0 && <> · {t('งานค้างเกิน {d} วัน', { d: settings.stale })} {t('{n} ชิ้น', { n: today.stale })}</>}</>
           : <>{t('งานค้างเกิน {d} วัน', { d: settings.stale })} <b>{t('{n} ชิ้น', { n: today.stale })}</b></>,
         go: { label: t('ดูรายชื่อ'), onClick: () => goToStudents(ownGroup!) },
       });
     }
   } else {
-    if (today.lowGroups.length > 0 || today.highRisk > 0) {
+    if (today.lowGroups.length > 0 || today.followUp > 0) {
       const low = today.lowGroups;
       todayLines.push({
         key: 'low', tone: 'warn', icon: 'warn',
         text: low.length > 0
-          ? <>{t('ต่ำกว่า 55%')}: <b>{low.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}{low.length > 3 ? ` +${low.length - 3}` : ''}</b>{today.highRisk > 0 && <> · {t('เสี่ยงรวม {n} คน', { n: today.highRisk })}</>}</>
-          : <>{t('เสี่ยงไม่ทันเกณฑ์')} <b>{t('{n} คน', { n: today.highRisk })}</b></>,
+          ? <>{t('ต่ำกว่า 55%')}: <b>{low.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}{low.length > 3 ? ` +${low.length - 3}` : ''}</b>{today.followUp > 0 && <> · {t('ต้องตามรวม {n} คน', { n: today.followUp })}</>}</>
+          : <>{t('ต้องตาม')} <b>{t('{n} คน', { n: today.followUp })}</b></>,
         go: low.length > 0
           ? { label: t('ดูกลุ่ม'), onClick: () => { scrollFlash(stripRef.current, 'center'); setGroup(low[0].code); setPeek(low[0].code); } }
           : undefined,
@@ -391,8 +391,8 @@ export default function Dashboard() {
                                 </span>
                                 <small>
                                   {t('ทัน {a}/{b}', { a: risk.ok, b: risk.levels.length })}
-                                  {risk.high > 0 && ` · ${t('เสี่ยง {n}', { n: risk.high })}`}
-                                  {risk.medium > 0 && ` · ${t('จับตา {n}', { n: risk.medium })}`}
+                                  {/* สองสี: แดง = ต้องตาม (เสี่ยงสูง + จับตา) — ผู้ใช้เลือก 16 ก.ย. 69 */}
+                                  {risk.high + risk.medium > 0 && ` · ${t('ต้องตาม {n}', { n: risk.high + risk.medium })}`}
                                 </small>
                               </>
                             )}

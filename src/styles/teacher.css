@@ -1498,7 +1498,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .groupcell__tip { min-width: 150px; }
 .groupcell__ppl { display: flex; gap: 3px; margin: 7px 0 3px; }
 .groupcell__ppl i { width: 10px; height: 10px; border-radius: 99px; background: #12b76a; transform: scale(0); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transition-delay: calc(var(--k, 0) * 30ms + 50ms); }
-.groupcell__ppl i[data-risk='medium'] { background: #f79009; }
+.groupcell__ppl i[data-risk='medium'] { background: #f04438; } /* สองสี: จับตา = แดงเหมือนเสี่ยงสูง (ต้องตาม) */
 .groupcell__ppl i[data-risk='high'] { background: #f04438; }
 @media (hover: hover) { .groupcell--bar:hover .groupcell__ppl i { transform: scale(1); } }
 .groupcell--peek .groupcell__ppl i, .groupcell--bar:focus-visible .groupcell__ppl i { transform: scale(1); }
@@ -1700,3 +1700,9 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .side--rail .count { position: absolute; top: 2px; right: 3px; margin: 0; min-width: 16px; height: 16px; font-size: 9.5px; line-height: 16px; padding: 0 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .side, .side__railbtn svg { transition: none; } }
+
+/* วงเล็กท้ายแถวสรุปกลุ่ม — ชิ้นละวง (ผู้ใช้เลือก 16 ก.ย. 69 · เดิมหลอดจิ๋วอ่านยาก) */
+.worknow__minis { gap: 4px; }
+.minring { width: 18px; height: 18px; flex: none; display: block; }
+.minring__track { fill: none; stroke: var(--track); stroke-width: 3; }
+.minring__fill { fill: none; stroke-width: 3; stroke-linecap: round; }

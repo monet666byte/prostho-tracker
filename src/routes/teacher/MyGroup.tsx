@@ -138,7 +138,7 @@ export default function MyGroup() {
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
              เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ (ผู้ใช้ขอลดความรก 2 ก.ย.) */}
-          <p className="sub">{t('สีจุด: เขียว = ตามแผน · ส้ม = จับตา · แดง = เสี่ยงสูง')}</p>
+          <p className="sub">{t('สีจุด: เขียว = ตามแผน · แดง = ต้องตาม')}</p>
           <table className={`tbl grptable${peek ? ' grptable--peek' : ''}`}>
             <thead>
               <tr>
@@ -174,11 +174,12 @@ export default function MyGroup() {
                       <td>
                         <span
                           role="img"
-                          aria-label={r.risk === 'high' ? t('เสี่ยงสูง') : r.risk === 'medium' ? t('จับตา') : t('ตามแผน')}
-                          title={r.risk === 'high' ? t('เสี่ยงสูง') : r.risk === 'medium' ? t('จับตา') : t('ตามแผน')}
+                          /* สองสี (ผู้ใช้เลือก 16 ก.ย. 69): แดง = ต้องตาม (เสี่ยงสูง + จับตา) ตรงกับเลข "ต้องตาม" ด้านบน · title ยังบอกระดับละเอียด */
+                          aria-label={r.risk === 'ok' ? t('ตามแผน') : t('ต้องตาม')}
+                          title={r.risk === 'high' ? t('ต้องตาม · เสี่ยงสูง') : r.risk === 'medium' ? t('ต้องตาม · เหลือเผื่อน้อย') : t('ตามแผน')}
                           style={{
                             display: 'block', width: 8, height: 8, borderRadius: 99,
-                            background: r.risk === 'high' ? 'var(--danger-chart)' : r.risk === 'medium' ? 'var(--warning)' : 'var(--success)',
+                            background: r.risk === 'ok' ? 'var(--success)' : 'var(--danger-chart)',
                           }}
                         />
                       </td>
@@ -232,10 +233,23 @@ export default function MyGroup() {
                                 r.pieces.length > 1 ? t('+{n} งาน', { n: r.pieces.length - 1 }) : '',
                                 r.donePieces.length ? t('จบแล้ว {n}', { n: r.donePieces.length }) : '',
                               ].filter(Boolean).join(' · ')}>
-                                {r.pieces.map((pc) => (
-                                  <i key={pc.id}><em style={{ width: `${Math.round((pc.progression / Math.max(1, pc.max)) * 100)}%`, background: typeMeta(pc.type).color }} /></i>
+                                {/* วงเล็กชิ้นละวงแทนหลอดจิ๋วที่อ่านยาก (ผู้ใช้เลือก 16 ก.ย. 69) · วงเต็มแค่ไหน = ใกล้จบแค่ไหน · ติ๊กเขียว = จบแล้ว */}
+                                {r.pieces.map((pc) => {
+                                  const C = 2 * Math.PI * 7;
+                                  const f = Math.max(0, Math.min(1, pc.progression / Math.max(1, pc.max)));
+                                  return (
+                                    <svg key={pc.id} viewBox="0 0 20 20" className="minring">
+                                      <circle cx="10" cy="10" r="7" className="minring__track" />
+                                      <circle cx="10" cy="10" r="7" className="minring__fill" stroke={typeMeta(pc.type).color} strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 10 10)" />
+                                    </svg>
+                                  );
+                                })}
+                                {r.donePieces.map((pc) => (
+                                  <svg key={pc.id} viewBox="0 0 20 20" className="minring">
+                                    <circle cx="10" cy="10" r="8" fill="var(--success-tint)" />
+                                    <path d="M6.5 10.2l2.3 2.3 4.7-4.8" fill="none" stroke="var(--success-dark)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
                                 ))}
-                                {r.donePieces.map((pc) => <i key={pc.id}><em style={{ width: '100%', background: 'var(--success)' }} /></i>)}
                                 <span>{open ? '▴' : '▾'}</span>
                               </span>
                             )}

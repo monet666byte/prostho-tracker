@@ -27,7 +27,8 @@ export interface TodaySummary {
   pendingPeople: number;
   /** คาบรอประเมินที่เก่าที่สุด ผ่านมากี่วัน (ไม่มีคาบรอ = 0) */
   oldestPendingDays: number;
-  highRisk: number;
+  /** คนที่ต้องตาม = เสี่ยงสูง + จับตา — หน้าจอแสดงสองสี แดง = ต้องตาม (ผู้ใช้เลือก 16 ก.ย. 69) */
+  followUp: number;
   stale: number;
   /** step ที่งานค้างกองมากสุด + ประเภทที่เจอบ่อยสุดใน step นั้น (ไว้เปิดกราฟให้ตรง) · ไม่มีงานค้าง = null */
   staleTop: { progression: number; type: WorkType } | null;
@@ -54,7 +55,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
     return Number.isFinite(t) ? Math.max(mx, Math.floor((now.getTime() - t) / DAY)) : mx;
   }, 0);
 
-  const highRisk = new Set(input.risk.filter((r) => r.risk === 'high' && ids.has(r.studentId)).map((r) => r.studentId)).size;
+  const followUp = new Set(input.risk.filter((r) => r.risk !== 'ok' && ids.has(r.studentId)).map((r) => r.studentId)).size;
 
   const staleWorks = works.filter((w) => isStale(w, settings, now));
   let staleTop: TodaySummary['staleTop'] = null;
@@ -85,7 +86,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, oldestPendingDays, highRisk, stale: staleWorks.length, staleTop, lowGroups, doneThisWeek,
-    needsAttention: pendingPeople > 0 || highRisk > 0 || staleWorks.length > 0 || lowGroups.length > 0,
+    pendingPeople, oldestPendingDays, followUp, stale: staleWorks.length, staleTop, lowGroups, doneThisWeek,
+    needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || lowGroups.length > 0,
   };
 }

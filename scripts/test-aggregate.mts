@@ -280,7 +280,7 @@ console.log('\ntodaySummary');
   const s = todaySummary({ students: [a, b], works, checkins, settings: S, risk, now });
   ok('รอประเมินนับเป็นคน ไม่ใช่คาบ (ta 2 คาบ + tb 1 คาบ = 2 คน)', s.pendingPeople === 2, s.pendingPeople);
   ok('คาบที่ประเมินแล้วไม่นับ · คาบรอเก่าสุด = 3 วัน (ของคนนอกขอบเขตไม่นับ)', s.oldestPendingDays === 3, s.oldestPendingDays);
-  ok('คนเสี่ยงนับเฉพาะในขอบเขต', s.highRisk === 1, s.highRisk);
+  ok('คนต้องตาม = เสี่ยงสูง + จับตา · นับเฉพาะในขอบเขต (ta สูง + tb จับตา)', s.followUp === 2, s.followUp);
   ok('งานค้างใช้กติกาเดียวกับ isStale — เคสคืนแล้ว/คนนอกไม่นับ', s.stale === 2, s.stale);
   ok('งานค้างตรงกับ staleRows ของหน้าเดียวกัน', s.stale === staleRows([a, b], works, S).length);
   ok('จบเคสสัปดาห์นี้ไม่นับงานจากชีต และไม่นับที่จบเกิน 7 วัน', s.doneThisWeek === 1, s.doneThisWeek);
