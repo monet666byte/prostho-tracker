@@ -307,6 +307,8 @@ export const DICT: Record<string, string> = {
   'ขั้นที่ผ่านมือคุณ': 'steps done by you',
   'งานถัดไป': 'Up next',
   'สรุปวันนี้': 'Today',
+  'สวัสดี{d}': 'Happy {d}',
+  'สรุปของ': 'Summary for',
   'เก่าสุด {d} วันก่อน': 'oldest {d} days ago',
   'เสี่ยงไม่ทันเกณฑ์': 'At risk of missing requirements',
   'งานค้างเกิน {d} วัน': 'Idle over {d} days',

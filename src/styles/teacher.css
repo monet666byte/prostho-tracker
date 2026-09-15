@@ -1539,13 +1539,15 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 /* จุดเด้งพร้อมกันทุกคอลัมน์ — ไม่ไล่ทีละ step (ผู้ใช้ย้ำ 15 ก.ย. 69 หลังรอบก่อนเข้าใจผิดใส่คลื่นกลับไป) */
 .casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes casemapDotIn { from { opacity: 0; transform: scale(0.3); } }
-.casemap-wrap--lively .casemap__col { cursor: pointer; border-radius: 10px; transition: opacity 0.2s, background-color 0.2s; }
+.casemap-wrap--lively .casemap__col { cursor: pointer; border-radius: 10px; }
 .casemap-wrap--lively .casemap__col[data-focus='true'] { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.casemap-wrap--lively .casemap--peek .casemap__col:not([data-focus='true']) { opacity: 0.45; }
+/* เดิมคอลัมน์อื่นจางลงทุกครั้งที่ชี้ → ลากเมาส์ผ่านแล้วกะพริบทั้งกราฟ (ผู้ใช้ทัก 15 ก.ย. 69) · เหลือไฮไลต์พื้นคอลัมน์ที่ชี้อย่างเดียว ไม่มีเฟด */
 .casemap__card {
   position: absolute; z-index: 20; width: 200px; transform: translateY(-100%); pointer-events: none;
   padding: 10px 13px 11px; border-radius: 13px; background: #1a2029; color: #fff; font: 500 12px/1.5 var(--font-body);
   box-shadow: 0 14px 30px rgba(16, 24, 40, 0.28); animation: grpcardIn 0.18s cubic-bezier(0.23, 1, 0.32, 1) both;
+  /* ย้ายคอลัมน์ = การ์ดเลื่อนตาม ไม่หายแล้วโผล่ใหม่ */
+  transition: left 0.16s cubic-bezier(0.23, 1, 0.32, 1), top 0.16s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .casemap__card::after { content: ''; position: absolute; top: 100%; left: var(--ax, 50%); margin-left: -6px; border: 6px solid transparent; border-top-color: #1a2029; }
 .casemap__card b { display: block; font: 700 15px/1.3 var(--font-head); }
@@ -1557,7 +1559,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .casemap__cardgo { display: block; margin-top: 6px; font: 600 11.5px var(--font-head); color: #9db4ff; }
 @media (prefers-reduced-motion: reduce) {
   .casemap-wrap--lively .casemap__dots > i, .casemap__card { animation: none; }
-  .casemap-wrap--lively .casemap__col { transition: none; }
+  .casemap__card { transition: none; }
 }
 
 /* ══ ช่องกลุ่ม: ปุ่มในช่อง + ปุ่ม "ดูรายชื่อ" ในการ์ด (ผู้ใช้เลือก 15 ก.ย. 69) ══ */
@@ -1605,7 +1607,17 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @keyframes todaySpin { to { rotate: 360deg; } }
 /* ขอบหมุนเฉพาะตอนมีเรื่องต้องทำ/ต้องดู — ไม่มีอะไรน่าห่วง = ขอบรุ้งนิ่ง */
 .todaycard--live::before { animation: todaySpin 8s linear infinite; will-change: rotate; }
-.todaycard__head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.todaycard__top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 6px; }
+.todaycard__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
+.todaycard__orb { align-self: center; }
+.todaycard__label { font: 500 12px var(--font-body); color: var(--text-faint); }
+.todaycard__scope { margin-left: auto; display: flex; background: var(--fill); border-radius: 99px; padding: 2px; }
+.todaycard__scope button, .todaycard__scope span {
+  border: 0; background: none; border-radius: 99px; padding: 3px 12px; font: 600 12px var(--font-body); color: var(--text-secondary);
+}
+.todaycard__scope button { cursor: pointer; }
+.todaycard__scope button[aria-pressed='true'], .todaycard__scope span { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
+.todaycard__scope button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .todaycard__orb { width: 12px; height: 12px; border-radius: 50%; flex: none; background: conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff); }
 .todaycard__line {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 8px; border: 0; border-radius: 10px;
@@ -1648,3 +1660,11 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .todaycard--live::before { animation: none; }
   .typedonut__seg { transition: opacity 0.2s; }
 }
+
+/* งานไม่ขยับนานสุด: ป้ายประเภท · step แทนรหัสขั้นยาว + วันเป็นป้ายแดง (ผู้ใช้เลือก B2 15 ก.ย. 69) */
+.stalepill {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 1px 8px; border-radius: 99px;
+  background: var(--fill); font: 600 10.5px var(--font-body); color: var(--text-secondary); white-space: nowrap;
+}
+.stalepill i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.staledays--pill { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--danger-tint, #fef3f2); font-family: var(--font-head); font-weight: 700; }

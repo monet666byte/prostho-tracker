@@ -12,7 +12,7 @@ import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, sum
 import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
-import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
+import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useTeacher } from '../../hooks/data';
 import { useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { thaiShort } from '../../lib/date';
@@ -183,7 +183,13 @@ export default function Dashboard() {
   const activeByType = useMemo(() => countByType(works.filter(isActiveWork)), [works]);
 
   /* สรุปวันนี้ (ผู้ใช้เลือก 15 ก.ย. 69) — หัวหน้ารายวิชา/ยังไม่มีกลุ่ม = ทั้งชั้นปีที่ดูอยู่ · ที่ปรึกษา = กลุ่มตัวเอง */
-  const groupScope = !isAdmin && !!ownGroup && activeStudents.some((s) => s.group === ownGroup);
+  /* ปุ่มสลับในกล่อง: [กลุ่ม PT7] [ทั้งชั้นปี/ปี 5/ปี 6] (ผู้ใช้เลือก A2 15 ก.ย. 69 — เดิมกดแท็บ "รวมปี" แล้วกล่องยังเป็น PT7 งง)
+     ปุ่มกลุ่มมีเฉพาะเมื่อมีกลุ่มของตัวเอง · ค่าเริ่ม: ที่ปรึกษา = กลุ่ม · หัวหน้ารายวิชา = ทั้งชั้นปี */
+  const hasOwnGroup = !!ownGroup && activeStudents.some((s) => s.group === ownGroup);
+  const [scopePick, setScopePick] = useState<'group' | 'year' | null>(null);
+  const groupScope = hasOwnGroup && (scopePick ?? (isAdmin ? 'year' : 'group')) === 'group';
+  const session = useApp((st) => st.session);
+  const me = useTeacher(session?.teacherId);
   const today = useMemo(() => {
     const scopeStudents = groupScope ? activeStudents.filter((s) => s.group === ownGroup) : students;
     return todaySummary({
@@ -242,7 +248,7 @@ export default function Dashboard() {
   if (today.doneThisWeek > 0 && todayLines.length < 3) {
     todayLines.push({ key: 'done', tone: 'good', icon: 'good', text: <>{t('สัปดาห์นี้จบเคส')} <b>{t('{n} ชิ้น', { n: today.doneThisWeek })}</b></> });
   }
-  const todayScope = groupScope ? groupShort(ownGroup!) : yearView === 'all' ? t('ทั้งชั้นปี') : t('ปี {n}', { n: yearView });
+  const yearScopeLabel = yearView === 'all' ? t('ทั้งชั้นปี') : t('ปี {n}', { n: yearView });
   const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
@@ -334,7 +340,15 @@ export default function Dashboard() {
               </div>
             ) : (
             <div className="todayrow">
-              <TodayCard scope={todayScope} summary={today} lines={todayLines.slice(0, 3)} />
+              <TodayCard
+                name={me ? personName(me) : ''}
+                summary={today}
+                lines={todayLines.slice(0, 3)}
+                scopes={hasOwnGroup ? [
+                  { key: 'group', label: groupShort(ownGroup!), on: groupScope, onPick: () => setScopePick('group') },
+                  { key: 'year', label: yearScopeLabel, on: !groupScope, onPick: () => setScopePick('year') },
+                ] : [{ key: 'year', label: yearScopeLabel, on: true }]}
+              />
               {/* วงงานที่กำลังทำแทนกล่องตัวเลข 4 ตัวเดิม · เลขจบเคสสะสมย้ายมาเป็นบรรทัดเล็กใต้วง (ผู้ใช้ตกลง 15 ก.ย. 69) */}
               <section className="panel donutpanel">
                 <h3>{t('งานที่กำลังทำ')}</h3>
@@ -535,7 +549,7 @@ export default function Dashboard() {
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
                 <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}</h3>
-                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}{stale.length > 5 ? ` · ${t('แสดง 5 ชิ้นที่ค้างนานสุด')}` : ''}</p>
+                <p className="sub">{t('ทั้งชั้นปี {n} ชิ้น', { n: stale.length })}</p>
                 <table className="tbl">
                   <tbody>
                     {stale.slice(0, 5).map((r) => {
@@ -551,12 +565,14 @@ export default function Dashboard() {
                           </td>
                           <td>
                             <div style={{ font: '500 11px var(--font-body)' }}>{tText(r.workpiece.detail)}</div>
-                            <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)', marginTop: 1 }}>
-                              {cur ? procLabel(r.workpiece.type, cur) : t('ยังไม่เริ่ม')}
-                            </div>
+                            {/* รหัสขั้นยาวตัวพิมพ์ดีดเหลือป้ายสั้น "● Post-core · step 6" · ชื่อขั้นเต็มอยู่ใน title (ผู้ใช้เลือก B2 15 ก.ย. 69) */}
+                            <span className="stalepill" title={cur ? procLabel(r.workpiece.type, cur) : undefined}>
+                              <i style={{ background: typeMeta(r.workpiece.type).color }} />
+                              {typeChipLabel(r.workpiece.type)} · {cur ? `step ${cur.progression}` : t('ยังไม่เริ่ม')}
+                            </span>
                           </td>
                           <td style={{ width: 64 }}>
-                            <span className="staledays">{r.days}<small>{t('วัน')}</small></span>
+                            <span className="staledays staledays--pill">{r.days}<small>{t('วัน')}</small></span>
                           </td>
                           <td style={{ width: 72 }}>
                             <button
