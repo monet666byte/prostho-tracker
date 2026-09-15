@@ -103,6 +103,14 @@ export default function Dashboard() {
   // null = ยังไม่ได้เลือกเอง → เปิด step ที่กองมากสุดให้อัตโนมัติ · -1 = ผู้ใช้กดปิด
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [pinged, setPinged] = useState<Record<string, boolean>>({});
+  /* กล่องตัวเลขของช่องกลุ่มที่เพิ่งจิ้ม (ไอแพดไม่มี hover) — แตะที่อื่นแล้วปิด */
+  const [peek, setPeek] = useState<string | null>(null);
+  useEffect(() => {
+    if (!peek) return;
+    const close = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.groupcell')) setPeek(null); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [peek]);
 
   const summaries = useMemo(() => summarizeAll(students, works, settings), [students, works, settings]);
   const groups = useMemo(() => summarizeGroups(summaries), [summaries]);
@@ -284,17 +292,26 @@ export default function Dashboard() {
                     {list.map((g) => {
                       const lagging = g.percent < 55;
                       const mine = g.code === ownGroup;
+                      const advisors = advisorsOf(g.code);
+                      /* ตัวเลข % อยู่ในกล่องเล็กตอนชี้เมาส์/จิ้ม (ผู้ใช้เลือก 15 ก.ย. 69 — "ตัวเลขเต็มไปหมด")
+                         ช่องเหลือชื่อกลุ่ม + หลอด · ต่ำกว่า 55% ยังเป็นช่องส้มให้เห็นโดยไม่ต้องชี้ */
                       return (
                         <button
                           key={g.code}
-                          className={`groupcell${lagging ? ' groupcell--low' : ''}${mine ? ' groupcell--mine' : ''}${g.code === group ? ' groupcell--on' : ''}`}
-                          title={advisorsOf(g.code) ? `${t('อาจารย์ที่ปรึกษา')} ${advisorsOf(g.code)}` : undefined}
+                          className={`groupcell groupcell--bar${lagging ? ' groupcell--low' : ''}${mine ? ' groupcell--mine' : ''}${g.code === group ? ' groupcell--on' : ''}${peek === g.code ? ' groupcell--peek' : ''}`}
                           aria-pressed={g.code === group}
-                          onClick={() => setGroup(g.code)}
+                          aria-label={`${groupShort(g.code)} ${g.percent}%`}
+                          onClick={() => { setGroup(g.code); setPeek(g.code); }}
                         >
                           {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
                           <span className="groupcell__code">{groupShort(g.code)}</span>
-                          <span className="groupcell__pct">{g.percent}%</span>
+                          <span className="groupcell__bar" aria-hidden><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /></span>
+                          <span className="groupcell__tip" role="tooltip">
+                            <b>{g.percent}%</b>
+                            {groupShort(g.code)} · {t('{n} คน', { n: g.students.length })}
+                            {lagging && <em>{t('ต่ำกว่า 55%')}</em>}
+                            {advisors && <small>{advisors}</small>}
+                          </span>
                         </button>
                       );
                     })}

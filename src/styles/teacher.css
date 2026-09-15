@@ -1393,3 +1393,53 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .filebtn[data-disabled='true'] { color: var(--text-disabled); cursor: default; }
 @media (hover: hover) { .filebtn:not([data-disabled='true']):hover { background: var(--bg-subtle); } }
 .rosterimport--single { grid-template-columns: minmax(0, 1fr); }
+
+/* ══ ช่องกลุ่มแบบหลอด — ตัวเลข % โผล่ตอนชี้เมาส์ (คอม) หรือจิ้ม (ไอแพด) · ผู้ใช้เลือก 15 ก.ย. 69 ══ */
+.groupcell--bar { gap: 0; padding: 10px 6px 11px; }
+.groupcell--bar .groupcell__code { font: 600 12.5px var(--font-head); color: var(--text-secondary); }
+.groupcell__bar { display: block; width: 100%; max-width: 56px; height: 6px; margin-top: 7px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.groupcell__bar i {
+  display: block; height: 100%; border-radius: 99px; background: color-mix(in srgb, var(--accent) 55%, #fff);
+  transform-origin: left center; animation: groupbarIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+  transition: width 0.4s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.2s;
+}
+.groupcell--low .groupcell__bar i { background: var(--warning); }
+.groupcell--low .groupcell__code { color: var(--warning-dark); }
+.groupcell--mine .groupcell__bar i { background: var(--accent); }
+@keyframes groupbarIn { from { transform: scaleX(0); } }
+@media (hover: hover) {
+  .groupcell--bar:hover .groupcell__bar i { background: var(--accent); }
+  .groupcell--low.groupcell--bar:hover .groupcell__bar i { background: var(--warning-dark); }
+}
+/* กล่องตัวเลข */
+.groupcell__tip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 10; pointer-events: none;
+  min-width: 96px; padding: 7px 11px 8px; border-radius: 10px; background: #1a2029; color: #fff;
+  font: 500 11.5px/1.45 var(--font-body); text-align: left; white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.22);
+  opacity: 0; transform: translate(-50%, 4px) scale(0.96); transform-origin: 50% 100%;
+  transition: opacity 0.15s ease-out, transform 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.groupcell__tip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: #1a2029; }
+.groupcell__tip b { display: block; font: 700 17px/1.2 var(--font-head); }
+.groupcell__tip em { display: block; font-style: normal; font-weight: 600; color: #f7b267; }
+.groupcell__tip small { display: block; font-size: 11px; color: #c8ced8; }
+@media (hover: hover) { .groupcell--bar:hover .groupcell__tip { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+.groupcell--peek .groupcell__tip, .groupcell--bar:focus-visible .groupcell__tip { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* ช่องริมซ้าย/ขวาสุด: กล่องไม่ล้นขอบการ์ด */
+.grouprow > .groupcell--bar:nth-child(2) .groupcell__tip, .grouprow--single > .groupcell--bar:first-child .groupcell__tip { left: 0; transform: translate(0, 4px) scale(0.96); transform-origin: 20px 100%; }
+.grouprow > .groupcell--bar:last-child .groupcell__tip { left: auto; right: 0; transform: translate(0, 4px) scale(0.96); transform-origin: calc(100% - 20px) 100%; }
+.grouprow > .groupcell--bar:nth-child(2) .groupcell__tip::after, .grouprow--single > .groupcell--bar:first-child .groupcell__tip::after { left: 20px; }
+.grouprow > .groupcell--bar:last-child .groupcell__tip::after { left: auto; right: 15px; }
+@media (hover: hover) {
+  .grouprow > .groupcell--bar:nth-child(2):hover .groupcell__tip, .grouprow--single > .groupcell--bar:first-child:hover .groupcell__tip,
+  .grouprow > .groupcell--bar:last-child:hover .groupcell__tip { transform: translate(0, 0) scale(1); }
+}
+.grouprow > .groupcell--peek:nth-child(2) .groupcell__tip, .grouprow--single > .groupcell--peek:first-child .groupcell__tip,
+.grouprow > .groupcell--peek:last-child .groupcell__tip { transform: translate(0, 0) scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  .groupcell__bar i { animation: none; transition: none; }
+  .groupcell__tip { transition: none; }
+}
+/* กล่องตัวเลขลอยเหนือช่อง — แผงนี้ห้ามตัดขอบ (แผงอื่นเลื่อนแนวนอนได้ตอนตัวหนังสือใหญ่) */
+.panel.groupstrip, :root[data-zoom='xl'] .panel.groupstrip { overflow: visible; }
