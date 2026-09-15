@@ -91,12 +91,8 @@ export default function MyGroup() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('กลุ่ม')} {groupShort(group)}</h1>
-            <p>
-              {t('{n} คน', { n: groupStudents.length })}
-              {/* ชื่อที่ปรึกษาเคยมีแค่หน้าตรวจงานรายคน — อาจารย์หาไม่เจอ (ผู้ใช้ถาม 2 ก.ย.) */}
-              {advisors && <> · {t('อาจารย์ที่ปรึกษา')} <b>{advisors}</b></>}
-              {' · '}<b>step</b> {t('= ขั้นงานของแต่ละเคส (0 พิมพ์ปากครั้งแรก → 10 ปิดเคส)')}
-            </p>
+            {/* เหลือชื่อที่ปรึกษา (เคยหาไม่เจอ — ผู้ใช้ถาม 2 ก.ย.) · ตัดจำนวนคนและคำอธิบาย step (ตัดตัวเทา 16 ก.ย. 69) */}
+            {advisors && <p>{t('อาจารย์ที่ปรึกษา')} {advisors}</p>}
           </div>
         </div>
 
@@ -109,10 +105,13 @@ export default function MyGroup() {
               <span className="kpi__of"> / {t('{n} คน', { n: groupRisks.length })}</span>
             </div>
             <div className="kpi__label">
-              {t('ต้องตาม')} · {t('ติด step เดิม {a} · เงียบเกิน {b} วัน {c} · ยังไม่มีเคส {e} · ช้ากว่าแผน {d}', {
-                a: gStuck, b: settings.stale, c: gSilent, e: gNoCase,
-                d: Math.max(0, gHigh + gWatch - gStuck - gSilent - gNoCase),
-              })}
+              {/* ขึ้นเฉพาะสาเหตุที่มีคน — เดิมเรียงครบ 4 สาเหตุแม้เป็น 0 ("เงียบเกิน 14 วัน 0 · ยังไม่มีเคส 0") ยาวจนตัดสองบรรทัด (16 ก.ย. 69) */}
+              {[t('ต้องตาม'), ...[
+                [gStuck, t('ติด step เดิม {n}', { n: gStuck })],
+                [gSilent, t('เงียบเกิน {b} วัน {n}', { b: settings.stale, n: gSilent })],
+                [gNoCase, t('ยังไม่มีเคส {n}', { n: gNoCase })],
+                [Math.max(0, gHigh + gWatch - gStuck - gSilent - gNoCase), t('ช้ากว่าแผน {n}', { n: Math.max(0, gHigh + gWatch - gStuck - gSilent - gNoCase) })],
+              ].filter(([n]) => (n as number) > 0).map(([, label]) => label)].join(' · ')}
             </div>
           </div>
           <div className="kpi">
@@ -139,7 +138,7 @@ export default function MyGroup() {
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
              เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ (ผู้ใช้ขอลดความรก 2 ก.ย.) */}
-          <p className="sub">{t('สีจุด: เขียว = ตามแผน · ส้ม = จับตา · แดง = เสี่ยงสูง')} · {t('กดชื่อเพื่อดูงานรายคน')}</p>
+          <p className="sub">{t('สีจุด: เขียว = ตามแผน · ส้ม = จับตา · แดง = เสี่ยงสูง')}</p>
           <table className={`tbl grptable${peek ? ' grptable--peek' : ''}`}>
             <thead>
               <tr>
@@ -319,7 +318,6 @@ export default function MyGroup() {
             />
             <div>
               <div style={{ font: '600 12.5px var(--font-head)', marginBottom: 2 }}>{t('รายคนในกลุ่ม')}</div>
-              <p className="sub" style={{ marginBottom: 12 }}>{t('% ของเป้าหมายแต่ละด้าน')}</p>
               <Heatmap rows={heat} />
             </div>
           </div>

@@ -614,11 +614,11 @@ export default function Dashboard() {
                     </div>
                   )}
                   <p className="pretty" style={{ margin: '12px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-secondary)' }}>
+                    {/* ประโยคยาวเหลือบรรทัดสั้น (ตัดตัวเทา 16 ก.ย. 69) */}
                     <span>
                       {busiest.count > 0
-                        ? t('งาน {s} กองอยู่ที่ step {p} มากที่สุด ({c} ชิ้น) — {l}', { s: typeMeta(stepType).short, p: busiest.progression, c: busiest.count, l: busiest.label })
+                        ? t('กองมากสุด step {p} · {c} ชิ้น', { p: busiest.progression, c: busiest.count })
                         : t('ยังไม่มีชิ้นงานที่กำลังทำในประเภทนี้')}
-                      {' · '}{t('ดูวิเคราะห์เชิงลึกได้ที่เมนู “วิเคราะห์”')}
                     </span>
                   </p>
                 </div>

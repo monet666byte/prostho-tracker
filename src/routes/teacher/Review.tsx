@@ -110,11 +110,8 @@ export default function Review() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('ตรวจงานรายคน')}</h1>
-            <p>
-              {t('กลุ่ม')} {groupShort(groupCode)} · {t('{n} คน', { n: groupStudents.length })}
-              {advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}
-              {' — '}{t('ใช้เป็นครั้งคราว ตอนรับเคสใหม่/เคสจบ (งานประจำคาบอยู่ที่ "ประเมินรายคาบ")')}
-            </p>
+            {/* เหลือกลุ่ม + ที่ปรึกษา · ตัดจำนวนคนและคำอธิบายว่าใช้ตอนไหน (ตัดตัวเทา 16 ก.ย. 69) */}
+            <p>{t('กลุ่ม')} {groupShort(groupCode)}{advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}</p>
           </div>
         </div>
 

@@ -14,7 +14,6 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { studentYear } from '../../domain/cohort';
 import { groupShort } from '../../domain/group';
 import { EXAM_GATE_KEYS, GATE_LABELS } from '../../domain/rules';
-import { saYearNow } from '../../domain/saFeedback';
 import { setStudentGate } from '../../data/repo';
 import { useAllStudents } from '../../hooks/data';
 import { personName, t } from '../../lib/i18n';
@@ -33,7 +32,6 @@ const examName = (k: GateKey) => t(EXAM_TH[k] ?? GATE_LABELS[k]);
 export default function Exams() {
   const { teacherGroup, showToast } = useApp();
   const students = useAllStudents();
-  const year = saYearNow();
   const [busy, setBusy] = useState<string | null>(null);
   /* ⚠️ ต้องเป็น ref ไม่ใช่ state — state ยังไม่อัปเดตภายใน tick เดียวกัน
      กดรัวจะผ่านยามไปทุกครั้ง แล้วลง audit log ทีละแถว (วัดจริง: กด 6 ที ได้ 6 แถว)
@@ -86,10 +84,6 @@ export default function Exams() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('การสอบ')} · {groupShort(teacherGroup)}</h1>
-            <p>
-              {t('OSCE และสอบ RPD design — บันทึกแค่ผ่าน/ไม่ผ่าน ตัวข้อสอบใช้กระดาษตามเดิม')}
-              {' · '}{t('ปีการศึกษา')} {year}
-            </p>
           </div>
         </div>
 

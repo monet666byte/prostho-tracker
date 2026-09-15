@@ -66,15 +66,6 @@ export default function Portfolio() {
             <h1>
               {tab === 'sect2' ? t('ตรวจและวางแผนการรักษา') : t('ความรู้และทักษะ')} · {groupShort(teacherGroup)}
             </h1>
-            <p>
-              {tab === 'sect2'
-                ? 'Section II: Patient examination and treatment planning assessments'
-                : 'Section III: Knowledge and skill assessments in specific prosthodontic procedures'}
-              {' · '}
-              {t('คีย์ผลที่นี่ แล้วพิมพ์ออกไปลงนามบนกระดาษ')}
-              {' · '}
-              {t('ปีการศึกษา')} {year}
-            </p>
           </div>
         </div>
 

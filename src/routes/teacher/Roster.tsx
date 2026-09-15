@@ -215,7 +215,6 @@ export default function Roster() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('รายชื่อ & นำเข้าข้อมูล')}</h1>
-            <p>{t('งานตั้งต้นข้อมูลต้นปี — รับรายชื่อรุ่นใหม่ ให้สิทธิ์เข้าระบบ และย้ายงานเก่าจากชีต')}</p>
           </div>
         </div>
 

@@ -73,7 +73,7 @@ export default function Analytics() {
   /* งานที่นำเข้าจากชีตไม่มีวันที่จบจริง — บอกให้ชัดว่าเส้นเริ่มจากยอดยกมาเท่าไหร่ */
   const carried = carriedOverCount(works, settings);
   const carriedOverNote = carried > 0
-    ? <> · {t('เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)', { n: carried })}</>
+    ? <>{t('เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)', { n: carried })}</>
     : null;
   return (
     <TeacherShell active="cohort">
@@ -94,7 +94,8 @@ export default function Analytics() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <h3>{t('ชิ้นงานอยู่ step ไหน (ทั้งชั้นปี)')}</h3>
-              <p className="sub">{t('1 จุด = 1 ชิ้นงาน · วงแดง = ค้างเกิน {d} วัน · กดเลข step ใต้กราฟเพื่อดูขั้นตอน', { d: settings.stale })}</p>
+              {/* ตัดคำอธิบายวิธีใช้ เหลือคำอธิบายสีที่อ่านกราฟไม่ออกถ้าไม่มี (ตัดตัวเทา 16 ก.ย. 69) */}
+              <p className="sub">{t('วงแดง = ค้างเกิน {d} วัน', { d: settings.stale })}</p>
             </div>
           </div>
 
@@ -153,7 +154,8 @@ export default function Analytics() {
             {/* 2. เส้นสะสมเทียบเป้า */}
             <div className="panel">
               <h3>{t('ชิ้นงานเสร็จสะสม เทียบเป้าหมาย')}</h3>
-              <p className="sub">{t('เป้าเริ่มไต่หลังเดือนที่ 3 — เคสแรกใช้เวลา 2–4 เดือน จบไม่ได้เร็วกว่านั้น')}{carriedOverNote}</p>
+              {/* เหลือเฉพาะหมายเหตุยอดยกมาจากชีต (ข้อมูลจริงที่ต้องรู้) — คำอธิบายรูปกราฟตัดออก */}
+              {carriedOverNote && <p className="sub">{carriedOverNote}</p>}
               <div style={{ marginTop: 8 }}>
                 <Burnup points={burn} />
               </div>
@@ -182,7 +184,6 @@ export default function Analytics() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
             <div className="panel">
               <h3>{t('ความคืบหน้าตามเกณฑ์ขั้นต่ำ (ทั้งชั้นปี)')}</h3>
-              <p className="sub">{t('เกณฑ์สะสมครอบปี 5–6')}</p>
               <div style={{ marginTop: 12, display: 'grid', gap: 13 }}>
                 {cohortReq.map((r) => (
                   <div key={r.group}>
