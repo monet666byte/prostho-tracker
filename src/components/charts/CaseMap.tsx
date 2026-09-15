@@ -69,7 +69,6 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
             className="casemap__col"
             key={col.progression}
             data-focus={colPeek?.n === col.progression}
-            style={lively ? ({ '--c': col.progression } as React.CSSProperties) : undefined}
             onMouseEnter={(e) => peekCol(col.progression, e.currentTarget.querySelector<HTMLElement>('.casemap__dots'))}
             onClick={lively && onStepClick ? () => onStepClick(col.progression) : undefined}
           >

@@ -1536,7 +1536,8 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 /* ══ หน้าวิเคราะห์: แผนที่เคสมีชีวิต (ผู้ใช้เลือก 15 ก.ย. 69) ══
    จุดเด้งขึ้นไล่ทีละคอลัมน์ตอนเปิดหน้า · ชี้คอลัมน์ → คอลัมน์อื่นจาง + การ์ดสรุป (แถวประเภทในการ์ดขึ้นพร้อมกัน ไม่ไล่ — ผู้ใช้ขอ) · กดทั้งคอลัมน์ได้ */
 .casemap-wrap { position: relative; }
-.casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--c, 0) * 60ms); }
+/* จุดเด้งพร้อมกันทุกคอลัมน์ — ไม่ไล่ทีละ step (ผู้ใช้ย้ำ 15 ก.ย. 69 หลังรอบก่อนเข้าใจผิดใส่คลื่นกลับไป) */
+.casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes casemapDotIn { from { opacity: 0; transform: scale(0.3); } }
 .casemap-wrap--lively .casemap__col { cursor: pointer; border-radius: 10px; transition: opacity 0.2s, background-color 0.2s; }
 .casemap-wrap--lively .casemap__col[data-focus='true'] { background: color-mix(in srgb, var(--accent) 6%, transparent); }
@@ -1586,26 +1587,30 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 /* ─── สรุปวันนี้ + วงงานที่กำลังทำ (ผู้ใช้เลือก mock 15 ก.ย. 69 · แทนกล่องตัวเลข 4 ตัว) ─── */
 .todayrow { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; margin-bottom: 18px; align-items: start; }
 @media (max-width: 980px) { .todayrow { grid-template-columns: minmax(0, 1fr); } }
-@property --today-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-@keyframes todayAng { to { --today-ang: 360deg; } }
+/* ขอบรุ้ง = แผ่นสีรุ้งใต้การ์ด หมุนด้วย transform แล้วมีพื้นการ์ดทับเหลือขอบ 1.5px
+   เดิมหมุนด้วย @property ใน border-image → เบราว์เซอร์ต้องวาดการ์ดใหม่ทุกเฟรม ผู้ใช้บอกเปิดหน้าแล้วแลค (Safari · 15 ก.ย. 69)
+   transform หมุนบนการ์ดจอได้เลย ไม่ต้องวาดใหม่ */
 .todaycard {
-  display: grid; gap: 2px; align-content: start; border: 1.5px solid transparent;
-  background: linear-gradient(var(--surface), var(--surface)) padding-box,
-    conic-gradient(from var(--today-ang), #7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff) border-box;
+  position: relative; isolation: isolate; overflow: hidden; border: 0;
+  display: grid; gap: 2px; align-content: start;
   box-shadow: 0 8px 30px -16px rgba(124, 92, 255, 0.4);
 }
+.todaycard::before {
+  content: ''; position: absolute; z-index: -2; left: 50%; top: 50%; width: 160%; aspect-ratio: 1;
+  translate: -50% -50%; background: conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff);
+}
+.todaycard::after {
+  content: ''; position: absolute; z-index: -1; inset: 1.5px; border-radius: 12.5px; background: var(--surface);
+}
+@keyframes todaySpin { to { rotate: 360deg; } }
 /* ขอบหมุนเฉพาะตอนมีเรื่องต้องทำ/ต้องดู — ไม่มีอะไรน่าห่วง = ขอบรุ้งนิ่ง */
-.todaycard--live { animation: todayAng 8s linear infinite; }
+.todaycard--live::before { animation: todaySpin 8s linear infinite; will-change: rotate; }
 .todaycard__head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
 .todaycard__orb { width: 12px; height: 12px; border-radius: 50%; flex: none; background: conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff); }
 .todaycard__line {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 8px; border: 0; border-radius: 10px;
   background: none; text-align: left; font: 400 14px/1.45 var(--font-body); color: var(--text-secondary);
-  animation: todayRise 0.35s ease both;
 }
-.todaycard__line:nth-of-type(2) { animation-delay: 0.06s; }
-.todaycard__line:nth-of-type(3) { animation-delay: 0.12s; }
-@keyframes todayRise { from { opacity: 0; transform: translateY(4px); } }
 button.todaycard__line { cursor: pointer; }
 @media (hover: hover) { button.todaycard__line:hover { background: var(--fill); } }
 button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1625,7 +1630,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 }
 .typedonut svg { width: 150px; height: 150px; overflow: visible; }
 .typedonut__track { fill: none; stroke: var(--fill); stroke-width: 17; }
-.typedonut__seg { fill: none; stroke-width: 17; cursor: pointer; transition: stroke-dasharray 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, stroke-width 0.2s; }
+.typedonut__seg { fill: none; stroke-width: 17; cursor: pointer; transition: stroke-dasharray 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, stroke-width 0.2s; }
 .typedonut--hot .typedonut__seg { opacity: 0.22; }
 .typedonut--hot .typedonut__seg--on { opacity: 1; stroke-width: 21; }
 .typedonut__n { font: 700 30px var(--font-head); fill: var(--text); }
@@ -1640,6 +1645,6 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .typedonut__legend i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
 .typedonut__foot { grid-column: 1 / -1; justify-self: stretch; padding: 8px 6px 0; border-top: 1px dashed var(--border); font: 400 11.5px var(--font-body); color: var(--text-faint); }
 @media (prefers-reduced-motion: reduce) {
-  .todaycard--live, .todaycard__line { animation: none; }
+  .todaycard--live::before { animation: none; }
   .typedonut__seg { transition: opacity 0.2s; }
 }

@@ -13,11 +13,17 @@ const C = 2 * Math.PI * R;
 export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; count: number }>; foot?: string }) {
   const total = items.reduce((s, x) => s + x.count, 0);
   const [hot, setHot] = useState<WorkType | null>(null);
-  // เริ่มจากวงว่างแล้ววาดขึ้นหนึ่งครั้งตอนเปิดหน้า
+  /* เริ่มจากวงว่างแล้ววาดขึ้นหนึ่งครั้ง — รอให้หน้าวาดเสร็จก่อน (เครื่องว่าง) ค่อยเริ่ม
+     เดิมเริ่มทันทีแล้วชนกับจังหวะที่ทั้งหน้ากำลังโหลด วงเลยวาดกระตุก (ผู้ใช้บอก "แลคๆ" 15 ก.ย. 69) */
   const [drawn, setDrawn] = useState(false);
   useEffect(() => {
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
-    return () => cancelAnimationFrame(id);
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setDrawn(true), { timeout: 600 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(() => setDrawn(true), 250);
+    return () => window.clearTimeout(id);
   }, []);
   const hover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches;
   const pick = hot ? items.find((x) => x.type === hot) : undefined;
