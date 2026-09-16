@@ -292,9 +292,7 @@ export default function Home() {
         <div className="backdrop" onClick={skipCheckInAsk}>
           <div className="sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '82%', overflowY: 'auto' }}>
             <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</h3>
-            <p style={{ margin: '5px 0 12px', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-              {t('เลือกได้เลยว่าวันนี้ทำอะไรกับคนไข้คนไหน — หรือยังไม่รู้ก็เช็คอินก่อนได้')}
-            </p>
+            {/* คำอธิบายวิธีใช้ตัดออก — ปุ่ม "ไว้ก่อน" ข้างล่างบอกอยู่แล้วว่าไม่กรอกก็ได้ (16 ก.ย. 69) */}
 
             <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
             {ACTIVITY_GROUPS.map((g) => (
