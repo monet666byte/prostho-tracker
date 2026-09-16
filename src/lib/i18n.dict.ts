@@ -307,6 +307,8 @@ export const DICT: Record<string, string> = {
   'ขั้นที่ผ่านมือคุณ': 'steps done by you',
   'งานถัดไป': 'Up next',
   'สรุปวันนี้': 'Today',
+  '⚠️ เลขคาบเป็นค่าประมาณจากสมมติฐาน (คาบ/สัปดาห์ ปรับได้ที่ “ตั้งค่า”) — ใช้จัดลำดับว่าควรดูใครก่อน ไม่ใช่คำตัดสิน': '\u26a0\ufe0f Period counts are estimates (periods per week is adjustable in Settings) \u2014 use them to prioritise who to check first, not as a verdict',
+  'ภาพรวมทั้งชั้นปี · ตรวจงาน · ตั้งค่า': 'Cohort overview · review work · settings',
   'ต้องตามรวม {n} คน': '{n} need follow-up in total',
   'ต้องตาม {n}': 'Follow-up {n}',
   'สีจุด: เขียว = ตามแผน · แดง = ต้องตาม': 'Dot: green = on track · red = needs follow-up',

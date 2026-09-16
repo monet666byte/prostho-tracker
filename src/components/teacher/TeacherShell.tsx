@@ -61,7 +61,8 @@ const COHORT_NAV: NavItem[] = [
   { key: 'overview', label: t('ภาพรวม'), to: '/teacher?tab=overview', Icon: SquaresFour },
   { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
   { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
-  { key: 'settings', label: t('ตั้งค่าเกณฑ์'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
+  /* ชื่อเมนู/หัวหน้าเป็น "ตั้งค่า" — หน้านี้มีทั้งเกณฑ์ · ระบบ · สำรองข้อมูล · PDPA แล้ว (ผู้ใช้ขอ 16 ก.ย. 69) */
+  { key: 'settings', label: t('ตั้งค่า'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
   /* รายชื่อ+นำเข้า: อาจารย์ทุกคนใช้ได้ (ทุกการกระทำมี audit log) — การให้สิทธิ์เข้าระบบข้างในยังเป็นของหัวหน้าภาค */
   { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];

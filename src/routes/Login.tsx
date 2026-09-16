@@ -257,7 +257,7 @@ export default function Login() {
             {(
               [
                 { key: 'student', title: t('นักศึกษา'), hint: t('บันทึก step · ดูเกณฑ์ · ส่งรายงาน'), Icon: Student },
-                { key: 'teacher', title: t('อาจารย์ / ภาควิชา'), hint: t('ภาพรวมทั้งชั้นปี · ตรวจงาน · ตั้งค่าเกณฑ์'), Icon: ChalkboardTeacher },
+                { key: 'teacher', title: t('อาจารย์ / ภาควิชา'), hint: t('ภาพรวมทั้งชั้นปี · ตรวจงาน · ตั้งค่า'), Icon: ChalkboardTeacher },
               ] as const
             ).map(({ key, title, hint, Icon }) => (
               <button

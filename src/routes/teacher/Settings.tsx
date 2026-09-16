@@ -111,7 +111,7 @@ export default function Settings() {
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
-            <h1>{t('ตั้งค่าเกณฑ์')}</h1>
+            <h1>{t('ตั้งค่า')}</h1>
             <p>{t('มีผลทั้งระบบทันที')}</p>
           </div>
         </div>
