@@ -26,7 +26,7 @@ export function initTextSize() {
 }
 
 /** ปุ่มปรับขนาดตัวหนังสือ ก ก ก — สำหรับอาจารย์ที่ต้องการตัวใหญ่ */
-export function TextSizeControl() {
+export function TextSizeControl({ compact = false }: { compact?: boolean } = {}) {
   const [zoom, setZoom] = useState<Zoom>(() => {
     try { return (localStorage.getItem('uiZoom') as Zoom) || 'md'; } catch { return 'md'; }
   });
@@ -34,8 +34,9 @@ export function TextSizeControl() {
   useEffect(() => apply(zoom), [zoom]);
 
   return (
-    <div className="textsize">
-      <span className="textsize__label">{t('ขนาดตัวหนังสือ')}</span>
+    <div className={compact ? 'textsize textsize--compact' : 'textsize'}>
+      {/* หน้าตั้งค่ามีหัวแถวอยู่แล้ว — ป้ายในตัวคอนโทรลซ้ำ */}
+      {!compact && <span className="textsize__label">{t('ขนาดตัวหนังสือ')}</span>}
       <div className="textsize__btns">
         {LEVELS.map((l) => (
           <button key={l.key} data-on={zoom === l.key} style={{ fontSize: l.size }} onClick={() => setZoom(l.key)} aria-label={`${t('ขนาด')} ${l.key}`}>

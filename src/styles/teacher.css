@@ -1706,3 +1706,8 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .minring { width: 18px; height: 18px; flex: none; display: block; }
 .minring__track { fill: none; stroke: var(--track); stroke-width: 3; }
 .minring__fill { fill: none; stroke-width: 3; stroke-linecap: round; }
+
+/* จุดแดงหลังชื่อ = มีงานค้าง (แทนคอลัมน์ "ค้าง") · ปุ่มเตือนเหลือไอคอน (ผู้ใช้เลือก 16 ก.ย. 69) */
+.staledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); margin-left: 6px; vertical-align: 1px; }
+.textbtn--icon { padding: 5px; border-radius: 8px; }
+.textsize--compact { display: flex; gap: 6px; align-items: center; }

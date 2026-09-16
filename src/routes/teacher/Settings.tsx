@@ -1,6 +1,7 @@
 import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { TextSizeControl } from '../../components/TextSize';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
@@ -239,6 +240,12 @@ export default function Settings() {
                   onChange={(e) => updateSettings({ saDue: e.target.value || undefined })}
                 />
               </label>
+
+              {/* ย้ายมาจากแถบซ้าย (ผู้ใช้เลือกข้อ 10 · 16 ก.ย. 69) — เมนูซ้ายเหลือแต่เมนู */}
+              <div className="setrow">
+                <span className="setrow__main"><b>{t('ขนาดตัวหนังสือ')}</b><span className="setrow__hint">{t('จำไว้เฉพาะเครื่องนี้')}</span></span>
+                <TextSizeControl compact />
+              </div>
 
               {/* ธีมสี — อาจารย์ที่เปิดลิงก์แชร์จากแท็บเล็ต/มือถือไม่เห็นแถบเดโม (ผู้ใช้ขอ 1 ก.ย.) */}
               <div className="setrow">

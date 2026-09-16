@@ -4,13 +4,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
 import { ToastView } from '../ToastView';
-import { TextSizeControl } from '../TextSize';
 import { useAllCheckIns, useAllStudents, useGroups, useTeacher } from '../../hooks/data';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
-import { BetaBadge } from '../BetaBadge';
 import { AdvisorGroupsDialog, useAdvisorPrompt } from './AdvisorGroups';
 import { resetAdvisorsIfNewYear } from '../../lib/advisors';
 import { currentAdvisorIds } from '../../domain/group';
@@ -238,12 +236,11 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             </NavLink>
           ))}
 
+          {/* กล่อง "ขนาดตัวหนังสือ" กับป้าย BETA ย้ายไปหน้าตั้งค่าแล้ว (ผู้ใช้เลือกข้อ 10 · 16 ก.ย. 69) — แถบซ้ายเหลือชื่อ + ออกจากระบบ */}
           <div className="side__foot" style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
-            <TextSizeControl />
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ font: '600 12.5px var(--font-head)' }}>{personName(teacher, 'อ. Liv')}</span>
-                <BetaBadge compact />
               </div>
               {/* บรรทัด "อาจารย์ที่ปรึกษากลุ่ม · PT7" ตัดออก — ซ้ำกับกล่องกลุ่มด้านบน (ตัดตัวเทา 15 ก.ย. 69) */}
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา

@@ -7,6 +7,8 @@ import { StepInfo } from '../../components/StepInfo';
 import { TodayCard, type TodayLine } from '../../components/teacher/TodayCard';
 import { TypeDonut } from '../../components/charts/TypeDonut';
 import { todaySummary } from '../../domain/today';
+import { lastPullAt, pullAll } from '../../data/cloudSync';
+import { cloudEnabled } from '../../lib/cloud';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
@@ -99,6 +101,12 @@ export default function Dashboard() {
   const [pinged, setPinged] = useState<Record<string, boolean>>({});
   /* กล่องตัวเลขของช่องกลุ่มที่เพิ่งจิ้ม (ไอแพดไม่มี hover) — แตะที่อื่นแล้วปิด */
   const [peek, setPeek] = useState<string | null>(null);
+  /* นาฬิกาเดินทุกนาที — ให้บรรทัด "ข้อมูลเก่า" โผล่เองโดยไม่ต้องรอให้หน้าวาดใหม่ด้วยเหตุอื่น */
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setMinuteTick((n) => n + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const studentsRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const stepsRef = useRef<HTMLDivElement>(null);
@@ -227,6 +235,32 @@ export default function Dashboard() {
         go: { label: t('ดูในกราฟ'), onClick: () => { setStepType(top.type); setOpenStep(top.progression); scrollFlash(stepsRef.current, 'center'); } },
       });
     }
+  }
+  /* ข้อมูลบนจอเก่าแล้ว = เตือนก่อนทุกบรรทัด — ไม่งั้นอาจารย์อ่าน "ไม่มีอะไรน่าห่วง" จากข้อมูลเมื่อวาน (ผู้ใช้ขอ 16 ก.ย. 69)
+     นับจากรอบที่ดึงครบทุกตารางจริงเท่านั้น (cloudSync.lastPullAt) · โหมดเดโมไม่มีเซิร์ฟเวอร์ จึงไม่เตือน */
+  void minuteTick;
+  const pulledAt = cloudEnabled ? lastPullAt() : Date.now();
+  const staleHours = pulledAt === null ? Infinity : (Date.now() - pulledAt) / 3_600_000;
+  if (staleHours >= 12) {
+    todayLines.unshift({
+      key: 'old', tone: 'warn', icon: 'sync',
+      text: pulledAt === null
+        ? <>{t('ยังซิงก์ข้อมูลไม่สำเร็จตั้งแต่เปิดแอป')} · {t('ตัวเลขอาจไม่ใช่ล่าสุด')}</>
+        : <>{t('ข้อมูลล่าสุดเมื่อ')} <b>{staleHours >= 48 ? t('{n} วันก่อน', { n: Math.floor(staleHours / 24) }) : t('{n} ชม. ก่อน', { n: Math.floor(staleHours) })}</b> · {t('ตัวเลขอาจไม่ใช่ล่าสุด')}</>,
+      go: {
+        label: t('ซิงก์เลย'),
+        onClick: () => {
+          showToast({ message: t('กำลังดึงข้อมูลล่าสุด…'), tone: 'default' });
+          void pullAll().then(() => {
+            const ok = lastPullAt() !== null && Date.now() - (lastPullAt() as number) < 60_000;
+            setMinuteTick((n) => n + 1);
+            showToast(ok
+              ? { message: t('ข้อมูลล่าสุดแล้ว'), tone: 'success' }
+              : { message: t('ยังดึงข้อมูลไม่ครบ — ลองใหม่เมื่อเน็ตกลับมา'), tone: 'warning' });
+          });
+        },
+      },
+    });
   }
   if (!today.needsAttention) {
     todayLines.unshift({ key: 'calm', tone: 'good', icon: 'good', text: t('วันนี้ไม่มีอะไรน่าห่วง') });
@@ -443,10 +477,8 @@ export default function Dashboard() {
                     <tr>
                       <th>{t('นักศึกษา')}</th>
                       {!isAlumniView && <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>}
-                      <th style={{ width: 56 }}>{t('ชิ้นงาน')}</th>
                       {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด (สกรีนช็อตผู้ใช้ 1 ก.ย.) */}
                       <th style={{ width: 94, whiteSpace: 'nowrap' }}>{t('เกณฑ์สะสม 2 ปี')}</th>
-                      {!isAlumniView && <th style={{ width: 46 }}>{t('ค้าง')}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -472,6 +504,10 @@ export default function Dashboard() {
                           })()}
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
                             {s.student.code}
+                            {/* งานค้างเหลือจุดแดงท้ายรหัส · ตัดคอลัมน์ "ชิ้นงาน" กับ "ค้าง" (ผู้ใช้เลือกข้อ 6 · 16 ก.ย. 69) */}
+                            {!isAlumniView && s.stale > 0 && (
+                              <span className="staledot" title={t('งานค้างเกิน {d} วัน {n} ชิ้น', { d: settings.stale, n: s.stale })} aria-label={t('งานค้างเกิน {d} วัน {n} ชิ้น', { d: settings.stale, n: s.stale })} />
+                            )}
                             {/* ผลค้นหามาจากหลายกลุ่ม — ต้องบอกว่าใครอยู่กลุ่มไหน ไม่งั้นกดต่อไม่ถูก */}
                             {query && ` · ${groupShort(s.student.group)}`}
                           </div>
@@ -484,7 +520,6 @@ export default function Dashboard() {
                             <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{s.percent}%</span>
                           </div>
                         </td>}
-                        <td className="mono">{s.pieces}</td>
                         <td>
                           {isAlumniView ? (
                             /* รุ่นเก่าดูแค่เกณฑ์สะสม — ตรงกับตัวนับ "ครบเกณฑ์สะสม" ด้านบน (alumniOverview) */
@@ -497,13 +532,6 @@ export default function Dashboard() {
                           </span>
                           )}
                         </td>
-                        {!isAlumniView && <td>
-                          {s.stale > 0 ? (
-                            <span className="mono" style={{ color: 'var(--danger)', fontWeight: 600 }}>{s.stale}</span>
-                          ) : (
-                            <span className="faint">—</span>
-                          )}
-                        </td>}
                       </tr>
                     ))}
                   </tbody>
@@ -544,8 +572,10 @@ export default function Dashboard() {
                           </td>
                           <td style={{ width: 72 }}>
                             <button
-                              className="textbtn"
+                              className="textbtn textbtn--icon"
                               style={{ color: pinged[key] ? 'var(--success-dark)' : undefined }}
+                              title={pinged[key] ? t('เตือนแล้ว') : t('เตือน')}
+                              aria-label={pinged[key] ? t('เตือนแล้ว') : t('เตือน')}
                               onClick={() => {
                                 // ยังไม่มีช่องทางแจ้งเตือนจริง (push/LINE รอ phase 2) — toast ต้องไม่โกหก
                                 // ว่าส่งแล้ว ไม่งั้นอาจารย์เข้าใจผิดว่าเด็กได้รับ (ตระกูลเดียวกับปุ่มส่งรายงานปลอมที่ตัดไป)
@@ -555,9 +585,8 @@ export default function Dashboard() {
                             >
                               {/* จอแคบเหลือแต่ไอคอน — วัดจริงบน iPhone แล้วคำว่า "เตือน" ถูกตัดเหลือ "เตือ"
                                   เพราะตารางกว้างเกินกรอบไป 2px แล้วคอลัมน์สุดท้ายโดนเบียด */}
-                              {pinged[key]
-                                ? <><Check size={13} weight="bold" /> <span className="hidenarrow">{t('เตือนแล้ว')}</span></>
-                                : <><BellRinging size={13} /> <span className="hidenarrow">{t('เตือน')}</span></>}
+                              {/* ไอคอนอย่างเดียว — คำว่า "เตือน" ซ้ำทุกแถว (ผู้ใช้เลือกข้อ 8 · 16 ก.ย. 69) */}
+                              {pinged[key] ? <Check size={15} weight="bold" /> : <BellRinging size={15} />}
                             </button>
                           </td>
                         </tr>

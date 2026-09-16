@@ -692,6 +692,13 @@ async function applyRemote(local: string, pks: unknown[], fn: () => Promise<void
 }
 
 const lastPulled = new Map<string, string>(); // remote table → max updated_at ที่ดึงล่าสุด
+
+/**
+ * เวลาที่ "ดึงครบทุกตารางโดยไม่มีตารางไหนพลาด" ครั้งล่าสุด — หน้าภาพรวมใช้เตือนว่าข้อมูลบนจอเก่าแล้ว
+ * ⚠️ ต้องตั้งหลังรอบที่ไม่มี error เท่านั้น (กติกา "ห้ามมีป้ายหลอก") — ดึงพลาดบางตารางแล้วบอกว่าสดคือโกหก
+ */
+let lastFullPullAt: number | null = null;
+export const lastPullAt = (): number | null => lastFullPullAt;
 /**
  * pk ที่ "เห็นอยู่บนตู้กลาง" จากการดึงครบทั้งตารางครั้งล่าสุด — local table → ชุด pk
  *
@@ -756,6 +763,7 @@ export function pullAll(): Promise<void> {
 async function pullAllOnce(): Promise<void> {
   if (!supabase) return;
   let scopeChanged = false;
+  let missed = false;
   // ค่าตั้งของภาคอยู่คนละตารางและมีกติกาของตัวเอง (แถวเดียว · เขียนได้เฉพาะอาจารย์)
   await pullSettings();
   // นโยบาย PDPA ก็แถวเดียวเหมือนกัน แต่เขียนได้เฉพาะหัวหน้าภาค (0016)
@@ -764,7 +772,7 @@ async function pullAllOnce(): Promise<void> {
   for (const def of TABLES) {
     // เช็คก่อนว่าตารางนี้มีอะไรใหม่มั้ย — ส่วนใหญ่ไม่มี จะได้ไม่ต้องดึง/เขียนทับให้เสี่ยง
     const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
-    if (head.error) continue;
+    if (head.error) { missed = true; continue; }
     const remoteMax = (head.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? '';
     /**
      * ⚠️ ตราเวลาที่อยู่ "ในอนาคต" ห้ามใช้เป็นเหตุผลข้ามการดึง
@@ -799,7 +807,7 @@ async function pullAllOnce(): Promise<void> {
       if ((page.data?.length ?? 0) < PAGE) break;
       if (from > 200_000) break; // กันวนไม่รู้จบถ้ามีอะไรผิดปกติ
     }
-    if (failed) continue;
+    if (failed) { missed = true; continue; }
     // ห้ามทับแถวที่มีงานค้างส่งอยู่ — ไม่งั้น pull ฉบับเก่าจะกลืนสิ่งที่ผู้ใช้เพิ่งกด (บั๊กที่เจอคืนแรก)
     /* ⚠️ `dirty` ชั้นในเป็น Map (pk → ช่องที่แก้) ตั้งแต่ 13 ก.ย. 69 — ต้องเอา **คีย์**
        ถ้าเผลอ spread ทั้ง Map จะได้คู่ [pk, ช่อง] แล้ว skip ไม่ตรงกับ pk ของแถวเลย
@@ -821,6 +829,7 @@ async function pullAllOnce(): Promise<void> {
     if (incremental && data.length && (def.local === 'students' || def.local === 'groups')) scopeChanged = true;
     lastPulled.set(def.remote, remoteMax);
   }
+  if (!missed) lastFullPullAt = Date.now();
 }
 
 /**
