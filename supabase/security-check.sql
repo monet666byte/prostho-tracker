@@ -106,7 +106,17 @@ with findings as (
     and not exists (select 1 from invites i where lower(i.email) = lower(u.email))
 
   union all
-  -- ⑩ อีเมลที่เชิญแล้วแต่เจ้าตัวยังไม่สมัคร
+  -- ⑩ สรุปว่า 0021 ลงหรือยัง
+  select 10,
+         case when exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
+              then '✅' else '🔴' end,
+         'migration 0021 (ปิดช่องจากการตรวจ 13 ก.ย.)',
+         'photos_path_guard',
+         case when exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
+              then 'ลงแล้ว' else 'ยังไม่ได้รัน' end
+
+  union all
+  -- ⑪ อีเมลที่เชิญแล้วแต่เจ้าตัวยังไม่สมัคร
   --    0009 กันคนนอกรายชื่อสมัครได้แล้ว แต่คนที่ **รู้อีเมลที่อยู่ในรายชื่อ** ยังสมัครแทนได้
   --    ถ้าหน้า Authentication ปิด "Confirm email" ไว้ — เพราะไม่ต้องเข้ากล่องจดหมายนั้นเลย
   --    อีเมลอาจารย์หาได้จากเว็บคณะ · สมัครก่อนเจ้าตัว = ได้สิทธิ์อาจารย์ เห็นข้อมูลผู้ป่วยทั้งชั้นปี
@@ -119,14 +129,47 @@ with findings as (
   group by i.role
 
   union all
-  -- ⑩ สรุปว่า 0021 ลงหรือยัง
-  select 10,
-         case when exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
-              then '✅' else '🔴' end,
-         'migration 0021 (ปิดช่องจากการตรวจ 13 ก.ย.)',
-         'photos_path_guard',
-         case when exists (select 1 from pg_trigger where tgname = 'photos_path_guard')
-              then 'ลงแล้ว' else 'ยังไม่ได้รัน' end
+  -- ⑫ trigger ที่เป็นด่านสำคัญต้องอยู่ครบ — หายไปตัวเดียวคือช่องเปิดทั้งบาน
+  --    (ชื่อผู้ป่วยไม่ถูกล้าง · audit แก้ได้ · นักศึกษาให้คะแนนตัวเอง · ลบคาบที่ประเมินแล้ว)
+  select 12, '🔴', 'trigger ด่านสำคัญหายไป',
+         x.tbl || ' · ' || x.trg,
+         'รัน ' || x.src || ' ใหม่ — ไม่มีตัวนี้ = ' || x.why
+  from (values
+    ('patients',      'zz_zz_strip_patient_name', '0026', 'ชื่อผู้ป่วยลงฐานข้อมูลได้ทั้งที่สวิตช์ปิด'),
+    ('sect2_records', 'zz_zz_strip_patient_name', '0026', 'ชื่อผู้ป่วยในใบ Section II ลงได้ทั้งที่สวิตช์ปิด'),
+    ('sect3_records', 'zz_zz_strip_patient_name', '0026', 'ชื่อผู้ป่วยในใบ Section III ลงได้ทั้งที่สวิตช์ปิด'),
+    ('audit',         'audit_no_change',          '0009', 'audit log แก้/ลบได้'),
+    ('checkins',      'checkin_scoring_guard',    '0017', 'นักศึกษาให้คะแนนตัวเองผ่าน API ได้'),
+    ('checkins',      'checkin_delete_guard',     '0027', 'นักศึกษาลบคาบที่ประเมินแล้วได้')
+  ) as x(tbl, trg, src, why)
+  where to_regclass('public.' || x.tbl) is not null
+    and not exists (select 1 from pg_trigger g
+                    where g.tgrelid = ('public.' || x.tbl)::regclass and g.tgname = x.trg and not g.tgisinternal)
+
+  union all
+  -- ⑬ ฟังก์ชัน security definer ที่ไม่ได้ตรึง search_path
+  --    รันด้วยสิทธิ์เจ้าของ — ถ้าไม่ตรึง ใครสร้างของชื่อซ้ำใน schema ตัวเองหลอกให้เรียกของปลอมได้
+  select 13, '🔴', 'ฟังก์ชัน security definer ไม่ได้ตรึง search_path',
+         p.proname::text,
+         'สั่ง: alter function ' || p.oid::regprocedure || ' set search_path = public;'
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.prosecdef
+    and not exists (select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) cfg
+                    where cfg like 'search_path=%')
+
+  union all
+  -- ⑭ link_requests ต้องแตะตรงไม่ได้เลย (0023 ตั้งใจให้ทุกอย่างผ่านฟังก์ชัน)
+  --    Supabase ให้สิทธิ์ตารางใหม่กับ anon/authenticated อัตโนมัติ — ถ้ามีใครสร้างตารางซ้ำ สิทธิ์จะกลับมา
+  select 14, '🔴', 'link_requests เปิดให้ role ของ client แตะตรง',
+         'link_requests · ' || r.rolname,
+         'สั่ง: revoke all on link_requests from anon, authenticated;'
+  from pg_roles r
+  where r.rolname in ('anon', 'authenticated')
+    and to_regclass('public.link_requests') is not null
+    and (has_table_privilege(r.rolname, 'public.link_requests', 'SELECT')
+      or has_table_privilege(r.rolname, 'public.link_requests', 'INSERT')
+      or has_table_privilege(r.rolname, 'public.link_requests', 'UPDATE')
+      or has_table_privilege(r.rolname, 'public.link_requests', 'DELETE'))
 )
 
 select ระดับ, เรื่อง, ที่ไหน, รายละเอียด

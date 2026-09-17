@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
@@ -9,7 +9,10 @@ import { fontSubsets } from './vite/font-subsets.js';
 
 // โหมด share: แพ็คทั้งแอป (JS/CSS/ฟอนต์) เป็น index.html ไฟล์เดียว เอาไปวางที่ไหนก็เปิดได้
 // ไม่ใส่ service worker เพราะปลายทาง (artifact host) จัดการ cache เองไม่ได้
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // ที่อยู่ Supabase ของ build นี้ — CSP ใช้ล็อกให้ยอมเฉพาะโฮสต์นั้น (ดู vite/csp.ts)
+  const supabaseUrl = loadEnv(mode, process.cwd(), 'VITE_').VITE_SUPABASE_URL;
+  return {
   /**
    * GitHub Pages วางเว็บไว้ใต้ /ชื่อ-repo/ ไม่ใช่รากโดเมน
    * ถ้าไม่ตั้ง base ไฟล์ JS/CSS/ฟอนต์จะถูกอ้างจากรากแล้วโหลดไม่เจอ = จอขาว
@@ -26,7 +29,7 @@ export default defineConfig(({ mode }) => ({
     phosphorWeights(),
     woff2Only(),
     // โหมด share รวมเป็นไฟล์เดียว สคริปต์เป็น inline — ใส่ CSP ที่นั่นต้องเปิด unsafe-inline
-    cspMeta({ skip: mode === 'share' }),
+    cspMeta({ skip: mode === 'share', supabaseUrl }),
     fontSubsets(),
     react(),
     ...(mode === 'share' ? [viteSingleFile()] : []),
@@ -65,4 +68,5 @@ export default defineConfig(({ mode }) => ({
       disable: mode === 'share',
     }),
   ],
-}));
+  };
+});

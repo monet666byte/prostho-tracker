@@ -19,11 +19,9 @@ export interface TypeMeta {
   ink: string; // สีตัวหนังสือบน tint — ต้องเข้มพอให้อ่านออก
 }
 
-/* สีประเภทงานต้องไม่ชนสีสถานะ (เขียว=ผ่าน ส้มแดง=เตือน) และแต่ละประเภทต้องต่างกัน
-   ทั้งเฉดสีและความอ่อน-เข้ม — ฟีดแบควันเดโม 28 ส.ค. */
-/* ชุด T6 "ปกติ ทั่วไป" ที่ผู้ใช้เคาะ 1 ก.ย. (อาจารย์ขอสีใหม่ — ชุดโทนเย็นเดิม 28 ส.ค. สีเย็นกลืนกันเอง
-   และฟ้าอ่อน RPD จมพื้นขาว): น้ำเงิน · อำพัน · ชมพูหม่น · ฟ้าทะเล — ผ่านตัวตรวจตาบอดสี/contrast
-   แบบเช็คทุกคู่ · ไม่ใช้เขียว/แดงเพราะจองให้สถานะ · APD เป็นน้ำเงินอ่อนตระกูลเดียวกับ CD (นับรวมกันในเกณฑ์) */
+/* สีประเภทงาน (ชุด T6): น้ำเงิน · อำพัน · ชมพูหม่น · ฟ้าทะเล — ต้องต่างกันทั้งเฉดและความเข้ม
+   ผ่านตัวตรวจตาบอดสี/contrast ทุกคู่ · ไม่ใช้เขียว/แดงเพราะจองให้สถานะผ่าน/เตือน
+   APD เป็นน้ำเงินอ่อนตระกูลเดียวกับ CD เพราะนับรวมกันในเกณฑ์ · ค่าเดียวกันอยู่ใน styles/tokens.css */
 export const TYPES: Record<WorkType, TypeMeta> = {
   CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2C50BA', tint: '#E9EDF9', ink: '#2C50BA' },
   RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#D97706', tint: '#FBF0DE', ink: '#B45309' },
@@ -37,8 +35,8 @@ export const TYPES: Record<WorkType, TypeMeta> = {
 /**
  * ป้าย/สีของประเภทงาน แบบที่ไม่ระเบิดถ้าเจอประเภทที่ catalog รุ่นนี้ไม่รู้จัก
  *
- * ทำไมต้องมี (ทดลองแล้ว 10 ก.ย. 69): ใส่ชิ้นงาน `type` ที่ไม่รู้จักลงเครื่องหนึ่งแถว
- * แล้วเปิดหน้าคนไข้ → `TYPES[w.type].color` ระเบิด → ทั้งหน้าไม่ขึ้น
+ * ทำไมต้องมี: ชิ้นงาน `type` ที่ไม่รู้จักเพียงแถวเดียวทำให้ `TYPES[w.type].color` ระเบิด
+ * แล้วทั้งหน้าคนไข้ไม่ขึ้น (จอขาว)
  * แถวรูปแบบแปลกเกิดได้จริง: sync ลงมาจากแอปรุ่นใหม่กว่า · แถวที่ถูกแก้มือในตู้กลาง
  * · วันที่ภาคเปลี่ยน catalog แล้วชิ้นงานเก่าอ้างประเภทที่หายไป
  *
@@ -60,13 +58,12 @@ export const ORDER: Record<WorkType, number> = { CD: 0, RPD: 1, APD: 2, PC: 3, C
 export const orderOf = (type: string | undefined): number =>
   (type && (ORDER as Record<string, number>)[type] !== undefined ? (ORDER as Record<string, number>)[type] : 99);
 
-/** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — 4 ประเภทหลักตามที่ผู้ใช้ยืนยัน 2 ก.ย. */
+/** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — 4 ประเภทหลัก (ภาคยืนยันแล้ว) */
 export const REQ_TYPES = ['CD', 'RPD', 'PC', 'CB'] as const;
-export type ReqType = (typeof REQ_TYPES)[number];
 
 /**
- * ประเภทที่นับเข้า **เกณฑ์สะสม** — 4 ประเภทหลัก + Recall สองแบบ (ผู้ใช้เพิ่ม 10 ก.ย. 69:
- * Recall งานถอดได้ (CD/RPD) 1 เคส · Recall งานติดแน่น (FDP) 1 เคส)
+ * ประเภทที่นับเข้า **เกณฑ์สะสม** — 4 ประเภทหลัก + Recall สองแบบ
+ * (Recall งานถอดได้ (CD/RPD) 1 เคส · Recall งานติดแน่น (FDP) 1 เคส)
  *
  * ⚠️ ตั้งใจแยกจาก REQ_TYPES — Recall เข้าเกณฑ์สะสมแต่ **ไม่** เข้าเกณฑ์รายปี
  * (เกณฑ์รายปีคือ "ปีนี้จบเคสใหม่กี่ชิ้น" ซึ่ง Recall ไม่ใช่การรับเคสใหม่)
@@ -75,6 +72,20 @@ export type ReqType = (typeof REQ_TYPES)[number];
  */
 export const CUM_REQ_TYPES = ['CD', 'RPD', 'PC', 'CB', 'RRM', 'RFX'] as const;
 
+/**
+ * งานที่ทำเป็นชิ้นต่อขากรรไกร (บน/ล่าง) — ฟอร์มเปิดชิ้นงานถามขากรรไกรกับลักษณะเคส
+ * และ repo สร้างชิ้นงานแยกขาละชิ้น · Recall ไม่อยู่ในนี้เพราะเป็นการนัดตรวจงานเดิม ไม่ใช่ชิ้นใหม่
+ */
+export const isArchWork = (type: string | undefined): boolean =>
+  type === 'CD' || type === 'RPD' || type === 'APD';
+
+/** งานถอดได้ (ฝั่ง Removable ของ Section II) — รวม Recall ของงานถอดได้ · ที่เหลือคืองานติดแน่น */
+export const isRemovableType = (type: string | undefined): boolean => isArchWork(type) || type === 'RRM';
+
+/** งานที่ผูกกับซี่ฟัน — ต้องระบุซี่ตอนเปิดชิ้นงาน */
+export const isToothWork = (type: string | undefined): boolean =>
+  type === 'PC' || type === 'CB' || type === 'RFX';
+
 export type Proc = [progression: number, name: string, self?: 1];
 
 /**
@@ -82,8 +93,7 @@ export type Proc = [progression: number, name: string, self?: 1];
  *
  * ชื่อขั้นเป็นภาษาอังกฤษเหมือนทุกประเภทในไฟล์นี้ ไม่ใช่ความชอบเรื่องภาษา:
  * ชื่อขั้นถูกเก็บลง audit log และไหลผ่าน tText() ซึ่งแทนที่ท่อนไทยที่รู้จักทีละท่อน
- * ชื่อไทยจึงกลายเป็นข้อความปนภาษาในโหมดอังกฤษ ("ตรวจสภาพPieces / เนื้อเยื่อรองรับ"
- * — เจอจริง 10 ก.ย. 69 ในหน้าตรวจงานและ audit log)
+ * ชื่อไทยจึงกลายเป็นข้อความปนภาษาในโหมดอังกฤษ ("ตรวจสภาพPieces / เนื้อเยื่อรองรับ")
  *
  * ⚠️ คำว่า "reline" เดิมอยู่ในขั้นที่ 1 ซึ่งเป็นงานของฟันเทียมถอดได้เท่านั้น
  * เคส Recall Fixed (FDP) ไม่มีการ reline — เปลี่ยนเป็นคำที่จริงกับทั้งสองแบบ
@@ -200,8 +210,8 @@ export function dentureLabel(dc: DentureClass, arch: 'upper' | 'lower'): string 
 }
 
 /** ประเภทงานที่มีอยู่จริงในชุดข้อมูล เรียงตาม ORDER — ใช้ทำปุ่มกรอง/legend
- *  เดิมฮาร์ดโค้ดไว้ 4 ประเภทหลัก ทำให้ Simple APD (และ Recall) โผล่ในกราฟ "ทุกประเภท"
- *  แต่ไม่มีปุ่มให้กดดู และสีก็ไม่มีคำอธิบาย (ผู้ใช้เจอบน iPad 2 ก.ย.) */
+ *  ต้องอ่านจากข้อมูลจริง ไม่ใช่รายการตายตัว 4 ประเภท — ไม่งั้น Simple APD และ Recall โผล่ในกราฟ
+ *  "ทุกประเภท" โดยไม่มีปุ่มกรองและไม่มีคำอธิบายสี */
 export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType[] {
   const seen = new Set(items.map((w) => w.type));
   return (Object.keys(TYPES) as WorkType[])
@@ -210,7 +220,7 @@ export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType
 }
 
 /** ป้ายสำหรับปุ่มกรอง/legend — "APD" เฉยๆ ชนกับปุ่ม "CD/APD" (= CD/Complicated APD)
- *  จนคนอ่านนึกว่าซ้ำกัน (ผู้ใช้งง 2 ก.ย.) จึงเขียนให้ชัดว่าเป็น Simple APD */
+ *  จนอ่านเหมือนซ้ำกัน จึงเขียนให้ชัดว่าเป็น Simple APD */
 export function typeChipLabel(ty: WorkType): string {
   return ty === 'APD' ? 'Simple APD' : TYPES[ty].short;
 }

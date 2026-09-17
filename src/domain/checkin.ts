@@ -7,8 +7,8 @@
 import type { CheckIn } from './types';
 import { t } from '../lib/i18n';
 
-/** คอลัมน์คะแนนตาม Part B ของสมุดจริง — ข้อละ 0–3 */
-/* short = ป้ายบนกราฟแมงมุม — ใช้อังกฤษทับศัพท์ทั้งสองภาษา (ศัพท์ในสมุดจริงเป็นอังกฤษ ผู้ใช้บอกไม่ต้องแปล) */
+/** คอลัมน์คะแนนตาม Part B ของสมุดจริง — ข้อละ 0–3
+ *  label/short เป็นอังกฤษทั้งสองภาษา ตามศัพท์ในสมุดจริง (ภาคไม่ต้องการคำแปล) · th ใช้เป็น tooltip */
 export const CRITERIA = [
   { key: 'knowledge', label: 'Overall Knowledge', th: 'ความรู้โดยรวม', short: 'Knowledge' },
   { key: 'skill', label: 'Overall Skill', th: 'ทักษะโดยรวม', short: 'Skill' },
@@ -27,12 +27,28 @@ export const SCORE_OPTIONS = [0, 1, 3] as const;
 export const MAX_SCORE = 3;
 export const MAX_TOTAL = CRITERIA.length * MAX_SCORE; // 24
 
+/**
+ * เกณฑ์ตรงเวลา — คาบเช้าเริ่ม 09:00 · คาบบ่าย 13:00 · เผื่อได้ 15 นาที
+ * ⚠️ เป็นสมมติฐานจากเดโม ยังไม่ผูกกับตารางคาบจริงของภาค · หน้าอาจารย์อธิบายเกณฑ์นี้เป็นข้อความ
+ * (i18n 'เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 …') — เปลี่ยนตรงนี้ต้องแก้ข้อความนั้นด้วย
+ */
+export const PUNCTUAL_CUTOFF = { morning: '09:15', afternoon: '13:15' } as const;
+
+/**
+ * ตราเวลาเช็คอิน — เวลาเป็นของระบบตอนกด แก้เองไม่ได้ และตัดสินตรงเวลา/สายจากเวลานี้
+ * ทุกทางที่เช็คอิน (หน้าแรก · หน้าคาบ) ต้องเรียกตัวนี้ตัวเดียว ไม่คำนวณเองในหน้าจอ
+ */
+export function checkInStamp(now = new Date()): { checkinAt: string; punctual: boolean } {
+  const checkinAt = now.toTimeString().slice(0, 5);
+  const cutoff = now.getHours() < 12 ? PUNCTUAL_CUTOFF.morning : PUNCTUAL_CUTOFF.afternoon;
+  return { checkinAt, punctual: checkinAt <= cutoff };
+}
+
 /** กิจกรรมในคาบ — จากช่อง "Appointed Patient (Name/Work)" ที่เด็กเคยต้องเขียนมือ */
 /**
- * ขยายให้ครอบทั้งเส้นทาง 10 ขั้นของงานจริง (ผู้ใช้ทัก 31 ส.ค. — 7 อันเดิม
- * ไม่ครอบ เช่นวันพิมพ์ final วันกรอฟัน วันปรับแก้ วัน recall)
+ * ครอบทั้งเส้นทางของงานจริง (พิมพ์ final · กรอฟัน · ปรับแก้ · recall) ไม่ใช่แค่ขั้นหลัก
  * ขั้นแล็บช่วงกลาง (Set up · Waxing · Flasking …) รวมอยู่ใน Laboratory work
- * เรียงตามลำดับที่เกิดจริงในคลินิก
+ * เรียงตามลำดับที่เกิดจริงในคลินิก · ค่าเหล่านี้ถูกเก็บลงแถว checkins ตรงๆ — เปลี่ยนข้อความ = แถวเก่าไม่ตรง
  */
 export const ACTIVITIES = [
   'Oral examination',
@@ -50,10 +66,7 @@ export const ACTIVITIES = [
 
 export const NO_PATIENT_ACTIVITY = 'ไม่มีผู้ป่วย (no patient)';
 
-/**
- * จัดกิจกรรมเป็นหมวดตามช่วงงาน — ผู้ใช้ทักว่าชิป 11 อันกองรวมกันไม่เป็นระเบียบ
- * (11 อันเดิมยังอยู่ใน ACTIVITIES ครบ แค่จัดกลุ่มให้กวาดตาง่าย)
- */
+/** จัดกิจกรรมเป็นหมวดตามช่วงงาน ให้กวาดตาง่ายกว่าชิป 11 อันกองรวมกัน — รายการยังมาจาก ACTIVITIES ครบ */
 export const ACTIVITY_GROUPS: ReadonlyArray<{ label: string; items: readonly string[] }> = [
   { label: 'ตรวจ · พิมพ์ปาก', items: ['Oral examination', 'Primary impression', 'Final impression', 'Bite registration'] },
   { label: 'งานข้างเก้าอี้', items: ['Tooth preparation', 'Try in / Delivery', 'ปรับแก้หลังใส่งาน', 'Recall'] },

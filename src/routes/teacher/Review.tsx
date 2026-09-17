@@ -7,7 +7,8 @@ import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
-  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS } from '../../domain/rules';
+  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction } from '../../domain/rules';
+import { patientWithHn } from '../../lib/privacy';
 import { useAllStudents, usePatientNamesOn, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
@@ -84,7 +85,7 @@ export default function Review() {
     const scoped = filter === 'stale' ? sorted.filter((w) => isStale(w, settings))
       : filter === 'done' ? sorted.filter((w) => isComplete(w))
         : sorted;
-    // เคสที่คืนไปแล้วลงไปกองท้ายสุดเสมอ — ไม่ใช่งานที่ต้องตามแล้ว (ผู้ใช้ขอ 2 ก.ย.)
+    // เคสที่คืนไปแล้วลงไปกองท้ายสุดเสมอ — ไม่ใช่งานที่ต้องตามแล้ว
     return [...scoped.filter((w) => !isReturned(w)), ...scoped.filter(isReturned)];
   }, [works, filter, settings]);
 
@@ -110,15 +111,15 @@ export default function Review() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('ตรวจงานรายคน')}</h1>
-            {/* เหลือกลุ่ม + ที่ปรึกษา · ตัดจำนวนคนและคำอธิบายว่าใช้ตอนไหน (ตัดตัวเทา 16 ก.ย. 69) */}
+            {/* เหลือกลุ่ม + ที่ปรึกษา · ตัดจำนวนคนและคำอธิบายว่าใช้ตอนไหน */}
             <p>{t('กลุ่ม')} {groupShort(groupCode)}{advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}</p>
           </div>
         </div>
 
         {/* ห่อบรรทัดบนจอแคบ — ไม่งั้นข้อความสรุปเหลือ 67px แล้วตกบรรทัดทีละคำ
-            (เห็นชัดตอนสลับเป็นอังกฤษ ซึ่งคำยาวกว่าไทย · วัดเจอ 7 ก.ย. 69) */}
+ */}
         <div className="panel" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', flexWrap: 'wrap' }}>
-          {/* สลับคนผ่าน dropdown เล็กๆ แทนแถวปุ่มทั้งกลุ่ม (ผู้ใช้ 2 ก.ย.: ปุ่มชื่อคนอื่นทั้งกลุ่มไม่จำเป็น) */}
+          {/* สลับคนผ่าน dropdown เล็กๆ — แถวปุ่มชื่อทั้งกลุ่มกินที่โดยไม่จำเป็น */}
           <select
             className="input"
             style={{ width: 'auto', maxWidth: 250, height: 38, font: '600 12.5px var(--font-body)' }}
@@ -201,7 +202,7 @@ export default function Review() {
                   style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    {/* การ์ดตรวจงานแบบ "ตัดของซ้ำ" (14 ก.ย. 69): ป้ายทุกอันเป็นตัวอักษรสี ไม่มีพื้น · ตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ x/10 ชวนงง) */}
+                    {/* การ์ดตรวจงานแบบ "ตัดของซ้ำ": ป้ายทุกอันเป็นตัวอักษรสี ไม่มีพื้น · ตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ x/10 ชวนงง) */}
                     <span className="rvtype" style={{ color: meta.ink }}>{meta.short}</span>
                     <span style={{ font: '600 14.5px var(--font-head)' }}>{tText(w.detail)}</span>
                     {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
@@ -226,7 +227,7 @@ export default function Review() {
                         className="rvtag"
                         style={{ color: 'var(--warning)' }}
                         title={reviewConflicts.get(w.id)!
-                          .map((r) => `${t(r.by ?? '')} — ${r.status === 'approved' ? t('อนุมัติ') : r.status === 'returned' ? t('ตีกลับให้แก้') : t('คอมเมนต์')}`)
+                          .map((r) => `${r.by ?? ''} — ${r.status === 'approved' ? t('อนุมัติ') : r.status === 'returned' ? t('ตีกลับให้แก้') : t('คอมเมนต์')}`)
                           .join(' · ')}
                       >
                         {t('มีคำตัดสินของท่านอื่น')}
@@ -239,8 +240,8 @@ export default function Review() {
                   </div>
 
                   <div style={{ font: '400 12.5px/1.5 var(--font-body)', color: 'var(--text-faint)', marginTop: 5 }}>
-                    {namesOn && w.patient.name.trim() && <>{t(w.patient.name)} · </>}<b className="herocase__hn">HN {w.patient.hn}</b> · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
-                    {/* สถานะผู้ป่วย (รอ preprosth ฯลฯ) ต้องเห็นตั้งแต่แถว ไม่ต้องกาง — ผู้ใช้ขอ 2 ก.ย. */}
+                    <b className="herocase__hn">{patientWithHn(w.patient, namesOn, t)}</b> · {tSexAge(w.patient.sexAge)} · {t('รับเคส')} {thaiShort(w.acceptedDate)}
+                    {/* สถานะผู้ป่วย (รอ preprosth ฯลฯ) ต้องเห็นตั้งแต่แถว ไม่ต้องกาง */}
                     {w.patient.note && (
                       <span style={{ font: '500 10.5px var(--font-body)', color: 'var(--warning-dark)' }}>
                         {' '}· 📝 {t(w.patient.note)}
@@ -249,10 +250,10 @@ export default function Review() {
                   </div>
 
                   {/* ห่อบรรทัดได้ — แถบ + ตัวเลข + ชื่อขั้นงาน รวมกันต้องการ 243px
-                      แต่โหมดตัวหนังสือใหญ่บน iPhone SE เหลือที่แค่ 185px (วัดเจอ 7 ก.ย. 69) */}
+                      แต่โหมดตัวหนังสือใหญ่บน iPhone SE เหลือที่แค่ 185px */}
                   {!isReturned(w) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginTop: 10, flexWrap: 'wrap' }}>
-                    <Bar value={(Math.max(progression(w), 0) / maxProgression(w)) * 100} color={meta.color} height={6} />
+                    <Bar value={stepFraction(w) * 100} color={meta.color} height={6} />
                     <span className="mono" style={{ font: '600 11.5px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
                       {Math.max(progression(w), 0)}/{maxProgression(w)}
                     </span>
@@ -265,7 +266,7 @@ export default function Review() {
 
                 {opened && (
                   <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
-                    {/* รายละเอียดเคส — ผู้ใช้ขอ 2 ก.ย.: กดเข้ามาแล้วอยากเห็นมากกว่ารูป+คอมเมนต์ */}
+                    {/* รายละเอียดเคส — ภาคยืนยัน: กดเข้ามาแล้วอยากเห็นมากกว่ารูป+คอมเมนต์ */}
                     {(() => {
                       const nx = nextProc(w);
                       const rows: Array<[string, string]> = [
@@ -315,7 +316,7 @@ export default function Review() {
                     })()}
 
                     <div /* min() แทนตัวเลขดิบ — โหมดตัวหนังสือใหญ่ทำให้ที่ว่างเหลือ ~206px
-                       ค่า minWidth ตายตัวจะดันการ์ดทะลุจอ (วัดเจอ 7 ก.ย. 69) */
+                       ค่า minWidth ตายตัวจะดันการ์ดทะลุจอ */
                     style={{ flex: '1 1 280px', minWidth: 'min(260px, 100%)' }}>
                       <textarea
                         className="input"

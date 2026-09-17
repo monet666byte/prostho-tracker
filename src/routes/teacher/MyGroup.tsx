@@ -28,7 +28,7 @@ export default function MyGroup() {
   const updatesAll = useAllProgressUpdates();
   const navigate = useNavigate();
   const [openRow, setOpenRow] = useState<string | null>(null);
-  /* การ์ดงานในมือตอนชี้แถว (ผู้ใช้เลือก mock 15 ก.ย. 69) — แถวไม่ขยับ มีแค่พื้นขาว + การ์ดโผล่
+  /* การ์ดงานในมือตอนชี้แถว — แถวไม่ขยับ มีแค่พื้นขาว + การ์ดโผล่
      จอสัมผัสไม่มี hover จึงไม่ขึ้นการ์ด — ใช้ ▾ กางแถวแทนเหมือนเดิม */
   const panelRef = useRef<HTMLDivElement>(null);
   const [peek, setPeek] = useState<{ id: string; x: number; y: number; ax: number } | null>(null);
@@ -50,14 +50,13 @@ export default function MyGroup() {
   );
   const groupRisks = useMemo(() => risks.filter((r) => r.student.group === group), [risks, group]);
   const flagged = groupRisks.filter((r) => r.risk !== 'ok');
-  const shown = groupRisks; // กลุ่มละ 8 คน — โชว์หมด ไม่ต้องพับ
 
   const gHigh = flagged.filter((r) => r.risk === 'high').length;
   const gWatch = flagged.filter((r) => r.risk === 'medium').length;
   const gStuck = groupRisks.filter((r) => r.stuckPeriods >= 2).length;
   /* คนที่ยังไม่มีเคสเลยต้องแยกเป็นสาเหตุของตัวเอง
      silentDays ของคนที่ไม่มีเคสและไม่เคยเช็คอินคือค่าตั้งต้น 999 จึงเข้าช่อง "เงียบเกิน N วัน"
-     ทั้งที่ยังไม่เคยเริ่ม — อาจารย์อ่านว่า "หายไป" แล้วไปตามผิดเรื่อง (เจอ 10 ก.ย. 69) */
+     ทั้งที่ยังไม่เคยเริ่ม — อาจารย์อ่านว่า "หายไป" แล้วไปตามผิดเรื่อง */
   const gNoCase = flagged.filter((r) => r.piecesTotal === 0).length;
   const gSilent = groupRisks.filter(
     (r) => r.piecesTotal > 0 && r.silentDays >= settings.stale && r.stuckPeriods < 2,
@@ -91,12 +90,12 @@ export default function MyGroup() {
         <div className="main__head">
           <div style={{ flex: 1 }}>
             <h1>{t('กลุ่ม')} {groupShort(group)}</h1>
-            {/* เหลือชื่อที่ปรึกษา (เคยหาไม่เจอ — ผู้ใช้ถาม 2 ก.ย.) · ตัดจำนวนคนและคำอธิบาย step (ตัดตัวเทา 16 ก.ย. 69) */}
+            {/* เหลือชื่อที่ปรึกษา · ตัดจำนวนคนและคำอธิบาย step */}
             {advisors && <p>{t('อาจารย์ที่ปรึกษา')} {advisors}</p>}
           </div>
         </div>
 
-        {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
+        {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
         <div className="kpis kpis--strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {/* ยุบการ์ด "ติด step/เงียบหาย" มาเป็นบรรทัดสาเหตุของ "ต้องตาม" — สองการ์ดเดิมชี้คนกลุ่มเดียวกัน */}
           <div className="kpi">
@@ -105,7 +104,7 @@ export default function MyGroup() {
               <span className="kpi__of"> / {t('{n} คน', { n: groupRisks.length })}</span>
             </div>
             <div className="kpi__label">
-              {/* ขึ้นเฉพาะสาเหตุที่มีคน — เดิมเรียงครบ 4 สาเหตุแม้เป็น 0 ("เงียบเกิน 14 วัน 0 · ยังไม่มีเคส 0") ยาวจนตัดสองบรรทัด (16 ก.ย. 69) */}
+              {/* ขึ้นเฉพาะสาเหตุที่มีคน — เดิมเรียงครบ 4 สาเหตุแม้เป็น 0 ("เงียบเกิน 14 วัน 0 · ยังไม่มีเคส 0") ยาวจนตัดสองบรรทัด */}
               {[t('ต้องตาม'), ...[
                 [gStuck, t('ติด step เดิม {n}', { n: gStuck })],
                 [gSilent, t('เงียบเกิน {b} วัน {n}', { b: settings.stale, n: gSilent })],
@@ -137,7 +136,7 @@ export default function MyGroup() {
         <div className="panel grppanel" ref={panelRef} style={{ marginTop: 18 }} onMouseLeave={() => setPeek(null)}>
           <h3>{t('นักศึกษาในกลุ่ม')}</h3>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
-             เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ (ผู้ใช้ขอลดความรก 2 ก.ย.) */}
+             เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ */}
           <p className="sub">{t('สีจุด: เขียว = ตามแผน · แดง = ต้องตาม')}</p>
           <table className={`tbl grptable${peek ? ' grptable--peek' : ''}`}>
             <thead>
@@ -149,10 +148,10 @@ export default function MyGroup() {
               </tr>
             </thead>
             <tbody>
-              {shown.length === 0 && (
+              {groupRisks.length === 0 && (
                 <tr><td colSpan={4} className="faint" style={{ padding: 18 }}>{t('ทุกคนอยู่ในแผน')} 🎉</td></tr>
               )}
-              {shown.map((r) => {
+              {groupRisks.map((r) => {
                 const main = r.pieces[0];
                 const open = openRow === r.student.id;
                 return (
@@ -174,7 +173,7 @@ export default function MyGroup() {
                       <td>
                         <span
                           role="img"
-                          /* สองสี (ผู้ใช้เลือก 16 ก.ย. 69): แดง = ต้องตาม (เสี่ยงสูง + จับตา) ตรงกับเลข "ต้องตาม" ด้านบน · title ยังบอกระดับละเอียด */
+                          /* สองสี: แดง = ต้องตาม (เสี่ยงสูง + จับตา) ตรงกับเลข "ต้องตาม" ด้านบน · title ยังบอกระดับละเอียด */
                           aria-label={r.risk === 'ok' ? t('ตามแผน') : t('ต้องตาม')}
                           title={r.risk === 'high' ? t('ต้องตาม · เสี่ยงสูง') : r.risk === 'medium' ? t('ต้องตาม · เหลือเผื่อน้อย') : t('ตามแผน')}
                           style={{
@@ -215,10 +214,10 @@ export default function MyGroup() {
                         {main ? (
                           <div className="worknow">
                             {/* เลขเดียวพอ: แถบ = ผ่านแล้วกี่ขั้น (มี tooltip) · ข้อความ = กำลังทำขั้นไหน
-                               เดิมมี "3/10" คู่กับ "CD-4" คนอ่านเห็นเลขชนกัน (ผู้ใช้งง 2 ก.ย.) */}
+                               เดิมมี "3/10" คู่กับ "CD-4" คนอ่านเห็นเลขชนกัน */}
                             <span className="worknow__type" style={{ color: typeMeta(main.type).ink }}>{typeMeta(main.type).prefix}</span>
                             <span className="worknow__name">
-                              {t('กำลังทำขั้น {n}', { n: Math.min(10, main.progression + 1) })} · {main.name}
+                              {t('กำลังทำขั้น {n}', { n: Math.min(main.max, main.progression + 1) })} · {main.name}
                             </span>
                             {r.stuckPeriods >= 2 ? (
                               <span className="worknow__flag" style={{ color: 'var(--warning)' }}>{t('ติดมา {n} คาบ', { n: r.stuckPeriods })}</span>
@@ -233,7 +232,7 @@ export default function MyGroup() {
                                 r.pieces.length > 1 ? t('+{n} งาน', { n: r.pieces.length - 1 }) : '',
                                 r.donePieces.length ? t('จบแล้ว {n}', { n: r.donePieces.length }) : '',
                               ].filter(Boolean).join(' · ')}>
-                                {/* วงเล็กชิ้นละวงแทนหลอดจิ๋วที่อ่านยาก (ผู้ใช้เลือก 16 ก.ย. 69) · วงเต็มแค่ไหน = ใกล้จบแค่ไหน · ติ๊กเขียว = จบแล้ว */}
+                                {/* วงเล็กชิ้นละวงแทนหลอดจิ๋วที่อ่านยาก · วงเต็มแค่ไหน = ใกล้จบแค่ไหน · ติ๊กเขียว = จบแล้ว */}
                                 {r.pieces.map((pc) => {
                                   const C = 2 * Math.PI * 7;
                                   const f = Math.max(0, Math.min(1, pc.progression / Math.max(1, pc.max)));
@@ -268,7 +267,7 @@ export default function MyGroup() {
                             <div className="worknow">
                               <span className="worknow__type" style={{ color: typeMeta(pc.type).ink }}>{typeMeta(pc.type).prefix}</span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>
-                                {t('กำลังทำขั้น {n}', { n: Math.min(10, pc.progression + 1) })} · {pc.name}
+                                {t('กำลังทำขั้น {n}', { n: Math.min(pc.max, pc.progression + 1) })} · {pc.name}
                               </span>
                               <span className="worknow__ago">{pc.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>

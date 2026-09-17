@@ -1,12 +1,12 @@
 import { BellRinging, Check } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { TeacherShell, type TeacherNav } from '../../components/teacher/TeacherShell';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
 import { TodayCard, type TodayLine } from '../../components/teacher/TodayCard';
 import { TypeDonut } from '../../components/charts/TypeDonut';
-import { todaySummary } from '../../domain/today';
+import { LOW_GROUP_PERCENT, todaySummary } from '../../domain/today';
 import { lastPullAt, pullAll } from '../../data/cloudSync';
 import { cloudEnabled } from '../../lib/cloud';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
@@ -15,7 +15,7 @@ import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics'
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useTeacher } from '../../hooks/data';
-import { useYearView, type YearView } from '../../hooks/useYearView';
+import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
@@ -31,10 +31,7 @@ const EMPTY_TEACHERS: Teacher[] = [];
 
 export default function Dashboard() {
   const { settings, showToast } = useApp();
-  const [params] = useSearchParams();
   const navigate = useNavigate();
-  const raw = params.get('tab') ?? 'overview';
-  const view = 'overview' as TeacherNav; void raw;
 
   const allStudents = useAllStudents();
   const allWorks = useAllWorkpieces();
@@ -80,7 +77,7 @@ export default function Dashboard() {
       // 'จบแล้ว' = ชั้นปีเกิน 6 · 'รวมปี' = เฉพาะที่ยังเรียนอยู่ (ไม่ปนรุ่นที่จบไป)
       if (yearView === 'alumni') {
         const grads = allStudents.filter((s) => isAlumni(s));
-        // ดูทีละรุ่นเสมอ — ยังไม่ได้เลือก = รุ่นที่เพิ่งจบล่าสุด (ผู้ใช้สั่ง 1 ก.ย.: ไม่เอา "ทุกรุ่น")
+        // ดูทีละรุ่นเสมอ — ยังไม่ได้เลือก = รุ่นที่เพิ่งจบล่าสุด (ไม่เอา "ทุกรุ่น")
         const cohorts = [...new Set(grads.map((s) => cohortOf(s)))].sort((a, b) => b - a);
         const pick = cohortPick ?? cohorts[0];
         return grads.filter((s) => cohortOf(s) === pick);
@@ -176,8 +173,8 @@ export default function Dashboard() {
   const alumni = useMemo(() => alumniOverview(summaries, works), [summaries, works]);
   const activeByType = useMemo(() => countByType(works.filter(isActiveWork)), [works]);
 
-  /* สรุปวันนี้ (ผู้ใช้เลือก 15 ก.ย. 69) — หัวหน้ารายวิชา/ยังไม่มีกลุ่ม = ทั้งชั้นปีที่ดูอยู่ · ที่ปรึกษา = กลุ่มตัวเอง */
-  /* ปุ่มสลับในกล่อง: [กลุ่ม PT7] [ทั้งชั้นปี/ปี 5/ปี 6] (ผู้ใช้เลือก A2 15 ก.ย. 69 — เดิมกดแท็บ "รวมปี" แล้วกล่องยังเป็น PT7 งง)
+  /* สรุปวันนี้ — หัวหน้ารายวิชา/ยังไม่มีกลุ่ม = ทั้งชั้นปีที่ดูอยู่ · ที่ปรึกษา = กลุ่มตัวเอง */
+  /* ปุ่มสลับในกล่อง: [กลุ่ม PT7] [ทั้งชั้นปี/ปี 5/ปี 6]
      ปุ่มกลุ่มมีเฉพาะเมื่อมีกลุ่มของตัวเอง · ค่าเริ่ม: ที่ปรึกษา = กลุ่ม · หัวหน้ารายวิชา = ทั้งชั้นปี */
   const hasOwnGroup = !!ownGroup && activeStudents.some((s) => s.group === ownGroup);
   const [scopePick, setScopePick] = useState<'group' | 'year' | null>(null);
@@ -220,7 +217,7 @@ export default function Dashboard() {
       todayLines.push({
         key: 'low', tone: 'warn', icon: 'warn',
         text: low.length > 0
-          ? <>{t('ต่ำกว่า 55%')}: <b>{low.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}{low.length > 3 ? ` +${low.length - 3}` : ''}</b>{today.followUp > 0 && <> · {t('ต้องตามรวม {n} คน', { n: today.followUp })}</>}</>
+          ? <>{t('ต่ำกว่า {n}%', { n: LOW_GROUP_PERCENT })}: <b>{low.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}{low.length > 3 ? ` +${low.length - 3}` : ''}</b>{today.followUp > 0 && <> · {t('ต้องตามรวม {n} คน', { n: today.followUp })}</>}</>
           : <>{t('ต้องตาม')} <b>{t('{n} คน', { n: today.followUp })}</b></>,
         go: low.length > 0
           ? { label: t('ดูกลุ่ม'), onClick: () => { scrollFlash(stripRef.current, 'center'); setGroup(low[0].code); setPeek(low[0].code); } }
@@ -236,7 +233,7 @@ export default function Dashboard() {
       });
     }
   }
-  /* ข้อมูลบนจอเก่าแล้ว = เตือนก่อนทุกบรรทัด — ไม่งั้นอาจารย์อ่าน "ไม่มีอะไรน่าห่วง" จากข้อมูลเมื่อวาน (ผู้ใช้ขอ 16 ก.ย. 69)
+  /* ข้อมูลบนจอเก่าแล้ว = เตือนก่อนทุกบรรทัด — ไม่งั้นอาจารย์อ่าน "ไม่มีอะไรน่าห่วง" จากข้อมูลเมื่อวาน
      นับจากรอบที่ดึงครบทุกตารางจริงเท่านั้น (cloudSync.lastPullAt) · โหมดเดโมไม่มีเซิร์ฟเวอร์ จึงไม่เตือน */
   void minuteTick;
   const pulledAt = cloudEnabled ? lastPullAt() : Date.now();
@@ -279,7 +276,7 @@ export default function Dashboard() {
 
 
   return (
-    <TeacherShell active={alumniPage ? 'alumni' : view}>
+    <TeacherShell active={alumniPage ? 'alumni' : 'overview'}>
       <main className="main">
         <div className="main__head">
           <div style={{ flex: 1 }}>
@@ -287,16 +284,11 @@ export default function Dashboard() {
               {yearView === 'all' ? t('ภาพรวมทุกชั้นปี')
                 : yearView === 'alumni' ? t('รุ่นที่จบแล้ว')
                   : `${t('ภาพรวมชั้นปีที่')} ${yearView}`}
-              {/* เลขรุ่นติดหัวเรื่อง — ภาคคุยกันด้วยเลขรุ่น เห็นได้ทุกโหมด ไม่ใช่แค่ "รวมปี" */}
-              {/* ตัวคั่นที่มองไม่เห็น — ช่องว่างบนจอมาจาก margin ของชิป แต่โปรแกรมอ่านหน้าจออ่านข้อความติดกัน
-                  เป็น "ภาพรวมทุกชั้นปีDTMU55" (เจอตอนไล่ใช้จริง 13 ก.ย. 69) · หน้าตาบนจอไม่เปลี่ยน */}
             </h1>
-            {/* หัวหน้าเหลือชื่อหน้า + แท็บปี (ผู้ใช้เลือกข้อ 2 · 15 ก.ย. 69 — ตัดเลขรุ่น · จำนวนคน/กลุ่ม · เวลา · ภาคเรียน)
+            {/* หัวหน้าเหลือชื่อหน้า + แท็บปี
                 เหลือบรรทัดเตือนของรุ่นที่จบแล้วอย่างเดียว กันเข้าใจผิดว่าเป็นรุ่นที่ยังเรียนอยู่ */}
             {isAlumniView && <p>{t('ดูได้อย่างเดียว แก้ไขไม่ได้ · {a} คน · {b} กลุ่ม', { a: students.length, b: groups.length })}</p>}
           </div>
-          {/* เดิมเป็นปุ่มตาย 2 อัน (ไม่มี handler): "ภาคเรียน 2569/1" ฝังปีตายตัว กับ "ส่งออก CSV"
-              — ป้ายเทอมเปลี่ยนเป็นข้อความคำนวณจริง · ปุ่ม CSV เอาออกจนกว่าจะทำ export ฝั่งอาจารย์จริง */}
           {!alumniPage && <YearSeg view={yearView} onChange={setYearView} />}
           {isAlumniView && !alumniLoading && alumniCohorts.length > 0 && (
             <div className="seg seg--sm seg--tight" aria-label={t('เลือกรุ่น')}>
@@ -323,11 +315,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {view === 'overview' && (
+        {(
           <>
-            {/* หน้าภาพรวมแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — ตัวเลขใหญ่ 4 ตัวอยู่การ์ดเดียวคั่นเส้น ตัดไอคอน */}
+            {/* หน้าภาพรวมแบบ "ตัดของซ้ำ" — ตัวเลขใหญ่ 4 ตัวอยู่การ์ดเดียวคั่นเส้น ตัดไอคอน */}
             {isAlumniView ? (
-              /* รุ่นที่จบแล้ว: ตัวเลขที่มีความหมายกับรุ่นเก่า (ผู้ใช้เลือก mock 14 ก.ย. 69)
+              /* รุ่นที่จบแล้ว: ตัวเลขที่มีความหมายกับรุ่นเก่า
                  เดิมใช้ชุดของรุ่นที่ยังเรียน → กำลังทำ/ค้าง/รอประเมิน เป็น 0 ทั้งแถว */
               <div className="kpis kpis--strip">
                 <div className="kpi">
@@ -361,8 +353,8 @@ export default function Dashboard() {
                   { key: 'year', label: yearScopeLabel, on: !groupScope, onPick: () => setScopePick('year') },
                 ] : [{ key: 'year', label: yearScopeLabel, on: true }]}
               />
-              {/* วงงานที่กำลังทำแทนกล่องตัวเลข 4 ตัวเดิม · เลขจบเคสสะสมย้ายมาเป็นบรรทัดเล็กใต้วง (ผู้ใช้ตกลง 15 ก.ย. 69) */}
-              {/* ไม่มีหัวข้อแยก — ชื่ออยู่กลางวง · วงเล็กลงให้สูงเท่ากล่องสรุป ไม่เหลือที่โล่ง (ผู้ใช้หงุดหงิดช่องว่าง 15 ก.ย. 69) */}
+              {/* วงงานที่กำลังทำแทนกล่องตัวเลข 4 ตัวเดิม · เลขจบเคสสะสมย้ายมาเป็นบรรทัดเล็กใต้วง */}
+              {/* ไม่มีหัวข้อแยก — ชื่ออยู่กลางวง · วงเล็กลงให้สูงเท่ากล่องสรุป ไม่เหลือที่โล่ง */}
               <section className="panel donutpanel" aria-label={t('งานที่กำลังทำ')}>
                 <TypeDonut
                   items={activeByType}
@@ -375,7 +367,7 @@ export default function Dashboard() {
             {!isAlumniView && (<>
             <div className="panel groupstrip" ref={stripRef}>
               {/* เดิม 24 กล่องขอบหนา มีหลอดทุกใบ → ช่องไม่มีกรอบ แถวละปี · ต่ำกว่า 55% เป็นช่องสีส้ม (เดิมแค่เปลี่ยนสีตัวเลข ตามองข้าม)
-                  กลุ่มที่อาจารย์ดูแลมีป้าย "กลุ่มคุณ" (ผู้ใช้ขอให้ชัด 14 ก.ย.) · กลุ่มที่เลือกดูอยู่มีกรอบบาง */}
+                  กลุ่มที่อาจารย์ดูแลมีป้าย "กลุ่มคุณ" · กลุ่มที่เลือกดูอยู่มีกรอบบาง */}
               {(yearView === 'all' ? [5, 6] : [null]).map((yr) => {
                 const list = yr === null ? groups : groups.filter((g) => g.year === yr);
                 if (!list.length) return null;
@@ -388,11 +380,11 @@ export default function Dashboard() {
                       </div>
                     )}
                     {list.map((g, gi) => {
-                      const lagging = g.percent < 55;
+                      const lagging = g.percent < LOW_GROUP_PERCENT;
                       const mine = g.code === ownGroup;
                       const advisors = advisorsOf(g.code);
                       const risk = groupRisk.get(g.code);
-                      /* ตัวเลข % อยู่ในกล่องเล็กตอนชี้เมาส์/จิ้ม (ผู้ใช้เลือก 15 ก.ย. 69 — "ตัวเลขเต็มไปหมด")
+                      /* ตัวเลข % อยู่ในกล่องเล็กตอนชี้เมาส์/จิ้ม
                          ช่องเหลือชื่อกลุ่ม + หลอด · ต่ำกว่า 55% ยังเป็นช่องส้มให้เห็นโดยไม่ต้องชี้ */
                       return (
                         /* ห่อด้วย div — ปุ่ม "ดูรายชื่อ" ในการ์ดต้องไม่อยู่ในปุ่มช่อง (ปุ่มซ้อนปุ่มใช้ไม่ได้) */
@@ -409,7 +401,7 @@ export default function Dashboard() {
                           >
                             {mine && <span className="groupcell__mine">{t('กลุ่มคุณ')}</span>}
                             <span className="groupcell__code">{groupShort(g.code)}</span>
-                            {/* ช่องสูงเผื่อหลอดตอนขยายไว้แล้ว — ชี้เมาส์แล้วแถว/การ์ดไม่ยืดหด (ผู้ใช้ขอ 15 ก.ย. 69) */}
+                            {/* ช่องสูงเผื่อหลอดตอนขยายไว้แล้ว — ชี้เมาส์แล้วแถว/การ์ดไม่ยืดหด */}
                             <span className="groupcell__slot" aria-hidden>
                               <span className="groupcell__bar"><i style={{ width: `${Math.max(0, Math.min(100, g.percent))}%` }} /><em>{g.percent}%</em></span>
                             </span>
@@ -417,7 +409,7 @@ export default function Dashboard() {
                           <span className="groupcell__tip" role="tooltip">
                             <b>{g.percent}%</b>
                             {groupShort(g.code)} · {t('{n} คน', { n: g.students.length })}
-                            {lagging && <em>{t('ต่ำกว่า 55%')}</em>}
+                            {lagging && <em>{t('ต่ำกว่า {n}%', { n: LOW_GROUP_PERCENT })}</em>}
                             {risk && risk.levels.length > 0 && (
                               <>
                                 <span className="groupcell__ppl">
@@ -425,13 +417,13 @@ export default function Dashboard() {
                                 </span>
                                 <small>
                                   {t('ทัน {a}/{b}', { a: risk.ok, b: risk.levels.length })}
-                                  {/* สองสี: แดง = ต้องตาม (เสี่ยงสูง + จับตา) — ผู้ใช้เลือก 16 ก.ย. 69 */}
+                                  {/* สองสี: แดง = ต้องตาม (เสี่ยงสูง + จับตา) */}
                                   {risk.high + risk.medium > 0 && ` · ${t('ต้องตาม {n}', { n: risk.high + risk.medium })}`}
                                 </small>
                               </>
                             )}
                             {advisors && <small>{advisors}</small>}
-                            {/* จิ้ม/กดแล้วเท่านั้น (ชี้เมาส์เฉยๆ การ์ดดูอย่างเดียว) — พาลงไปตารางนักศึกษาของกลุ่มนี้ (ผู้ใช้เลือก 15 ก.ย. 69) */}
+                            {/* จิ้ม/กดแล้วเท่านั้น (ชี้เมาส์เฉยๆ การ์ดดูอย่างเดียว) — พาลงไปตารางนักศึกษาของกลุ่มนี้ */}
                             {peek === g.code && (
                               <button className="groupcell__go" onClick={() => goToStudents(g.code)}>{t('ดูรายชื่อ')} ›</button>
                             )}
@@ -449,7 +441,7 @@ export default function Dashboard() {
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel" ref={studentsRef} style={{ scrollMarginTop: 16 }}>
                 {/* เลือกกลุ่มได้จากในการ์ดนี้เลย ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่มด้านบน
-                    + ค้นหาข้ามทุกกลุ่มในรุ่น (ผู้ใช้ขอ 1 ก.ย.: หาคนที่อยู่กลุ่มอื่นไม่เจอ) */}
+                    + ค้นหาข้ามทุกกลุ่มในรุ่น (หาคนที่อยู่กลุ่มอื่นไม่เจอ) */}
                 <div className="tblhead">
                   <h3>{t('นักศึกษา')}</h3>
                   <select
@@ -470,14 +462,14 @@ export default function Dashboard() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-                {/* ชื่อที่ปรึกษาใต้หัวตารางตัดออก — ชี้การ์ดกลุ่มก็เห็น (ผู้ใช้ขอตัดตัวเทา 15 ก.ย. 69) · เหลือบอกผลค้นหาทั้งรุ่น */}
+                {/* ชื่อที่ปรึกษาใต้หัวตารางตัดออก — ชี้การ์ดกลุ่มก็เห็น · เหลือบอกผลค้นหาทั้งรุ่น */}
                 {query && <p className="sub">{t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })}</p>}
                 <table className="tbl">
                   <thead>
                     <tr>
                       <th>{t('นักศึกษา')}</th>
                       {!isAlumniView && <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>}
-                      {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด (สกรีนช็อตผู้ใช้ 1 ก.ย.) */}
+                      {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด */}
                       <th style={{ width: 94, whiteSpace: 'nowrap' }}>{t('เกณฑ์สะสม 2 ปี')}</th>
                     </tr>
                   </thead>
@@ -485,7 +477,7 @@ export default function Dashboard() {
                     {shownStudents.map((s) => (
                       <tr key={s.student.id}>
                         <td>
-                          {/* ชื่อบรรทัดบน นามสกุลล่าง + กดแล้วไปหน้าตรวจงานรายคน (ผู้ใช้ขอ 2 ก.ย.) */}
+                          {/* ชื่อบรรทัดบน นามสกุลล่าง + กดแล้วไปหน้าตรวจงานรายคน */}
                           {(() => {
                             const [fn, ln] = splitPersonName(personName(s.student));
                             return (
@@ -504,7 +496,7 @@ export default function Dashboard() {
                           })()}
                           <div className="mono" style={{ font: '400 9.5px var(--font-mono)', color: 'var(--text-faint)' }}>
                             {s.student.code}
-                            {/* งานค้างเหลือจุดแดงท้ายรหัส · ตัดคอลัมน์ "ชิ้นงาน" กับ "ค้าง" (ผู้ใช้เลือกข้อ 6 · 16 ก.ย. 69) */}
+                            {/* งานค้างเหลือจุดแดงท้ายรหัส · ตัดคอลัมน์ "ชิ้นงาน" กับ "ค้าง" */}
                             {!isAlumniView && s.stale > 0 && (
                               <span className="staledot" title={t('งานค้างเกิน {d} วัน {n} ชิ้น', { d: settings.stale, n: s.stale })} aria-label={t('งานค้างเกิน {d} วัน {n} ชิ้น', { d: settings.stale, n: s.stale })} />
                             )}
@@ -540,7 +532,7 @@ export default function Dashboard() {
 
               </div>
 
-              {/* รุ่นที่จบไม่มีงานค้าง/คอขวด — สองการ์ดนี้ว่างทุกครั้ง จึงไม่แสดง (14 ก.ย. 69) */}
+              {/* รุ่นที่จบไม่มีงานค้าง/คอขวด — สองการ์ดนี้ว่างทุกครั้ง จึงไม่แสดง */}
               {!isAlumniView && (
               <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
               <div className="panel">
@@ -561,7 +553,7 @@ export default function Dashboard() {
                           <td>
                             {/* ชื่องานยาวเหลือบรรทัดเดียว … ชื่อเต็มชี้ดูได้ (ผู้ใช้เลือกข้อ 7) */}
                             <div className="staledetail" title={tText(r.workpiece.detail)}>{tText(r.workpiece.detail)}</div>
-                            {/* รหัสขั้นยาวตัวพิมพ์ดีดเหลือป้ายสั้น "● Post-core · step 6" · ชื่อขั้นเต็มอยู่ใน title (ผู้ใช้เลือก B2 15 ก.ย. 69) */}
+                            {/* รหัสขั้นยาวตัวพิมพ์ดีดเหลือป้ายสั้น "● Post-core · step 6" · ชื่อขั้นเต็มอยู่ใน title */}
                             <span className="stalepill" title={cur ? procLabel(r.workpiece.type, cur) : undefined}>
                               <i style={{ background: typeMeta(r.workpiece.type).color }} />
                               {typeChipLabel(r.workpiece.type)} · {cur ? `step ${cur.progression}` : t('ยังไม่เริ่ม')}
@@ -585,7 +577,7 @@ export default function Dashboard() {
                             >
                               {/* จอแคบเหลือแต่ไอคอน — วัดจริงบน iPhone แล้วคำว่า "เตือน" ถูกตัดเหลือ "เตือ"
                                   เพราะตารางกว้างเกินกรอบไป 2px แล้วคอลัมน์สุดท้ายโดนเบียด */}
-                              {/* ไอคอนอย่างเดียว — คำว่า "เตือน" ซ้ำทุกแถว (ผู้ใช้เลือกข้อ 8 · 16 ก.ย. 69) */}
+                              {/* ไอคอนอย่างเดียว — คำว่า "เตือน" ซ้ำทุกแถว */}
                               {pinged[key] ? <Check size={15} weight="bold" /> : <BellRinging size={15} />}
                             </button>
                           </td>
@@ -643,7 +635,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   <p className="pretty" style={{ margin: '12px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-secondary)' }}>
-                    {/* ประโยคยาวเหลือบรรทัดสั้น (ตัดตัวเทา 16 ก.ย. 69) */}
+                    {/* ประโยคยาวเหลือบรรทัดสั้น */}
                     <span>
                       {busiest.count > 0
                         ? t('กองมากสุด step {p} · {c} ชิ้น', { p: busiest.progression, c: busiest.count })
@@ -663,6 +655,3 @@ export default function Dashboard() {
 }
 
 /** ปีของกลุ่มอาจารย์ → แท็บเริ่มต้น · รับแค่ 5/6 นอกนั้นเป็น 'รวมปี' (ดู useYearView) */
-function defaultYearView(year: number | undefined): YearView {
-  return year === 5 ? '5' : year === 6 ? '6' : 'all';
-}

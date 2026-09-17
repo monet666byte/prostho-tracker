@@ -4,6 +4,7 @@ import { orderOf } from './catalog';
 import { caseCount, completedInYear, daysSinceUpdate, isStale, meetsAllRequirements, overallPercent, percentCompleted, type ReqGroup, isActiveWork, isComplete, gatesDone, GATE_KEYS } from './rules';
 import { academicYear } from '../lib/date';
 import { studentYear } from './cohort';
+import { groupNumberOf } from './group';
 import type { Settings, Student, WorkType, Workpiece } from './types';
 
 export interface StudentSummary {
@@ -56,8 +57,7 @@ export interface GroupSummary {
   stale: number;
   /**
    * ชั้นปีของกลุ่ม — มาจากสมาชิกจริง ไม่ใช่ tag ในรหัสกลุ่ม
-   * เพราะภาคอาจให้ นศ. อยู่กลุ่มเดิมตอนขึ้นปี 6 (ผู้ใช้ 1 ก.ย.: "แล้วแต่ปี")
-   * ถ้าเป็นแบบนั้น TH-PT7 จะมีสมาชิกเป็นปี 6 ทั้งกลุ่ม — อ่านจากรหัสจะผิด
+   * ภาคอาจให้ นศ. อยู่กลุ่มเดิมตอนขึ้นปี 6 — ถ้าเป็นแบบนั้น TH-PT7 จะมีสมาชิกเป็นปี 6 ทั้งกลุ่ม อ่านจากรหัสจะผิด
    */
   year: number;
   students: StudentSummary[];
@@ -88,7 +88,9 @@ export function summarizeGroups(summaries: StudentSummary[]): GroupSummary[] {
       year: modeYear(list.map((s) => studentYear(s.student))),
       students: list.sort((a, b) => a.student.id.localeCompare(b.student.id, undefined, { numeric: true })),
     }))
-    .sort((a, b) => parseInt(a.code.replace(/\D/g, ''), 10) - parseInt(b.code.replace(/\D/g, ''), 10));
+    /* เรียง ปี 5 → ปี 6 แล้วตามเลขกลุ่ม PT1 → PT12 · ห้ามอ่านเลขจาก code.replace(/\D/g,'') —
+       มันรวมเลขรุ่นเข้าไปด้วย ('TH6-PT10' → 610 ไปอยู่หลัง 'TH7-PT9' → 79) ดู domain/group.ts */
+    .sort((a, b) => a.year - b.year || groupNumberOf(a.code) - groupNumberOf(b.code) || a.code.localeCompare(b.code));
 }
 
 /** จำนวนชิ้นงานต่อประเภททั้ง cohort — กราฟแท่งนอน */
@@ -193,7 +195,7 @@ export function cohortPercent(works: Workpiece[]): number {
 }
 
 /**
- * ตัวเลขหัวหน้า "รุ่นที่จบแล้ว" (ผู้ใช้เลือก mock 14 ก.ย. 69)
+ * ตัวเลขหัวหน้า "รุ่นที่จบแล้ว"
  * เดิมหน้านี้ใช้ตัวเลขของรุ่นที่กำลังเรียน → กำลังทำ/ค้าง/รอประเมิน เป็น 0 ทั้งแถว ไม่บอกอะไร
  *
  * reqComplete นับจาก "เกณฑ์สะสม" (reqDone ≥ reqTotal) เท่านั้น — ไม่ใช้ allComplete

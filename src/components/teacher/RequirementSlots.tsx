@@ -135,7 +135,7 @@ export function RequirementSlots({
       />
 
       {/* ข้อกำหนดที่ไม่ใช่ชิ้นงาน — ชีตเก็บเป็นคอลัมน์รายคน (Sect II Removable/Fixed · Design RPD)
-          กรอกแล้ว 86/88 คนในชีตรุ่น 54 แต่แอปไม่เคยอ่าน → แถบ "ครบเกณฑ์" เดิมจึงยังไม่ครบจริง (3 ก.ย.) */}
+          กรอกแล้ว 86/88 คนในชีตรุ่น 54 แต่แอปไม่เคยอ่าน → แถบ "ครบเกณฑ์" เดิมจึงยังไม่ครบจริง */}
       {student && (
         <div style={{ padding: '10px 0', borderBottom: '1px solid var(--divider)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -204,7 +204,7 @@ export function RequirementSlots({
                 rows.every((r) => r.complete)
                   ? ''
                   : t('ยังขาด {n} ชิ้นสำหรับเกณฑ์สะสม', { n: rows.reduce((n, r) => n + Math.max(0, r.required - r.done), 0) }) +
-                    (crown.postCoreComplete ? '' : t(' และต้องมี Post-core อีก 1 ชิ้น')),
+                    (crown.postCoreComplete ? '' : t(' และต้องมี Post-core อีก {n} ชิ้น', { n: Math.max(1, (crown.postCoreRequired ?? 0) - (crown.postCoreDone ?? 0)) })),
                 student && gateMissing > 0 ? t('ข้อกำหนด Sect II / Design RPD ยังไม่ผ่านอีก {n} ข้อ', { n: gateMissing }) : '',
               ].filter(Boolean).join(' · ')}
         </span>

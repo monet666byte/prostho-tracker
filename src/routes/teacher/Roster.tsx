@@ -24,6 +24,7 @@ import { AddPersonPanel, FileImportPanel, importSummary } from '../../components
 import { ImportSheetBody } from './ImportSheet';
 import { entryYearFromDtmu, isAlumni, studentCohortLabel } from '../../domain/cohort';
 import { groupShort } from '../../domain/group';
+import { isDemoTeacherId } from '../../data/seed';
 import type { Student } from '../../domain/types';
 
 interface Invite {
@@ -38,7 +39,7 @@ export default function Roster() {
   const { cloudUser, showToast } = useApp();
   const students = useAllStudents();
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], []) ?? [];
-  /* หน้านี้อาจารย์ทุกคนเข้าได้ (ผู้ใช้ให้เปิด 1 ก.ย. — ทุกการกระทำมี audit log)
+  /* หน้านี้เฉพาะหัวหน้ารายวิชา (ดูด่านด้านล่าง) — ทุกการกระทำมี audit log
      แต่ "การให้สิทธิ์เข้าระบบ" ยังเป็นของหัวหน้ารายวิชาเท่านั้น เพราะมันคือการเปิดประตูให้คนใหม่
      เห็นข้อมูลนักศึกษาทั้งภาค — audit log ตามทีหลังไม่ช่วยถ้าข้อมูลรั่วไปแล้ว */
   const isAdmin = !!cloudUser?.isAdmin || !cloudEnabled;
@@ -55,7 +56,7 @@ export default function Roster() {
   const [dtmu, setDtmu] = useState('');
   const [rosterText, setRosterText] = useState('');
   const [importing, setImporting] = useState(false);
-  /* ช่องวางช่องเดียวกัน — ก๊อปแท็บ "อาจารย์" ของแบบฟอร์มมาวาง ระบบดูจากหัวตารางแล้วอ่านเป็นรายชื่ออาจารย์ (15 ก.ย. 69) */
+  /* ช่องวางช่องเดียวกัน — ก๊อปแท็บ "อาจารย์" ของแบบฟอร์มมาวาง ระบบดูจากหัวตารางแล้วอ่านเป็นรายชื่ออาจารย์ */
   const teacherMode = useMemo(() => looksLikeTeacherRoster(rosterText), [rosterText]);
   const parsed = useMemo(() => (rosterText.trim() && !teacherMode ? parseRoster(rosterText) : null), [rosterText, teacherMode]);
   const parsedTeachers = useMemo(() => (teacherMode ? parseTeacherRoster(rosterText) : null), [rosterText, teacherMode]);
@@ -75,7 +76,7 @@ export default function Roster() {
 
   /* ช่องวางข้อความ (ทางสำรองของปุ่มเลือกไฟล์) — ลงข้อมูลผ่าน data/rosterApply ตัวเดียวกับไฟล์และฟอร์มเพิ่มทีละคน */
   async function doImportTeachers() {
-    if (!parsedTeachers?.rows.length || !isAdmin) return;
+    if (!parsedTeachers?.rows.length) return;
     if (invitedIndex === null) {
       showToast({ message: error ? `${t('โหลดรายชื่อเชิญไม่ได้')} — ${error}` : t('รอโหลดรายชื่อเชิญสักครู่ แล้วกดใหม่'), tone: 'warning' });
       if (error) void load();
@@ -115,7 +116,7 @@ export default function Roster() {
   const [personId, setPersonId] = useState('');
   // ยืนยันก่อนลบ — เดิมกดถังขยะทีเดียวหายเลย ไอคอนเล็กๆ ในตารางกดพลาดง่ายมากบน iPad
   const [confirmDel, setConfirmDel] = useState<Invite | null>(null);
-  /* ฟอร์มผูกอีเมลกับคนที่มีอยู่แล้ว — ใช้น้อย ซ่อนไว้หลังลิงก์ในแผง "เพิ่มทีละคน" (ผู้ใช้งงว่าช่องนี้เพิ่มคนใหม่ไม่ได้ 15 ก.ย.) */
+  /* ฟอร์มผูกอีเมลกับคนที่มีอยู่แล้ว — ใช้น้อย ซ่อนไว้หลังลิงก์ในแผง "เพิ่มทีละคน" */
   const [showLink, setShowLink] = useState(false);
 
   async function load() {
@@ -133,12 +134,11 @@ export default function Roster() {
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [isAdmin]);
 
   /* อาจารย์: ซ่อนบัญชีเดโมที่ค้างอยู่ (id ขึ้นต้น tc-TH…) เมื่อมีอาจารย์จริงในระบบแล้ว
-     (ผู้ใช้เจอ 2 ก.ย.: dropdown ยาวเป็นร้อยชื่อ "อ. ช." ซ้ำกัน)
+     (dropdown ยาวเป็นร้อยชื่อ "อ. ช." ซ้ำกัน)
      ⚠️ ห้ามกรองด้วย "มีนักศึกษาผูกอยู่ไหม" — อาจารย์ที่เพิ่งเพิ่ม (เช่น ที่ปรึกษาปี 6
      ที่ยังไม่ได้ผูกกลุ่ม) จะหายไปจากรายการทันที เลือกให้สิทธิ์เข้าระบบไม่ได้ */
   const activeTeachers = useMemo(() => {
-    const isDemoSeeded = (id: string) => /^tc-TH\d*-/.test(id);
-    const real = teachers.filter((tc) => !isDemoSeeded(tc.id));
+    const real = teachers.filter((tc) => !isDemoTeacherId(tc.id));
     return real.length ? real : teachers;
   }, [teachers]);
 
@@ -147,7 +147,7 @@ export default function Roster() {
    *
    * เดิมยัดนักศึกษาทุกคนทุกรุ่นลง <select> เดียว = 481 บรรทัดในเดโม (96 คน × 5 รุ่น)
    * เรียงตามชื่อ จึงมี "นศ. ก" ซ้ำกัน 60 บรรทัดติดกันโดยแยกไม่ออกว่ารุ่นไหน
-   * และ native select ไม่มีช่องค้นหา (เจอ 10 ก.ย. 69)
+   * และ native select ไม่มีช่องค้นหา
    *
    * สองอย่างที่แก้: ① ตัดรุ่นที่จบไปแล้วออก — คนจบแล้วไม่ต้องให้สิทธิ์เข้าระบบใหม่
    * ② จัดเป็น optgroup ตามรุ่น+กลุ่ม เบราว์เซอร์จะโชว์หัวข้อคั่นให้ กระโดดหาได้
@@ -218,7 +218,7 @@ export default function Roster() {
           </div>
         </div>
 
-        {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก (1 ก.ย.)
+        {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก
             ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}
         <div className="tabs tabs--line" role="tablist">
           <button role="tab" aria-selected={tab === 'people'} data-on={tab === 'people'} onClick={() => setTab('people')}>{t('รายชื่อนักศึกษา')}</button>
@@ -228,7 +228,7 @@ export default function Roster() {
         {tab === 'sheet' && <ImportSheetBody />}
 
         {tab === 'people' && <LinkRequestsPanel alwaysShow />}
-        {tab === 'people' && isAdmin && <AdvisorEditor />}
+        {tab === 'people' && <AdvisorEditor />}
 
         {tab === 'people' && error && (
           <div style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, font: '500 12px var(--font-body)' }}>
@@ -236,16 +236,16 @@ export default function Roster() {
           </div>
         )}
 
-        {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (ผู้ใช้ยืนยัน 1 ก.ย.: DTMU56 เป็นต้นไปมีรายชื่อให้) */}
+        {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (DTMU56 เป็นต้นไปมีรายชื่อให้) */}
         {tab === 'people' && (<>
         <FileImportPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} />
         <AddPersonPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
 
-        {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ (ผู้ใช้เลือก 15 ก.ย. 69) */}
+        {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ */}
         <details className="roster-more" open={rosterText.trim() !== '' || undefined}>
         <summary>{t('หรือก๊อปตารางมาวางเอง')}</summary>
         {/* ไอคอนหน้าหัวข้อ + คำอธิบายยาว → หัวข้อกับคำอธิบายบรรทัดเดียว · ช่องรุ่นกับช่องวางอยู่แถวเดียวกัน
-            (ผู้ใช้เลือก mock 14 ก.ย. 69) */}
+ */}
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('วางรายชื่อ')}</h3>
@@ -263,7 +263,7 @@ export default function Roster() {
                 placeholder="56"
               />
               {/* ยังไม่กรอกเลขรุ่น แล้วโชว์ "ในปีการศึกษา —" อ่านเหมือนระบบคำนวณไม่ได้
-                  บอกตรงๆ ว่ายังต้องกรอกอะไรดีกว่า (เจอ 10 ก.ย. 69) */}
+                  บอกตรงๆ ว่ายังต้องกรอกอะไรดีกว่า */}
               <small className="rosterimport__hint" title={t('ชั้นปีจะเลื่อนเองทุกวันที่ 1 มิถุนายน')}>
                 {dtmu
                   ? t('→ ขึ้นปี 5 ปีการศึกษา {y}', { y: entryYearFromDtmu(Number(dtmu)) })
@@ -308,11 +308,6 @@ export default function Roster() {
                   {t('บรรทัด')} {e.line}: {e.text} — {e.reason}
                 </p>
               ))}
-              {!isAdmin && (
-                <p style={{ margin: '6px 0 0', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
-                  {t('นำเข้าอาจารย์ได้เฉพาะหัวหน้ารายวิชา — เป็นการให้สิทธิ์เข้าระบบ')}
-                </p>
-              )}
             </div>
           )}
 
@@ -320,7 +315,7 @@ export default function Roster() {
             <button
               className="btn"
               style={{ marginTop: 12, height: 42, width: 'auto', padding: '0 18px' }}
-              disabled={!parsedTeachers?.rows.length || !isAdmin || importing}
+              disabled={!parsedTeachers?.rows.length || importing}
               onClick={doImportTeachers}
             >
               {importing ? t('กำลังนำเข้า…') : t('นำเข้าอาจารย์ {n} ท่าน', { n: parsedTeachers?.rows.length ?? 0 })}
@@ -339,7 +334,6 @@ export default function Roster() {
 
         </details>
 
-        {isAdmin && (<>
         {showLink && <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('ผูกอีเมลกับคนที่มีในระบบแล้ว')}</h3>
@@ -436,14 +430,8 @@ export default function Roster() {
               </tbody>
             </table>
           </div>
-          {/* คำอธิบาย "ลบแล้วเกิดอะไร" ย้ายไปอยู่ในกล่องยืนยันตอนกดลบ (14 ก.ย. 69) */}
+          {/* คำอธิบาย "ลบแล้วเกิดอะไร" ย้ายไปอยู่ในกล่องยืนยันตอนกดลบ */}
         </div>
-        </>)}
-        {!isAdmin && (
-          <p className="sub" style={{ marginTop: 4 }}>
-            {t('การให้สิทธิ์เข้าระบบเป็นของหัวหน้ารายวิชา — ส่วนการนำเข้าข้อมูลทำได้ทุกคน และถูกบันทึกใน audit log')}
-          </p>
-        )}
         </>)}
 
         {confirmDel && (
@@ -475,7 +463,7 @@ export default function Roster() {
 }
 
 /**
- * ช่อง "คือใคร" แบบพิมพ์ค้น (ผู้ใช้เลือก mock 14 ก.ย. 69)
+ * ช่อง "คือใคร" แบบพิมพ์ค้น
  * เดิมเป็น <select> ที่มีหลายร้อยชื่อ ต้องเลื่อนหาเอง — native select ค้นไม่ได้
  * พิมพ์รหัสหรือชื่อ → รายการ 8 อันแรกที่ตรง · ลูกศรขึ้นลง + Enter เลือกได้
  */

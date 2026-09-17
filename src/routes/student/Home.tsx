@@ -12,20 +12,22 @@ import { personName, t, tSexAge } from '../../lib/i18n';
 import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { typeMeta } from '../../domain/catalog';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
-import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork } from '../../domain/rules';
+import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
-import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY } from '../../domain/checkin';
+import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY, checkInStamp } from '../../domain/checkin';
+import { isSect2Evaluated } from '../../domain/sect2';
+import { isSect3Evaluated } from '../../domain/sect3';
 import { FIRSTS } from './Achievements';
 import { groupShort } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import { saOpenFor, saProgress, type SAValue } from '../../domain/selfAssessment';
 import { studentYear } from '../../domain/cohort';
 
-// การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน (ผู้ใช้ขอ 1 ก.ย.)
+// การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน
 const SHOW_ACHIEVEMENT_CARD = false;
 
-/** วงแหวนความคืบหน้ารวมของเคส — ผู้ใช้ขอคืนมาคู่กับเส้นทางด่าน (1 ก.ย.) เลยย่อไซซ์ลงไปอยู่มุมหัวการ์ด */
+/** วงแหวนความคืบหน้ารวมของเคส — ผู้ใช้ขอคืนมาคู่กับเส้นทางด่าน เลยย่อไซซ์ลงไปอยู่มุมหัวการ์ด */
 function Ring({ value, max }: { value: number; max: number }) {
   const R = 22;
   const C = 2 * Math.PI * R;
@@ -56,12 +58,12 @@ function HeroCard({
   const next = nextProc(w);
   const prog = Math.max(progression(w), 0);
   const max = maxProgression(w);
-  // เส้นทางด่านหน้าต่างแคบ "หน้า 1 หลัง 1" (ผู้ใช้ขอ 1 ก.ย. รอบสอง — ทั้งกลุ่ม active ยังแน่นไป):
+  // เส้นทางด่านหน้าต่างแคบ "หน้า 1 หลัง 1":
   // ขั้นล่าสุดที่เสร็จ = cur อยู่แล้ว · ขั้นถัดจากปัจจุบันดึงตรงๆ ข้ามขอบกลุ่มได้เลย
   const upcoming = next ? procAt(w, w.procIndex + 2) : undefined;
   return (
     <article className={`herocase t-${w.type}`}>
-      {/* บรรทัดเทาบรรทัดเดียวแทนชิป (ผู้ใช้เลือก 14 ก.ย.) · HN กึ่งหนาตัวอ้วน อ่านเจอเร็วแต่ไม่แย่งชื่อผู้ป่วย */}
+      {/* บรรทัดเทาบรรทัดเดียวแทนชิป · HN กึ่งหนาตัวอ้วน อ่านเจอเร็วแต่ไม่แย่งชื่อผู้ป่วย */}
       <div className="herocase__top">
         <span className="dot" style={{ background: typeMeta(w.type).color }} />
         <span className="herocase__line">
@@ -80,7 +82,7 @@ function HeroCard({
       )}
 
       {/* โซนหัว "เคสไหน": ชื่อคนไข้เป็นหัวเรื่อง + บรรทัดรอง ชิดซ้าย · วงแหวนรวมทั้งเคสชิดขวา
-          เดิมซ้ายมีบรรทัด mono จางบรรทัดเดียว สูงไม่ถึงครึ่งวงแหวน เลยเหลือช่องโหวงข้างวงแหวน (ผู้ใช้ทัก 2 ก.ย.)
+          เดิมซ้ายมีบรรทัด mono จางบรรทัดเดียว สูงไม่ถึงครึ่งวงแหวน เลยเหลือช่องโหวงข้างวงแหวน
           บรรทัดรองทำสองหน้าที่: บอก HN และกำกับว่าเลขในวงแหวนคือ "ขั้นที่ n จาก m" ไม่ใช่คะแนน
           (จึงไม่ต้องมีป้าย steps ใต้วงแหวนอีก) */}
       <div className="herocase__lead">
@@ -94,7 +96,7 @@ function HeroCard({
       {next ? (
         <>
           {/* เส้นคั่นแบ่งโซน "เคสไหน" ออกจากโซน "ต้องทำอะไรต่อ" — ไม่งั้นทุกแถวลอยกองรวมกัน */}
-          {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด (ผู้ใช้ทักว่าปุ่มกลางทางรก, 1 ก.ย.) */}
+          {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด */}
           <div className="heropath">
             {cur && (
               <div className="heropath__row">
@@ -104,7 +106,7 @@ function HeroCard({
             )}
             <div className="heropath__row heropath__row--now">
               <span className="heropath__node heropath__node--now">{next.progression}</span>
-              {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม (แทนลิงก์ฟ้าเล็กเดิม — ธรรมเนียมตั้งแต่ 31 ส.ค.) */}
+              {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม */}
               <Link to={`/app/work/${w.id}`} className="heropath__name heropath__name--now">
                 {next.name}
               </Link>
@@ -161,8 +163,8 @@ export default function Home() {
   const pf3 = useSect3(session?.studentId, saYearNow());
   const portfolioDone = useMemo(() => {
     const keys = new Set<string>();
-    for (const r of pf2) if (r.formKey === 'rpdDesign' ? r.passed != null : r.total != null) keys.add(`2:${r.formKey}`);
-    for (const r of pf3) if (r.total != null) keys.add(`3:${r.formKey}`);
+    for (const r of pf2) if (isSect2Evaluated(r)) keys.add(`2:${r.formKey}`);
+    for (const r of pf3) if (isSect3Evaluated(r)) keys.add(`3:${r.formKey}`);
     return keys.size;
   }, [pf2, pf3]);
   const saDone = selfAssessment?.status === 'submitted';
@@ -213,13 +215,13 @@ export default function Home() {
   const checkingIn = useRef(false);
 
   /**
-   * แผ่นถามเช็คอินตอนเปิดแอป (ผู้ใช้ขอ 31 ส.ค.)
+   * แผ่นถามเช็คอินตอนเปิดแอป
    * เหตุผล: ทำงานอย่างอื่นเพลินแล้วลืมว่ายังไม่ได้เช็คอิน — เด้งถามก่อนเลย
    * กติกา: ถามเฉพาะยังไม่เช็คอินวันนี้ · กด "ไว้ก่อน" แล้ววันนั้นไม่กวนซ้ำ
    * (จำการข้ามไว้ในเครื่อง — พรุ่งนี้ค่อยถามใหม่)
    */
   const [askCheckIn, setAskCheckIn] = useState(false);
-  // ฟอร์มในแผ่นถาม — เลือกกิจกรรม/คนไข้ได้เลยตั้งแต่ตอนเด้ง (ผู้ใช้ขอ)
+  // ฟอร์มในแผ่นถาม — เลือกกิจกรรม/คนไข้ได้เลยตั้งแต่ตอนเด้ง
   const [askActs, setAskActs] = useState<string[]>([]);
   const [askPatient, setAskPatient] = useState('');
   const askNoPatient = askActs.includes(NO_PATIENT_ACTIVITY);
@@ -234,9 +236,7 @@ export default function Home() {
     checkingIn.current = true;
     tapFeedback();
     try {
-      const now = new Date();
-      const checkinAt = now.toTimeString().slice(0, 5);
-      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      const { checkinAt, punctual } = checkInStamp();
       await addCheckIn({
         studentId: session.studentId, date: today, punctual, checkinAt,
         noPatient: askNoPatient,
@@ -272,9 +272,7 @@ export default function Home() {
     checkingIn.current = true;
     tapFeedback();
     try {
-      const now = new Date();
-      const checkinAt = now.toTimeString().slice(0, 5);
-      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      const { checkinAt, punctual } = checkInStamp();
       await addCheckIn({
         studentId: session.studentId, date: today, punctual, checkinAt,
         noPatient: false, activities: [], note: '', actor: currentActor(),
@@ -292,7 +290,7 @@ export default function Home() {
         <div className="backdrop" onClick={skipCheckInAsk}>
           <div className="sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '82%', overflowY: 'auto' }}>
             <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</h3>
-            {/* คำอธิบายวิธีใช้ตัดออก — ปุ่ม "ไว้ก่อน" ข้างล่างบอกอยู่แล้วว่าไม่กรอกก็ได้ (16 ก.ย. 69) */}
+            {/* คำอธิบายวิธีใช้ตัดออก — ปุ่ม "ไว้ก่อน" ข้างล่างบอกอยู่แล้วว่าไม่กรอกก็ได้ */}
 
             <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
             {ACTIVITY_GROUPS.map((g) => (
@@ -335,16 +333,16 @@ export default function Home() {
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* หน้าแรกแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock A+B 14 ก.ย.): ชิปกลุ่ม + ป้าย BETA ข้างชื่อ → กลุ่มอยู่ในบรรทัดทักทาย */}
+          {/* หน้าแรกแบบ "ตัดของซ้ำ": ชิปกลุ่ม + ป้าย BETA ข้างชื่อ → กลุ่มอยู่ในบรรทัดทักทาย */}
           <div style={{ font: '400 12px var(--font-body)', color: 'var(--text-faint)' }}>
             {greeting()}{student?.group ? ` · ${groupShort(student.group)}` : ''}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-            {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>" (ผู้ใช้ขอ 2 ก.ย.)
+            {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>"
                 ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
             {/* หัวเรื่องของหน้าแรก = ชื่อเจ้าของหน้า · ต้องเป็น h1 หนึ่งตัวต่อหน้า (WCAG 1.3.1) */}
             <h1 style={{ margin: 0, font: '700 19px var(--font-head)' }}>
-              {t('นศ.')} {firstNameOnly(personName(student, 'นศ. Liv'))}
+              {t('นศ.')} {firstNameOnly(personName(student, 'นักศึกษา'))}
             </h1>
           </div>
         </div>
@@ -360,7 +358,7 @@ export default function Home() {
 
       {/* ทุกกล่องอยู่ในกองเดียว ระยะเท่ากันหมด — ต่อเนื่องแบบ mock ที่ผู้ใช้เลือก */}
       {/* homegrid/homecol: มือถือซ้อนเป็นกองเดียวเหมือนเดิม · iPad แนวนอนแยกซ้าย "งานถัดไป" ขวา "สะสม + ของฉัน"
-          (ผู้ใช้เลือก mock B 15 ก.ย. 69 · กฎอยู่ใน student-tablet.css) */}
+ */}
       <div className="homegrid" style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
       <div className="homecol">
       {(() => {
@@ -410,7 +408,7 @@ export default function Home() {
         const next = nextProc(w);
         const meta = typeMeta(w.type);
         return (
-          // ปุ่มผ่าน step อยู่ในการ์ดแล้ว — เดิมลอยนอกการ์ด ขอบขวาของการ์ดนี้เลยสั้นกว่าใบอื่น ดูเบี้ยว (14 ก.ย.)
+          // ปุ่มผ่าน step อยู่ในการ์ดแล้ว — เดิมลอยนอกการ์ด ขอบขวาของการ์ดนี้เลยสั้นกว่าใบอื่น ดูเบี้ยว
           <div key={w.id} className="minirow">
             <Link to={`/app/work/${w.id}`} className="minirow__body">
               <span className="minirow__top">
@@ -424,10 +422,10 @@ export default function Home() {
                 {pending.has(w.id) && <PendingBadge />}
               </span>
               {/* ชื่อขั้นถัดไป — เดิมแถวย่อบอกแค่ตัวเลข ต้องกดเข้าไปถึงจะรู้ว่าต้องทำอะไร
-                  ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
+                  ผู้ใช้ขอให้เคสอื่นเด่นขึ้น — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
               {next && <span className="minirow__step">{next.name}</span>}
             </Link>
-            {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก (ผู้ใช้ทัก 1 ก.ย.)
+            {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก
                 เลข step ตัดออกเพราะซ้ำกับ 9/10 ที่อยู่ข้างๆ อยู่แล้ว — เหลือเครื่องหมายถูกอย่างเดียว */}
             {next && (
               <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
@@ -454,8 +452,8 @@ export default function Home() {
         </button>
       </div>
 
-      {/* แถบกำลังใจแบบสะสม — ผู้ใช้ 1 ก.ย.: streak รายสัปดาห์ไม่เข้ากับตารางคลินิก (บางสัปดาห์ไม่มีคาบ)
-          เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" · ผู้ใช้ยืนยันเก็บไว้ 14 ก.ย. */}
+      {/* แถบกำลังใจแบบสะสม — streak รายสัปดาห์ไม่เข้ากับตารางคลินิก (บางสัปดาห์ไม่มีคาบ)
+          เลยนับแบบสะสมอย่างเดียว มีแต่เพิ่ม ไม่มีรีเซ็ต ไม่มีคำว่า "ขาด" */}
       <div className="card growcard">
         <span className="growcard__head">🔥 {t('เก็บสะสมมาเรื่อยๆ')}</span>
         <div className="growcard__row">
@@ -466,7 +464,7 @@ export default function Home() {
             <b>{new Set(checkins.map((c) => weekMonday(c.date))).size}</b>{t('สัปดาห์ที่ได้ลงมือ')}
           </span>
           <span className="growcard__stat">
-            <b>{works.reduce((a, w) => a + Math.max(0, w.procIndex + 1), 0)}</b>{t('ขั้นที่ผ่านมือคุณ')}
+            <b>{works.reduce((a, w) => a + Math.max(0, stepsPassed(w)), 0)}</b>{t('ขั้นที่ผ่านมือคุณ')}
           </span>
         </div>
         <span className="growcard__sub growcard__sub--quote">“{dailyQuote()}”</span>
@@ -475,10 +473,10 @@ export default function Home() {
       {/* แบบประเมินตนเอง — ปีละครั้งตอนจบเทอม 1 ซ่อนไว้ตลอดปีจนกว่าภาคจะเปิด
           (การ์ดถาวรที่กดไม่ได้ = ขยะบนหน้าแรก)
 
-          การ์ดนี้ทำหน้าที่ "แจ้งเตือน" ด้วย — ผู้ใช้ขอ 5 ก.ย. 69 ให้ผูกการเปิดฟอร์มกับ noti
+          การ์ดนี้ทำหน้าที่ "แจ้งเตือน" ด้วย ให้ผูกการเปิดฟอร์มกับ noti
           วินาทีที่อาจารย์กดสวิตช์เปิด นักศึกษาที่ยังไม่เริ่มจะเห็นจุดแดงบนหน้าแรกทันที
           (ทำงานออฟไลน์ ไม่ต้องขอสิทธิ์ ไม่ต้องมีเซิร์ฟเวอร์ — push จริงยังไม่มีในระบบ) */}
-      {/* ประเมินตนเอง + สมุดของฉัน อยู่ในการ์ดใบเดียวคั่นเส้น — เดิมแยกสองใบขอบหนา ดูเป็นกองกล่อง (ผู้ใช้บอกรก 14 ก.ย.) */}
+      {/* ประเมินตนเอง + สมุดของฉัน อยู่ในการ์ดใบเดียวคั่นเส้น — เดิมแยกสองใบขอบหนา ดูเป็นกองกล่อง */}
       <div className="homelabel">{t('ของฉัน')}</div>
       <div className="card linkgroup">
       {(saOpen || saDone) && (
@@ -486,7 +484,7 @@ export default function Home() {
           to="/app/self-assessment"
           className={`linkgroup__row${saNew ? ' linkgroup__row--new' : ''}`}
         >
-          {/* แถวเดียวไม่มีไอคอน · สถานะสั้นชิดขวา (ผู้ใช้เลือก 14 ก.ย.) — ใกล้กำหนดยังเป็นสีเตือนเหมือนเดิม */}
+          {/* แถวเดียวไม่มีไอคอน · สถานะสั้นชิดขวา — ใกล้กำหนดยังเป็นสีเตือนเหมือนเดิม */}
           <span className="linkgroup__title">
             {t('ประเมินตนเอง')}
             {saNew && <span className="linkgroup__new" aria-label={t('ใหม่')} />}
@@ -509,7 +507,7 @@ export default function Home() {
       </Link>
       </div>
 
-      {/* การ์ดความสำเร็จ — พับไว้ก่อน (ผู้ใช้ 1 ก.ย.: ขอเอาไปเสนอภาคก่อนค่อยเปิด)
+      {/* การ์ดความสำเร็จ — พับไว้ก่อน (รอเสนอภาคก่อนค่อยเปิด)
           เปิดกลับ: เปลี่ยน SHOW_ACHIEVEMENT_CARD เป็น true */}
       {SHOW_ACHIEVEMENT_CARD && (
       <Link to="/app/achievements" className="card achhome">

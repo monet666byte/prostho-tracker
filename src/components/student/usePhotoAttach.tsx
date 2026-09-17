@@ -107,7 +107,7 @@ export function usePhotoAttach(workpieceId: string | undefined, opts: Options = 
       hidden
       onChange={(e) => void handle(e.target.files)}
     />
-  );
+);
 
   return { input, open: () => ref.current?.click(), busy, uploading };
 }

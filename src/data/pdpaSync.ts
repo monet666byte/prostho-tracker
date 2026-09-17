@@ -28,7 +28,7 @@ export interface PdpaPolicy {
   /** หน้าที่ไม่ได้ทำงานกับเคสตรงๆ ให้แสดงแค่รหัสเคส */
   maskByDefault: boolean;
   /**
-   * ใช้ชื่อผู้ป่วยไหม (0026 · ผู้ใช้เลือก 15 ก.ย. 69) — ปิด = นำร่องเก็บแค่ HN
+   * ใช้ชื่อผู้ป่วยไหม — ปิด = นำร่องเก็บแค่ HN
    * ปิดอยู่: ฟอร์มไม่มีช่องชื่อ · หน้าจอแสดง HN แทนชื่อ · เซิร์ฟเวอร์ล้างชื่อทุกครั้งที่เขียน
    */
   patientNames: boolean;
@@ -148,7 +148,7 @@ export async function savePdpaPolicy(patch: Partial<PdpaPolicy>, by: string): Pr
     return {};
   }
   /* ส่งเฉพาะคอลัมน์ที่กดเปลี่ยน — เดิมส่งทุกช่องจากค่าในเครื่อง ถ้าเครื่องยังไม่ได้ดึงนโยบายล่าสุด
-     (เครื่องใหม่ = LOCKED_POLICY / อีกคนเพิ่งแก้) การกดสวิตช์หนึ่งตัวจะย้อนสวิตช์ตัวอื่นบนเซิร์ฟเวอร์กลับ (ตรวจซ้ำ 15 ก.ย. 69) */
+     (เครื่องใหม่ = LOCKED_POLICY / อีกคนเพิ่งแก้) การกดสวิตช์หนึ่งตัวจะย้อนสวิตช์ตัวอื่นบนเซิร์ฟเวอร์กลับ */
   const cols: Record<string, unknown> = { updated_by: by };
   if ('retentionEnabled' in patch) cols.retention_enabled = patch.retentionEnabled;
   if ('retentionCohorts' in patch) cols.retention_cohorts = patch.retentionCohorts;

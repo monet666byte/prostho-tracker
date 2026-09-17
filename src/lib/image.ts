@@ -24,18 +24,6 @@ export interface CompressedImage {
   height: number;
 }
 
-/**
- * ขนาดไฟล์โดยประมาณจากความยาว data URL (base64 พองขึ้น ~4/3)
- * ยังต้องมีอยู่ — ใช้กับรูปเก่าที่ยังเป็น data URL ตอนย้ายขึ้น storage (ดู photoStore.ts)
- */
-export function dataUrlBytes(dataUrl: string): number {
-  const i = dataUrl.indexOf(',');
-  if (i < 0) return 0;
-  const b64 = dataUrl.slice(i + 1);
-  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
-  return Math.floor((b64.length * 3) / 4) - pad;
-}
-
 export function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(n / 1024))} KB`;

@@ -2,7 +2,8 @@ import { ArrowLeft, FilePdf } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
-import { CSV_COLUMNS, PROGRESSION_COLUMNS, exportCsv, exportPermission, passedProgressions } from '../../lib/export';
+import { CSV_COLUMNS, PROGRESSION_COLUMNS, authorizeExport, exportCsv, exportPermission, passedProgressions } from '../../lib/export';
+import { caseCode } from '../../lib/privacy';
 import { currentProc, isComplete, maxProgression, percentCompleted, procLabel } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { thaiLong, academicYear } from '../../lib/date';
@@ -23,6 +24,33 @@ export default function ExportScreen() {
   const [perm, setPerm] = useState(() => exportPermission(currentPdpaRole()));
   useEffect(() => onPdpaPolicy(() => setPerm(exportPermission(currentPdpaRole()))), []);
   const [busy, setBusy] = useState(false);
+  /* ใบพิมพ์ต้องผ่านด่านเดียวกับไฟล์ CSV (สิทธิ์ + audit) — ค่านี้บอกว่าตารางที่จะพิมพ์โชว์ HN ได้ไหม
+     null = ยังไม่ผ่านด่าน (ตัวอย่างบนจอปิดบัง HN ไว้ก่อน) */
+  const [printIdentified, setPrintIdentified] = useState<boolean | null>(null);
+
+  async function doPrint() {
+    setBusy(true);
+    try {
+      const res = await authorizeExport({
+        scope: 'own-progress',
+        works: reportWorks,
+        filename: 'print-a4',
+        wantIdentified: true,
+        role: currentPdpaRole(),
+        studentId: session?.studentId,
+        actor: currentActor(),
+      });
+      if (!res.ok) {
+        showToast({ message: t(res.reason), tone: 'warning' });
+        return;
+      }
+      setPrintIdentified(res.identified);
+      // ให้ตารางวาดตามสิทธิ์ที่ได้ก่อน แล้วค่อยเปิดหน้าต่างพิมพ์
+      setTimeout(() => window.print(), 50);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function doExportCsv() {
     setBusy(true);
@@ -110,10 +138,10 @@ export default function ExportScreen() {
                         {cur ? procLabel(w.type, cur) : '—'}
                       </div>
                     </td>
-                    <td className="mono">{w.patient.hn}</td>
+                    <td className="mono">{printIdentified ? w.patient.hn : caseCode(w.patient.id)}</td>
                     {/* ช่องที่เกินขั้นสุดท้ายของประเภทนั้นต้องอ่านออกว่า "ไม่มีขั้นนี้"
                         ไม่ใช่ "ยังไม่ทำ" — เคส Recall จบที่ 3 เดิมขึ้น ✓✓✓✓ แล้วเว้นว่าง 7 ช่อง
-                        คู่กับ 100% อาจารย์ที่เซ็นกระดาษอ่านว่าขัดกันเอง (เจอ 10 ก.ย. 69) */}
+                        คู่กับ 100% อาจารย์ที่เซ็นกระดาษอ่านว่าขัดกันเอง */}
                     {passedProgressions(w).map((on, j) => (
                       <td key={j} className="tick">
                         {on ? '✓' : j > maxProgression(w) ? <span style={{ color: '#C7CDD6' }}>–</span> : ''}
@@ -142,11 +170,11 @@ export default function ExportScreen() {
       </div>
 
       <div className="noprint" style={{ padding: '14px 16px 0', display: 'grid', gap: 9 }}>
-        <button className="btn" onClick={() => window.print()}>
+        <button className="btn" disabled={!perm.allowed || busy} onClick={() => void doPrint()}>
           <FilePdf size={19} weight="fill" />
           {t('สร้าง PDF สำหรับลงนาม')}
         </button>
-        {/* ปุ่มหลักปุ่มเดียว · CSV เป็นลิงก์ · ชื่อคอลัมน์พับไว้ (ผู้ใช้เลือก mock 14 ก.ย. 69 — เดิมชิป 25 อันกินครึ่งจอ) */}
+        {/* ปุ่มหลักปุ่มเดียว · CSV เป็นลิงก์ · ชื่อคอลัมน์พับไว้ */}
         <button className="textlink" style={{ marginTop: 4 }} disabled={!perm.allowed || busy} onClick={() => void doExportCsv()}>
           {t('ส่งออก CSV ตามคอลัมน์ชีตเดิม')} ›
         </button>

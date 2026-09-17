@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { PhotoSlot } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { getPhotoStatus, retryPhoto } from '../../data/repo';
-import { usePhotoSrc, usePhotos, useWorkpieces } from '../../hooks/data';
+import { usePatientNamesOn, usePhotoSrc, usePhotos, useWorkpieces } from '../../hooks/data';
+import { patientWithHn } from '../../lib/privacy';
+import { useState } from 'react';
 import { thaiShort } from '../../lib/date';
 import { useApp } from '../../store/app';
 import type { PhotoStatus } from '../../domain/types';
@@ -29,7 +31,12 @@ export default function Photos() {
   const srcs = usePhotoSrc(photos);
   const works = useWorkpieces(session?.studentId);
 
-  const target = works.find((w) => w.procIndex >= 0);
+  const namesOn = usePatientNamesOn();
+  /* รูปที่ถ่ายจากหน้านี้ต้องผูกกับเคสที่ถูกต้อง — มีหลายเคสที่เริ่มแล้วต้องให้เลือกก่อน
+     ไม่งั้นรูปในปากคนไข้ไปโผล่ในแฟ้มของอีกคนโดยไม่มีใครรู้ (รูปผูกกับ step ปัจจุบันของเคสที่เลือก) */
+  const candidates = works.filter((w) => w.procIndex >= 0);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const target = candidates.find((w) => w.id === pickedId) ?? candidates[0];
   const cam = usePhotoAttach(target?.id, { camera: true });
   const lib = usePhotoAttach(target?.id);
   const busy = cam.busy || lib.busy;
@@ -39,7 +46,7 @@ export default function Photos() {
     <PlainShell>
       <header className="s-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label="ย้อนกลับ">
+          <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
           <h1 className="h2" style={{ flex: 1 }}>{t('คลังรูปงาน')}</h1>
@@ -52,9 +59,24 @@ export default function Photos() {
       {cam.input}
       {lib.input}
 
-      {/* ปุ่มหลักปุ่มเดียว + ลิงก์ (ผู้ใช้เลือก mock 14 ก.ย. 69) — ถ่ายรูปใช้บ่อยกว่าเลือกจากคลัง */}
+      {/* ปุ่มหลักปุ่มเดียว + ลิงก์ — ถ่ายรูปใช้บ่อยกว่าเลือกจากคลัง */}
       <div style={{ padding: '16px 16px 0' }}>
-        <button className="btn" style={{ height: 52, borderRadius: 16 }} disabled={busy} onClick={cam.open}>
+        {candidates.length > 1 && (
+          <label style={{ display: 'grid', gap: 4, marginBottom: 10, font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
+            {t('แนบรูปเข้าเคส')}
+            <select className="input" value={target?.id ?? ''} onChange={(e) => setPickedId(e.target.value)}>
+              {candidates.map((w) => (
+                <option key={w.id} value={w.id}>{tText(w.detail)} · {patientWithHn(w.patient, namesOn, t)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {candidates.length === 1 && target && (
+          <p style={{ margin: '0 0 8px', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
+            {t('แนบรูปเข้าเคส')} {tText(target.detail)} · {patientWithHn(target.patient, namesOn, t)}
+          </p>
+        )}
+        <button className="btn" style={{ height: 52, borderRadius: 16 }} disabled={busy || !target} onClick={cam.open}>
           <Camera size={20} weight="fill" />
           {busy ? (uploading ? t('กำลังส่งรูป…') : t('กำลังย่อรูป…')) : t('ถ่ายรูป')}
         </button>

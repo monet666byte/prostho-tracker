@@ -65,7 +65,7 @@ export function Radar({
     <div>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <svg width={W} height={size} viewBox={`0 0 ${W} ${size}`} style={{ maxWidth: '100%' }} role="img" aria-labelledby={`${id}-t`}>
-          <title id={`${id}-t`}>{label} — {t('โปรไฟล์ความคืบหน้า 6 ด้าน')}</title>
+          <title id={`${id}-t`}>{label} — {t('โปรไฟล์ {n} ด้าน', { n: axes.length })}</title>
 
           {/* วงกริดแค่ 50 กับ 100 — น้อยเส้นเท่าที่ยังบอกสเกลได้ */}
           {rings.map((ring) => (

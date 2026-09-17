@@ -1,5 +1,4 @@
 import { ArrowClockwise, CheckCircle, PencilSimple, Signature, WarningCircle } from '@phosphor-icons/react';
-import { PhotoSlot } from '../../components/ui/Bits';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
@@ -319,11 +318,11 @@ export default function Evaluate() {
               const patient = c.patientId ? patientById.get(c.patientId) : undefined;
               const draft = draftFor(c.id);
               const total = totalScore(draft) ?? 0;
-              // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง (ผู้ใช้ขอ 1 ก.ย.)
+              // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง
               const locked = student ? isAlumni(student) : false;
               return (
                 <div key={c.id} className="evalcard evalcard--calm">
-                  {/* การ์ดประเมินแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69 · อาจารย์ให้คะแนนต่างกันรายคน)
+                  {/* การ์ดประเมินแบบ "ตัดของซ้ำ"
                       ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · ค่าตั้งต้น 3 เป็นปุ่มเรียบ
                       ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
                   <div className="evalcard__info">
@@ -336,7 +335,7 @@ export default function Evaluate() {
                       {/* ป้ายตรงต่อเวลา — กดเพื่อแก้ได้ทั้งสองทาง
                           `punctual` คิดครั้งเดียวตอนกดเช็คอินจากเวลาเครื่อง แล้วเดิมแก้ไม่ได้เลย
                           คนที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนเย็นจะถูกบันทึกว่าสายถาวร
-                          แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน (ผู้ใช้เคาะ 11 ก.ย. 69)
+                          แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน
                           ต้องกดได้ทั้งสองสถานะ — ทางเดียวแปลว่าแก้พลาดแล้วแก้กลับไม่ได้ */}
                       <button
                         className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`}
@@ -374,14 +373,6 @@ export default function Evaluate() {
                       </div>
                     ) : (
                       <div className="evalsteps">{t('ไม่มีบันทึก step เสร็จวันนั้น')}</div>
-                    )}
-                    {!!c.photoCount && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                        {Array.from({ length: c.photoCount }, (_, i) => <PhotoSlot key={i} size={34} filled />)}
-                        <span className="evalsteps" style={{ marginTop: 0 }}>
-                          {t('รูปงานจากนักศึกษา · {n} รูป (เดโม)', { n: c.photoCount })}
-                        </span>
-                      </div>
                     )}
                   </div>
 
@@ -446,7 +437,7 @@ export default function Evaluate() {
 
         <div className="panel">
           <h3>{t('ประเมินแล้วล่าสุด')} · {t('กลุ่ม')} {groupShort(group)}</h3>
-          {/* ส่วนประวัติแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69): ชิปคะแนน → ตัวเลข · ปุ่มแก้มีกรอบ → ข้อความ
+          {/* ส่วนประวัติแบบ "ตัดของซ้ำ": ชิปคะแนน → ตัวเลข · ปุ่มแก้มีกรอบ → ข้อความ
               · ปุ่มดูทั้งหมดยาวเต็มแถว → ลิงก์ · ปุ่มเลือกนักศึกษา 8 ปุ่ม → ช่องเลือกอันเดียว · คำอธิบายกราฟรวมบรรทัดเดียว */}
           <table className="tbl">
             <thead>

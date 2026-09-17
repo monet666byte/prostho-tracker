@@ -1,12 +1,12 @@
 /**
- * Fixture ข้อมูลสมมติทั้งหมด — ผู้ป่วย A–D, HN DEMO-xxxx, นศ. ก–ซ, อ. ก./อ. ข.
+ * Fixture ข้อมูลสมมติทั้งหมด — ผู้ป่วย A/C/E/F, HN DEMO-xxxx, นศ. ก–ซ, อ. ก./อ. ข.
  * ห้ามนำ pattern ของข้อมูลจริงจากชีตต้นทางมาใส่ที่นี่
  *
- * ชุดของ "นศ. ก" คัดลอกจาก state.works ของไฟล์ดีไซน์ ส่วนนักศึกษาที่เหลือ
+ * ชุดของ "นศ. ก" เขียนมือไว้เป็นตัวอย่างครบทุกประเภท ส่วนนักศึกษาที่เหลือ
  * generate ด้วย seeded RNG เพื่อให้ตัวเลขบน dashboard นิ่งทุกครั้งที่เปิด
  */
 
-import { CATALOG_VERSION, DENTURE_CLASSES_FOR, dentureLabel, typeMeta } from '../domain/catalog';
+import { CATALOG_VERSION, DENTURE_CLASSES_FOR, dentureLabel, isArchWork, isRemovableType, typeMeta } from '../domain/catalog';
 import { academicYear, toISODate } from '../lib/date';
 import { procList } from '../domain/rules';
 import { isAlumni, studentYear } from '../domain/cohort';
@@ -30,8 +30,8 @@ export const SETTINGS_VERSION = 4;
 export const DEFAULT_SETTINGS: Settings = {
   /* เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
      · Recall งานถอดได้ 1 · Recall งานติดแน่น 1  และทุกปีต้องจบอย่างน้อย 3 ชิ้นงาน
-     CD = 2 เพราะนับต่อ arch (บน+ล่าง) — ผู้ใช้ยืนยัน 2 ก.ย. ว่าขั้นต่ำคือ 2 ไม่ใช่ 1
-     Recall สองแถว — ผู้ใช้เพิ่ม 10 ก.ย. 69 (นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี) */
+     CD = 2 เพราะนับต่อ arch (บน+ล่าง) ว่าขั้นต่ำคือ 2 ไม่ใช่ 1
+     Recall สองแถว — ผู้ใช้ (นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี) */
   req: { cd: 2, rpd: 2, crown: 2, postCoreMin: 1, recallRemovable: 1, recallFixed: 1, perYear: 3, years: 2 },
   periodsPerWeek: 2, // สมมติฐานตั้งต้น — อาจารย์ปรับได้ในหน้าตั้งค่าเกณฑ์
   // ค่าเริ่มต้นนับรายแถวตามชีตจริง (tab "Case CD" คอลัมน์ Count CDA ให้ 1–2 ต่อผู้ป่วย) — รอภาควิชายืนยัน
@@ -45,7 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const TH_LETTERS = ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ญ', 'ฎ', 'ฏ'];
-/* แต่ละชั้นปีมี PT1–12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69) — ปี 5 รูปแบบรหัสเดิม, ปี 6 ติด tag TH6- */
+/* แต่ละชั้นปีมี PT1–12 ของตัวเอง — ปี 5 รูปแบบรหัสเดิม, ปี 6 ติด tag TH6- */
 const GROUPS_Y5 = Array.from({ length: 12 }, (_, i) => `TH-PT${i + 1}`);
 const GROUPS_Y6 = Array.from({ length: 12 }, (_, i) => `TH6-PT${i + 1}`);
 /** รุ่นที่เรียนจบไปแล้ว 3 รุ่น — รวมกับปี 5/ปี 6 เป็น 5 รุ่นพอดีตามที่ภาคขอเก็บ (~5 ปี)
@@ -149,8 +149,8 @@ function buildDemoWorkpieces(): Workpiece[] {
       minimumRequirement: d.min,
       pendingQualification: false,
       payment: d.min ? 'ชำระแล้ว' : 'ยังไม่ชำระ',
-      sect2Removable: d.type === 'CD' || d.type === 'RPD' || d.type === 'APD' || d.type === 'RRM',
-      sect2Fixed: d.type === 'PC' || d.type === 'CB' || d.type === 'RFX',
+      sect2Removable: isRemovableType(d.type),
+      sect2Fixed: !isRemovableType(d.type),
       designRpd: d.kennedy ? 'ออกแบบแล้ว' : undefined,
       procIndex,
       lastUpdatedAt: daysAgo(d.days),
@@ -169,7 +169,7 @@ const BRIDGE_POOL = ['14–16', '34–36', '24–26', '44–46'];
 
 /**
  * @param graduated นักศึกษาที่เรียนจบหลักสูตรไปแล้ว — งานทุกชิ้นต้องปิดครบ 100%
- *   (ผู้ใช้ทัก 1 ก.ย.: "รุ่นที่จบแล้วก็ควรเป็น 100% หมด") ไม่มีเคสค้างในมือคนที่จบไปแล้ว
+ * ("รุ่นที่จบแล้วก็ควรเป็น 100% หมด") ไม่มีเคสค้างในมือคนที่จบไปแล้ว
  */
 function generateFor(student: Student, seed: number, graduated = false) {
   const rand = rng(seed);
@@ -197,7 +197,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
   /* เพดานจำนวนชิ้นต่อคน — คนที่ยังเรียนอยู่ให้ไม่เกิน 3 จะได้นับด้วยตาไม่งง
      แต่รุ่นที่จบไปแล้วต้องเกิน 3 ไม่งั้นไม่มีวันครบเกณฑ์สะสม (CD 2 + RPD 2 + Crown 2 = 6)
      ⚠️ เพดาน 3 เดิมครอบรุ่นจบด้วย ทำให้หน้ารุ่นจบขึ้น "เกณฑ์สะสม 3/6" มาตลอด
-     ซึ่งขัดกับที่ผู้ใช้ขอไว้ว่ารุ่นจบต้องครบ 100% (เจอตอนไล่เช็ค 8 ก.ย. 69) */
+     ซึ่งขัดกับที่ผู้ใช้ขอไว้ว่ารุ่นจบต้องครบ 100% */
   const MAX_TOTAL_PIECES = graduated ? 8 : 3;
 
   /**
@@ -208,7 +208,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
   const push = (type: WorkType, wantComplete: boolean) => {
     if (n >= MAX_TOTAL_PIECES) return;
     const patient = pick(patients);
-    const removable = type === 'CD' || type === 'RPD';
+    const removable = isArchWork(type);
     const variant = type === 'PC' ? (rand() < 0.55 ? 'cast' : 'prefab') : undefined;
     const shape = { type, variant } as Pick<Workpiece, 'type' | 'variant'>;
     const max = procList(shape).length - 1;
@@ -311,7 +311,7 @@ function buildCheckIns(): CheckIn[] {
   /* เวลาเช็คอินกับป้าย "มาสาย" ต้องเล่าเรื่องเดียวกัน
      เดิมค่าตั้งต้น checkinAt = '08:56' อยู่คนละที่กับ punctual ที่แถวต่างๆ ตั้งเอง
      ผลคือหน้าประเมินของอาจารย์ขึ้น "08:56 น. · มาสาย" ข้างแถวที่ "08:56 น." เฉยๆ
-     อาจารย์ที่เปิดเดโมอ่านว่าแอปคิดเวลาผิด (เจอ 10 ก.ย. 69)
+     อาจารย์ที่เปิดเดโมอ่านว่าแอปคิดเวลาผิด
      เกณฑ์จริงอยู่ที่ CheckIn.tsx: เช้าสายเมื่อเกิน 09:15 — เวลาสายที่ใช้ตรงนี้ต้องผ่านเกณฑ์นั้น */
   const mk = (over: Partial<CheckIn> & { studentId: string; date: string }): CheckIn => ({
     id: `ci-${over.studentId}-${over.date}`,
@@ -519,7 +519,7 @@ function buildCases(list: Student[]): { patients: Patient[]; works: Workpiece[] 
 }
 
 export async function seedIfEmpty(): Promise<void> {
-  /* ⚠️ โหมด cloud ห้ามเขียนข้อมูลตัวอย่างลงเครื่องเด็ดขาด (พิสูจน์ด้วยหน้าจอจริง 13 ก.ย. 69)
+  /* ⚠️ โหมด cloud ห้ามเขียนข้อมูลตัวอย่างลงเครื่องเด็ดขาด
      · ข้อมูลของโหมดนี้มาจากตู้กลางอย่างเดียว — เครื่องไม่มีอะไรต้องตั้งต้นเอง
      · ของตัวอย่างในลิ้นชักคือของที่ pushAll จะดันขึ้นตู้กลางได้ ถ้าหลุดจากช่วงหยุด sync
      · และถ้า SEED_VERSION ขยับ ตัวข้างล่างสั่ง db.delete() = ลบทั้งฐานในเครื่อง
@@ -575,7 +575,7 @@ async function seedIfEmptyInner(): Promise<void> {
      (`domain/sect2.ts → sect2GateValue`) ไม่ใช่ปล่อยว่างไว้
      เดิมเดโมเขียนใบ Sect II Fixed ไว้ 58/70 แต่ไม่เคยคิดธง หน้าเกณฑ์ของนักศึกษาจึงขึ้น
      "0/4 · ยังไม่มีข้อมูลในระบบ" ทั้งที่หน้าอาจารย์โชว์คะแนนอยู่ — อาจารย์ที่เปิดเดโมอ่านว่า
-     ระบบไม่เชื่อมกัน (ผู้ใช้ทัก 11 ก.ย. 69) · OSCE ไม่มีในนี้เพราะไม่มีฟอร์ม อาจารย์ติ๊กเอง */
+     ระบบไม่เชื่อมกัน · OSCE ไม่มีในนี้เพราะไม่มีฟอร์ม อาจารย์ติ๊กเอง */
   const sect2ByStudent = new Map<string, typeof portfolio.sect2>();
   for (const r of portfolio.sect2) {
     sect2ByStudent.set(r.studentId, [...(sect2ByStudent.get(r.studentId) ?? []), r]);
@@ -607,7 +607,7 @@ async function seedIfEmptyInner(): Promise<void> {
     /* เดโม/รันในเครื่องที่ยังไม่ต่อเซิร์ฟเวอร์ — เปิดแบบประเมินตนเองไว้ให้ลองกดได้
        ค่าจริงของภาคยังเป็น "ปิด" ตาม DEFAULT_SETTINGS เพราะภาคต้องเป็นคนเปิดเองปีละครั้ง
        ถ้าไม่เปิดไว้ ฝั่งนักศึกษาจะไม่มีเมนูนี้เลย คนดูเดโมก็ประเมินฟอร์มไม่ได้ */
-    await kvSet('settings', cloudEnabled ? DEFAULT_SETTINGS : { ...DEFAULT_SETTINGS, saOpenYears: [5, 6] });
+    await kvSet('settings', { ...DEFAULT_SETTINGS, saOpenYears: [5, 6] });
     await kvSet('seedVersion', SEED_VERSION);
     if (keptSession) await kvSet('session', keptSession);
     // รุ่นที่จบแล้วยังไม่เขียน — รอจนกดเมนู "รุ่นที่จบแล้ว" (ดู ensureAlumniSeeded)
@@ -621,7 +621,7 @@ const ALUMNI_KEY = 'alumniSeeded';
 /**
  * โหลดรุ่นที่จบไปแล้วแบบ "กดแล้วค่อยโหลด"
  *
- * ที่มา: ผู้ใช้เสนอ 7 ก.ย. 69 — ปกติไม่มีใครกดดูรุ่นเก่าบ่อย ไม่ควรให้ทุกคนรอตอนเปิดแอป
+ * ที่มา: ปกติไม่มีใครกดดูรุ่นเก่าบ่อย ไม่ควรให้ทุกคนรอตอนเปิดแอป
  * รุ่นเก่า 3 รุ่น = ราวหนึ่งในสามของแถวทั้งหมด ซึ่งเป็นต้นทุนก้อนใหญ่ของการเปิดครั้งแรก
  *
  * ⚠️ เคยลองย้ายไปเขียน "เบื้องหลัง" ตอนเปิดแอปแล้วไม่ได้ผลเลย เพราะ Dexie เข้าคิวให้
@@ -632,7 +632,7 @@ const ALUMNI_KEY = 'alumniSeeded';
 let alumniLoading: Promise<void> | null = null;
 
 export async function ensureAlumniSeeded(): Promise<void> {
-  /* ⚠️ บั๊กร้ายแรงที่พิสูจน์ด้วยหน้าจอจริงในโหมด cloud 13 ก.ย. 69:
+  /* ⚠️ บั๊กร้ายแรงที่พิสูจน์ด้วยหน้าจอจริงในโหมด cloud:
      หน้า "ตั้งค่าเกณฑ์" เรียกตัวนี้ทุกครั้งที่เปิด · เดิมไม่ดูว่าอยู่โหมดไหน จึงเขียนรุ่นที่จบแล้ว
      แบบข้อมูลปลอม (นศ. 288 · ผู้ป่วย 1,141 · เคส 1,728) ลงเครื่องอาจารย์ แล้วตอนเปิดแอปครั้งถัดไป
      pushAll ส่ง "แถวที่ตู้ยังไม่มี" ขึ้นไป = **ข้อมูลปลอมทั้งหมดเข้าฐานข้อมูลจริง** ปนกับของจริง
@@ -902,7 +902,7 @@ function buildSelfAssessments(students: Student[]): SelfAssessment[] {
 /* ══════════════════════════════════════════════════════════════════════════════
    ลายเซ็นของข้อมูลตัวอย่าง — ใช้แยกของปลอมออกจากของจริงในโหมด cloud
 
-   ต้องไม่มีทางชนกับข้อมูลจริง (ตรวจ 13 ก.ย. 69):
+   ต้องไม่มีทางชนกับข้อมูลจริง:
    · นักศึกษาจริงที่นำเข้ารายชื่อได้ id `st-<กลุ่ม>-<รหัส 7 หลัก>` (repo.ts → importRoster)
      ของตัวอย่างได้ `st-<กลุ่ม>-<ลำดับ 1–8>` (buildPeople) → ท้าย id ต่างกันเด็ดขาด
    · ผู้ป่วยตัวอย่างมี HN ขึ้นต้น `DEMO-` เสมอ (buildCases / DEMO_PATIENTS)
@@ -911,6 +911,8 @@ function buildSelfAssessments(students: Student[]): SelfAssessment[] {
 export const isDemoStudentId = (id: string | undefined | null): boolean =>
   !!id && /^st-.+-[1-8]$/.test(id);
 export const isDemoHn = (hn: string | undefined | null): boolean => !!hn && hn.startsWith('DEMO-');
+/** อาจารย์ตัวอย่างใช้ id `tc-<กลุ่ม>-<1–2>` · อาจารย์จริงได้ `tc-` + sha256(อีเมล) (rosterApply) หรือ `tc-r<รุ่น>-…` (นำเข้าชีต) */
+export const isDemoTeacherId = (id: string | undefined | null): boolean => !!id && /^tc-TH\d*-PT\d{1,2}-[12]$/.test(id);
 
 /**
  * ล้างข้อมูลตัวอย่างที่ค้างในเครื่อง — โหมด cloud เท่านั้น เรียกตอนเปิดแอปก่อนเริ่ม sync

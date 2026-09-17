@@ -31,7 +31,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
   /** ถ้าส่งมา: เลขแกนใต้กราฟกดได้ (เปิดรายละเอียดขั้นตอนของ step นั้น) */
   onStepClick?: (n: number) => void;
   activeStep?: number | null;
-  /** หน้าวิเคราะห์: จุดเด้งขึ้นไล่ทีละคอลัมน์ตอนเปิด · ชี้คอลัมน์แล้วคอลัมน์อื่นจาง + การ์ดสรุป (ผู้ใช้เลือก 15 ก.ย. 69) */
+  /** หน้าวิเคราะห์: จุดเด้งขึ้นไล่ทีละคอลัมน์ตอนเปิด · ชี้คอลัมน์แล้วคอลัมน์อื่นจาง + การ์ดสรุป */
   lively?: boolean;
 }) {
   const [hover, setHover] = useState<CaseDot | null>(null);
@@ -91,7 +91,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
                 className="casemap__step"
                 data-on={activeStep === col.progression || colPeek?.n === col.progression}
                 onClick={(e) => { e.stopPropagation(); onStepClick(col.progression); }}
-                title={`ดูขั้นตอนใน step ${col.progression}`}
+                title={t('ดูขั้นตอนใน step {n}', { n: col.progression })}
                 style={{ cursor: 'pointer' }}
               >
                 {col.progression}

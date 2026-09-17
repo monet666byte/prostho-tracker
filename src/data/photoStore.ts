@@ -57,7 +57,7 @@ let ownerStudentId: string | undefined;
 
 /**
  * สถานะตั้งต้นของรูปที่เพิ่งถ่าย
- * ไม่มีคลาวด์ (เดโม/แชร์/GitHub Pages) = ไม่มีที่ให้อัป จึงต้องเป็น 'local'
+ * ไม่มีคลาวด์ (เดโม/build แชร์) = ไม่มีที่ให้อัป จึงต้องเป็น 'local'
  * การขึ้นว่า 'ok' ในโหมดพวกนั้นคือคำที่ไม่มีวันเป็นจริง
  */
 export function initialPhotoStatus(): PhotoStatus {

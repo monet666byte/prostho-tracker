@@ -1,7 +1,7 @@
 /**
  * การ์ดสรุปอัตโนมัติจากแบบประเมินตนเอง — เห็นเฉพาะฝั่งอาจารย์
  *
- * ผู้ใช้เคาะ 5 ก.ย. 69: นักศึกษาไม่ต้องเห็นสรุปนี้ ให้เป็นเครื่องมือเตรียมตัวของอาจารย์
+ * ภาคยืนยัน: นักศึกษาไม่ต้องเห็นสรุปนี้ ให้เป็นเครื่องมือเตรียมตัวของอาจารย์
  * ก่อนนัดคุยเท่านั้น (จึงไม่มีทั้งปุ่มปล่อยและช่องความเห็นอีกต่อไป)
  * ตัวกฎอยู่ที่ domain/saFeedback.ts — ที่นี่แค่วาด
  */
@@ -12,7 +12,7 @@ import { t } from '../lib/i18n';
 import { useApp } from '../store/app';
 import type { SelfAssessment } from '../domain/types';
 
-/* การ์ดเดียว แถวละเรื่อง (ผู้ใช้เลือก mock 14 ก.ย. 69) — เดิมกล่องสีพื้นเข้มคนละใบ + กล่องโค้ดซ้อนใน
+/* การ์ดเดียว แถวละเรื่อง — เดิมกล่องสีพื้นเข้มคนละใบ + กล่องโค้ดซ้อนใน
    สีเหลืออยู่แค่วงกลมหน้าหัวข้อ */
 const TONE: Record<FeedbackTone, { dot: string; Icon: typeof Info }> = {
   risk: { dot: 'var(--danger)', Icon: WarningOctagon },
@@ -31,7 +31,7 @@ export function SaSummary({ sa }: { sa: SelfAssessment }) {
   if (!student) return null;
   const works = allWorks.filter((w) => w.studentId === sa.studentId);
   const checkins = allCheckins.filter((c) => c.studentId === sa.studentId);
-  const cards = sortFeedback(buildFeedback({ sa, student, works, checkins, updates: allUpdates, settings }));
+  const cards = sortFeedback(buildFeedback({ sa, works, checkins, updates: allUpdates, settings }));
 
   return (
     <div className="panel insights">

@@ -1,5 +1,5 @@
 /**
- * ลงรายชื่อที่อ่านแล้วเข้าระบบ + ให้สิทธิ์เข้าระบบด้วยอีเมล — ทางเดียวที่ใช้ร่วมกันสามทาง (15 ก.ย. 69)
+ * ลงรายชื่อที่อ่านแล้วเข้าระบบ + ให้สิทธิ์เข้าระบบด้วยอีเมล — ทางเดียวที่ใช้ร่วมกันสามทาง
  *   ① เลือกไฟล์ Excel  ② วางข้อความ  ③ ฟอร์มเพิ่มทีละคน
  * เดิมตรรกะนี้อยู่ในหน้า Roster ผูกกับช่องวางข้อความ — ทางใหม่ต้องได้ผลเหมือนกันทุกบรรทัด จึงแยกออกมา
  *
@@ -8,6 +8,7 @@
  *   · id อาจารย์ใหม่มาจากอีเมล (teacherIdFromEmail = add-teacher.sql) · อีเมลที่เชิญไว้แล้วใช้ id เดิม ไม่สร้างซ้ำ
  */
 import { supabase } from '../lib/cloud';
+import { groupCodeFor } from '../domain/group';
 import { teacherIdFromEmail } from '../lib/rosterParse';
 import type { RosterRow, TeacherRosterRow } from '../lib/rosterParse';
 import { importRoster, importTeachers } from './repo';
@@ -15,7 +16,7 @@ import { pullAll } from './cloudSync';
 import { db } from './db';
 
 /**
- * ก่อนนำเข้า: แถวที่มีอยู่บนเซิร์ฟเวอร์แล้ว ต้องมีในเครื่องด้วย (ตรวจซ้ำ 15 ก.ย. 69)
+ * ก่อนนำเข้า: แถวที่มีอยู่บนเซิร์ฟเวอร์แล้ว ต้องมีในเครื่องด้วย
  *
  * ทำไม: importRoster / importTeachers ตัดสินว่า "คนเดิม หรือคนใหม่" จากข้อมูลในเครื่อง
  * เครื่องที่เพิ่งล็อกอินและยังดึงข้อมูลรอบแรกไม่เสร็จ จะมองคนเดิมเป็นคนใหม่ → ส่งแถวใหม่ทั้งแถวขึ้นไปทับ
@@ -104,9 +105,9 @@ export async function applyStudents(
   }
   await assertLocalCaughtUp({
     studentCodes: rows.map((r) => r.code),
-    groupCodes: [...byDtmu].flatMap(([d, rs]) => rs.map((r) => `TH${d}-${r.group}`)),
+    groupCodes: [...byDtmu].flatMap(([d, rs]) => rs.map((r) => groupCodeFor(d, r.group))),
   });
-  /* ฟอร์มเพิ่มทีละคน = คนใหม่เท่านั้น · เช็คหลังดึงข้อมูลแล้ว (เช็คก่อนดึง เครื่องที่ยังไม่มีแถวของเพื่อนจะปล่อยให้ทับได้ — เจอตอนลองจริง 15 ก.ย. 69) */
+  /* ฟอร์มเพิ่มทีละคน = คนใหม่เท่านั้น · เช็คหลังดึงข้อมูลแล้ว */
   if (opt.onlyNew) {
     const dup = await db.students.where('code').anyOf(rows.map((r) => r.code)).first();
     if (dup) throw new Error(`รหัส ${dup.code} มีในระบบแล้ว (${dup.name}) — แก้คนเดิมให้นำเข้าจากไฟล์ หรือตรวจรหัสอีกครั้ง`);

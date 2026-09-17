@@ -10,9 +10,8 @@ import { logAudit } from '../data/repo';
 /** ช่องติ๊ก progression 0–10 เหมือนในชีต */
 export const PROGRESSION_COLUMNS = Array.from({ length: 11 }, (_, i) => String(i));
 
-/** คอลัมน์ต้องเรียงตรงกับ tab PTn ของชีตเดิม */
 /**
- * ชื่อคอลัมน์ตามชีตจริงของภาค — ห้ามแปล
+ * ชื่อคอลัมน์ตามชีตจริงของภาค (เรียงตรงกับ tab PTn) — ห้ามแปล
  * ไฟล์ที่ export ต้องเปิดในชีตเดิมได้ และตัวนำเข้าก็มองหาชื่อพวกนี้ตรงๆ
  * (บางคอลัมน์เป็นไทยเพราะชีตต้นฉบับเขียนไว้แบบนั้น)
  */
@@ -56,9 +55,7 @@ export interface CsvOptions {
 export function toCsvRows(works: WorkpieceView[], opt: CsvOptions): string[][] {
   return works.map((w, i) => {
     const cur = currentProc(w);
-    const note = [
-      w.patient.note ?? '',
-    ].filter(Boolean).join(' · ');
+    const note = w.patient.note ?? '';
 
     return [
       String(i + 1),
@@ -125,7 +122,7 @@ export function typeLabel(w: WorkpieceView): string {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   สิทธิ์ส่งออก + audit  (PDPA · 9 ก.ย. 69)
+   สิทธิ์ส่งออก + audit  (PDPA)
 
    เดิมปุ่มส่งออกใครกดก็ได้ และไม่มีร่องรอยว่าใครดึงอะไรออกไปเมื่อไหร่
    ตอนนี้ทุกการส่งออกต้องผ่าน exportCsv() ตัวเดียว ซึ่งทำสามอย่างตามลำดับ
@@ -136,7 +133,7 @@ export function typeLabel(w: WorkpieceView): string {
    ⚠️ ขอบเขตที่ทำได้จริง — เขียนไว้ตรงนี้กันเข้าใจผิด:
    นี่คือการคุม "ปุ่มในแอป" ไม่ใช่การคุม "การเอาข้อมูลออก" ทั้งหมด
    คนที่เขียนสคริปต์ยิง REST API อ่านแถวเองแล้วประกอบไฟล์เองยังทำได้อยู่
-   ตัวคุมของกรณีนั้นคือ RLS (migration 0004–0012) ว่าบัญชีนั้นอ่านแถวไหนได้บ้าง
+   ตัวคุมของกรณีนั้นคือ RLS บนฐานข้อมูล (0004 เป็นต้นไป) ว่าบัญชีนั้นอ่านแถวไหนได้บ้าง
    ══════════════════════════════════════════════════════════════════ */
 
 export type ExportScope = 'own-progress' | 'group' | 'cohort';
@@ -169,10 +166,11 @@ export function exportPermission(role: PdpaRole): { allowed: boolean; identified
 }
 
 /**
- * ส่งออก CSV — ประตูเดียวของทั้งแอป
+ * ด่านร่วมของทุกทางที่ข้อมูลออกจากระบบ (ไฟล์ CSV · พิมพ์/บันทึก PDF): ตรวจสิทธิ์ → จด audit ก่อน → ค่อยให้ไปต่อ
  * คืน ok:false พร้อมเหตุผลเป็นภาษาคน เอาไปโชว์ toast ได้เลย (ยังไม่ต้องแปลซ้ำ)
+ * ผู้เรียกที่ได้ ok:true ต้องเคารพ `identified` — false = ต้องปิดบังชื่อ/HN ในสิ่งที่ออกไป
  */
-export async function exportCsv(req: ExportRequest): Promise<ExportResult> {
+export async function authorizeExport(req: ExportRequest): Promise<ExportResult> {
   const perm = exportPermission(req.role);
   if (!perm.allowed) {
     return { ok: false, reason: 'ภาควิชายังไม่ได้เปิดสิทธิ์ส่งออกให้บทบาทนี้' };
@@ -201,7 +199,13 @@ export async function exportCsv(req: ExportRequest): Promise<ExportResult> {
     );
   }
 
-  // ② จดผ่านแล้วค่อยสร้างไฟล์
-  downloadCsv(req.works, req.filename, { identified, namesOn: pdpaPolicy().patientNames });
   return { ok: true, identified, downgraded };
+}
+
+/** ส่งออก CSV — ผ่านด่าน authorizeExport แล้วค่อยสร้างไฟล์ */
+export async function exportCsv(req: ExportRequest): Promise<ExportResult> {
+  const res = await authorizeExport(req);
+  if (!res.ok) return res;
+  downloadCsv(req.works, req.filename, { identified: res.identified, namesOn: pdpaPolicy().patientNames });
+  return res;
 }

@@ -1,11 +1,15 @@
 /**
- * Repository — API เดียวที่ UI เรียกใช้
- * ตอนนี้อ่าน/เขียน IndexedDB; ถ้าย้ายไปเซิร์ฟเวอร์กลาง แก้เฉพาะไฟล์นี้
+ * Repository — API เดียวที่ UI เรียกใช้ในการอ่าน/เขียนข้อมูล
+ *
+ * ทุกอย่างเขียนลง IndexedDB (Dexie) ก่อนเสมอ (local-first) · middleware ใน cloudSync.ts
+ * ดักการเขียนแล้วส่งขึ้น Supabase ให้เอง ไฟล์นี้จึงไม่ต้องรู้เรื่องเน็ต
+ * ยกเว้นงานที่ต้องให้เซิร์ฟเวอร์ตัดสิน (เช่น purgeExpiredCohorts → RPC) ซึ่งเรียก supabase ตรงในนี้
  */
 
-import { CATALOG_VERSION, dentureLabel, typeMeta } from '../domain/catalog';
+import { CATALOG_VERSION, dentureLabel, isArchWork, typeMeta } from '../domain/catalog';
 import { CRITERIA, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
+import { groupCodeFor, studentIdFor } from '../domain/group';
 import { patientNamesOn, pdpaPolicy } from './pdpaSync';
 import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
@@ -21,7 +25,6 @@ import { db, kvGet, kvSet } from './db';
 import { byNewestReview, isOthersForm, pickLatestReviews } from '../domain/conflict';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
 export { saId };
-import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/image';
 import {
   dropLocalBlobs, initialPhotoStatus, putLocalBlob, removePhotoFiles, retryPhotoUpload, uploadPendingPhotos,
@@ -41,18 +44,11 @@ export async function listWorkpieces(studentId: string): Promise<WorkpieceView[]
   });
 }
 
-export async function getWorkpiece(id: string): Promise<WorkpieceView | null> {
-  const w = await db.workpieces.get(id);
-  if (!w) return null;
-  const patient = await db.patients.get(w.patientId);
-  return patient ? { ...w, patient } : null;
-}
-
 /**
  * ปรับค่าเริ่มต้นที่แก้ทีหลังให้มีผลกับเครื่องที่ตั้งค่าไว้แล้ว — รันครั้งเดียวตอนเปิดแอป
- * v2: เกณฑ์ CD 1 → 2 (นับต่อ arch · ผู้ใช้ยืนยัน 2 ก.ย.) — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
+ * v2: เกณฑ์ CD 1 → 2 — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
  * v3: saOpen (เปิด/ปิดรวม) → saOpenYears (แยกชั้นปี) — ที่เคยเปิดไว้ ให้เปิดทั้งสองชั้นปีเหมือนเดิม
- * v4: เพิ่มเกณฑ์ Recall สองแถว (งานถอดได้ 1 · งานติดแน่น 1 · ผู้ใช้เพิ่ม 10 ก.ย. 69)
+ * v4: เพิ่มเกณฑ์ Recall สองแถว
  *     เขียนค่าลงเครื่องที่ยังไม่มีช่องนี้ ให้ค่าที่เก็บไว้ตรงกับที่หน้าจออ่านจริง
  *     (getSettings เติม default ให้อยู่แล้ว แต่ถ้าไม่เขียนลง อาจารย์กดปรับเลขอื่นแล้ว
  *      ค่าใหม่จะถูกบันทึกทับด้วยก้อนที่ยังไม่มีสองช่องนี้)
@@ -61,9 +57,9 @@ export async function getWorkpiece(id: string): Promise<WorkpieceView | null> {
 export async function migrateSettings(): Promise<void> {
   const ver = (await kvGet<number>('settingsVersion', 1)) ?? 1;
   if (ver >= SETTINGS_VERSION) return;
-  const cur = await getSettings();
-  if (cur.req.cd === 1) {
-    await saveSettings({ req: { ...cur.req, cd: 2 } });
+  if (ver < 2) {
+    const cur = await getSettings();
+    if (cur.req.cd === 1) await saveSettings({ req: { ...cur.req, cd: 2 } });
   }
   if (ver < 3) {
     /* ต้องอ่านค่าที่ "เก็บไว้จริง" ไม่ใช่ค่าที่ merge กับ DEFAULT_SETTINGS แล้ว
@@ -93,7 +89,7 @@ export async function migrateSettings(): Promise<void> {
 export async function getSettings(): Promise<Settings> {
   const stored = (await kvGet('settings', DEFAULT_SETTINGS)) as Settings;
   /* ⚠️ ต้อง merge `req` ลึกอีกชั้น — spread ชั้นเดียวจะเอา req ที่เก็บไว้มาแทนทั้งก้อน
-     วันที่เพิ่มช่องใหม่ในเกณฑ์ (เช่น recallRemovable 10 ก.ย. 69) เครื่องที่ตั้งค่าไว้แล้ว
+     วันที่เพิ่มช่องใหม่ในเกณฑ์ (เช่น recallRemovable) เครื่องที่ตั้งค่าไว้แล้ว
      จะได้ค่า undefined ในช่องใหม่ → เกณฑ์กลายเป็น NaN บนหน้าจอโดยไม่มีอะไรฟ้อง */
   return { ...DEFAULT_SETTINGS, ...stored, req: { ...DEFAULT_SETTINGS.req, ...(stored?.req ?? {}) } };
 }
@@ -182,7 +178,7 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
     /* เดิมตรงนี้สร้าง "รูป" เปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมา ทั้งที่ไม่มีไฟล์รูปอยู่จริง
        ตอนนี้รูปถูกแนบจริงผ่าน usePhotoAttach ตั้งแต่ก่อนกดยืนยัน — แค่ผูกเข้ากับ update นี้
 
-       ⚠️ ต้องเอาเฉพาะรูปที่ยังไม่มี step ไหนจับจองไว้ (เจอ 10 ก.ย. 69)
+       ⚠️ ต้องเอาเฉพาะรูปที่ยังไม่มี step ไหนจับจองไว้
        เดิมกวาดรูป "ทุกใบของชิ้นงานนี้" ทำให้รูปของ step 3 ถูกผูกซ้ำเข้ากับ step 4, 5, 6 …
        ต่อไปเรื่อย ๆ · หนึ่งรูปจึงโผล่อยู่ใต้หลาย step และจำนวนรูปต่อ step เฟ้อขึ้นทุกครั้ง
        ตอนนี้ยังไม่มีหน้าไหนอ่าน photoIds จึงไม่มีใครเห็น แต่แถวพวกนี้ sync ขึ้นตู้กลางไปแล้ว
@@ -209,7 +205,7 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
       await db.queue.add(item);
     }
     await db.audit.add({
-      id: uid('a'), text: `${t('ผ่าน')} ${label}`, who: input.actor,
+      id: uid('a'), text: `ผ่าน ${label}`, who: input.actor,
       at: new Date().toISOString(), studentId: w.studentId,
     });
   });
@@ -257,7 +253,7 @@ export async function undoStep(workpieceId: string, actor: string): Promise<Work
   return updated;
 }
 
-// ── เปิดชิ้นงานใหม่ (S7) ──────────────────────────────────────
+// ── เปิดชิ้นงานใหม่ ──────────────────────────────────────
 
 export interface NewWorkpieceInput {
   studentId: string;
@@ -282,11 +278,11 @@ export interface NewWorkpieceInput {
 
 export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpiece[]> {
   const meta = typeMeta(input.type);
-  const removable = input.type === 'CD' || input.type === 'RPD' || input.type === 'APD';
+  const removable = isArchWork(input.type);
   const now = new Date().toISOString();
 
   // HN เดิมของนักศึกษาคนเดียวกัน = ผู้ป่วยคนเดิม — ห้ามงอกแถวใหม่
-  // (เคสจริง: คนไข้ทำ CD เสร็จแล้วกลับมาทำ Crown/recall — เคยกลายเป็นสองคนในแอป เจอ 1 ก.ย. 69)
+  //
   const hn = input.hn.trim();
   const existing = hn
     ? (await db.patients.where('hn').equals(hn).toArray()).find((p) => p.ownerStudentId === input.studentId)
@@ -313,7 +309,8 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
     variant: input.type === 'PC' ? (input.variant ?? 'cast') : undefined,
     kennedy: input.type === 'RPD' ? input.kennedy : undefined,
     dentureClass: input.dentureClass,
-    acceptedDate: input.acceptedDate,
+    // วันที่จากช่องกรอกอาจเป็นอนาคตหรือว่าง (พิมพ์เองบนเดสก์ท็อป) — ประทับให้อยู่ในช่วงจริงเสมอ
+    acceptedDate: clampPerformedAt(input.acceptedDate, undefined),
     minimumRequirement: input.minimumRequirement,
     pendingQualification: input.pendingQualification,
     payment: input.payment,
@@ -351,11 +348,11 @@ export async function createWorkpieces(input: NewWorkpieceInput): Promise<Workpi
   }
 
   await db.workpieces.bulkAdd(created);
-  await logAudit(`${t('สร้างชิ้นงาน')} ${created.map((c) => c.detail).join(' + ')}`, input.actor, { studentId: input.studentId });
+  await logAudit(`สร้างชิ้นงาน ${created.map((c) => c.detail).join(' + ')}`, input.actor, { studentId: input.studentId });
   return created;
 }
 
-// ── offline queue (S10) ──────────────────────────────────────
+// ── offline queue ──────────────────────────────────────
 
 export async function listQueue(): Promise<QueueItem[]> {
   const items = await db.queue.toArray();
@@ -376,7 +373,7 @@ export interface SyncNowResult {
 /**
  * ผู้ใช้กด "sync ทันที"
  *
- * ⚠️ ป้ายหลอกตัวที่สาม (เจอ 10 ก.ย. 69) — สองตัวแรกคือ addPhoto รุ่นแรกกับ syncNow ที่ตั้ง
+ * ⚠️ ป้ายหลอกตัวที่สาม — สองตัวแรกคือ addPhoto รุ่นแรกกับ syncNow ที่ตั้ง
  *    status='ok' ให้รูปทุกใบโดยไม่ส่งอะไร รอบนี้เป็นทีของ "แถวข้อมูล" เอง:
  *
  *    ① ปุ่มนี้ **ไม่เคยเรียกตัวส่งข้อมูลจริงเลย** — `flushNow()` ใน cloudSync.ts
@@ -438,7 +435,7 @@ export async function pendingIds(): Promise<Set<string>> {
   return new Set(items.map((i) => i.workpieceId));
 }
 
-// ── รูป (S9) ─────────────────────────────────────────────────
+// ── รูป ─────────────────────────────────────────────────
 
 export async function listPhotos(studentId: string): Promise<Array<Photo & { detail: string }>> {
   const works = await db.workpieces.where('studentId').equals(studentId).toArray();
@@ -511,7 +508,7 @@ export async function retryPhoto(photoId: string): Promise<void> {
 // ── ฝั่งอาจารย์ ───────────────────────────────────────────────
 
 export async function setReview(workpieceId: string, status: ReviewStatus, comment: string, by: string): Promise<void> {
-  // อ่าน-แล้ว-เขียนต้องอยู่ใน transaction เดียว — กดปุ่มรัวสองทีเคยได้สองแถวซ้ำ (เจอ 1 ก.ย. 69)
+  // อ่าน-แล้ว-เขียนต้องอยู่ใน transaction เดียว — กดปุ่มรัวสองทีเคยได้สองแถวซ้ำ
   await db.transaction('rw', db.reviews, async () => {
     const rows = await db.reviews.where('workpieceId').equals(workpieceId).toArray();
     /**
@@ -520,10 +517,10 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
      * เดิมตรงนี้ `for (const extra of rows.slice(1)) delete` เพื่อเก็บกวาด "แถวซ้ำ"
      * แต่แถวซ้ำไม่ได้มาจากบั๊กอย่างเดียว — อาจารย์สองท่านกดตัดสินชิ้นงานเดียวกัน
      * คนละเครื่อง ต่างคนต่างไม่เห็นแถวของอีกฝ่าย จึงสร้าง uid คนละตัว ได้สองแถวจริงๆ
-     * แล้วบรรทัดนี้ก็ไปลบคำตัดสินจริงของอีกท่านทิ้งถาวร (โพรบข้อ ④ 9 ก.ย. 69)
+     * แล้วบรรทัดนี้ก็ไปลบคำตัดสินจริงของอีกท่านทิ้งถาวร
      *
      * ตอนนี้: ทับได้เฉพาะใบของตัวเอง ของคนอื่นเก็บไว้ทั้งหมด
-     * หน้าจอโชว์ใบล่าสุด + ป้ายบอกว่าเคยมีคำตัดสินอื่น (latestReview / reviewHistory)
+     * หน้าจอโชว์ใบล่าสุด + ป้ายบอกว่าเคยมีคำตัดสินอื่น (listReviewConflicts)
      */
     const mine = rows
       .filter((r) => r.by === by)
@@ -539,15 +536,9 @@ export async function setReview(workpieceId: string, status: ReviewStatus, comme
     await db.reviews.put(review);
   });
   const w = await db.workpieces.get(workpieceId);
-  // status pending = แค่บันทึกคอมเมนต์ ไม่ใช่ตีกลับ — เคยลง audit ว่า "ตีกลับให้แก้" ทำประวัติน่าตกใจ (เจอ 1 ก.ย. 69)
-  const action = status === 'approved' ? t('อนุมัติ') : status === 'returned' ? t('ตีกลับให้แก้') : t('บันทึกคอมเมนต์ชิ้นงาน');
+  // status pending = แค่บันทึกคอมเมนต์ ไม่ใช่ตีกลับ — เคยลง audit ว่า "ตีกลับให้แก้" ทำประวัติน่าตกใจ
+  const action = status === 'approved' ? 'อนุมัติ' : status === 'returned' ? 'ตีกลับให้แก้' : 'บันทึกคอมเมนต์ชิ้นงาน';
   await logAudit(`${action} ${w?.detail ?? workpieceId}`, by, { studentId: w?.studentId });
-}
-
-/** ใบที่ถูกทับ (ของอาจารย์ท่านอื่น) — ใช้ทำป้ายเตือน ไม่ได้ลบไปไหน */
-export async function reviewHistory(workpieceId: string): Promise<Review[]> {
-  const rows = await db.reviews.where('workpieceId').equals(workpieceId).toArray();
-  return rows.sort(byNewestReview).slice(1);
 }
 
 export async function listReviews(): Promise<Map<string, Review>> {
@@ -643,9 +634,11 @@ export interface CheckInInput {
  * กว่าจะ re-render ทัน แตะครั้งที่สองก็ผ่านไปแล้ว
  */
 export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
+  // วันที่จากช่องกรอกอาจเป็นอนาคตหรือว่าง — ประทับให้อยู่ในช่วงจริงก่อนใช้เป็นคีย์ของคาบ
+  const date = clampPerformedAt(input.date, undefined);
   const existing = await db.checkins
     .where('studentId').equals(input.studentId)
-    .and((c) => c.date === input.date)
+    .and((c) => c.date === date)
     .first();
   if (existing) {
     /**
@@ -660,16 +653,17 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
     const merged: CheckIn = {
       ...existing,
       activities: input.activities.length ? input.activities : existing.activities,
-      noPatient: input.noPatient || existing.noPatient,
+      // ระบุผู้ป่วยมาทีหลัง = ยกเลิกป้าย "ไม่มีผู้ป่วย" ที่ติดไว้ตอนเช็คอินด่วน (สองอย่างนี้จริงพร้อมกันไม่ได้)
+      noPatient: input.patientId ? false : (input.noPatient || existing.noPatient),
       patientId: input.noPatient ? undefined : (input.patientId ?? existing.patientId),
       note: input.note?.trim() || existing.note,
     };
     const changed = JSON.stringify(merged) !== JSON.stringify(existing);
     if (changed) {
       await db.checkins.put(merged);
-      const label = merged.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม');
+      const label = merged.activities.join(', ') || 'ไม่ระบุกิจกรรม';
       await logAudit(
-        `${t('เติมรายละเอียดคาบ')} ${checkInDateLabel(input.date)} · ${label}`,
+        `เติมรายละเอียดคาบ ${checkInDateLabel(date)} · ${label}`,
         input.actor,
         { studentId: input.studentId },
       );
@@ -680,7 +674,7 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
   const entry: CheckIn = {
     id: uid('ci'),
     studentId: input.studentId,
-    date: input.date,
+    date,
     punctual: input.punctual,
     checkinAt: input.checkinAt,
     photoCount: input.photoCount,
@@ -693,7 +687,7 @@ export async function addCheckIn(input: CheckInInput): Promise<CheckIn> {
   };
   await db.checkins.add(entry);
   await logAudit(
-    `${t('เช็คอินคาบคลินิก')} ${checkInDateLabel(input.date)} · ${input.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
+    `เช็คอินคาบคลินิก ${checkInDateLabel(date)} · ${input.activities.join(', ') || 'ไม่ระบุกิจกรรม'}`,
     input.actor,
     { studentId: input.studentId },
   );
@@ -722,7 +716,7 @@ export async function updateCheckIn(
   await db.checkins.update(id, { editedAt: new Date().toISOString() });
   await logAudit(
     // ต้องมีวันที่ ไม่งั้นย้อนดูไม่ออกว่าแก้คาบไหน (บรรทัดอื่นในระบบมีวันที่หมด)
-    `${t('เติมรายละเอียดคาบ')} ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.map((a) => t(a)).join(', ') || t('ไม่ระบุกิจกรรม')}`,
+    `เติมรายละเอียดคาบ ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.join(', ') || 'ไม่ระบุกิจกรรม'}`,
     actor,
     { studentId: row?.studentId },
   );
@@ -751,7 +745,6 @@ export async function listAllCheckIns(): Promise<CheckIn[]> {
   return rows.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
-/** อาจารย์ให้คะแนน = ลงนามแทนการเซ็นสมุด */
 /**
  * ด่านสุดท้ายของ "อ่านอย่างเดียว" สำหรับรุ่นที่เรียนจบแล้ว — เช็คที่ชั้นข้อมูล
  * ไม่ใช่แค่ปิดปุ่มบนหน้าจอ เพราะปุ่มอาจถูกลืมปิดหรือเข้ามาทางลิงก์ตรง
@@ -855,7 +848,7 @@ export async function reviseCheckIn(
 /**
  * แก้ป้าย "มาสาย" ของคาบที่เช็คอินไปแล้ว — อาจารย์เท่านั้น
  *
- * ทำไมต้องมี (ผู้ใช้เคาะ 11 ก.ย. 69): `punctual` คิดครั้งเดียวตอนกดเช็คอิน
+ * ทำไมต้องมี: `punctual` คิดครั้งเดียวตอนกดเช็คอิน
  * จากเวลาเครื่อง (เช้าเกิน 09:15 / บ่ายเกิน 13:15 = สาย) แล้วแก้ไม่ได้อีกเลย
  * นักศึกษาที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนตอนเย็น จะถูกบันทึกว่า "มาสาย" ถาวร
  * แล้วหน้าประเมินตนเองขึ้นการ์ด "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน (`domain/saFeedback.ts`)
@@ -866,7 +859,7 @@ export async function reviseCheckIn(
  *
  * ⚠️ **ไม่แตะ `checkinAt`** — เวลาที่ระบบจับได้เป็นข้อเท็จจริง ห้ามเขียนทับ
  * ที่แก้คือ "คำตัดสิน" ว่านับเป็นสายไหม ไม่ใช่ "เวลาที่เขามาถึง"
- * (ฝั่งเซิร์ฟเวอร์ trigger ของ 0006 ก็ยอมให้อาจารย์เท่านั้นเขียนช่องนี้)
+ * (ฝั่งเซิร์ฟเวอร์ trigger ของ 0020 ก็ยอมให้อาจารย์เท่านั้นเขียนช่องนี้)
  */
 export type PunctualResult =
   | { ok: true }
@@ -927,7 +920,7 @@ export async function stepsOnDate(studentId: string, date: string): Promise<stri
 
 /* ══════════════════════════════════════════════════════════════════
    เก็บข้อมูลย้อนหลังเท่าที่ภาคกำหนด แล้วลบรุ่นที่เกิน (PDPA · retention)
-   อาจารย์ขอ 1 ก.ย. 69: "จัดเก็บข้อมูลไว้ประมาณ 5 ปี"
+   ภาคยืนยัน: "จัดเก็บข้อมูลไว้ประมาณ 5 ปี"
    ⚠️ "ประมาณ 5 ปี" ยังไม่ใช่มติภาค — ตัวเลขจริงกับจุดเริ่มนับยังค้างอยู่ (ดู README)
       ระบบจึงล็อกไว้: ตราบใดที่ pdpa_policy.retention_enabled = false ลบอะไรไม่ได้เลย
 
@@ -1078,7 +1071,7 @@ export async function purgeExpiredCohorts(by: string, asOf: Date = new Date()): 
 
 /* ══════════════════════════════════════════════════════════════════
    นำเข้ารายชื่อนักศึกษารุ่นใหม่ (roster) — ภาคส่งรายชื่อมาทุกปี
-   ผู้ใช้ยืนยัน 1 ก.ย. 69: "DTMU56 และต่อๆ ไปเดี๋ยวมี roster ให้"
+   ภาคยืนยัน: "DTMU56 และต่อๆ ไปเดี๋ยวมี roster ให้"
    ══════════════════════════════════════════════════════════════════ */
 
 /* ตัวอ่านข้อความรายชื่อย้ายไป lib/rosterParse.ts — เป็นการแปลงข้อความล้วน ไม่แตะฐานข้อมูล
@@ -1099,8 +1092,6 @@ export interface RosterImportResult {
  * บันทึกรายชื่อเข้าระบบ — รหัสที่มีอยู่แล้วจะอัปเดต (ย้ายกลุ่ม/แก้ชื่อ) ไม่สร้างซ้ำ
  * @param dtmu เลขรุ่นของรายชื่อชุดนี้ (ใช้เมื่อแถวไม่ได้ระบุมาเอง)
  */
-
-
 export async function importRoster(rows: RosterRow[], dtmu: number, by: string): Promise<RosterImportResult> {
   const existing = await db.students.toArray();
   const byCode = new Map(existing.map((s) => [s.code, s]));
@@ -1115,7 +1106,7 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
   rows.forEach((r) => {
     const entryYear = entryYearFromDtmu(r.dtmu ?? dtmu);
     // รหัสกลุ่มติด tag รุ่น เพื่อไม่ให้ PT1 ของคนละรุ่นชนกัน
-    const groupCode = `TH${r.dtmu ?? dtmu}-${r.group}`;
+    const groupCode = groupCodeFor(r.dtmu ?? dtmu, r.group);
     const prev = byCode.get(r.code);
     if (prev) {
       /* ไม่มีชื่ออังกฤษมาในรอบนี้ = คงของเดิม (รายชื่อบางชุดมีแค่ชื่อไทย) */
@@ -1123,7 +1114,7 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
       updated++;
     } else {
       toPut.push({
-        id: `st-${groupCode}-${r.code}`,
+        id: studentIdFor(groupCode, r.code),
         code: r.code,
         name: r.name,
         /* ใส่ช่องเฉพาะเมื่อมีค่า — แถวที่ไม่มีช่องนี้ส่งขึ้นเซิร์ฟเวอร์ที่ยังไม่รัน 0025 ได้ตามเดิม */
@@ -1155,7 +1146,7 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
 
 
 /**
- * บันทึกรายชื่ออาจารย์จากแท็บ "อาจารย์" ของแบบฟอร์ม (ผู้ใช้ขอ 15 ก.ย. 69)
+ * บันทึกรายชื่ออาจารย์จากแท็บ "อาจารย์" ของแบบฟอร์ม
  * id มาจากหน้าจอ (id ในรายชื่อเชิญเดิม หรือสร้างจากอีเมล — teacherIdFromEmail) · มีอยู่แล้ว = อัปเดตชื่อ
  * ไม่มีชื่ออังกฤษมาในรอบนี้ = คงของเดิม · สิทธิ์เข้าระบบ (invites) หน้าจอทำต่อเอง เพราะต้องต่อเซิร์ฟเวอร์
  */
@@ -1196,7 +1187,7 @@ export function dtmuFromCode(code: string): number {
  * รุ่นของ "ชีตทั้งแผ่น" — ใช้เสียงข้างมากของรหัส ไม่ใช่รายคน
  *
  * ⚠️ ชีตชั้นปีหนึ่งมีนักศึกษาตกค้าง/ซ้ำชั้นจากรุ่นก่อนปนอยู่ได้ (ชีตปี 6 จริงมีรหัส 63 อยู่ 3 คน
- * ในกลุ่ม 64 จำนวน 84 คน — ผู้ใช้ส่งมา 2 ก.ย.) ถ้าคิดรุ่นรายคน คนเหล่านั้นจะถูกคำนวณเป็น
+ * ในกลุ่ม 64 จำนวน 84 คน) ถ้าคิดรุ่นรายคน คนเหล่านั้นจะถูกคำนวณเป็น
  * "ปี 7" แล้วหลุดไปกองรุ่นที่จบแล้วทันที ทั้งที่กำลังเรียนปี 6 อยู่จริง
  * จึงยึดว่า "ชีต = ชั้นเรียน" — ทุกคนในชีตอยู่ชั้นปีเดียวกัน
  */
@@ -1216,7 +1207,7 @@ export async function replaceWithRoster(
   actor: string,
   forceDtmu?: number,
 ): Promise<{ students: number; groups: number; dtmu: number; replaced: number; odd: string[] }> {
-  const { db: d } = await import('./db');
+  const d = db;
 
   const detected = cohortOfRoster(entries);
   const dtmu = forceDtmu ?? detected.dtmu;
@@ -1236,9 +1227,9 @@ export async function replaceWithRoster(
     });
     while (adv.length < 2) adv.push(adv[0] ?? `tc-r${dtmu}-unknown`);
     // รหัสกลุ่มติด tag รุ่น — PT1 ของคนละรุ่นจะได้ไม่ชนกัน (รูปแบบเดียวกับหน้านำเข้ารายชื่อ)
-    const groupCode = `TH${dtmu}-${e.group.replace(/^TH\d*-/, '')}`;
+    const groupCode = groupCodeFor(dtmu, e.group);
     const g = groupsMap.get(groupCode) ?? { code: groupCode, advisorIds: [adv[0], adv[1]] as [string, string], studentIds: [] };
-    const sid = `st-${groupCode}-${e.code}`;
+    const sid = studentIdFor(groupCode, e.code);
     g.studentIds.push(sid);
     groupsMap.set(groupCode, g);
     return {
@@ -1248,8 +1239,9 @@ export async function replaceWithRoster(
   });
 
   let replaced = 0;
-  await d.transaction('rw', [d.students, d.groups, d.patients, d.workpieces, d.updates, d.photos, d.checkins, d.reviews, d.submissions, d.issues, d.queue, d.teachers, d.audit], async () => {
-    /* ⚠️ ล้างเฉพาะ "รุ่นนี้" — รุ่นอื่นที่นำเข้าไว้ก่อนต้องไม่หาย (ผู้ใช้ถาม 2 ก.ย.)
+  const droppedPhotoIds: string[] = [];
+  await d.transaction('rw', [d.students, d.groups, d.patients, d.workpieces, d.updates, d.photos, d.checkins, d.reviews, d.submissions, d.issues, d.queue, d.teachers, d.audit, d.selfAssessments, d.sect2, d.sect3], async () => {
+    /* ⚠️ ล้างเฉพาะ "รุ่นนี้" — รุ่นอื่นที่นำเข้าไว้ก่อนต้องไม่หาย
        เดิมล้างทุกตาราง ทำให้นำเข้าชีตปี 6 ทับข้อมูลปี 5 ทั้งชุด */
     const old = (await d.students.toArray()).filter((st) => st.group.startsWith(`TH${dtmu}-`) || students.some((n) => n.code === st.code));
     const oldIds = new Set(old.map((st) => st.id));
@@ -1260,9 +1252,16 @@ export async function replaceWithRoster(
       await d.workpieces.bulkDelete([...workIds]);
       await d.patients.bulkDelete((await d.patients.toArray()).filter((p) => oldIds.has(p.ownerStudentId)).map((p) => p.id));
       await d.updates.bulkDelete((await d.updates.toArray()).filter((u) => workIds.has(u.workpieceId)).map((u) => u.id));
-      await d.photos.bulkDelete((await d.photos.toArray()).filter((ph) => workIds.has(ph.workpieceId)).map((ph) => ph.id));
+      const photoIds = (await d.photos.toArray()).filter((ph) => workIds.has(ph.workpieceId)).map((ph) => ph.id);
+      droppedPhotoIds.push(...photoIds);
+      await d.photos.bulkDelete(photoIds);
       await d.checkins.bulkDelete((await d.checkins.toArray()).filter((c) => oldIds.has(c.studentId)).map((c) => c.id));
       await d.reviews.bulkDelete((await d.reviews.toArray()).filter((r) => workIds.has(r.workpieceId)).map((r) => r.id));
+      // ของที่ผูกกับคน/ชิ้นงานที่ถูกแทนที่ — ชุดเดียวกับ purgeExpiredCohorts ไม่งั้นค้างเป็นแถวไร้เจ้าของ
+      await d.queue.bulkDelete((await d.queue.toArray()).filter((q) => workIds.has(q.workpieceId)).map((q) => q.id));
+      await d.selfAssessments.bulkDelete((await d.selfAssessments.toArray()).filter((sa) => oldIds.has(sa.studentId)).map((sa) => sa.id));
+      await d.sect2.bulkDelete((await d.sect2.toArray()).filter((r) => oldIds.has(r.studentId)).map((r) => r.id));
+      await d.sect3.bulkDelete((await d.sect3.toArray()).filter((r) => oldIds.has(r.studentId)).map((r) => r.id));
       await d.students.bulkDelete([...oldIds]);
       await d.groups.bulkDelete((await d.groups.toArray()).filter((g) => g.code.startsWith(`TH${dtmu}-`)).map((g) => g.code));
     }
@@ -1278,7 +1277,7 @@ export async function replaceWithRoster(
     /* กวาดข้อมูลไร้เจ้าของ: งาน/ผู้ป่วยที่ studentId ไม่ตรงกับนักศึกษาคนไหนเลย
        เกิดจากรูปแบบ id เปลี่ยนข้ามเวอร์ชัน (เช่น st-TH-PT1-… → st-TH55-PT1-…) และบั๊ก นศ. ตกรุ่น
        (st-TH53-… ทั้งที่ตัวคนอยู่ st-TH54-…) — ไม่มีหน้าไหนเปิดถึง แต่ไปโป่งอยู่ในยอดรวมของ dashboard
-       (เครื่องทดสอบ 3 ก.ย.: ผู้ป่วยไร้เจ้าของ 1,235 ราย · งาน 22 ชิ้น) */
+       (เคยเจอผู้ป่วยไร้เจ้าของนับพันรายบนเครื่องทดสอบ) */
     const liveIds = new Set((await d.students.toArray()).map((st) => st.id));
     const orphanWorks = (await d.workpieces.toArray()).filter((w) => !liveIds.has(w.studentId));
     if (orphanWorks.length) await d.workpieces.bulkDelete(orphanWorks.map((w) => w.id));
@@ -1293,8 +1292,10 @@ export async function replaceWithRoster(
         + (detected.odd.length ? ` · รหัสต่างรุ่น ${detected.odd.length} คน จัดเข้าชั้นเดียวกับชีต` : ''),
       who: actor,
       at: new Date().toISOString(),
-    } as never);
+    });
   });
+  // ไฟล์รูปของชิ้นงานที่ถูกแทนที่ — อยู่คนละตาราง (blobs) จึงลบนอก transaction
+  await dropLocalBlobs(droppedPhotoIds);
   return { students: students.length, groups: groupsMap.size, dtmu, replaced, odd: detected.odd };
 }
 
@@ -1355,10 +1356,7 @@ export async function setWorkpieceReturned(
   );
 }
 
-// ── แบบประเมินตนเอง (Self-assessment) ─────────────────────────
-
-/** หนึ่งชุดต่อ นศ. ต่อปีการศึกษา — คีย์คงที่ กรอกซ้ำก็ทับชุดเดิม ไม่งอกชุดใหม่ */
-
+// ── แบบประเมินตนเอง (Self-assessment) — คีย์คงที่ต่อคนต่อปี (saId ใน domain/selfAssessment) ──
 
 export async function getSelfAssessment(
   studentId: string,
@@ -1531,7 +1529,7 @@ export async function listSect2(studentId?: string, academicYear?: number): Prom
  * กติกาอยู่ที่ `domain/sect2.ts → sect2GateValue()` ที่เดียว เพราะตัวสร้างข้อมูลตัวอย่าง
  * (`data/seed.ts`) ต้องใช้กติกาเดียวกัน ไม่งั้นเดโมจะขัดกับของจริง — เคยขัดมาแล้ว:
  * เดโมเขียนใบ Sect II Fixed ไว้ 58/70 แต่ธงไม่เคยถูกคิด หน้าเกณฑ์ของ นศ. จึงขึ้น
- * "0/4 · ยังไม่มีข้อมูลในระบบ" ทั้งที่หน้าอาจารย์โชว์คะแนนอยู่ (ผู้ใช้ทัก 11 ก.ย. 69)
+ * "0/4 · ยังไม่มีข้อมูลในระบบ" ทั้งที่หน้าอาจารย์โชว์คะแนนอยู่
  */
 async function syncSect2Gate(studentId: string, formKey: string): Promise<void> {
   const st = await db.students.get(studentId);

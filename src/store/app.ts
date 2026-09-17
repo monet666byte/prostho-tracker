@@ -44,7 +44,6 @@ export interface Toast {
 export interface SheetState {
   workpieceId: string;
   performedAt: string; // ISO date
-  withPhoto: boolean;
 }
 
 interface AppState {
@@ -91,10 +90,6 @@ interface AppState {
 }
 
 /**
- * สลับบทบาท นศ.↔อาจารย์ ได้ไหม — โหมดเดโมได้เสมอ (ไว้สาธิต)
- * โหมด cloud ได้เฉพาะบัญชีที่ผูกไว้ทั้งสองฝั่ง เพราะของจริงคนละคนคนละบัญชี
- */
-/**
  * ชื่อคนที่กำลังทำรายการ — ใช้ลง audit log / ช่อง "ใครกด"
  * เดิม hard-code 'นศ. ก' ทุกที่ พอมีล็อกอินจริงแล้วต้องเป็นชื่อคนที่ล็อกอินอยู่จริง
  */
@@ -116,6 +111,10 @@ export function currentPdpaRole(): PdpaRole {
   return st.session?.role ?? 'student';
 }
 
+/**
+ * สลับบทบาท นศ.↔อาจารย์ ได้ไหม — โหมดเดโมได้เสมอ (ไว้สาธิต)
+ * โหมด cloud ได้เฉพาะบัญชีที่ผูกไว้ทั้งสองฝั่ง เพราะของจริงคนละคนคนละบัญชี
+ */
 export function useCanSwitchRole(): boolean {
   const user = useApp((s) => s.cloudUser);
   if (!cloudEnabled) return true;
@@ -133,7 +132,7 @@ async function findMyGroup(teacherId: string): Promise<string | null> {
  *
  * ⚠️ โหมด cloud ห้ามถอยไปใช้ชื่อเดโม — เครื่องที่เพิ่งล็อกอินครั้งแรกยังไม่มีรายชื่อในลิ้นชัก
  * (ดึงลงมาหลัง init) เดิมจึงได้ "นศ. Liv" ไปจนกว่าจะปิดแอปเปิดใหม่ และชื่อนี้ถูกจดลง
- * audit (แก้/ลบไม่ได้) · ประวัติ step · ช่อง by ของใบประเมินที่ isOthersForm ใช้แยกเจ้าของ (เจอ 14 ก.ย. 69)
+ * audit (แก้/ลบไม่ได้) · ประวัติ step · ช่อง by ของใบประเมินที่ isOthersForm ใช้แยกเจ้าของ
  * ถอยไปใช้อีเมลของบัญชีแทน — อย่างน้อยเป็นความจริง · และ refreshActorName() แก้ให้หลังดึงรอบแรก
  */
 async function actorNameFor(session: Session, user?: AppUser | null): Promise<string> {
@@ -230,7 +229,7 @@ export const useApp = create<AppState>((set, get) => ({
 
     try {
       /* ยามตรวจว่าถอดฟอร์มจากสมุดถูกไหม (ผลรวมต้องได้ 10 และ 70) — รันเฉพาะตอน dev
-         ถ้าพังคือผมพิมพ์ตัวเลขผิดตอนถอดฟอร์ม ไม่ใช่ผู้ใช้ทำอะไรผิด จึงดังแค่ใน console */
+         พังแปลว่าถอดฟอร์มผิดในโค้ด ไม่ใช่ข้อมูลผู้ใช้ จึงดังแค่ใน console */
       if (import.meta.env?.DEV) {
         const formErrs = [...assertSect2(), ...assertSect3()];
         if (formErrs.length) console.error('[ฟอร์มในสมุด portfolio ถอดผิด]', formErrs);
@@ -248,7 +247,7 @@ export const useApp = create<AppState>((set, get) => ({
         const user = await getAppUser();
         if (user) {
           /* บัญชีที่สลับ นศ.↔อาจารย์ ได้ (เจ้าของระบบ / demo@) — เปิดแอปใหม่ต้องอยู่มุมเดิมที่เลือกไว้
-             เดิมรีเฟรชทีไรเด้งกลับหน้า นศ. ทุกครั้ง แม้กำลังทำงานหน้าจัดการรายชื่ออยู่ (เจอ 14 ก.ย. 69)
+             เดิมรีเฟรชทีไรเด้งกลับหน้า นศ. ทุกครั้ง แม้กำลังทำงานหน้าจัดการรายชื่ออยู่
              ปลอดภัย: role ในเครื่องเป็นแค่มุมมอง · สิทธิ์จริงอ่านจาก app_users บนเซิร์ฟเวอร์ */
           const base = sessionFromUser(user);
           const prev = await kvGet<Session | null>('session', null);
@@ -396,7 +395,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   openSheet(workpieceId) {
     set({
-      sheet: { workpieceId, performedAt: toISODate(new Date()), withPhoto: false },
+      sheet: { workpieceId, performedAt: toISODate(new Date()) },
       toast: null,
     });
   },
@@ -437,7 +436,7 @@ export const useApp = create<AppState>((set, get) => ({
     set({ teacherGroup: code });
     // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง = จดไว้ใน audit log
     // (ไม่ได้ห้าม เพราะอาจารย์เวรต้องข้ามกลุ่มได้จริง — แต่ต้องมีร่องรอยว่าใครดูอะไร)
-    // ⚠️ อาจารย์ดูแลได้หลายกลุ่ม (ผู้ใช้ยืนยัน 14 ก.ย. 69) — เทียบกับทุกกลุ่มที่ดูแล ไม่ใช่แค่ myGroup
+    // ⚠️ อาจารย์ดูแลได้หลายกลุ่ม — เทียบกับทุกกลุ่มที่ดูแล ไม่ใช่แค่ myGroup
     //    เดิมเปิดกลุ่มที่สองของตัวเองแล้วจด audit ผิดว่า "ไม่ใช่กลุ่มที่ปรึกษา" ซึ่งลบไม่ได้
     if (mine && code !== mine) {
       void (async () => {

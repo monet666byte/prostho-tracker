@@ -10,7 +10,8 @@ import {
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
-import { useYearView, type YearView } from '../../hooks/useYearView';
+import { defaultYearView, useYearView } from '../../hooks/useYearView';
+import { cloudEnabled } from '../../lib/cloud';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
@@ -45,7 +46,7 @@ export default function Analytics() {
   const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
   const checkinsAll = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
   const [stepType, setStepType] = useState<WorkType | 'all'>('all');
-  // -1 = ปิด · ไม่เปิดเองตอนเข้าหน้าแล้ว เปิดเมื่อกดเลข (ผู้ใช้เลือก mock 14 ก.ย. 69 — แบบเดียวกับหน้าภาพรวม)
+  // -1 = ปิด · ไม่เปิดเองตอนเข้าหน้าแล้ว เปิดเมื่อกดเลข
   const [openStep, setOpenStep] = useState<number>(-1);
   const burn = useMemo(() => burnup(students, works, settings), [students, works, settings]);
   const cohortReq = useMemo(() => cohortRequirement(students, works, settings), [students, works, settings]);
@@ -94,7 +95,7 @@ export default function Analytics() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <h3>{t('ชิ้นงานอยู่ step ไหน (ทั้งชั้นปี)')}</h3>
-              {/* ตัดคำอธิบายวิธีใช้ เหลือคำอธิบายสีที่อ่านกราฟไม่ออกถ้าไม่มี (ตัดตัวเทา 16 ก.ย. 69) */}
+              {/* ตัดคำอธิบายวิธีใช้ เหลือคำอธิบายสีที่อ่านกราฟไม่ออกถ้าไม่มี */}
               <p className="sub">{t('วงแดง = ค้างเกิน {d} วัน', { d: settings.stale })}</p>
             </div>
           </div>
@@ -192,9 +193,9 @@ export default function Analytics() {
                       <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{t('เกณฑ์')} {r.required}</span>
                     </div>
                     <div className="stacked">
-                      <i style={{ width: `${(r.complete / r.total) * 100}%`, background: 'var(--success)' }} />
-                      <i style={{ width: `${(r.oneShort / r.total) * 100}%`, background: 'var(--success-mid)' }} />
-                      <i style={{ width: `${(r.twoPlus / r.total) * 100}%`, background: 'var(--danger-light)' }} />
+                      <i style={{ width: `${(r.complete / Math.max(1, r.total)) * 100}%`, background: 'var(--success)' }} />
+                      <i style={{ width: `${(r.oneShort / Math.max(1, r.total)) * 100}%`, background: 'var(--success-mid)' }} />
+                      <i style={{ width: `${(r.twoPlus / Math.max(1, r.total)) * 100}%`, background: 'var(--danger-light)' }} />
                     </div>
                   </div>
                 ))}
@@ -295,6 +296,8 @@ export default function Analytics() {
           </div>
         </div>
 
+        {/* เฉพาะ build ที่ไม่ต่อเซิร์ฟเวอร์ — เซิร์ฟเวอร์นำร่องมีข้อมูลจริงแล้ว ป้ายนี้จะโกหก */}
+        {!cloudEnabled && (
         <div
           style={{
             marginTop: 16, borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 10,
@@ -306,12 +309,9 @@ export default function Analytics() {
             {t('คำนวณสดจากข้อมูลในระบบ — ตอนนี้ยังเป็นข้อมูลสมมติ')}
           </span>
         </div>
+        )}
       </main>
     </TeacherShell>
   );
 }
 
-/** ปีของกลุ่มอาจารย์ → แท็บเริ่มต้น · รับแค่ 5/6 นอกนั้นเป็น 'รวมปี' (ดู useYearView) */
-function defaultYearView(year: number | undefined): YearView {
-  return year === 5 ? '5' : year === 6 ? '6' : 'all';
-}

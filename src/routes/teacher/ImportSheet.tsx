@@ -1,5 +1,5 @@
 /**
- * หน้านำเข้าข้อมูลตั้งต้นจากชีตของภาค — เห็นเฉพาะหัวหน้าภาค
+ * นำเข้าข้อมูลตั้งต้นจากชีตของภาค — อยู่ในหน้ารายชื่อ (Roster) ซึ่งเปิดให้เฉพาะหัวหน้ารายวิชา
  *
  * ขั้นตอน: เลือกนักศึกษา → วางไฟล์ CSV (export จากแท็บ PTn) → ดูรายงานตรวจสอบ → ยืนยันนำเข้า
  * ปรัชญา: ไม่เดามั่ว แถวที่อ่านไม่ออกจะขึ้นรายงานพร้อมเหตุผล ให้คนตัดสินเอง
@@ -16,7 +16,9 @@ import { thaiShort } from '../../lib/date';
 import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
 import { cohortOfRoster, replaceWithRoster } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { groupShort } from '../../domain/group';
+import { groupCodeFor, groupShort, studentIdFor } from '../../domain/group';
+import { entryYearFromDtmu } from '../../domain/cohort';
+import { cloudEnabled } from '../../lib/cloud';
 import { patientNamesOn } from '../../data/pdpaSync';
 
 /** สวิตช์ "ใช้ชื่อผู้ป่วย" ปิด (นำร่อง · 0026) = ชื่อจากชีตเก่าไม่ลงเครื่องเลย (เซิร์ฟเวอร์ล้างซ้ำอีกชั้น)
@@ -31,13 +33,13 @@ function issueValue(i: { column: string; value: string; problem: string }): stri
 }
 
 export function ImportSheetBody() {
-  const { cloudUser, showToast, touch } = useApp();
+  const { showToast, touch } = useApp();
   const students = useAllStudents();
-  /* เดิมล็อกเฉพาะหัวหน้าภาค — ผู้ใช้ให้เปิดกว้าง (1 ก.ย.) เพราะทุกการนำเข้าถูกบันทึกใน audit log
-     งานนี้แก้ "ข้อมูลงาน" ไม่ใช่ "สิทธิ์เข้าถึง" จึงเปิดให้อาจารย์ทุกคนได้ */
-  void cloudUser;
 
-  const [mode, setMode] = useState<'cohort' | 'one'>('cohort');
+  /* โหมด "ทั้งรุ่น" ล้างข้อมูลของรุ่นนั้นทั้งชุดแล้วใส่ใหม่ — ในโหมด cloud การลบพวกนั้นจะถูกส่งขึ้นเซิร์ฟเวอร์จริง
+     จึงเปิดให้เฉพาะเครื่องทดลอง (local) เท่านั้น · บนเซิร์ฟเวอร์จริงใช้ "ทีละคน" ซึ่งเติมโดยไม่ลบ */
+  const cohortModeAllowed = !cloudEnabled;
+  const [mode, setMode] = useState<'cohort' | 'one'>(cohortModeAllowed ? 'cohort' : 'one');
   const [studentId, setStudentId] = useState('');
   const [csv, setCsv] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -112,7 +114,7 @@ export function ImportSheetBody() {
 
   const rep = result?.report;
 
-  /* การ์ดเดียว สลับ "ทั้งรุ่น / ทีละคน" · ขั้นตอนเป็นแถวเลข 1-2-3 (ผู้ใช้เลือก mock 14 ก.ย. 69)
+  /* การ์ดเดียว สลับ "ทั้งรุ่น / ทีละคน" · ขั้นตอนเป็นแถวเลข 1-2-3
      เดิมสองแบบโชว์พร้อมกันสามการ์ด งงว่าต้องทำอันไหน */
   return (
     <>
@@ -120,12 +122,12 @@ export function ImportSheetBody() {
         <div className="setcard__head" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <h3 style={{ flex: 1 }}>{t('ย้ายงานที่ค้างอยู่ในชีตเข้าระบบ')}</h3>
           <div className="seg seg--sm seg--tight" role="tablist">
-            <button role="tab" aria-selected={mode === 'cohort'} data-on={mode === 'cohort'} onClick={() => setMode('cohort')}>{t('ทั้งรุ่น')}</button>
+            {cohortModeAllowed && <button role="tab" aria-selected={mode === 'cohort'} data-on={mode === 'cohort'} onClick={() => setMode('cohort')}>{t('ทั้งรุ่น')}</button>}
             <button role="tab" aria-selected={mode === 'one'} data-on={mode === 'one'} onClick={() => setMode('one')}>{t('ทีละคน')}</button>
           </div>
         </div>
 
-        {mode === 'cohort' && <WholeCohortImport />}
+        {mode === 'cohort' && cohortModeAllowed && <WholeCohortImport />}
 
         {mode === 'one' && (<>
           <div className="setrow setrow--wrap stepline">
@@ -303,15 +305,14 @@ export function ImportSheetBody() {
 
 /* ── นำเข้าทั้งรุ่นจากชีตจริง (Google Sheet → CSV รายแท็บ) ─────────────────
    เลือกไฟล์ทีเดียวหลายไฟล์: Student list + PT1–PT12 — ระบบแยกเองจากเนื้อไฟล์
-   ใช้กับ local เท่านั้นตอนนี้ (โหมดเดโมไม่มีการเชื่อมเซิร์ฟเวอร์อยู่แล้ว) */
-/** id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง ไม่งั้นงานจะจับคู่คนไม่เจอ */
+   เฉพาะเครื่องทดลอง local (ดู cohortModeAllowed) */
 /**
- * id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง — รุ่น (dtmu) คิดจาก "ทั้งชีต" ไม่ใช่รหัสรายคน
- * เดิมคิดจากรหัส: นศ. ตกรุ่น 3 คน (รหัส 63 ในชีตรุ่น 54) ได้ st-TH53-… ส่วนตัวนักศึกษาอยู่ที่ st-TH54-…
- * งานทั้งหมดของ 3 คนนี้จึงลอยไร้เจ้าของ ในแอปเห็นเป็น 0 ชิ้น (เจอ 3 ก.ย. ตอนทดสอบ gate)
+ * id นักศึกษาต้องตรงกับที่ replaceWithRoster สร้าง (ประกอบผ่าน domain/group ที่เดียวกัน)
+ * รุ่น (dtmu) คิดจาก "ทั้งชีต" ไม่ใช่รหัสรายคน — นศ. ตกรุ่น (รหัส 63 ในชีตรุ่น 54) ต้องได้ id รุ่นเดียวกับชีต
+ * ไม่งั้นงานทั้งหมดของเขาลอยไร้เจ้าของ ในแอปเห็นเป็น 0 ชิ้น
  */
 function sidOf(code: string, group: string, dtmu: number): string {
-  return `st-TH${dtmu}-${group.replace(/^TH\d*-/, '')}-${code}`;
+  return studentIdFor(groupCodeFor(dtmu, group), code);
 }
 
 function WholeCohortImport() {
@@ -356,7 +357,7 @@ function WholeCohortImport() {
       const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group, dtmu)]));
       /* ปีที่รุ่นนี้ขึ้นคลินิกปี 5 — ใช้แปลงคอลัมน์ "for PT502/PT602" เป็นปีจริง
          แท็บ INTRO เขียนไว้ตรงๆ ("ชั้นปีที่ 6 · ปีการศึกษา 2569") จึงเชื่อก่อนรหัสนักศึกษา */
-      const fromRoster = entries.length ? dtmu + 2514 : undefined;
+      const fromRoster = entries.length ? entryYearFromDtmu(dtmu) : undefined;
       const fromIntro =
         res.intro?.academicYear && res.intro.studentYear
           ? res.intro.academicYear - (res.intro.studentYear - 5)
@@ -392,7 +393,7 @@ function WholeCohortImport() {
     }
     const dtmu = cohortOfRoster(entries).dtmu;
     const byCode = new Map(entries.map((e) => [e.code, sidOf(e.code, e.group, dtmu)]));
-    const entryYear = entries.length ? dtmu + 2514 : undefined;
+    const entryYear = entries.length ? entryYearFromDtmu(dtmu) : undefined;
     const gs = texts
       .filter((f) => f !== rosterFile && /(^|,)"?HN"?(,|$)/im.test(f.text.split('\n').slice(0, 5).join('\n')))
       .map((f) => ({ name: f.name.replace(/\.csv$/i, ''), res: importGroupCsv(f.text, (code) => byCode.get(code) ?? null, entryYear) }));
@@ -413,7 +414,7 @@ function WholeCohortImport() {
     },
     { students: 0, unmatched: 0, patients: 0, works: 0, issues: 0 },
   );
-  /* ชีตปี 5 ปีนี้ยังไม่ได้กรอกช่อง Minimum Req เลยสักแถว (431 แถว — ตรวจ 3 ก.ย.)
+  /* ชีตปี 5 ปีนี้ยังไม่ได้กรอกช่อง Minimum Req เลยสักแถว
      ถ้าไม่เตือน อาจารย์จะเห็นแถบเกณฑ์ 0 ทั้งรุ่นแล้วนึกว่าแอปพัง */
   const countingWorks = groups.reduce(
     (n, g) => n + g.res.blocks.reduce((m, b) => m + b.result.workpieces.filter((w) => w.minimumRequirement).length, 0),
@@ -444,8 +445,9 @@ function WholeCohortImport() {
           wks += b.result.workpieces.length;
         }
       }
+      // audit เก็บภาษาไทยเสมอ (ห้ามผ่าน t())
       await logAudit(
-        t('นำเข้าทั้งรุ่นจากชีต DTMU{d}: {s} คน · {g} กลุ่ม · {p} ผู้ป่วย · {w} ชิ้นงาน', { d: r.dtmu, s: r.students, g: r.groups, p: pats, w: wks }),
+        `นำเข้าทั้งรุ่นจากชีต DTMU${r.dtmu}: ${r.students} คน · ${r.groups} กลุ่ม · ${pats} ผู้ป่วย · ${wks} ชิ้นงาน`,
         currentActor(),
         {},
       );

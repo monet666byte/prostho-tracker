@@ -1,7 +1,7 @@
 /**
  * สรุปอัตโนมัติจากแบบประเมินตนเอง — เอา "สิ่งที่นักศึกษาคิด" ชนกับ "สิ่งที่เกิดขึ้นจริงในแอป"
  *
- * ทำไมเป็นกฎในโค้ด ไม่ใช่ AI (เคาะกับผู้ใช้ 4 ก.ย. 69):
+ * ทำไมเป็นกฎในโค้ด ไม่ใช่ AI:
  *   · อ่านโค้ดแล้วรู้เลยว่าทำไมการ์ดใบนี้ขึ้น — อาจารย์ตรวจสอบได้
  *   · ผลเหมือนเดิมทุกครั้ง ไม่มีค่าใช้จ่าย และข้อมูลนักศึกษาไม่ออกนอกระบบ
  *   · ทุกใบต้องมี "หลักฐาน" เป็นตัวเลขจริงเสมอ ไม่ใช่คำแนะนำลอยๆ
@@ -17,7 +17,7 @@ import { academicYear } from '../lib/date';
 import { lang, tText } from '../lib/i18n';
 import { num, list as asList, SA_TYPES, type SAType, type SAValue } from './selfAssessment';
 import type {
-  CheckIn, ProgressUpdate, SelfAssessment, Settings, Student, Workpiece, WorkType,
+  CheckIn, ProgressUpdate, SelfAssessment, Settings, Workpiece, WorkType,
 } from './types';
 
 export type FeedbackTone =
@@ -75,7 +75,6 @@ const one = (n: number) => n.toFixed(1);
 
 export interface FeedbackInput {
   sa: SelfAssessment;
-  student: Student;
   works: Workpiece[];
   checkins: CheckIn[];
   updates: ProgressUpdate[];
@@ -213,7 +212,7 @@ export function buildFeedback(input: FeedbackInput): FeedbackCard[] {
   const req = caseCount(mine, settings);
   const shortRows = req.filter((r) => !r.complete);
   /* ป้ายสั้นที่คนอ่านออก ไม่ใช่รหัสกลุ่มดิบ — บรรทัดนี้อาจารย์อ่านตอนคุยกับนักศึกษา
-     เดิมใช้ r.group จึงขึ้นเป็น "CROWN 0/2 · RRM 0/1 · RFX 1/1" (เจอ 10 ก.ย. 69)
+     เดิมใช้ r.group จึงขึ้นเป็น "CROWN 0/2 · RRM 0/1 · RFX 1/1"
      ReqRow มีช่อง short ไว้ให้อยู่แล้วด้วยเหตุผลนี้ */
   const reqEvidence = req
     .map((r) => `${r.short} ${r.done}/${r.required}`)
@@ -317,7 +316,7 @@ export function buildFeedback(input: FeedbackInput): FeedbackCard[] {
       .map((t) => (lang === 'en' ? t!.label : t!.th));
     /* ใช้ชื่อเต็มของกลุ่มเกณฑ์ ไม่ใช่รหัสย่อ (CD/RPD/CROWN) — อาจารย์อ่านรายงานนี้ ไม่ใช่โปรแกรมเมอร์
        และติดตัวเลขว่ายังขาดเท่าไรไปด้วย ตามกฎของโปรเจกต์ว่าทุกการ์ดต้องมีตัวเลขจริงกำกับ
-       "ยังขาด CD" กับ "CD 0/2" คนละน้ำหนักกันมากเวลาอาจารย์อ่านก่อนนัดคุย (เจอตอนไล่บั๊ก 7 ก.ย. 69) */
+       "ยังขาด CD" กับ "CD 0/2" คนละน้ำหนักกันมากเวลาอาจารย์อ่านก่อนนัดคุย */
     const shortNames = shortRows.map((r) => `${tText(r.label)} ${r.done}/${r.required}`).join(' · ');
     cards.push({
       id: 'wants', tone: 'info',

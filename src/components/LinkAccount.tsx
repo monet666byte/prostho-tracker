@@ -26,7 +26,7 @@ export function LinkAccount() {
      (เลี่ยงการประกอบ session เองตรงนี้ ซึ่งจะข้ามขั้นที่ init ทำ เช่น ล้างของเดโม/อ่านชื่อ) */
   const checkLinked = useCallback(async () => {
     if (!(await getAppUser())) return;
-    // ต้องออกจาก #/login ด้วย — หน้า login ไม่เด้งเองแม้มี session แล้ว (เจอในเทสต์ 14 ก.ย. 69)
+    // ต้องออกจาก #/login ด้วย — หน้า login ไม่เด้งเองแม้มี session แล้ว
     window.location.hash = '#/';
     window.location.reload();
   }, []);
@@ -95,7 +95,7 @@ export function LinkAccount() {
   return (
     <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <IdentificationCard size={24} weight="duotone" style={{ color: 'var(--accent)', flex: 'none' }} />
+        <IdentificationCard size={24} weight="fill" style={{ color: 'var(--accent)', flex: 'none' }} />
         <div style={{ minWidth: 0 }}>
           <div style={{ font: '600 15px var(--font-head)' }}>{t('ผูกบัญชีกับรายชื่อนักศึกษา')}</div>
           <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>

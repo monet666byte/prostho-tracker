@@ -5,13 +5,13 @@ import { t } from '../lib/i18n';
 import type { WorkType } from '../domain/types';
 
 /** procedure ทั้งหมดที่อยู่ใน progression นั้นของงานประเภทหนึ่ง */
-export function proceduresAt(type: WorkType, progression: number, variant?: 'cast' | 'prefab') {
+function proceduresAt(type: WorkType, progression: number, variant?: 'cast' | 'prefab') {
   return procList({ type, variant })
     .filter((p) => p[0] === progression)
     .map((p) => ({ name: p[1], self: !!p[2] }));
 }
 
-/* แถวละประเภท: ชื่อประเภทตัวหนังสือสี · ขั้นตอนตัวปกติต่อกันบรรทัดเดียว (ผู้ใช้เลือก mock 14 ก.ย. 69)
+/* แถวละประเภท: ชื่อประเภทตัวหนังสือสี · ขั้นตอนตัวปกติต่อกันบรรทัดเดียว
    เดิมชิปสีประเภท + ชื่อขั้นตัวโมโนทีละบรรทัด */
 function Procs({ list }: { list: Array<{ name: string; self: boolean }> }) {
   return (

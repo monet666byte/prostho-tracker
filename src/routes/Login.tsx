@@ -15,7 +15,7 @@ export default function Login() {
   const [role, setRole] = useState<Role | null>(null);
   const { signIn, signInCloud, installPrompt, dismissInstall, cloudUnlinked } = useApp();
   const navigate = useNavigate();
-  // โหมด cloud ใช้อีเมล+รหัสผ่านจริง — โหมด local/แชร์เดโมยังเลือกบทบาทเข้าได้เลยเหมือนเดิม
+  // โหมด cloud: ปุ่ม Google เป็นทางหลัก อีเมล+รหัสผ่านเป็นทางสำรอง — โหมด local/แชร์เดโมเลือกบทบาทเข้าได้เลย
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,6 @@ export default function Login() {
   /* กลับมาจากหน้า Google พร้อม error (เช่น อีเมลไม่อยู่ในรายชื่อเชิญ) — อ่านครั้งเดียวตอน mount */
   const [error, setError] = useState<string | null>(() => {
     const oauth = takeOAuthReturnError();
-    // บัญชีที่ยังไม่ผูก ไม่ใช้ข้อความนี้แล้ว — หน้า LinkAccount อธิบายและพาทำต่อเอง (0023)
     return oauth ? explainOAuthError(oauth) : null;
   });
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -74,7 +73,7 @@ export default function Login() {
     navigate(useApp.getState().session?.role === 'teacher' ? '/teacher' : '/app');
   }
 
-  /* ชื่อ + โลโก้อยู่ตรงนี้ที่เดียวในหน้า login — ผู้ใช้แจ้ง 14 ก.ย. 69 ว่าอาจเปลี่ยนทั้งคู่
+  /* ชื่อ + โลโก้อยู่ตรงนี้ที่เดียวในหน้า login — ทั้งคู่อาจเปลี่ยนตามที่ภาคกำหนด (TODO(brand))
      (ไอคอนแอปอยู่ public/ อีก 7 ไฟล์ · ชื่อบนแท็บ/ตอนติดตั้งอยู่ index.html + vite.config.ts) */
   const brand = (compact: boolean) => (
     <div
@@ -160,7 +159,7 @@ export default function Login() {
               <LinkAccount />
             </>
           ) : cloudEnabled && emailMode ? (
-            /* ทางสำรอง (บัญชีสาธิต/สำรอง) — แยกเป็นจอที่สอง ไม่ให้แย่งสายตาปุ่ม Google (ผู้ใช้เลือกแบบ M1 14 ก.ย. 69) */
+            /* ทางสำรอง (บัญชีสาธิต/สำรอง) — แยกเป็นจอที่สอง ไม่ให้แย่งสายตาปุ่ม Google */
             <form onSubmit={goCloud} style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
               <button
                 type="button"
@@ -240,7 +239,7 @@ export default function Login() {
           <>
           {brand(false)}
           {/* ป้ายเดโมเฉพาะเวอร์ชันที่ไม่ต่อเซิร์ฟเวอร์ (GitHub Pages / ลิงก์แชร์) — เวอร์ชันนำร่องบน Vercel
-              ใช้ข้อมูลจริงของผู้ใช้ ห้ามบอกว่า "ข้อมูลสมมติทั้งหมด" (ผู้ใช้ขอเอาออก 14 ก.ย. 69) */}
+              ใช้ข้อมูลจริงของผู้ใช้ ห้ามบอกว่า "ข้อมูลสมมติทั้งหมด" */}
           <div style={{ display: 'grid', gap: 10 }}>
           <div
             style={{
@@ -301,7 +300,7 @@ export default function Login() {
             ① installable = กดปุ่มเดียวติดตั้งได้ (Chrome/Edge/Android)
             ② manualOnly  = Safari บนเครื่อง Apple — บอกวิธีทำมือได้
             นอกจากนี้กล่องจะมีแต่ปุ่มที่กดไม่ได้ ("เบราว์เซอร์นี้ยังเพิ่มไม่ได้")
-            แล้วยังบังหน้า login ทั้งหน้าจนกดเข้าระบบไม่ได้ (วัดเจอ 7 ก.ย. 69)
+            แล้วยังบังหน้า login ทั้งหน้าจนกดเข้าระบบไม่ได้
             beforeinstallprompt มาช้าหลายวินาทีได้ พอมาแล้ว onInstallChange จะ re-render ให้เอง */}
         {installPrompt && (installable || manualOnly) && (
           <div className="backdrop" onClick={dismissInstall}>

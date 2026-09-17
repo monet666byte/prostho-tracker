@@ -4,9 +4,11 @@
  * ปรัชญา: ชีตไม่มีวินัย — ตัวนำเข้าจึงต้อง (1) ใจกว้างกับรูปแบบที่เพี้ยนเท่าที่เดาได้อย่างปลอดภัย
  * และ (2) แถวไหนเดาไม่ได้ ให้บันทึกลง "รายงานปัญหา" พร้อมเหตุผล ไม่เดามั่วเด็ดขาด
  *
- * v1 รองรับคอลัมน์ตามรูปแบบ CSV_COLUMNS (ตรงกับ tab PTn) — เจอชีตจริงแล้วค่อยเติมกติกา
+ * รองรับคอลัมน์ตาม CSV_COLUMNS (ตรงกับ tab PTn) บวกกติกาที่เจอจากชีตจริงของรุ่น 54/55
+ * (ช่องว่าง · checkbox แทนหัวคอลัมน์ · Recall ที่ต่อจากแถวก่อน · แถวซ้ำ) — แต่ละข้อมีคอมเมนต์อธิบายไว้ตรงจุด
  */
-import { PROCS, RECALL } from '../domain/catalog';
+import { CATALOG_VERSION, PROCS, RECALL, isRemovableType } from '../domain/catalog';
+import { toISODate } from './date';
 import type { Patient, Payment, Workpiece, WorkType, StudentGates } from '../domain/types';
 
 export interface ImportIssue {
@@ -120,9 +122,9 @@ export function detectType(label: string): WorkType | null {
      → เกณฑ์ RPD ของ นศ. ขาดไปหนึ่ง และเกณฑ์ Crown เกินมาหนึ่ง พร้อมกัน
      (ชื่อเต็มของประเภทในระบบเขียนไว้เองว่า "RPD (Co-Cr or Simple APD)") */
   if (/co-?cr/.test(v)) return 'RPD';
-  // FMC = full metal crown · "Cr 14" = crown ซี่ 14 (เจอในชีตรุ่น 54 — ผู้ใช้ส่งมา 2 ก.ย.)
+  // FMC = full metal crown · "Cr 14" = crown ซี่ 14
   if (/crown|bridge|cr\s*,?\s*br|\bpfm\b|\bfmc\b|\bcr\b/.test(v)) return 'CB';
-  if (/rpd|co-?cr/.test(v)) return 'RPD';
+  if (/rpd/.test(v)) return 'RPD';
   if (/complicated\s*apd/.test(v)) return 'CD';
   if (/apd/.test(v)) return 'APD';
   if (/\bcd\b|complete\s*denture/.test(v)) return 'CD';
@@ -231,7 +233,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
   const cMin = col(/min/i);
   /* ชีตรุ่น 54 ไม่มีคอลัมน์ "Minimum Req" แต่ใช้คอลัมน์ "การนับชิ้นงาน PT602 = Yr6 · PT502 = Yr5"
      แทน โดยเขียน "for PT602" / "for PT502" = ชิ้นนี้นับเข้าเกณฑ์ของปีนั้น และ "คืนเคส" = คืนไปแล้ว
-     ถ้าไม่อ่านคอลัมน์นี้ ทุกชิ้นจะไม่นับเข้าเกณฑ์เลย (ผู้ใช้เจอ 3 ก.ย.: แถบเกณฑ์แดงทั้งแถว
+     ถ้าไม่อ่านคอลัมน์นี้ ทุกชิ้นจะไม่นับเข้าเกณฑ์เลย (อาการ: แถบเกณฑ์แดงทั้งแถว
      ทั้งที่จบเคสไปหลายร้อยชิ้น) */
   const cCount = col(/การนับชิ้นงาน|PT\s?60|PT\s?50/i);
   const cPayment = col(/payment/i);
@@ -242,7 +244,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
      ขึ้น 0 ตลอด ทั้งที่บางเคสไม่ขยับมาเป็นเดือน */
   const cUpdated = col(/วันที่บันทึก/);
   /* ช่องติ๊ก 0–10 เรียงติดกัน — ปกติหัวคอลัมน์เขียนเลข 0..10 ไว้
-     แต่ชีตบางปีปล่อยหัวว่างแล้วใช้ checkbox แทน (รุ่น 54 — ผู้ใช้เจอ 2 ก.ย. ทำให้ทุกคน 0%)
+     แต่ชีตบางปีปล่อยหัวว่างแล้วใช้ checkbox แทน
      จึงหาโดยดูข้อมูลจริง: 11 คอลัมน์ถัดจาก Step ที่มีค่าแบบติ๊ก */
   const looksTick = (v: string) => ['/', '✓', '✔', 'x', '1', 'true', 'false', ''].includes(v.trim().toLowerCase());
   let cTick0 = header.findIndex((h) => h === '0');
@@ -262,7 +264,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
   let skipped = 0;
   /* แถวที่ "ปล่อยว่าง" ไม่ใช่แถวที่ "อ่านไม่ออก" — เดิมจึงเงียบสนิท แล้วเติมวันที่นำเข้าให้แทน
      ซึ่งผิดกติกาของโปรเจกต์ (แถวไหนที่ระบบเดาให้ ต้องขึ้นรายงานเสมอ)
-     เจอตอนลองกับชีตจริง 10 ก.ย. 69: ไฟล์ที่ export คนละทางกัน ช่อง Accepted date ว่างทั้งคอลัมน์
+     เจอกับชีตจริง: ไฟล์ที่ export คนละทางกัน ช่อง Accepted date ว่างทั้งคอลัมน์
      วันรับเคสของทุกชิ้นเลยกลายเป็นวันที่นำเข้า โดยไม่มีอะไรบอกสักบรรทัด
      — และ "รับเคสวันไหน" คือฐานของกราฟ "ใช้เวลากี่สัปดาห์กว่าจะจบ"
      รายงานเป็นยอดรวมต่อคน ไม่ใช่รายแถว ไม่งั้นรายงานจะท่วมจนกลบปัญหาจริงที่ต้องแก้ */
@@ -299,7 +301,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
     const rawName = get(cName).replace(/\s+/g, ' ').trim();
     const name = rawName || (hn ? `ผู้ป่วย HN ${hn}` : '(ไม่ระบุชื่อในชีต)');
     /* ⚠️ แถวที่มีงานจริง (ติ๊กครบ ระบุ Completion) แต่ไม่กรอกทั้ง HN และชื่อ — เจอในชีตรุ่น 54
-       เป็นเคส Recall ที่ต่อจากผู้ป่วยแถวก่อน เดิมถูกทิ้งเงียบๆ (ผู้ใช้ขอ 2 ก.ย.: ห้ามมีอะไรหาย)
+       เป็นเคส Recall ที่ต่อจากผู้ป่วยแถวก่อน เดิมถูกทิ้งเงียบๆ (ห้ามมีอะไรหาย)
        ตอนนี้นำเข้าโดยตั้งผู้ป่วยชั่วคราวแยกรายแถว แล้วติดธงให้กลับไปเติมในชีต */
     if (!hn && !rawName) {
       issues.push({
@@ -346,7 +348,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
       const dm = stepLabel.match(/-(\d{1,2})\s/);
       /* ⚠️ ไม่ได้ติ๊กช่องเลยสักช่อง แต่ droplist กรอกไว้ — เจอในชีตรุ่น 54: งาน recall 28 แถว
          เขียน "Completion of case" แต่ช่องติ๊กว่างหมด ระบบเลยอ่านเป็น "ยังไม่เริ่ม"
-         ทั้งที่ในหน้ารายคนขึ้นว่าจบแล้ว (ผู้ใช้ทัก 3 ก.ย. ว่าขัดกันเอง)
+         ทั้งที่ในหน้ารายคนขึ้นว่าจบแล้ว
          → ถ้าไม่มีติ๊กเลย ให้ใช้ค่าจาก droplist เป็นหลักฐานแทน แล้วติดธงให้กลับไปติ๊กในชีต */
       if (maxTick < 0 && stepLabel) {
         const topStep = topStepOf(type);
@@ -387,17 +389,18 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
     /* นับเข้าเกณฑ์ไหม — รองรับสองแบบที่ภาคใช้จริง:
        รุ่น 55: คอลัมน์ Minimum Req เขียน Yes/No · รุ่น 54: คอลัมน์การนับชิ้นงานเขียน "for PT602/PT502" */
     const countsToward = /yes|ใช่|✓|✔|y\b/i.test(get(cMin)) || /for\s*PT\s?\d{3}/i.test(countCell);
-    /* "for PT502" = นับเข้าปี 5 · "for PT602" = นับเข้าปี 6 (ผู้ใช้ชี้ 3 ก.ย.)
+    /* "for PT502" = นับเข้าปี 5 · "for PT602" = นับเข้าปี 6
        entryYear = ปีการศึกษาที่รุ่นนี้ขึ้นคลินิกปี 5 → ปี 6 คือปีถัดไป */
     const courseYear = countCell.match(/PT\s?(\d)0\d/)?.[1];
     const countsForYear = entryYear && courseYear
       ? entryYear + (Number(courseYear) - 5)
       : undefined;
     const now = new Date().toISOString();
+    const today = toISODate(new Date()); // วันท้องถิ่น — now.slice(0,10) เป็น UTC จะได้เมื่อวานถ้านำเข้าก่อน 7 โมงเช้า
     /* แถวที่ซ้ำกันทุกช่องในไฟล์เดียว (เกิดได้จริงเวลาคนก๊อปแถว) ต้องไม่ทับกันเอง —
        ตั้งใจเก็บทั้งสองแถว ไม่ยุบรวม เพราะยุบแล้วถ้ามันเป็นสองเคสจริงข้อมูลจะหาย
 
-       ⚠️ แต่ต้องรายงานด้วย (เพิ่ม 10 ก.ย. 69) — เดิมเงียบสนิท
+       ⚠️ แต่ต้องรายงานด้วย — เดิมเงียบสนิท
        ผู้ป่วยคนเดียวกัน + ป้ายชิ้นงานเดียวกัน + วันรับเคสเดียวกัน แทบจะเป็นการก๊อปแถวพลาด
        และถ้าติ๊ก Minimum Req ไว้ มันจะกลายเป็น "อีกหนึ่งเคส" ที่นับเข้าเกณฑ์ให้ฟรี ๆ
        ชีตจริงมี 12 แท็บที่คนกรอกมือ การก๊อปแถวเกิดได้ง่าย และไม่มีใครเห็นถ้าไม่บอก
@@ -421,12 +424,12 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
       arch: detectArch(workLabel),
       tooth: detectTooth(workLabel),
       detail: workLabel,
-      acceptedDate: accepted ?? now.slice(0, 10),
+      acceptedDate: accepted ?? today,
       minimumRequirement: countsToward,
       pendingQualification: false,
       payment: parsePayment(get(cPayment)),
-      sect2Removable: type === 'CD' || type === 'RPD' || type === 'APD',
-      sect2Fixed: !(type === 'CD' || type === 'RPD' || type === 'APD'),
+      sect2Removable: isRemovableType(type),
+      sect2Fixed: !isRemovableType(type),
       procIndex: progressionToProcIndex(type, maxTick),
       lastUpdatedAt: sheetUpdated ? `${sheetUpdated}T00:00:00.000Z` : now,
       /* ขั้นสุดท้ายของ Recall คือ 3 ไม่ใช่ 10 (ฟังก์ชันนี้รู้อยู่แล้ว — ดู topStep ตอนอ่าน droplist)
@@ -438,7 +441,7 @@ export function importSheetCsv(csvText: string, studentId: string, entryYear?: n
       countsForYear,
       returned: returned || undefined,
       returnNote: returned ? rowNote : undefined,
-      catalogVersion: 'DTPT502-2569',
+      catalogVersion: CATALOG_VERSION,
     });
     imported++;
   });
@@ -507,7 +510,7 @@ export function importGroupCsv(
   }
   const header = rows[headerIdx];
 
-  /* ══ ไฟล์นี้ export มาถูกทางหรือเปล่า (เพิ่ม 10 ก.ย. 69) ══════════════════════
+  /* ══ ไฟล์นี้ export มาถูกทางหรือเปล่า ══════════════════════
      ชีตเดียวกันของภาค export ได้สองทาง แล้วได้ผลไม่เท่ากันอย่างมีนัยสำคัญ
      วัดกับชีตจริงรุ่น 55 ทั้ง 12 แท็บ:
 

@@ -36,7 +36,7 @@ const messageOf = (e: { message?: string; code?: string } | null) =>
 
 /**
  * ข้อความ error จากฟังก์ชันบนเซิร์ฟเวอร์ (raise exception ใน migration) → คำที่แอปใช้
- * ผู้ใช้เปลี่ยนชื่อบทบาท is_admin จาก "หัวหน้าภาค" เป็น "หัวหน้ารายวิชา" (14 ก.ย. 69)
+ * ผู้ใช้เปลี่ยนชื่อบทบาท is_admin จาก "หัวหน้าภาค" เป็น "หัวหน้ารายวิชา"
  * ข้อความใน migration ที่รันแล้วแก้ไม่ได้ จึงแปลงที่ฝั่งแอปแทน
  */
 export function serverText(msg: string): string {

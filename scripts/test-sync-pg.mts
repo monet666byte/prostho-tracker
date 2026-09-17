@@ -1,5 +1,5 @@
 /**
- * เทสต์ชุดที่ 20 — "sync หลายเครื่องพร้อมกัน บน Postgres ตัวจริง" · รันด้วย `npm run test:sync-pg`
+ * "sync หลายเครื่องพร้อมกัน บน Postgres ตัวจริง" · รันด้วย `npm run test:sync-pg`
  *
  * ทำไมต้องมี (13 ก.ย. 69): test:clinic / test:conflict / test:offline ทดสอบ cloudSync.ts ตัวจริง
  * กับ "ตู้กลางปลอม" ที่เขียนเลียนแบบ trigger ด้วยมือ · ตู้ปลอมรับทุกช่อง ยอมทุกคน ไม่มี NOT NULL

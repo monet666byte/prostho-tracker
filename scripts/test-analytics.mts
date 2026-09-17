@@ -32,6 +32,9 @@ const ok = (name: string, cond: boolean, extra: unknown = '') => {
 const NOW = new Date('2026-10-15T09:00:00+07:00');
 /** วันที่ค้างแน่ๆ เทียบ "เวลาจริง" — สำหรับฟังก์ชันที่เรียก isStale เองโดยไม่รับ now */
 const staleByWallClock = new Date(Date.now() - 60 * 86_400_000).toISOString();
+/** วันที่ "ไม่ค้าง" เทียบเวลาจริง — คู่กับตัวบน · ห้ามใช้ NOW ที่ตรึงไว้กับฟังก์ชันพวกนั้น
+    เพราะพอเวลาจริงเลย NOW ไปเกินจำนวนวันค้าง งานที่ตั้งใจให้ "ยังสด" จะกลายเป็นค้างเองทั้งชุด */
+const freshByWallClock = new Date().toISOString();
 
 const S = readDefaultSettings();
 const withReq = (over: Partial<Settings>): Settings => ({ ...S, ...over });
@@ -216,11 +219,11 @@ console.log('\nbottleneckByStep — ชิ้นงานกองอยู่�
   /* หมายเหตุ: bottleneckByStep (และ funnelByType) ไม่รับพารามิเตอร์ now — isStale ข้างในจึง
      เทียบกับนาฬิกาเครื่องเสมอ วันที่ของเทสต์ชุดนี้จึงต้องอิงเวลาจริง ไม่ใช่ NOW ที่ตรึงไว้ */
   const buckets = bottleneckByStep([
-    wp('CD'),                                    // ยังไม่เริ่ม → ลงถัง 0
-    at('CD', 6),
+    wp('CD', { lastUpdatedAt: freshByWallClock }),   // ยังไม่เริ่ม → ลงถัง 0
+    at('CD', 6, { lastUpdatedAt: freshByWallClock }),
     at('CD', 6, { lastUpdatedAt: staleByWallClock }),
-    finished('CD'),                              // จบแล้ว ไม่ใช่คอขวด
-    at('CD', 6, { returned: true }),             // คืนเคสแล้ว ไม่ใช่คอขวด
+    finished('CD'),                                  // จบแล้ว ไม่ใช่คอขวด
+    at('CD', 6, { returned: true }),                 // คืนเคสแล้ว ไม่ใช่คอขวด
   ], S, 'CD');
   ok('งานที่ยังไม่เริ่มลงถัง step 0', buckets[0].count === 1, buckets[0].count);
   ok('งานที่จบแล้วและงานที่คืนแล้วไม่กองอยู่บนแกน',
@@ -278,7 +281,7 @@ ok('ไม่มีงานเลย → ลิสต์ว่าง ไม่�
 }
 {
   // เคสค้างต้องนับเฉพาะงานที่ยังทำอยู่จริงเหมือนเดิม (isStale กันเคสคืนไว้อยู่แล้ว)
-  const rows = funnelByType([at('CD', 3, { lastUpdatedAt: staleByWallClock }), at('CD', 3)], S);
+  const rows = funnelByType([at('CD', 3, { lastUpdatedAt: staleByWallClock }), at('CD', 3, { lastUpdatedAt: freshByWallClock })], S);
   ok('ยังนับเคสค้างได้ถูกต้อง', rows[0].stale === 1, rows[0].stale);
 }
 

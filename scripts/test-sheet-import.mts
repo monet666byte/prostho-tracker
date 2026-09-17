@@ -11,9 +11,6 @@
  *   2. รูปแบบเพี้ยนของชีตจริงที่เคยทำให้ตัวเลขผิดทั้งชั้น (ปี พ.ศ./ค.ศ., ช่องติ๊กหัวว่าง,
  *      คืนเคส, for PT502/PT602, วันที่บันทึกข้อมูล) — มีคอมเมนต์กำกับว่าเคยพังยังไง
  *   3. นำเข้าไฟล์เดิมซ้ำต้องได้ id เดิม ไม่ใช่ข้อมูลชุดใหม่ทั้งชุด
- *
- * หมายเหตุ: scripts/test-import.ts (ของเดิม) เป็นสคริปต์ "พิมพ์รายงานออกมาดูด้วยตา"
- * ไฟล์นี้คือชุดกันถอยหลังที่ต่อเข้า `npm test` — คนละหน้าที่กัน
  */
 import { detectType, importGroupCsv, importSheetCsv, parseCsv, parseIntro, parseStudentList, sheetIdFromUrl } from '../src/lib/sheetImport.ts';
 import { isComplete, maxProgression, progression } from '../src/domain/rules.ts';

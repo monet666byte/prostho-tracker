@@ -1,7 +1,7 @@
 /**
  * ขอให้เบราว์เซอร์ "ไม่ลบ" ข้อมูลในเครื่องของแอปนี้ — และบอกผู้ใช้ตรงๆ ว่าได้หรือไม่ได้
  *
- * ทำไมต้องมี (11 ก.ย. 69): ข้อมูลทั้งหมดของนักศึกษาอยู่ใน IndexedDB ก่อนจะได้ขึ้นตู้กลาง
+ * ทำไมต้องมี: ข้อมูลทั้งหมดของนักศึกษาอยู่ใน IndexedDB ก่อนจะได้ขึ้นตู้กลาง
  * และเบราว์เซอร์มีสิทธิ์ลบที่เก็บของเว็บทิ้งได้เอง:
  *   · Chrome/Edge/Firefox — ลบตอนดิสก์ใกล้เต็ม (best-effort) เว้นแต่ได้สถานะ persistent
  *   · Safari/iOS — **ลบที่เก็บของเว็บที่ไม่ได้เปิดภายใน 7 วัน** ยกเว้นเว็บที่ถูกเพิ่มลงหน้าจอโฮม
@@ -64,20 +64,4 @@ export async function requestPersistentStorage(): Promise<PersistState> {
     set('unsupported');
   }
   return state;
-}
-
-export interface StorageUsage {
-  usedBytes: number;
-  quotaBytes: number;
-}
-
-/** ใช้พื้นที่ไปเท่าไหร่จากที่เบราว์เซอร์ให้ — null = ถามไม่ได้ */
-export async function storageUsage(): Promise<StorageUsage | null> {
-  try {
-    const est = await navigator.storage?.estimate?.();
-    if (!est || est.usage == null || est.quota == null) return null;
-    return { usedBytes: est.usage, quotaBytes: est.quota };
-  } catch {
-    return null;
-  }
 }

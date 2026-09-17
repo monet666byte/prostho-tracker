@@ -1,5 +1,5 @@
 /**
- * เทสต์ชุดที่ 12 — แบบประเมินตนเอง + การ์ดสรุปให้อาจารย์ · `npm run test:sa`
+ * แบบประเมินตนเอง + การ์ดสรุปให้อาจารย์ · `npm run test:sa`
  *
  * ครอบ domain/selfAssessment.ts (โครงฟอร์ม + ความคืบหน้า + การเปิดให้กรอก)
  * และ domain/saFeedback.ts (กฎที่แปลงคำตอบ + ข้อมูลจริง เป็นการ์ดที่อาจารย์อ่านก่อนนัดคุย)
@@ -12,7 +12,7 @@
 import {
   SA_APPROPRIATE, SA_MAX_SCALE, SA_NEEDS_WORK, SA_SCALE, SA_SECTIONS, SA_TYPES,
   saId, saMissing, saOpenFor, saProgress, saQuestionsFor, saSectionMissing, saSectionsFor,
-  num, list, text, type SAValue,
+  num, list, type SAValue,
 } from '../src/domain/selfAssessment.ts';
 import { buildFeedback, saYearNow, sortFeedback } from '../src/domain/saFeedback.ts';
 import { procList } from '../src/domain/rules.ts';
@@ -112,7 +112,6 @@ ok('num: 0 ต้องได้ 0 ไม่ใช่ null', num(0) === 0, Strin
 ok('num: N/A (ค่าติดลบ) → null ไม่ใช่ 0', num(-1) === null, String(num(-1)));
 ok('num: ข้อความ → null', num('3') === null);
 ok('list: ไม่ใช่อาเรย์ → อาเรย์ว่าง', list('x').length === 0 && list(undefined).length === 0);
-ok('text: ตัวเลข → สตริงว่าง (ไม่แปลงมั่ว)', text(5) === '');
 
 /* ═══ ⑥ การ์ดสรุปให้อาจารย์ ════════════════════════════════════════════ */
 console.log('\n⑥ การ์ดสรุปให้อาจารย์');

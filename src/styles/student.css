@@ -50,7 +50,7 @@
 .phone {
   width: var(--phone-w);
   height: var(--phone-h);
-  /* ไล่ฟ้าอ่อนจางๆ ด้านบน เพิ่มมิติโดยไม่เปลี่ยนโครง (ผู้ใช้ขอ 28 ส.ค. หลังดูบนมือถือแล้ว plain) */
+  /* ไล่ฟ้าอ่อนจางๆ ด้านบน เพิ่มมิติโดยไม่เปลี่ยนโครง */
   background: linear-gradient(178deg, var(--accent-tint) 0%, var(--bg-app) 30%);
   border-radius: 42px;
   border: 10px solid var(--bezel);
@@ -84,7 +84,7 @@
      ไม่งั้นถ้าความสูงคลาดกันนิดเดียว จะเห็นแถบเทาตายโผล่ท้ายจอ (เจอในวิดีโอ) */
   html, body, #root, .canvas { background: var(--bg-app); }
 
-  /* ⚠️ ต้นตอ "หัวหน้าแรกเลื่อนหลุด" (สกรีนช็อตผู้ใช้ 31 ส.ค. 22:06):
+  /* ⚠️ ต้นตอ "หัวหน้าแรกเลื่อนหลุด":
      บนมือถือมีตัวเลื่อนซ้อนกันสองชั้น — ทั้งหน้าเว็บ (body) และพื้นที่เนื้อหา (.screen)
      หน้าที่เนื้อหายาว (เกณฑ์/คาบ) .screen เลื่อนเอง หัว sticky จึงตรึงอยู่ ✓
      หน้าที่เนื้อหาสั้นกว่า (หน้าแรก) body กลายเป็นตัวเลื่อน → หัวโดนลากไปทั้งแผง ✗
@@ -96,7 +96,7 @@
      วิธีเดียวที่ iOS ยอม: ตอกทั้งแอปเป็น fixed ติดหน้าจอ — เทคนิคเดียวกับ
      แถบล่างที่ตรึงสำเร็จไปแล้ว พอทั้งแอป fixed หน้าเว็บก็ไม่เหลืออะไรให้เลื่อน */
   .canvas { position: fixed; inset: 0; padding: 0; display: block; gap: 0; height: auto; overflow: hidden; }
-  /* เด้งดึ๋งได้แม้เนื้อหาสั้น (ผู้ใช้ขอ 31 ส.ค.) — iOS จะให้ rubber-band
+  /* เด้งดึ๋งได้แม้เนื้อหาสั้น — iOS จะให้ rubber-band
      ก็ต่อเมื่อมีอะไรให้เลื่อนจริง จึงบังคับให้เนื้อหาสูงกว่าพื้นที่ 1px เสมอ
      (1px มองไม่เห็น แต่พอให้ iOS นับว่า "เลื่อนได้" แล้วปล่อยเด้ง) */
   .screenfill { min-height: calc(100% + 1px); }
@@ -163,7 +163,7 @@
   backdrop-filter: blur(20px) saturate(180%);
   /* เส้นคั่นบางๆ โผล่เฉพาะตอนเลื่อนแล้วมีเนื้อหาอยู่ข้างหลัง */
   border-bottom: 1px solid transparent;
-  /* เดิมเขียน transition สองบรรทัด บรรทัดหลังทับบรรทัดแรก → หัวยุบแบบกระตุก (เจอ 14 ก.ย.)
+  /* เดิมเขียน transition สองบรรทัด บรรทัดหลังทับบรรทัดแรก → หัวยุบแบบกระตุก
      ต้องอยู่บรรทัดเดียวกันเสมอ */
   transition: padding 0.2s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.2s ease;
 }
@@ -183,11 +183,6 @@
 @media (hover: hover) { .iconbtn:hover { background: var(--accent-ring); } }
 .iconbtn--plain { background: var(--fill); color: var(--text-secondary); }
 @media (hover: hover) { .iconbtn--plain:hover { background: var(--fill-2); } }
-
-.groupchip {
-  background: var(--accent-tint); color: var(--accent);
-  border-radius: 99px; padding: 3px 10px; font: 600 11px var(--font-mono);
-}
 
 /* ── แถบล่างแบบลอย (ทรงแคปซูล) ────────────────────────────────────────
    เดิมเป็นแถบทึบเต็มความกว้างติดขอบล่าง มีเส้นคาดบน ดูเป็น "เว็บ" มากกว่าแอป
@@ -247,32 +242,7 @@
 /* เนื้อหาต้องเลื่อนพ้นแถบลอย ไม่งั้นบรรทัดสุดท้ายโดนบัง */
 .screen { padding-bottom: calc(60px + 20px + max(8px, calc(env(safe-area-inset-bottom) - 22px))); }
 
-/* ── deadline banner ── */
-.banner {
-  margin: 14px 16px;
-  background: var(--warning-tint);
-  border: 1px solid var(--warning-border);
-  border-radius: 14px;
-  padding: 11px 13px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  color: var(--warning-dark);
-}
-.banner i { color: var(--warning); font-size: 18px; flex: none; display: grid; }
-
 /* ── การ์ดเคส (S1) ── */
-.casecard {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px;
-  box-shadow: var(--shadow-card);
-  margin: 0 16px 11px;
-}
-.casecard__top { display: flex; align-items: center; gap: 6px; }
-.casecard__name { font: 600 15px var(--font-head); margin: 8px 0 3px; }
-.casecard__meta { font: 400 11px/1.5 var(--font-mono); color: var(--text-faint); }
 .selfrow {
   display: flex; align-items: center; gap: 7px; margin-top: 9px;
   font: 500 11px var(--font-body); color: var(--self);
@@ -284,10 +254,6 @@
   box-shadow: var(--shadow-card); margin: 0 16px 11px; overflow: hidden;
 }
 .rowcard__head { display: flex; align-items: center; gap: 11px; padding: 13px 14px; }
-.avatar {
-  width: 36px; height: 36px; border-radius: 11px; background: var(--fill);
-  display: grid; place-items: center; font: 600 13px var(--font-head); color: var(--text-secondary); flex: none;
-}
 .pairbox {
   margin: 0 12px 12px; border-radius: 12px; background: var(--bg-subtle);
   border: 1px solid var(--border-3); padding: 10px 12px 11px; position: relative; overflow: hidden;
@@ -335,18 +301,15 @@
 .tl__line--done { background: var(--success); }
 .tl__body { flex: 1; min-width: 0; padding-bottom: 14px; }
 .tl__title { font: 600 13px/1.45 var(--font-body); color: var(--text-secondary); }
-.tl__meta { font: 400 10.5px var(--font-body); color: var(--text-faint); margin-top: 2px; }
 .tl__panel {
   margin-top: 10px; background: #fff; border: 1px solid var(--border);
   border-radius: 12px; padding: 11px 12px;
 }
-/* จังหวะหน้ารายละเอียดเคส — ผู้ใช้เลือกข้อ 2+3 จาก mock 14 ก.ย.
+/* จังหวะหน้ารายละเอียดเคส
    กางขั้นย่อย: กล่องเลื่อนลงนิดๆ + จางเข้า (พับกลับทันที) · ลูกศรหมุนตาม
    เปิดหน้า: แต่ละขั้นทยอยขึ้นห่างกัน 40ms แทนการเลื่อนทั้งหน้าจากขวา — กดได้ทันทีระหว่างเล่น */
 .tl__panel { animation: panelIn 0.2s cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes panelIn { from { opacity: 0; transform: translateY(-6px) scale(0.985); } to { opacity: 1; transform: none; } }
-.tl__caret { color: var(--text-disabled); display: grid; transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1); }
-button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .screen:has(.tl--stagger) { animation: none; }
 .tl--stagger .tl__item { animation: itemIn 0.26s cubic-bezier(0.23, 1, 0.32, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
 @keyframes itemIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -398,10 +361,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .sectiontitle h4 { margin: 0; font: 600 14px var(--font-head); }
 .sectiontitle p { margin: 2px 0 0; font: 400 11px var(--font-body); color: var(--text-faint); }
 
-/* ── แบนเนอร์แบบบรรทัดเดียว ── */
-.banner--slim { align-items: center; padding: 10px 13px; }
-.banner--slim i { font-size: 16px; }
-
 /* ── แถวเคสย่อ (เคสอื่นนอกจากใบล่าสุด) ── */
 .minirow {
   display: flex;
@@ -415,7 +374,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  /* เดิม 10/12 แถวเตี้ยจนดูเป็นของแถมข้างการ์ดเคสเด่น — ผู้ใช้ขอให้เคสอื่นเด่นขึ้น (1 ก.ย.) */
+  /* เดิม 10/12 แถวเตี้ยจนดูเป็นของแถมข้างการ์ดเคสเด่น — ผู้ใช้ขอให้เคสอื่นเด่นขึ้น */
   padding: 12px 14px;
   display: grid;
   gap: 8px;
@@ -427,15 +386,12 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.minirow__arch { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
 /* ขั้นถัดไปของเคสนั้น — พระเอกของแถว อ่านได้โดยไม่ต้องกดเข้าไป */
 .minirow__step {
   font: 700 14px/1.35 var(--font-head);
   color: var(--text);
   overflow-wrap: break-word;
 }
-.minirow__meta { display: flex; align-items: center; gap: 8px; }
-.minirow__meta .mono { font: 500 10px var(--font-mono); color: var(--text-faint); flex: none; }
 .minirow__pass {
   flex: none;
   /* วงกลมลอยกึ่งกลางแถว ไม่ยืดเต็มความสูงเหมือนเดิม — 44px คือขนาดที่นิ้วกดสะดวก */
@@ -518,15 +474,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 .wrapped:active { transform: scale(0.99); }
 
-/* แบนเนอร์สถานะคาบวันนี้ (หลังเช็คอินแล้ว) */
-.banner--ok {
-  background: var(--success-tint);
-  border-color: #cdeedf;
-  color: var(--success-dark);
-}
-.banner--ok i { color: var(--success); }
-
-
 /* บนมือถือ/แท็บเล็ตจริง เต็มจออยู่แล้ว ไม่ต้องมี status bar จำลอง */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
   .statusbar { display: none; }
@@ -543,7 +490,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 .herocase__top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 /* ชื่อคนไข้ = ตัวบอกว่าการ์ดนี้คือเคสไหน จึงควรเป็นหัวเรื่องของการ์ด
-   ของเดิมเป็น mono 12px สีจาง เลยเบากว่าชื่อ step (700 16px) ทั้งที่สำคัญกว่า (ผู้ใช้ทัก 2 ก.ย.) */
+   ของเดิมเป็น mono 12px สีจาง เลยเบากว่าชื่อ step (700 16px) ทั้งที่สำคัญกว่า */
 .herocase__name {
   display: block;
   font: 700 17px/1.3 var(--font-head);
@@ -554,16 +501,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   -webkit-tap-highlight-color: transparent;
 }
 .herocase__name:active { opacity: 0.55; }
-/* บรรทัดนี้เป็นตัวกำกับว่าเลขในวงแหวนคือ "ขั้นที่ n จาก m" — ห้ามถูกตัดท้ายทิ้ง
-   จึงปล่อยให้ตกบรรทัดแทน (โหมดตัวใหญ่ xl ตัดท้ายจนความหมายหายไปเลย) */
-.herocase__sub {
-  display: block;
-  margin-top: 4px;
-  font: 500 11px/1.4 var(--font-mono);
-  color: var(--text-faint);
-  overflow-wrap: break-word;
-}
-.herocase__main { display: flex; align-items: center; gap: 15px; margin-top: 12px; }
 .herocase__caption {
   font: 600 10px var(--font-body);
   letter-spacing: 0.04em;
@@ -571,19 +508,11 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   color: var(--text-muted);
 }
 .herocase__step { font: 700 17.5px/1.3 var(--font-head); color: var(--text); margin-top: 4px; overflow-wrap: break-word; }
-.herocase__done { margin-top: 6px; font: 400 10.5px var(--font-body); color: var(--text-faint); }
-/* ── ปุ่มเลือกภาษา (หน้ากระดิ่ง) — สองปุ่มเต็มแถว อันที่ใช้อยู่เป็นสีฟ้า ── */
-.langbtn {
-  flex: 1; height: 42px; border-radius: 12px;
-  font: 600 13px var(--font-head); color: var(--text-secondary);
-  background: var(--fill); border: 1px solid var(--border);
-}
-.langbtn--on { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ── แถบกำลังใจแบบสะสมบนหน้าแรก — ตัวเลขมีแต่เพิ่ม ไม่มีรีเซ็ต (แทน streak รายสัปดาห์) ── */
 .growcard { display: block; padding: 13px 14px; border-radius: 16px; }
 .growcard__head { font: 600 13px var(--font-head); color: var(--text); }
-/* ตัวเลขสามช่องคั่นด้วยเส้น แทนกล่องเทาซ้อนในการ์ด (กล่องในกล่อง = รก · 14 ก.ย.) */
+/* ตัวเลขสามช่องคั่นด้วยเส้น แทนกล่องเทาซ้อนในการ์ด (กล่องในกล่อง = รก) */
 .growcard__row { display: flex; margin-top: 10px; }
 .growcard__stat {
   flex: 1; display: grid; gap: 1px; padding: 2px 6px; text-align: center;
@@ -615,16 +544,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .achhome__badge--locked { opacity: 0.32; filter: grayscale(1); }
 .achhome__sub { display: block; margin-top: 9px; font: 400 10.5px var(--font-body); color: var(--text-muted); }
 
-/* ปุ่มฟ้าเล็กใต้ปุ่มหลัก — กางขั้นย่อยของ step ที่กำลังทำในการ์ดเลย ไม่ต้องเด้งไปหน้า step เต็ม */
-.herocase__more {
-  display: flex; align-items: center; justify-content: center; gap: 4px;
-  width: 100%; margin-top: 10px;
-  font: 500 11.5px var(--font-body); color: var(--accent);
-}
-/* ชื่อ step ใหญ่กดได้ — เปิดหน้าขั้นตอนเต็มของเคส (ปุ่มฟ้าเล็กเปลี่ยนหน้าที่ไปกางขั้นย่อยแทน) */
-.herocase__step--link { display: block; -webkit-tap-highlight-color: transparent; }
-.herocase__step--link:active { opacity: 0.55; }
-.herocase__steparrow { color: var(--accent); vertical-align: -1px; }
 .herocase__btn {
   margin-top: 14px;
   width: 100%;
@@ -678,7 +597,6 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   .sheet, .toast { animation: fadeIn 0.18s ease; }
   .tl__dot--active::after { animation: none; }
   .tl__panel, .tl--stagger .tl__item { animation: fadeIn 0.15s ease both; }
-  .tl__caret { transition: none; }
   .screen:has(.tl--stagger) { animation: shellIn 0.15s ease; }
 }
 
@@ -699,7 +617,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 @media (hover: hover) { .actgrid button:hover { background: var(--fill-2); } }
 .actgrid button[data-on='true'] { background: var(--accent); color: #fff; font-weight: 600; }
 
-/* ══ สกิน Duolingo — ผู้ใช้เลือกจาก mock รอบ 3–4 (1 ก.ย. 69) ══
+/* ══ สกิน Duolingo — ผู้ใช้เลือกจาก mock รอบ 3–4 ══
    ภาษา: ขอบหนา 2px + ขอบล่าง 4px แทนเงานุ่ม · ปุ่มเงาแข็งกดแล้วยุบ
    ขอบเขต: เฉพาะฝั่ง นศ. (ทุกอย่างอยู่ใต้ .phone) — หน้าอาจารย์คงสกินเดิม รอเคาะทีหลัง
    สีอิง token ล้วน เพื่อให้ธีม plum/ink ยังใช้ได้ */
@@ -709,7 +627,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   box-shadow: none;
 }
 /* เคสอื่นบนหน้าแรก: ทั้งแถวคือการ์ดใบเดียว ปุ่มผ่าน step อยู่ข้างใน
-   (เดิมการ์ดกับปุ่มแยกกัน ขอบขวาสั้นกว่าการ์ดใบอื่น — 14 ก.ย.) */
+ */
 .phone .minirow {
   background: var(--surface);
   border: 2px solid var(--border-2);
@@ -719,12 +637,11 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 .phone .minirow__body { border: 0; background: transparent; }
 
-/* ขอบล่างหนา = "กดได้" — ของที่แค่ให้อ่าน (การ์ดสะสม) ใช้ขอบเท่ากันทุกด้าน ไม่ทำตัวเป็นปุ่ม (14 ก.ย.) */
+/* ขอบล่างหนา = "กดได้" — ของที่แค่ให้อ่าน (การ์ดสะสม) ใช้ขอบเท่ากันทุกด้าน ไม่ทำตัวเป็นปุ่ม */
 .phone .growcard { border-bottom-width: 2px; }
 
-/* MOCK 14 ก.ย. — การ์ดเคสเด่น: เดิมพื้นฟ้า + ขอบฟ้า + เส้นคั่นใน ซ้อนสามชั้น → เหลือพื้นฟ้าอ่อน ขอบเทาเท่าการ์ดอื่น ไม่มีเส้นคั่น */
+/* การ์ดเคสเด่น: พื้นฟ้าอ่อน ขอบเทาเท่าการ์ดอื่น ไม่มีเส้นคั่น (พื้น+ขอบ+เส้นคั่นซ้อนสามชั้นดูรก) */
 .phone .herocase.herocase { --hero-bg: var(--surface); background: var(--surface); border-color: var(--border-2); }
-.phone .herocase__rule { height: 0; margin: 8px 0 6px; }
 
 .phone .herocase {
   /* เก็บสีพื้นไว้ในตัวแปร ให้จุดบนเส้นทางด่านเจาะวงรอบตัวเองด้วยสีเดียวกันได้ */
@@ -743,10 +660,9 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .phone .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
 .phone .btn:disabled { background: var(--text-disabled); box-shadow: none; }
 .phone .btn--success { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
-.phone .btn--light { background: #fff; box-shadow: 0 4px 0 var(--border-2); }
 .phone .btn--ghost, .phone .btn--sec { background: var(--fill); box-shadow: none; transform: none; }
 /* เอาเมาส์ชี้ปุ่มรอง ("ไว้ก่อน" · "ยกเลิก") ต้องไม่กลายเป็นปุ่มน้ำเงินทึบ — เดิมกฎ hover ของปุ่มหลักด้านบน
-   เจาะจงกว่า เลยทาน้ำเงินทับทั้งปุ่ม ตัวอักษรน้ำเงินจมหาย (ผู้ใช้แคปจอ 14 ก.ย.) */
+   เจาะจงกว่า เลยทาน้ำเงินทับทั้งปุ่ม ตัวอักษรน้ำเงินจมหาย */
 @media (hover: hover) {
   .phone .btn--sec:hover { background: var(--fill-2); filter: none; }
   .phone .btn--ghost:hover { background: var(--fill); filter: none; }
@@ -768,12 +684,10 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
    โชว์เฉพาะขั้นย่อยของ step ที่กำลังทำ กันรก · รางเส้นเดียวลากหลังทุกแถว
    จุดตำแหน่งเจาะวงรอบตัวเองด้วยสีพื้นการ์ด (--hero-bg) ให้ดูลอยเหนือราง */
 .herocase__meta { margin-left: auto; font: 500 10px var(--font-mono); color: var(--text-faint); }
-/* โซนหัวการ์ด: ชื่อคนไข้+HN ซ้าย · วงแหวนรวมทั้งเคสขวา (ผู้ใช้ขอวงแหวนคืน 1 ก.ย.)
+/* โซนหัวการ์ด: ชื่อคนไข้+HN ซ้าย · วงแหวนรวมทั้งเคสขวา
    สองบรรทัดซ้ายสูงใกล้เคียงวงแหวน 56px แล้ว จึงไม่มีช่องโหวงข้างวงแหวนเหมือนเดิม */
 .herocase__lead { display: flex; align-items: center; gap: 12px; margin-top: 11px; }
-/* เส้นคั่นเต็มความกว้างการ์ด (ทะลุ padding 16px ซ้ายขวา) แบ่ง "เคสไหน" ออกจาก "ต้องทำอะไรต่อ" */
-.herocase__rule { height: 1px; background: var(--accent-ring); margin: 13px -16px; }
-/* หน้าต่างแคบ 3 แถว "หน้า 1 หลัง 1" — แถวข้างเคียงย่อเล็ก ให้ขั้นปัจจุบันเด่น (ผู้ใช้ขอ 1 ก.ย.) */
+/* หน้าต่างแคบ 3 แถว "หน้า 1 หลัง 1" — แถวข้างเคียงย่อเล็ก ให้ขั้นปัจจุบันเด่น */
 .heropath { position: relative; display: grid; gap: 5px; }
 .heropath::before {
   content: '';
@@ -791,7 +705,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .heropath__node--todo { background: var(--surface); border: 2px solid var(--border-2); box-sizing: border-box; }
 .heropath__node--now {
   /* เดิมวง 36 เลข 15px (42% ของเส้นผ่านศูนย์กลาง) = ตัวเลขอัดเต็มวง ดูไม่สมส่วน
-     ผู้ใช้ทัก 1 ก.ย. · รอบแรกลดแค่ 2.5px ซึ่งมองไม่เห็นความต่าง จึงลดจริงจังเป็น
+     ลดแค่ 2.5px มองไม่เห็นความต่าง จึงลดจริงจังเป็น
      วง 28 เลข 11px (39%) — ยังใหญ่กว่าจุดขั้นอื่น (22px) ชัดเจนโดยไม่ข่มทั้งแถว */
   width: 25px; height: 25px; margin-left: 5.5px;
   background: var(--accent); color: #fff;
@@ -807,7 +721,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 .heropath__name--now:active { opacity: 0.55; }
 
-/* ── หน้ารายละเอียดเคส V1 "เก็บกวาด" (ผู้ใช้เลือก 1 ก.ย.) — แถวไทม์ไลน์บรรทัดเดียว
+/* ── หน้ารายละเอียดเคส V1 "เก็บกวาด" — แถวไทม์ไลน์บรรทัดเดียว
    สถานะอ่านจากสีจุด + น้ำหนักตัวอักษร: กำลังทำเด่นสุด ผ่านแล้วหม่น รอคิวจาง ── */
 .tl__title--active { font: 700 14px/1.4 var(--font-head); color: var(--text); }
 .tl__title--done { color: var(--text-muted); font-weight: 500; }
@@ -816,25 +730,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .tl__count { font: 400 10px var(--font-mono); color: var(--text-faint); margin-left: 5px; }
 .tl__date { font: 400 10.5px var(--font-body); color: var(--text-faint); flex: none; }
 
-/* ── ปุ่มเลือกธีมสี (หน้ากระดิ่ง) — ทรงเดียวกับปุ่มภาษา แต่มีจุดสีจริงนำหน้า
-   จุดต้องระบุสีตรงๆ เพราะ token ของธีมประกาศที่ html.theme-* (ไม่ตกมาถึง span คลาสเดียวกัน)
-   ค่าตรงกับ --accent ของแต่ละธีมใน tokens.css — แก้ที่นั่นแล้วต้องแก้ที่นี่ด้วย ── */
-.themebtn {
-  flex: 1; height: 42px; border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  font: 600 12.5px var(--font-head); color: var(--text-secondary);
-  background: var(--fill); border: 2px solid var(--border-2);
-}
-.themebtn--on { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-hover); }
-.themebtn__dot {
-  width: 14px; height: 14px; border-radius: 99px; flex: none;
-  background: #2b5ce6;
-  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.08);
-}
-.themebtn__dot.theme-plum { background: #6d3fd4; }
-.themebtn__dot.theme-ink { background: #46536e; }
-
-/* ── เคสที่คืนไปแล้ว — เก็บแถวไว้ให้เห็น แต่ขีดฆ่าด้วยเส้นแดง (ผู้ใช้ขอ 2 ก.ย.) ──
+/* ── เคสที่คืนไปแล้ว — เก็บแถวไว้ให้เห็น แต่ขีดฆ่าด้วยเส้นแดง ──
    ใช้เส้นทับกลางแถวจริงๆ (ไม่ใช่ text-decoration) จะได้พาดตลอดแนวรวมแถบและตัวเลข */
 .returned { position: relative; opacity: 0.62; }
 .returned::after {
@@ -860,7 +756,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 
 /* ── iPad แนวนอน: ใช้พื้นที่กว้างให้คุ้ม ──────────────────────────────────────
-   ผู้ใช้บอก 6 ก.ย. 69 ว่า นศ. ใช้มือถือกับ iPad เป็นเครื่องหลัก
+   นศ. ใช้มือถือกับ iPad เป็นเครื่องหลัก
    เดิมกรอบล็อกที่ 700px ทุกกรณี พอเป็นแนวนอน (1024–1366px) จึงเหลือพื้นที่ว่างสองข้างมาก
    และฟอร์มยังต้องเลื่อนพอๆ กับ iPhone ทั้งที่จอกว้างกว่าเท่าตัว
 
@@ -878,18 +774,18 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 }
 
 
-/* ── พื้นที่กด (สแกน 7 ก.ย. 69) ─────────────────────────────────────────── */
+/* ── พื้นที่กด ─────────────────────────────────────────── */
 /* ชิปคำค้นด่วน — 29px เล็กไปสำหรับนิ้ว
    มือถือเท่านั้น เพราะบนเดสก์ท็อปใช้เมาส์ ชิปเตี้ยดูสวยกว่า */
 @media (pointer: coarse) {
   .qchip { min-height: 34px; display: inline-flex; align-items: center; }
 }
 
-/* การ์ดในหน้า sync กว้างเกินจอตอนตัวหนังสือใหญ่สุด (วัดเจอ 7 ก.ย. 69 · iPhone SE + xl) */
+/* การ์ดในหน้า sync กว้างเกินจอตอนตัวหนังสือใหญ่สุด */
 :root[data-zoom='lg'] .screen .card,
 :root[data-zoom='xl'] .screen .card { min-width: 0; }
 
-/* ══ หน้าแรกแบบ "ตัดของซ้ำ" — ผู้ใช้เลือก mock A+B (14 ก.ย. 69) ══
+/* ══ หน้าแรกแบบ "ตัดของซ้ำ" — ผู้ใช้เลือก mock A+B ══
    หลัก: การ์ดละหัวเรื่อง 1 · บรรทัดรอง 1 · ปุ่ม 1 · ชิปกลายเป็นข้อความเทา · หัวข้อเล็กแบ่งกลุ่ม
    ("รก" ของผู้ใช้ = ของยิบย่อยในจอเดียว ไม่ใช่หน้ายาว) */
 .homelabel { font: 600 13px var(--font-head); color: var(--text-faint); margin: 6px 4px -2px; }
@@ -899,7 +795,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   border-radius: 10px; padding: 7px 13px; box-shadow: 0 3px 0 var(--accent-hover);
 }
 .herocase__line { min-width: 0; font: 400 12.5px/1.4 var(--font-body); color: var(--text-faint); }
-/* HN: กึ่งหนา + ฟอนต์หัว (ตัวอ้วนกว่าโมโน) ผู้ใช้ขอ 14 ก.ย. · ตัวเลขกว้างเท่ากันไว้อ่านเทียบ */
+/* HN: กึ่งหนา + ฟอนต์หัว (ตัวอ้วนกว่าโมโน) · ตัวเลขกว้างเท่ากันไว้อ่านเทียบ */
 .herocase__hn { font: 600 13px var(--font-head); color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .herocase__top .herocase__meta { font: 400 12px var(--font-body); }
 .minirow__name { font: 400 12.5px var(--font-body); color: var(--text-faint); }
@@ -909,8 +805,8 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .linkgroup__note { font: 400 12.5px var(--font-body); color: var(--text-faint); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
 .linkgroup__new { width: 8px; height: 8px; border-radius: 99px; background: var(--danger); }
 
-/* ══ แถบล่างกระจกไอคอนล้วน — ผู้ใช้ส่งคลิป Instagram เป็นตัวอย่าง (14 ก.ย. 69) ══
-   ไม่หดตอนเลื่อนแล้ว (ผู้ใช้ขอเอาออก 14 ก.ย. 69) */
+/* ══ แถบล่างกระจกไอคอนล้วน — ผู้ใช้ส่งคลิป Instagram เป็นตัวอย่าง ══
+   ไม่หดตอนเลื่อนแล้ว */
 .phone .tabbar {
   height: 58px;
   background: var(--glass-bg);
@@ -940,7 +836,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
   .phone .tabbar, .tabbar__pill, .phone .tabbar a i { transition: none; }
 }
 
-/* ══ หน้าคนไข้แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69) ══
+/* ══ หน้าคนไข้แบบ "ตัดของซ้ำ" ══
    การ์ดละคนไข้ ขอบหนาเหมือนการ์ดอื่น · แถวชิ้นงานไม่มีกล่องซ้อน คั่นเส้นบาง · เว้นที่หายใจเยอะขึ้น */
 .phone .rowcard {
   border: 2px solid var(--border-2); border-bottom-width: 4px; box-shadow: none;
@@ -955,7 +851,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .phone .pairrow { padding: 8px 0; }
 .phone .rowcard .badge { padding: 4px 8px; border-radius: 7px; font-size: 11.5px; }
 
-/* ══ หน้าเกณฑ์แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69) ══ */
+/* ══ หน้าเกณฑ์แบบ "ตัดของซ้ำ" ══ */
 .critlabel { display: flex; justify-content: space-between; margin: 12px 4px -2px; }
 .critlabel .mono { font-size: 12px; }
 .critgroup { padding: 0; overflow: hidden; }
@@ -973,7 +869,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .critgate span:last-child { font-size: 12.5px; flex: none; }
 .critfoot { margin: 6px 6px 0; font: 400 11.5px/1.7 var(--font-body); color: var(--text-faint); }
 
-/* ══ หน้าคาบแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) — การ์ดเดียว แถวละคาบ ══ */
+/* ══ หน้าคาบแบบ "ตัดของซ้ำ" — การ์ดเดียว แถวละคาบ ══ */
 .checklist { padding: 0; overflow: hidden; }
 .checkrow { padding: 13px 16px; text-align: left; cursor: pointer; }
 .checkrow + .checkrow { border-top: 1px solid var(--border); }
@@ -982,7 +878,7 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .checkrow__wait { font: 600 12.5px var(--font-head); color: var(--warning); flex: none; }
 .checkrow__tag { font: 500 11.5px var(--font-body); color: var(--text-faint); flex: none; }
 
-/* ══ หน้ารายละเอียดเคส แบบ 4A (ผู้ใช้เลือก 14 ก.ย. 69 — "เห็น progress ตัวเอง") ══
+/* ══ หน้ารายละเอียดเคส แบบ 4A ══
    หัวแบบหน้าแรก · จุดกลมเชื่อมเส้นเหมือนเดิม · ตัวอักษรเส้นทางใหญ่ขึ้น · "ทำเอง" เป็นตัวอักษรม่วง */
 .detailmeta { display: flex; align-items: center; gap: 6px; margin-top: 10px; font: 400 12.5px/1.5 var(--font-body); color: var(--text-faint); }
 .detailmeta .dot { flex: none; }
@@ -992,13 +888,13 @@ button[aria-expanded='true'] > span > .tl__caret { transform: rotate(180deg); }
 .tl__date { font-size: 12px; }
 .tl__self { font: 600 11.5px var(--font-body); color: var(--self); flex: none; }
 
-/* ══ สมุดของฉัน แบบ "ตัดของซ้ำ" (14 ก.ย. 69) — หมวดละการ์ด แถวคั่นเส้น ══ */
+/* ══ สมุดของฉัน แบบ "ตัดของซ้ำ" — หมวดละการ์ด แถวคั่นเส้น ══ */
 .pfhead { margin: 4px 4px 0; font: 700 14px var(--font-head); color: var(--text); }
 .pfhead span { color: var(--text-faint); font-weight: 600; }
 .pfgroup { padding: 0; overflow: hidden; border-bottom-width: 2px !important; }
 .pfrow + .pfrow { border-top: 1px solid var(--border); }
 
-/* ══ ฟอร์ม/ตั้งค่าแบบ "แถวในการ์ดเดียว" — เพิ่มชิ้นงาน · ตั้งค่า · คลังรูป · ค้นหา (ผู้ใช้เลือก mock 14 ก.ย. 69) ══
+/* ══ ฟอร์ม/ตั้งค่าแบบ "แถวในการ์ดเดียว" — เพิ่มชิ้นงาน · ตั้งค่า · คลังรูป · ค้นหา ══
    หลัก: หัวข้อเล็กแบ่งกลุ่ม → การ์ดเดียว แถวคั่นเส้น · สวิตช์/ปุ่มสลับชิดขวา · ไม่มีกล่องสีซ้อน */
 .newform { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 8px; }
 .newform .homelabel { margin: 8px 4px 0; }
@@ -1060,14 +956,14 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .photorow + .photorow { border-top: 1px solid var(--border); }
 .qchip[data-on='true'] { background: var(--accent-tint); color: var(--accent-hover); font-weight: 600; }
 .formfield input.mono::placeholder { font-family: var(--font-body); font-size: 14.5px; }
-/* ส่งออก: รายชื่อคอลัมน์ CSV พับไว้ (14 ก.ย. 69) */
+/* ส่งออก: รายชื่อคอลัมน์ CSV พับไว้ */
 .colsfold { margin-top: 10px; }
 .colsfold summary { display: flex; justify-content: space-between; align-items: center; list-style: none; cursor: pointer; padding: 6px 4px; font: 500 12px var(--font-body); color: var(--text-faint); }
 .colsfold summary::-webkit-details-marker { display: none; }
 .colsfold summary:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
 .colsfold__body { padding: 12px 16px; font: 400 12.5px/1.7 var(--font-mono); color: var(--text-faint); }
 .phone .colsfold__body { border-bottom-width: 2px; }
-/* ประเมินตนเอง นศ. หลังส่ง — บรรทัดสถานะเดียว + คะแนนชิดขวา (14 ก.ย. 69) */
+/* ประเมินตนเอง นศ. หลังส่ง — บรรทัดสถานะเดียว + คะแนนชิดขวา */
 .sadone { display: flex; align-items: center; gap: 10px; margin: 6px 4px 0; font: 600 13.5px var(--font-head); color: var(--success-dark); }
 .sadone small { display: block; font: 400 12px var(--font-body); color: var(--text-faint); }
 .sascore { font: 600 13.5px var(--font-head); color: var(--text); white-space: nowrap; flex: none; max-width: 45%; text-align: right; white-space: normal; }

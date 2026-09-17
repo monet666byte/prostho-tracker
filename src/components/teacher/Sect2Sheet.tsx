@@ -13,7 +13,7 @@ import { firstNameOnly } from '../../domain/group';
 import { studentYear } from '../../domain/cohort';
 import {
   RPD_DESIGN_GROUPS, RPD_DESIGN_REMARK, RPD_DESIGN_TOPICS, S2_FULL_SCORE, S2_GRADES,
-  rpdDesignPassed, s2Points, sect2Form, sect2Total, type S2Form, type S2Grade,
+  rpdDesignPassed, sect2Form, sect2Total, type S2Form, type S2Grade,
 } from '../../domain/sect2';
 import { deleteSect2, saveSect2 } from '../../data/repo';
 import { CasePicker, type CaseScope } from './CasePicker';
@@ -317,12 +317,12 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   });
   const [busy, setBusy] = useState(false);
 
-  /* ผู้ใช้ขอ 7 ก.ย. 69: ปกติแค่ติ๊กว่าสอบแล้วและอาจารย์กดอนุมัติก็พอ ไม่ต้องกาทีละ 17 ข้อ
+  /* ภาคยืนยัน: ปกติแค่ติ๊กว่าสอบแล้วและอาจารย์กดอนุมัติก็พอ ไม่ต้องกาทีละ 17 ข้อ
      แต่ยังเก็บทางกาแบบละเอียดไว้ (พับไว้) เพราะกระดาษจริงมี 17 ข้อ
      ถ้าใครกาไว้แล้ว ผลจะคิดจากรายข้อเหมือนเดิม — ของที่บันทึกไปแล้วไม่เพี้ยน */
   /* ⚠️ ต้องมีสถานะ "ยังไม่ตัดสิน" (undefined) แยกจาก "ไม่ผ่าน" (false)
      ไม่งั้นแค่แตะเลือกเคสแล้ว autosave จะบันทึกว่าไม่ผ่าน และไปตั้งธงเงื่อนไขจบให้เลย
-     ทั้งที่อาจารย์ยังไม่ได้ตัดสินอะไร (วัดจริงตอนไล่เช็ค 8 ก.ย. 69) */
+     ทั้งที่อาจารย์ยังไม่ได้ตัดสินอะไร */
   const [approved, setApproved] = useState<boolean | undefined>(cur?.passed ?? undefined);
   const [showItems, setShowItems] = useState(Object.keys(cur?.marks ?? {}).length > 0);
 
@@ -424,7 +424,7 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
 
       <CaseFields studentId={student.id} scope="rpdDesign" {...f} set={(k, v) => setF((p) => ({ ...p, [k]: v }))} />
 
-      {/* ทางหลัก: ติ๊กว่าสอบแล้ว แล้วอาจารย์กดอนุมัติ — พอสำหรับการใช้งานปกติ (ผู้ใช้ขอ 7 ก.ย. 69) */}
+      {/* ทางหลัก: ติ๊กว่าสอบแล้ว แล้วอาจารย์กดอนุมัติ — พอสำหรับการใช้งานปกติ */}
       <div className="card" style={{ padding: 14, marginTop: 14, display: 'grid', gap: 10 }}>
         <div>
           <span style={{ font: '700 12.5px var(--font-head)' }}>{t('ผลการสอบ')}</span>
@@ -601,4 +601,3 @@ export function sect2Status(row: Sect2Record | undefined): { text: string; done:
   return { text: `${row.total}/${S2_FULL_SCORE}`, done: true };
 }
 
-export { s2Points };

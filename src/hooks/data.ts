@@ -18,7 +18,7 @@ import { useApp } from '../store/app';
  *
  * useLiveQuery คืนค่าเริ่มต้น ([]) ในเรนเดอร์แรกของทุกหน้า แล้วค่อยได้ข้อมูลจริงเฟรมถัดไป
  * ผลคือกดเมนู "ภาพรวม"/"วิเคราะห์รวม" แล้วเห็นหน้าเลข 0 · "ไม่มีอะไรน่าห่วง" · กราฟว่าง แวบหนึ่ง
- * (ผู้ใช้เห็นเป็นกระตุกทั้งบนคอมและไอแพด 15 ก.ย. 69 · จับได้จากเฟรมจอ) — และเลข 0 คือป้ายหลอกด้วย
+ * — และเลข 0 คือป้ายหลอกด้วย
  *
  * ภาพเก็บผูกกับ "ใครล็อกอิน + revision" — สลับบัญชี / รีเซ็ตข้อมูล = ทิ้งทั้งหมด ไม่เอาของคนก่อนมาโชว์
  * ข้อมูลสดยังมาจาก useLiveQuery เหมือนเดิม ภาพนี้แค่ใช้แทนเฟรมแรกระหว่างรอ
@@ -221,12 +221,12 @@ export function useSect2(studentId?: string, academicYear?: number) {
  * ไม่ใช่ต้องปิดแอปเปิดใหม่ — หน้าจอที่ยังเปิดค้างอยู่คือหน้าจอที่กำลังมีคนดูข้อมูลอยู่
  * ตารางว่าหน้าไหนได้ระดับไหน อยู่ที่ `lib/privacy.ts → identityLevelFor()` ที่เดียว
  */
-/** สวิตช์ "ใช้ชื่อผู้ป่วย" ของภาค (0026) แบบสด — ใช้คู่กับ patientTitle() / patientWithHn() ใน lib/privacy.ts */
-export function usePatientNamesOn(): boolean {
-  return useSyncExternalStore(onPdpaPolicy, patientNamesOn, patientNamesOn);
-}
-
 export function useIdentityLevel(surface: IdentitySurface): IdentityLevel {
   const pol = useSyncExternalStore(onPdpaPolicy, pdpaPolicy, pdpaPolicy);
   return identityLevelFor(surface, pol.maskByDefault);
+}
+
+/** สวิตช์ "ใช้ชื่อผู้ป่วย" ของภาค (0026) แบบสด — ใช้คู่กับ patientTitle() / patientWithHn() ใน lib/privacy.ts */
+export function usePatientNamesOn(): boolean {
+  return useSyncExternalStore(onPdpaPolicy, patientNamesOn, patientNamesOn);
 }

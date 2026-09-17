@@ -1,11 +1,10 @@
 import { ArrowLeft, MagnifyingGlass, XCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bar, TypeBadge } from '../../components/ui/Bits';
-import { Empty } from '../../components/ui/Bits';
+import { Bar, Empty, TypeBadge } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, maxProgression, progression } from '../../domain/rules';
+import { currentProc, maxProgression, progression, stepFraction } from '../../domain/rules';
 import { usePatientNamesOn, useWorkpieces } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
 import { t, tSexAge, tText } from '../../lib/i18n';
@@ -91,7 +90,7 @@ export default function Search() {
           <Empty icon={<MagnifyingGlass size={26} />} title={t('ไม่พบชิ้นงานที่ตรงกับคำค้น')} hint={t('ลองค้นด้วย HN หรือชื่อประเภทงาน')} />
         </div>
       ) : (
-        /* หน้าตาเดียวกับหน้าคนไข้ (ผู้ใช้เลือก mock 14 ก.ย. 69) — HN กึ่งหนา · ชื่อ · ป้ายประเภท · หลอด */
+        /* หน้าตาเดียวกับหน้าคนไข้ — HN กึ่งหนา · ชื่อ · ป้ายประเภท · หลอด */
         results.map((w) => {
           const cur = currentProc(w);
           const prog = Math.max(progression(w), 0);
@@ -114,7 +113,7 @@ export default function Search() {
                     {tText(w.detail)}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                    <Bar value={(prog / max) * 100} color={done ? 'var(--success)' : typeMeta(w.type).color} height={5} />
+                    <Bar value={stepFraction(w) * 100} color={done ? 'var(--success)' : typeMeta(w.type).color} height={5} />
                     <span style={{ font: '500 11.5px var(--font-mono)', color: done ? 'var(--success-dark)' : 'var(--text-faint)', flex: 'none' }}>
                       {prog}/{max}
                     </span>

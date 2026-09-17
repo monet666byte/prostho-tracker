@@ -7,7 +7,6 @@
  * ต้องไม่มีโอกาสติดปุ่มหรือแถบเมนูของแอปหลุดไปบนกระดาษ
  */
 import { ArrowLeft, Printer } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SaPrintSheet } from '../components/SaPrintSheet';
 import { db } from '../data/db';
@@ -27,16 +26,10 @@ export default function SaPrint() {
   const studentId = fromRoute ?? session?.studentId;
   const student = useStudent(studentId);
   const sa = useSelfAssessment(studentId, saYearNow());
-  const [ready, setReady] = useState(false);
-
   const teachers = useLiveQuery(() => db.teachers.toArray(), [], NO_TEACHERS) ?? NO_TEACHERS;
   const advisors = student ? teachers.filter((tc) => student.advisorIds.includes(tc.id)) : [];
 
-  // ให้ข้อมูลวาดเสร็จก่อนค่อยปล่อยให้กดพิมพ์ — กันพิมพ์ออกมาเป็นหน้าว่าง
-  useEffect(() => {
-    if (student && sa !== undefined) setReady(true);
-  }, [student, sa]);
-
+  // ถึงตรงนี้ได้แปลว่าข้อมูลครบแล้ว (ด่านด้านล่างคืนหน้าว่างถ้ายังไม่มีใบที่ส่ง) ปุ่มพิมพ์จึงกดได้เสมอ
   if (!student || !sa || sa.status !== 'submitted') {
     return (
       <div style={{ padding: 28, display: 'grid', gap: 12, placeItems: 'center', minHeight: '100vh', alignContent: 'center' }}>
@@ -59,7 +52,7 @@ export default function SaPrint() {
         <button className="btn btn--sec" style={{ height: 40, flex: '0 0 120px' }} onClick={() => navigate(-1)}>
           <ArrowLeft size={15} /> {t('ย้อนกลับ')}
         </button>
-        <button className="btn" style={{ height: 40, flex: 1 }} disabled={!ready} onClick={() => window.print()}>
+        <button className="btn" style={{ height: 40, flex: 1 }} onClick={() => window.print()}>
           <Printer size={16} weight="fill" /> {t('พิมพ์ / บันทึกเป็น PDF')}
         </button>
       </div>

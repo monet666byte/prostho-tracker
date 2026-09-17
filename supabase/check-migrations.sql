@@ -91,5 +91,14 @@ from (
     exists (select 1 from information_schema.columns
             where table_schema = 'public' and table_name = 'pdpa_policy' and column_name = 'patient_names')
     and exists (select 1 from pg_trigger where tgname = 'zz_zz_strip_patient_name')
+
+  -- 0027 ดูสามร่องรอย (trigger กันลบคาบ · ตัวนับคำขอผูกบัญชี · กฎอ่านที่เช็ค my_role)
+  -- qual ของ policy ถูกจัดรูปโดย Postgres เอง (`(my_role() IS NOT NULL)`) จึงใช้ like ได้ ไม่มีเว้นวรรคหลายช่อง
+  union all select '0027 ปิดช่องก่อนส่งมอบ (ลบคาบที่ประเมินแล้ว · เพดาน request_link · บัญชีทดสอบ)',
+    exists (select 1 from pg_trigger where tgname = 'checkin_delete_guard')
+    and exists (select 1 from information_schema.columns
+                where table_schema = 'public' and table_name = 'link_requests' and column_name = 'attempts')
+    and exists (select 1 from pg_policies where tablename = 'teachers' and policyname = 'teachers_read'
+                and qual like '%my_role()%')
 ) x
 order by x.label;

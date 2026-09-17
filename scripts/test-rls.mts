@@ -1,5 +1,5 @@
 /**
- * เทสต์ชุดที่ 19 — "กฎการเข้าถึงกันได้จริงไหม บน Postgres ตัวจริง" · รันด้วย `npm run test:rls`
+ * "กฎการเข้าถึงกันได้จริงไหม บน Postgres ตัวจริง" · รันด้วย `npm run test:rls`
  *
  * ทำไมต้องมี (13 ก.ย. 69): กฎ RLS / trigger / สิทธิ์ฟังก์ชันของโปรเจกต์นี้ถูกตรวจด้วย "การอ่าน" มาตลอด
  * ส่วนเทสต์ sync ใช้ตู้กลางปลอมที่เขียนเลียนแบบกฎด้วยมือ ซึ่งเพี้ยนจากของจริงได้เงียบๆ
@@ -289,25 +289,15 @@ console.log('\n⑦ ฟังก์ชันที่มีอำนาจ');
 /* ── ⑧ บัญชีทดสอบที่ migration ใส่ไว้ ─────────────────────────────────────── */
 console.log('\n⑧ บัญชีทดสอบ @example.com');
 {
-  /* ข้อนี้ไม่ได้ตรวจว่าโค้ดถูก — ตรวจว่า "ความเสี่ยงที่รายงานไว้มีอยู่จริง"
-     ถ้าวันหน้าลบบัญชีทดสอบออกจาก migration แล้ว ข้อนี้จะเปลี่ยนเป็นผ่านเอง */
+  /* 0003/0005 ใส่บัญชี @example.com ที่มีสิทธิ์อาจารย์/หัวหน้าภาคไว้ · 0027 ลบทั้งรายชื่อเชิญและบัญชีล็อกอิน
+     เดิมข้อนี้เป็นแค่การพิมพ์เตือน (ลบบัญชีบนเซิร์ฟเวอร์จริงต้องให้คนตัดสิน) — ตอนนี้ migration จัดการแล้ว
+     จึงเป็น check จริง: ถ้าใครรัน 0003 ซ้ำแล้ว 0027 ไม่ได้ลบทับ ข้อนี้ต้องตก */
+  const leftovers = (await db.query(`select 1 from invites where email ilike '%@example.com'`)).rows.length;
+  check('ไม่มีรายชื่อเชิญ @example.com เหลืออยู่หลัง 0027', leftovers === 0, leftovers);
   const claim = await signUp(db, 'demo@example.com');
-  const role = claim.uid
-    ? await as(db, { uid: claim.uid }, async (tx) => (await tx.query<{ r: string }>(`select my_role() as r`)).rows[0].r)
-    : null;
-  const seesAll = claim.uid ? await visible(db, { uid: claim.uid }, `select 1 from patients`) : 0;
-  console.log(`   (สมัคร demo@example.com ได้: ${!!claim.uid} · บทบาทที่ได้: ${role && role.ok ? role.value : '-'} · เห็นผู้ป่วย ${seesAll} คน)`);
-  /* ⚠️ ความเสี่ยงที่ "รอเจ้าของระบบตัดสินใจ" — ไม่นับเป็นเทสต์ตก โดยเจตนา
-     เหตุผล: การลบบัญชีทดสอบคือการลบข้อมูลบนเซิร์ฟเวอร์จริง ต้องให้คนตัดสิน ไม่ใช่เทสต์
-     ถ้านับเป็นตก `npm test` จะแดงถาวร แล้วเทสต์ที่ตกเพราะบั๊กใหม่จะจมหายไปกับข้อนี้
-     เมื่อมี migration ที่ลบบัญชีทดสอบแล้ว ให้เปลี่ยนข้อนี้เป็น check() ธรรมดา */
-  /* ผู้ใช้เคาะ 14 ก.ย.: demo@ เก็บไว้พรีเซนต์ (สลับ นศ.↔อาจารย์) แต่ถอดหัวหน้าภาคใน 0022 */
-  check('demo@example.com ไม่ได้สิทธิ์หัวหน้าภาค (0022)', !!(role && role.ok && role.value !== 'admin'), role);
-  const demoInvites = claim.uid ? await visible(db, { uid: claim.uid }, `select 1 from invites`) : -1;
-  check('demo@example.com อ่านรายชื่อเชิญไม่ได้แล้ว (สิทธิ์หัวหน้าภาค)', demoInvites === 0, demoInvites);
-  /* ⚠️ ยังเหลือ: demo@ ผูก teacher_id → เห็น/แก้ผู้ป่วยทุกคนเหมือนอาจารย์ทุกคน (0004 ตั้งใจ)
-     ก่อนรับข้อมูลจริง ต้องถอด teacher_id ของ demo@ หรือลบบัญชี — รอผู้ใช้ตัดสิน */
-  if (seesAll > 0) console.log(`⚠️  demo@example.com ยังมีสิทธิ์อาจารย์ (เห็นผู้ป่วย ${seesAll} คน) — ไม่นับเป็นตก ก่อนรับข้อมูลจริงต้องจัดการ`);
+  check('สมัคร demo@example.com ไม่ได้อีกแล้ว (ไม่อยู่ในรายชื่อเชิญ)', !claim.uid, claim.error ?? 'สมัครได้!');
+  const users = (await db.query(`select 1 from auth.users where email ilike '%@example.com'`)).rows.length;
+  check('ไม่มีบัญชีล็อกอิน @example.com เหลืออยู่', users === 0, users);
 
   /* SQL ตั้งเจ้าของระบบเป็นหัวหน้าภาค — ผู้ใช้รันเองด้วยอีเมลจริง (ไม่อยู่ใน repo เพราะ repo เป็น public)
      ตัวนี้ก๊อปรูปเดียวกับที่ส่งให้ผู้ใช้ ใส่อีเมลสมมติ · ต้องได้ผลทั้งแบบ "สมัครก่อน" และ "สมัครทีหลัง" */
@@ -759,6 +749,82 @@ console.log('\n⑭ ไม่เก็บชื่อผู้ป่วย (0026)
   check('สวิตช์เปิดอยู่ → สคริปต์ลบชื่อไม่ลบอะไร',
     (await db.query(`select 1 from patients where id = 'pN1' and name = 'สมหญิง จริงจัง'`)).rows.length === 1, guarded.rows);
   await db.exec(`update pdpa_policy set patient_names = false where id = 'app'`);
+}
+
+/* ── ⑮ ปิดช่องก่อนส่งมอบ (0027) ───────────────────────────────────────────────
+   ลบคาบที่ประเมินแล้ว · บัญชีที่ยังไม่ผูกอ่านข้อมูลกลางไม่ได้ · เพดาน request_link 5 ครั้ง */
+console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
+{
+  const commit = async (who: { uid: string }, sql: string, params: unknown[] = []) => {
+    await db.exec(`set role authenticated`);
+    try {
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who.uid]);
+      return { ok: true as const, rows: (await db.query(sql, params)).rows as Record<string, unknown>[] };
+    } catch (e) {
+      return { ok: false as const, error: (e as Error).message };
+    } finally {
+      await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+    }
+  };
+
+  // ── ลบคาบ ──
+  await db.exec(`insert into checkins (id, student_id, date, created_at) values ('cEval', 'sA', '2026-09-16', '2026-09-16T02:00:00Z')`);
+  const graded = await commit(U.T1, `update checkins set scores = '{"knowledge":3}', status = 'evaluated', evaluated_by = 'อ. หนึ่ง' where id = 'cEval' returning status`);
+  check('เตรียมคาบที่อาจารย์ประเมินแล้ว', graded.ok && graded.rows[0]?.status === 'evaluated', graded);
+  const delEval = await as(db, U.A, async (tx) => (await tx.query(`delete from checkins where id = 'cEval' returning id`)).rows.length);
+  check('นักศึกษาลบคาบที่ประเมินแล้วไม่ได้ (ถูกปฏิเสธ)', !delEval.ok && /ประเมินแล้วลบไม่ได้/.test(delEval.error), delEval);
+  const delPending = await as(db, U.A, async (tx) => (await tx.query(`delete from checkins where id = 'cA' returning id`)).rows.length);
+  check('นักศึกษาลบคาบที่ยังไม่มีคะแนนของตัวเองได้', delPending.ok && delPending.value === 1, delPending);
+  const delByTeacher = await as(db, U.T1, async (tx) => (await tx.query(`delete from checkins where id = 'cEval' returning id`)).rows.length);
+  check('อาจารย์ลบคาบที่ประเมินแล้วได้ตามหน้าที่', delByTeacher.ok && delByTeacher.value === 1, delByTeacher);
+  const delByServer = await db.query(`delete from checkins where id = 'cEval' returning id`).then((r) => r.rows.length, (e: Error) => e.message);
+  check('คำสั่งที่ไม่มีคนล็อกอิน (SQL Editor / remove-demo-rows) ยังลบได้', delByServer === 1, delByServer);
+
+  // ── บัญชีที่ยังไม่ผูก อ่านข้อมูลกลางไม่ได้ ──
+  const blind = await signUp(db, 'blind@student.mahidol.edu');
+  const BL = { uid: blind.uid! };
+  const central = async (who: Who) => ({
+    teachers: await visible(db, who, `select 1 from teachers`),
+    groups: await visible(db, who, `select 1 from groups`),
+    app_settings: await visible(db, who, `select 1 from app_settings`),
+    pdpa_policy: await visible(db, who, `select 1 from pdpa_policy`),
+  });
+  const blindSees = await central(BL);
+  check('บัญชีที่ยังไม่ผูก เห็น teachers/groups/app_settings/pdpa_policy 0 แถว', Object.values(blindSees).every((n) => n === 0), blindSees);
+  const studentSees = await central(U.A);
+  check('นักศึกษาที่ผูกแล้วยังอ่านข้อมูลกลางได้ครบ (แอปต้องใช้)', Object.values(studentSees).every((n) => n > 0), studentSees);
+  await db.exec(`insert into invites (email, role, student_id, teacher_id, is_admin) values ('adminonly@teacher.test', 'teacher', null, null, true)`);
+  const adminOnly = await signUp(db, 'adminonly@teacher.test');
+  const adminSees = adminOnly.uid ? await central({ uid: adminOnly.uid }) : { none: -1 };
+  check('หัวหน้ารายวิชาที่ไม่มีแถว teachers ยังอ่านข้อมูลกลางได้ (my_role = admin)', Object.values(adminSees).every((n) => n > 0), adminSees);
+
+  // ── เพดาน request_link ──
+  await db.exec(`insert into students (id, code, name, "group", year, entry_year) values ('sF', '6504006', 'นศ. เอฟ', 'G1', 5, 2569)`);
+  const six = await signUp(db, 'six.tries@student.mahidol.edu');
+  const SX = { uid: six.uid! };
+  const results: string[] = [];
+  for (let i = 1; i <= 6; i++) {
+    const r = await commit(SX, `select request_link('6504006') as j`);
+    results.push(r.ok ? 'ok' : r.error);
+    // กด "แก้รหัส" ระหว่างทาง — ตัวนับต้องไม่ถูกล้าง
+    if (i === 2) await commit(SX, `select cancel_link_request()`);
+  }
+  check('ส่งคำขอได้ 5 ครั้งแรก (รวมรอบที่กดแก้รหัสแล้วส่งใหม่)', results.slice(0, 5).every((r) => r === 'ok'), results);
+  check('ครั้งที่ 6 ถูกปฏิเสธ', /ครบ 5 ครั้ง/.test(results[5]), results[5]);
+  const counter = await db.query<{ attempts: number; status: string }>(`select attempts, status from link_requests where uid = $1`, [SX.uid]);
+  check('ตัวนับบนแถวเดียวของบัญชีนั้น = 5 · สถานะกลับเป็นรอยืนยัน', counter.rows[0]?.attempts === 5 && counter.rows[0]?.status === 'pending', counter.rows);
+  const afterCancel = await commit(SX, `select cancel_link_request()`);
+  const mine = await as(db, SX, async (tx) => (await tx.query<{ j: unknown }>(`select my_link_request() as j`)).rows[0].j);
+  check('ยกเลิกแล้ว แอปเห็นว่า "ยังไม่มีคำขอ" (แถวยังอยู่แต่ซ่อน)', afterCancel.ok && mine.ok && mine.value === null, { afterCancel, mine });
+  const stillCapped = await commit(SX, `select request_link('6504006')`);
+  check('ยกเลิกแล้วขอใหม่ก็ยังติดเพดาน', !stillCapped.ok && /ครบ 5 ครั้ง/.test(stillCapped.error), stillCapped);
+  const listT1 = await as(db, U.T1, async (tx) => (await tx.query<{ email: string }>(`select email from pending_link_requests()`)).rows.map((r) => r.email));
+  check('คำขอที่ยกเลิกแล้วไม่โผล่ในรายการรอยืนยันของอาจารย์', listT1.ok && !listT1.value.includes('six.tries@student.mahidol.edu'), listT1);
+
+  const checker = await db.query<{ 'สถานะ': string; migration: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'));
+  const row = checker.rows.find((r) => r.migration.startsWith('0027'));
+  check('check-migrations.sql ตอบว่า 0027 รันแล้ว', !!row && row['สถานะ'].startsWith('✓'), row);
 }
 
 await db.close();

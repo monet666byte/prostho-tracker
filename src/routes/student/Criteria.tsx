@@ -1,6 +1,6 @@
 import { SealCheck } from '@phosphor-icons/react';
 import { Shell } from '../../components/student/Shell';
-import { caseCount, caseCountTotals, gateRows, yearlyRows } from '../../domain/rules';
+import { caseCount, caseCountTotals, gateRows, gatesDone, yearlyRows } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
 import { t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
@@ -28,7 +28,7 @@ export default function Criteria() {
         </div>
         {/* หัวเรื่องของหน้าคือคำว่า "เกณฑ์สะสม…" ไม่ใช่ตัวเลขใหญ่ข้างบน (ตัวเลขคือค่า)
             ทำเป็น h1 โดยคงหน้าตาเดิมไว้ทุกอย่าง (WCAG 1.3.1) */}
-        {/* ซ้ำกับหัวข้อ "เกณฑ์สะสม · ปี 5–6" ที่อยู่ถัดลงไป — ซ่อนจากจอ แต่ยังเป็นหัวเรื่องให้โปรแกรมอ่านหน้าจอ (16 ก.ย. 69) */}
+        {/* ซ้ำกับหัวข้อ "เกณฑ์สะสม · ปี 5–6" ที่อยู่ถัดลงไป — ซ่อนจากจอ แต่ยังเป็นหัวเรื่องให้โปรแกรมอ่านหน้าจอ */}
         <h1 className="sronly">{t('เกณฑ์สะสมปี 5–6')}</h1>
         <span className="bar" style={{ height: 10, display: 'block' }}>
           <i
@@ -44,7 +44,7 @@ export default function Criteria() {
         </span>
       </header>
 
-      {/* หน้าเกณฑ์แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock รอบ 3 · 14 ก.ย. 69)
+      {/* หน้าเกณฑ์แบบ "ตัดของซ้ำ"
           หัวข้อเล็กสามกลุ่ม · แต่ละกลุ่มเป็นการ์ดใบเดียวคั่นเส้น (เดิมประเภทงานละใบ)
           ตัดบรรทัด "เหลืออีก n ชิ้น" (อ่านจาก x/y กับช่องว่างในแถบได้) · กล่องม่วง Post-core เป็นบรรทัดเล็ก
           คำอธิบายยาวรวมเป็นหมายเหตุท้ายหน้า · เกณฑ์รายปียังขึ้นก่อน (ผู้ใช้ขอคงลำดับเดิม) */}
@@ -92,7 +92,7 @@ export default function Criteria() {
 
         <div className="homelabel critlabel">
           <span>{t('ข้อกำหนดก่อนจบ')}</span>
-          <span className="mono">{gates.filter((g) => g.value === true).length}/{gates.length}</span>
+          <span className="mono">{gatesDone(student?.gates)}/{gates.length}</span>
         </div>
         <article className="card critgroup" style={{ borderBottomWidth: 2 }}>
           {gates.map((g) => (

@@ -1,5 +1,5 @@
 /**
- * รหัสกลุ่มคลินิก — แต่ละชั้นปีมี PT1–PT12 ของตัวเอง (ผู้ใช้ยืนยัน 1 ก.ย. 69)
+ * รหัสกลุ่มคลินิก — แต่ละชั้นปีมี PT1–PT12 ของตัวเอง
  * ชื่อกลุ่มซ้ำกันข้ามรุ่นได้ รหัสในระบบจึงมี prefix กำกับ และตอนนี้มีสองแบบปนกัน:
  *   ข้อมูลตัวอย่าง/ของเดิม → 'TH-PT7' (ปี 5), 'TH6-PT7' (ปี 6), 'TH7-…' (จบแล้ว)  = ตัวเลขคือ "ชั้นปี"
  *   รายชื่อที่นำเข้าจริง    → 'TH55-PT7'                                          = ตัวเลขคือ "เลขรุ่น DTMU"
@@ -55,7 +55,7 @@ export function splitPersonName(name: string): [string, string] {
 }
 
 /** ชื่อต้นแบบไม่มีคำนำหน้า — "นางสาวสมหญิง ใจดี" → "สมหญิง" · "นศ. Liv" → "Liv"
- *  ใช้ทักทายบนหน้านักศึกษา (ชื่อเต็มยาวจนขึ้นบรรทัดที่สอง — ผู้ใช้ขอ 2 ก.ย.) */
+ *  ใช้ทักทายบนหน้านักศึกษา */
 export function firstNameOnly(name: string): string {
   const [first] = splitPersonName(name);
   const stripped = first.replace(/^(นางสาว|น\.ส\.|นส\.|นาย|นาง|นศ\.|อ\.)\s*/, '').trim();
@@ -67,7 +67,7 @@ export function firstNameOnly(name: string): string {
  *
  * เดิมหน้าอาจารย์เรียงด้วย parseInt(code.replace(/\D/g,'')) ซึ่งรวมเลขรุ่นเข้าไปด้วย:
  * 'TH6-PT10' → 610 จึงไปอยู่หลัง 'TH9-PT9' → 99 ผลคือ PT10–PT12 ของทุกรุ่น
- * ตกไปกองท้ายลิสต์ (เห็นในเดโม 10 ก.ย. 69) · ไม่รู้จักรูปแบบ = 999 ไปท้ายสุดเสมอ
+ * ตกไปกองท้ายลิสต์ · ไม่รู้จักรูปแบบ = 999 ไปท้ายสุดเสมอ
  */
 export function groupNumberOf(code: string): number {
   const m = /PT(\d{1,2})$/i.exec(code);
@@ -106,7 +106,7 @@ export function sortGroupCodes(
 /**
  * อาจารย์ที่ปรึกษาที่ "ใช้ได้ปีนี้" ของกลุ่ม (0024 · ตรงกับ current_advisors() บนเซิร์ฟเวอร์)
  *
- * ผู้ใช้เคาะ 14 ก.ย. 69: ขึ้นปีการศึกษาใหม่ ล้างที่เลือกไว้ทั้งหมด → ของปีก่อนถือว่าไม่มี
+ * ภาคยืนยัน: ขึ้นปีการศึกษาใหม่ ล้างที่เลือกไว้ทั้งหมด → ของปีก่อนถือว่าไม่มี
  * advisorYear ว่าง = แถวจากก่อนติดตั้ง 0024 (หรือโหมดเดโม) → ยังเชื่อตามเดิม ไม่งั้นที่ปรึกษาหายหมดทันที
  * ⚠️ ที่ไหนอ่านที่ปรึกษาเพื่อ "ตัดสิน" อะไร ใช้ตัวนี้ ห้ามอ่าน advisorIds ตรง
  */
@@ -115,3 +115,11 @@ export function currentAdvisorIds(g: Pick<ClinicGroup, 'advisorIds' | 'advisorYe
   if (g.advisorYear != null && g.advisorYear !== academicYear(asOf)) return [];
   return (g.advisorIds ?? []).filter(Boolean);
 }
+
+/**
+ * รูปแบบ id/รหัสที่ใช้ทั้งระบบ — ต้องประกอบจากที่นี่ที่เดียว
+ * รหัสกลุ่มจริง = `TH<เลขรุ่น DTMU>-<PTn>` · id นักศึกษา = `st-<รหัสกลุ่ม>-<รหัส นศ. 7 หลัก>`
+ * ⚠️ ท้าย id ของนักศึกษาจริงเป็นรหัส 7 หลักเสมอ — ข้อมูลตัวอย่างใช้ลำดับ 1–8 (seed.ts → isDemoStudentId แยกด้วยตรงนี้)
+ */
+export const groupCodeFor = (dtmu: number, ptGroup: string): string => `TH${dtmu}-${ptGroup.replace(/^TH\d*-/, '')}`;
+export const studentIdFor = (groupCode: string, studentCode: string): string => `st-${groupCode}-${studentCode}`;

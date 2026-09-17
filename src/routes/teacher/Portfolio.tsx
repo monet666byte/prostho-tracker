@@ -1,7 +1,7 @@
 /**
  * สมุด portfolio ฝั่งอาจารย์ — Section II และ Section III อยู่หน้าเดียวกัน
  *
- * ทำไมรวมหน้าเดียวแล้วใช้แท็บ (ผู้ใช้ทัก 7 ก.ย. 69 ว่าเห็น "Section III" เดี่ยวๆ แล้วงง):
+ * ทำไมรวมหน้าเดียวแล้วใช้แท็บ:
  * พอวาง Sect II กับ Sect III ไว้ข้างกัน คนเห็นทันทีว่านี่คือของจากสมุดเล่มเดียวกัน
  * และมีที่ให้บอกได้ว่า Section I คือหน้า "ประเมินรายคาบ" ที่มีอยู่แล้ว
  *
@@ -38,7 +38,7 @@ export default function Portfolio() {
   const navigate = useNavigate();
   const students = useAllStudents();
   const year = saYearNow();
-  /* Section II กับ III เป็นคนละเมนูในแถบซ้ายแล้ว (ผู้ใช้เสนอ 7 ก.ย. 69)
+  /* Section II กับ III เป็นคนละเมนูในแถบซ้ายแล้ว
      หน้านี้จึงอ่านว่าเปิดมาจากเมนูไหนแทนการมีแท็บซ้อนข้างใน — เมนูทำหน้าที่นั้นแทน */
   const tab: Tab = useLocation().pathname.endsWith('/sect3') ? 'sect3' : 'sect2';
   const [selId, setSelId] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export default function Portfolio() {
         </div>
 
         <div className="salayout">
-          {/* รายการเดียวคั่นเส้น (ผู้ใช้เลือก mock 14 ก.ย. 69) — เดิมการ์ดทีละคน + ไอคอนหมวก */}
+          {/* รายการเดียวคั่นเส้น — เดิมการ์ดทีละคน + ไอคอนหมวก */}
           <div className="panel plist">
             <div className="plist__head">{t('นักศึกษา · {n} คน', { n: roster.length })}</div>
             {roster.map((s) => (
@@ -178,7 +178,7 @@ export default function Portfolio() {
 }
 
 /** หัวบล็อกของ นศ. ที่เลือก — ปุ่มพิมพ์รวมทุกใบที่ประเมินแล้ว ไม่แยกตามแท็บ
-    เพราะเวลาส่งเล่มจริงส่งทั้งเล่ม ไม่ได้ส่งทีละ Section · ปุ่มเทาเต็มแถว → ลิงก์ข้างชื่อ (14 ก.ย. 69) */
+    เพราะเวลาส่งเล่มจริงส่งทั้งเล่ม ไม่ได้ส่งทีละ Section · ปุ่มเทาเต็มแถว → ลิงก์ข้างชื่อ */
 function StudentHead({ student, note, canPrint, onPrint }: {
   student: Student; note: string; canPrint: boolean; onPrint: () => void;
 }) {

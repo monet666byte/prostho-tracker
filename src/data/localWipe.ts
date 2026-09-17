@@ -41,7 +41,10 @@ export async function wipeLocalDataOnSignOut(): Promise<WipeResult> {
      ที่นี่จึงไม่ล้าง — ผู้ใช้มีปุ่ม "รีเซ็ตข้อมูล" แยกอยู่แล้วถ้าต้องการ */
   if (!cloudEnabled) return { wiped: false, reason: 'local-only' };
 
-  const pending = pendingPushCount();
+  /* ไฟล์รูปไม่ได้อยู่ในคิวส่งแถว — แถว photos ขึ้นตู้แล้วแต่ไบต์ยังรออัป Storage ก็มี
+     ใบไหนยังไม่มี storagePath = สำเนาในเครื่องนี้คือใบเดียวในโลก ล้างแล้วรูปคนไข้หายถาวร */
+  const unsentPhotos = await db.photos.filter((p) => !p.storagePath).count();
+  const pending = pendingPushCount() + unsentPhotos;
   if (pending > 0) return { wiped: false, reason: 'pending', pending };
 
   await db.transaction('rw', USER_TABLES.map((t) => db.table(t)), async () => {
@@ -53,7 +56,7 @@ export async function wipeLocalDataOnSignOut(): Promise<WipeResult> {
 /* ══════════════════════════════════════════════════════════════════════════════
    ผลของการออกจากระบบต้องไปโผล่ที่ "หน้าเข้าระบบ" ไม่ใช่ toast
 
-   บั๊กที่พิสูจน์ได้ 13 ก.ย. 69 จากการกดจริง:
+   บั๊กที่เคยเกิดจริง (เจอจากการกดจริง):
    ตัวจัดการปุ่มออกจากระบบทั้งสองฝั่งเขียนว่า `showToast(...)` แล้ว `navigate('/login')`
    แต่ `ToastView` ถูกเรนเดอร์อยู่ **ข้างใน** `student/Shell.tsx` กับ `teacher/TeacherShell.tsx`
    เท่านั้น · หน้า `/login` ไม่ได้อยู่ในเชลล์ไหนเลย (ตรวจแล้ว: ไม่มี toast host บนหน้านั้น)

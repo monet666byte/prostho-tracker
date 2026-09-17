@@ -12,15 +12,6 @@ export function TypeBadge({ type, style }: { type: WorkType; style?: CSSProperti
   );
 }
 
-export function ArchBadge({ arch }: { arch?: 'upper' | 'lower' }) {
-  if (!arch) return null;
-  return (
-    <span className="badge mono" style={{ background: 'var(--fill)', color: 'var(--text-muted)', fontWeight: 500 }}>
-      {arch === 'upper' ? 'Upper' : 'Lower'}
-    </span>
-  );
-}
-
 export function SelfBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span className="badge" style={{ background: 'var(--self-tint)', color: 'var(--self)' }}>

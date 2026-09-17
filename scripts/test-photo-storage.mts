@@ -477,7 +477,8 @@ console.log('\nนโยบาย CSP ของหน้าเว็บจริ
     return list.some((s) => s === '*' || s === `${u.protocol}//${u.host}`
       || (s.startsWith(`${u.protocol}//*.`) && u.hostname.endsWith(s.slice(`${u.protocol}//*`.length))));
   };
-  const signed = 'https://vhufhznclqwekoyewfqn.supabase.co/storage/v1/object/sign/case-photos/st1/PT-X/w1/ph1.jpg?token=t';
+  // โดเมนสมมติรูปเดียวกับโปรเจกต์จริง (<ref>.supabase.co) — CSP ต้องยอมด้วย wildcard ไม่ใช่ชื่อโปรเจกต์ตายตัว
+  const signed = 'https://example.supabase.co/storage/v1/object/sign/case-photos/st1/PT-X/w1/ph1.jpg?token=t';
   check('อ่านนโยบาย CSP ได้', policy.length > 0);
   check('img-src ยอมรูปจากลิงก์ที่เซ็นของ Supabase (เครื่องอาจารย์)', allows(sources('img-src'), signed), sources('img-src').join(' '));
   check('connect-src ยอม Supabase (sync / อัปรูป / ขอลิงก์ที่เซ็น)', allows(sources('connect-src'), signed), sources('connect-src').join(' '));

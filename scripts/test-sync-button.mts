@@ -1,5 +1,5 @@
 /**
- * เทสต์ชุดที่ 13 — ปุ่ม "sync ทันที" ต้องไม่โกหก · รันด้วย `npm run test:sync-button`
+ * ปุ่ม "sync ทันที" ต้องไม่โกหก · รันด้วย `npm run test:sync-button`
  *
  * ทำไมต้องมี: นี่คือปุ่มที่นักศึกษากดตอนออกจากคลินิกเพื่อให้แน่ใจว่างานขึ้นเซิร์ฟเวอร์แล้ว
  * ถ้ามันบอกว่าสำเร็จทั้งที่ไม่สำเร็จ ผู้ใช้จะเสียสัญญาณเดียวที่มี แล้วไปรู้ตัวตอนเปิดจาก
@@ -95,7 +95,7 @@ for (const [needle, rel] of [
   ["from '../domain/types'", 'domain/types.ts'],
   ["from '../domain/selfAssessment'", 'domain/selfAssessment.ts'],
   ["from '../domain/conflict'", 'domain/conflict.ts'],
-  ["from '../lib/i18n'", 'lib/i18n.ts'],
+  ["from '../domain/group'", 'domain/group.ts'],
   ["from '../lib/image'", 'lib/image.ts'],
   ["from '../lib/rosterParse'", 'lib/rosterParse.ts'],
   ["from '../domain/sect2'", 'domain/sect2.ts'],

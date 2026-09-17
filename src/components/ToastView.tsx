@@ -18,7 +18,7 @@ export function ToastView({ variant = 'phone' }: { variant?: 'phone' | 'desk' })
   if (!toast) return null;
   return (
     <div className={`toast${variant === 'desk' ? ' toast--desk' : ''}`} role="status">
-      <CheckCircle size={18} weight="fill" color={toast.tone === 'warning' ? '#FDBA5E' : '#5AE0A8'} />
+      <CheckCircle size={18} weight="fill" color={toast.tone === 'warning' ? 'var(--warning-toast)' : 'var(--success-toast)'} />
       <span>{toast.message}</span>
       {toast.undoWorkpieceId && (
         <button

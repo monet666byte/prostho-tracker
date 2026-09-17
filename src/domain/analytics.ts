@@ -6,7 +6,7 @@
 import { lang, personName } from '../lib/i18n';
 import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
-  caseCount, completedInYear, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
+  caseCount, completedInYear, countsForYearlyReq, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { isUpcoming } from './cohort';
@@ -37,16 +37,6 @@ export type RiskLevel = 'high' | 'medium' | 'ok';
  * - หนึ่ง step ไม่ได้ผ่านในคาบเดียวเสมอ — เผื่อเฉลี่ย ~1.5 คาบ/step (ยังเป็นสมมติฐาน)
  */
 const PERIODS_PER_STEP = 1.5;
-
-/**
- * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — กติกาเดียวกับ completedInYear() ใน rules.ts
- * (งาน Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes)
- *
- * เดิมความรู้ข้อนี้อยู่ใน completedInYear กับ countsForBurnup คนละที่ ส่วนที่คำนวณ
- * "เหลืออีกกี่ step ถึงจะครบเกณฑ์" ไม่รู้เรื่องเลย จึงหยิบเคสที่ไม่มีวันนับได้มาเป็นทางไปสู่เกณฑ์
- */
-export const countsForYearlyReq = (w: Pick<Workpiece, 'type'>, settings: Settings) =>
-  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
 
 /**
  * วันจบเคสที่ "เชื่อได้จริง" — งานที่นำเข้าจากชีตประทับ completedAt เป็นวันนำเข้า
@@ -90,17 +80,16 @@ export interface RiskRow {
 /**
  * เดือนที่เหลือก่อนคาบสุดท้ายของปีการศึกษา *ปัจจุบัน*
  *
- * เดิมอ่านวันจาก ROUNDS ซึ่งเป็นปฏิทินของปี 2569 ที่ฝังตายไว้
- * ผลคือพอเลย 26 มี.ค. 2570 ไปแล้ว ค่านี้จะเป็น 0 ตลอดกาล
- * → ทุกคนถูกตีว่า "เสี่ยงสูง" ถาวร และตัวเลขพยากรณ์ทั้งหน้ากลายเป็นขยะ
- * ระบบนี้ต้องใช้ข้ามปีการศึกษา จึงต้องคิดจากปีที่กำลังอยู่จริง
+ * ต้องคิดจากปีการศึกษาที่กำลังอยู่จริง ไม่ใช่ปฏิทินที่ฝังตายไว้ปีเดียว —
+ * ไม่งั้นพอพ้นปีนั้นค่านี้จะเป็น 0 ตลอดกาล ทุกคนถูกตีว่า "เสี่ยงสูง" ถาวร
  *
  * ปีการศึกษาไทยเริ่ม มิ.ย. — คาบสุดท้ายอยู่ปลาย มี.ค. ของปีปฏิทินถัดไป
- * (ยึดตามวันคาบสุดท้ายใน ROUNDS ของปี 2569 เป็นแบบ)
+ * ⚠️ วันคาบสุดท้าย (26 มี.ค.) อ้างจากตารางปี 2569 — ยังไม่ใช่ค่าที่ภาคยืนยัน
  */
+const LAST_CLINIC_DAY = { month: 2, day: 26 }; // 26 มี.ค. (เดือนนับจาก 0)
 function monthsRemaining(now: Date): number {
   const startCal = academicYear(now) - 543;      // ปีการศึกษา 2569 → เริ่ม มิ.ย. 2026
-  const final = new Date(startCal + 1, 2, 26);   // 26 มี.ค. ปีถัดไป
+  const final = new Date(startCal + 1, LAST_CLINIC_DAY.month, LAST_CLINIC_DAY.day);
   return Math.max(0, (final.getTime() - now.getTime()) / (DAY * 30.4));
 }
 
@@ -110,7 +99,7 @@ export function periodsLeftNow(settings: Settings, now = new Date()): number {
 }
 
 /**
- * สีเสี่ยงของนักศึกษาต่อกลุ่ม — จุดคนในกล่องตัวเลขของช่องกลุ่มหน้าภาพรวม (ผู้ใช้เลือก 15 ก.ย. 69)
+ * สีเสี่ยงของนักศึกษาต่อกลุ่ม — จุดคนในกล่องตัวเลขของช่องกลุ่มหน้าภาพรวม
  * อ่านจาก riskRows ตัวเดียวกับหน้าสรุปกลุ่ม → จุดแดงหน้าภาพรวม = จุดแดงในหน้ากลุ่มเสมอ
  * levels เรียง เสี่ยง → จับตา → ตามแผน ให้จุดที่ต้องสนใจขึ้นก่อน
  */
@@ -138,7 +127,7 @@ export function riskRows(
   const map = byStudent(works);
   const year = academicYear(now);
   const left = monthsRemaining(now);
-  const periodsLeft = Math.round(left * 4.33 * (settings.periodsPerWeek || 2));
+  const periodsLeft = periodsLeftNow(settings, now);
 
   const checkinsByStudent = new Map<string, CheckIn[]>();
   checkins.forEach((c) => checkinsByStudent.set(c.studentId, [...(checkinsByStudent.get(c.studentId) ?? []), c]));
@@ -255,7 +244,7 @@ export function riskRows(
        * หน้ารายชื่อรองรับการนำเข้ารุ่นถัดไปก่อนวันที่ 1 มิ.ย. ไว้ตั้งแต่ต้น
        * เดิมทุกคนในรุ่นนั้นเข้าเงื่อนไข active.length === 0 → เสี่ยงสูงทั้งกลุ่ม
        * อาจารย์เปิดหน้ากลุ่มของรุ่นใหม่จะเจอแดงหมดทั้งกลุ่มโดยไม่มีใครทำอะไรผิด
-       * (ทดลองนำเข้า DTMU56 แล้วเจอ 10 ก.ย. 69)
+       *
        */
       if (isUpcoming(student, now)) {
         risk = 'ok';
@@ -364,7 +353,7 @@ export interface StepBucket {
 export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: WorkType): StepBucket[] {
   const scope = works.filter((w) => isActiveWork(w) && (!type || w.type === type));
   /* จำนวนช่องบนแกน = ขั้นสูงสุดของงานประเภทนั้น +1 — งาน Recall มี 4 ขั้น (0–3)
-     เดิมวาดยาว 0–10 เสมอ เหลือช่องว่าง 7 ช่องที่ไม่มีทางมีใครไปถึง (ผู้ใช้ทัก 3 ก.ย.) */
+     เดิมวาดยาว 0–10 เสมอ เหลือช่องว่าง 7 ช่องที่ไม่มีทางมีใครไปถึง */
   const span = type ? maxProgression({ type }) + 1 : 11;
   const buckets: StepBucket[] = Array.from({ length: span }, (_, i) => ({
     progression: i,
@@ -408,7 +397,7 @@ export interface FunnelRow {
  * สถานะชิ้นงานจำแนกตามประเภท — สามช่อง (ยังไม่เริ่ม + กำลังทำ + จบเคส) ต้องบวกได้เท่า total เสมอ
  *
  * เคสที่คืนไปแล้วไม่อยู่ในเส้นทางนี้ จึงถูกยกออกจากทุกช่องรวมทั้งตัวหารของอัตราจบ
- * (ผู้ใช้เคาะ 9 ก.ย. 69) — เดิมมันอยู่ใน total แต่ไม่อยู่ใน inProgress
+ * เดิมมันอยู่ใน total แต่ไม่อยู่ใน inProgress
  * ผลคือ (1) ตารางบวกกันไม่ลง และ (2) นักศึกษาที่คืนเคสเพราะคนไข้ย้ายจังหวัด
  * มีอัตราจบต่ำลงทั้งที่ไม่ใช่ความผิด
  * แต่ต้องไม่หายเงียบ — นับไว้ในช่อง returned ให้ตารางแสดงได้
@@ -511,7 +500,7 @@ const pct = (done: number, need: number) => (need <= 0 ? 100 : Math.min(100, Mat
  *
  * เดิมแกน lab ทำเอง ใช้ pct() ตัวเดียวกัน พอไม่มีโอกาสเลย (ยังไม่มีเคส หรือมีแต่เคส
  * Recall ที่ไม่มี procedure ติดดาว) จึงได้ 100% → บน heatmap หน้ากลุ่ม นักศึกษาที่ยัง
- * ไม่เริ่มอะไรเลยมีช่องเขียวเต็มหนึ่งช่องปนกับอีก 5 ช่องที่เป็น 0 (ผู้ใช้เคาะ 9 ก.ย. 69)
+ * ไม่เริ่มอะไรเลยมีช่องเขียวเต็มหนึ่งช่องปนกับอีก 5 ช่องที่เป็น 0
  * ไม่มีโอกาสให้ทำ ≠ ทำครบแล้ว
  */
 const pctOfAvailable = (done: number, available: number) =>
@@ -566,7 +555,7 @@ export function profile(works: Workpiece[], settings: Settings, now = new Date()
       detail: `${crown.postCoreDone ?? 0}/${crown.postCoreRequired ?? 0}`,
       partials: partialsFor((w) => w.type === 'PC', (crown.postCoreRequired ?? 0) - (crown.postCoreDone ?? 0)),
     },
-    /* Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 จึงต้องมีแกนของตัวเองบน heatmap ด้วย
+    /* Recall เข้าเกณฑ์สะสม จึงต้องมีแกนของตัวเองบน heatmap ด้วย
        ไม่งั้นช่อง "ครบเกณฑ์ไหม" รายคนจะไม่ครบตามที่หน้าเกณฑ์บอก */
     {
       key: 'recallRem', label: lang === 'en' ? 'Recall Rem.' : 'Recall ถอดได้',
@@ -661,27 +650,23 @@ export interface BurnupPoint {
 }
 
 /** เดือนแรกๆ ยังไม่มีเคสจบได้จริง — เคสสั้นสุดก็ราว 3 เดือนนับจากรับเคส
- *  เส้นเป้าจึงเริ่มไต่หลังเดือนที่ 3 (ผู้ใช้ทัก 2 ก.ย.: เส้นตรงจากศูนย์ทำให้ต้นปีดูแดงเกินจริง) */
+ *  เส้นเป้าจึงเริ่มไต่หลังเดือนที่ 3 (เส้นตรงจากศูนย์ทำให้ต้นปีดูแดงเกินจริง) */
 const BURNUP_LEAD_MONTHS = 3;
 
 /**
- * แกนเดียว หน่วยเดียวกันทั้งสองเส้น (จำนวนชิ้นงานสะสม) — เทียบกันได้ตรงๆ
+ * กราฟ burn-up: แกนเดียว หน่วยเดียวกันทั้งสองเส้น (จำนวนชิ้นงานสะสม) — เทียบกันได้ตรงๆ
  * เส้นเป้าลากตรงจาก 0 ถึง (จำนวนนักศึกษา × เกณฑ์รายปี) ที่เดือนสุดท้ายของปีการศึกษา
- */
-const countsForBurnup = (w: Workpiece, settings: Settings) =>
-  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
-
-/**
+ *
  * "ยอดยกมา" ของกราฟ burn-up: งานที่จบมาก่อนใช้ระบบ (นำเข้าจากชีต) ไม่มีวันที่จบจริง —
  * ตอนนำเข้าจึงประทับเป็นวันนำเข้า ถ้านับตามนั้น เส้นสะสมจะพุ่งตั้งฉากในเดือนที่นำเข้า
- * (ผู้ใช้เห็นเป็น 287 ในเดือนเดียว 3 ก.ย.) จึงแยกเป็นยอดคงที่ทุกเดือน
+ * จึงแยกเป็นยอดคงที่ทุกเดือน
  * ชีตบอกเองว่าชิ้นไหนนับเข้าปีไหน (คอลัมน์ for PT502/PT602) — งานที่นับเข้าปีก่อน
  * ต้องไม่มากองในยอดยกมาของปีนี้ · export ให้คำอธิบายใต้กราฟใช้เลขเดียวกัน (เคยโชว์ 375 ทั้งที่กราฟเริ่มที่ 3)
  */
 export function carriedOverCount(works: Workpiece[], settings: Settings, now = new Date()): number {
   const beYear = academicYear(now);
   return works.filter(
-    (w) => w.fromSheet && w.completedAt && countsForBurnup(w, settings) && (w.countsForYear ?? beYear) === beYear,
+    (w) => w.fromSheet && w.completedAt && countsForYearlyReq(w, settings) && (w.countsForYear ?? beYear) === beYear,
   ).length;
 }
 
@@ -691,7 +676,7 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
   const months = 10; // มิ.ย. → มี.ค.
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-  const counts = (w: Workpiece) => countsForBurnup(w, settings);
+  const counts = (w: Workpiece) => countsForYearlyReq(w, settings);
   const beYear = startYear + 543;
   const carriedOver = carriedOverCount(works, settings, now);
   /* ต้องกรอง "เฉพาะเคสที่จบในปีการศึกษานี้" ด้วยกติกาเดียวกับ completedInYear ใน rules.ts

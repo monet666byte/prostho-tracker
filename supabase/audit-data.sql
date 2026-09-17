@@ -5,14 +5,16 @@
 --    ไฟล์นี้มี 4 คำถาม → **ก๊อปรันทีละบล็อก** (ไฮไลต์บล็อกที่ต้องการแล้วกด Run)
 --    ไม่ใช่รันทั้งไฟล์ทีเดียว ไม่งั้นจะเห็นแค่คำตอบสุดท้าย
 --
--- ต้องรัน 0009 กับ 0016 ให้ผ่านก่อน ไม่งั้นจะขึ้นว่าไม่มีตาราง pdpa_policy
+-- บล็อก ① อ่านตาราง pdpa_policy (0016) และคอลัมน์ patient_names (0026) — ยืนยันด้วย
+-- check-migrations.sql ว่าสองไฟล์นั้นลงแล้ว ไม่งั้นจะขึ้นว่าไม่มีตาราง/คอลัมน์
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ═════════════════════════════════════════════════════════════════════════════
 
 -- ①  สวิตช์ PDPA ตอนนี้เปิดอะไรไว้บ้าง — ก่อนคณะอนุมัติ ทุกช่องต้องเป็นค่าปิด
---     (retention_enabled = false · export_roles = {} · export_identified_roles = {})
+--     (retention_enabled = false · export_roles = {} · export_identified_roles = {} · patient_names = false)
 select
+  case when patient_names then '🟠 เก็บชื่อผู้ป่วย' else '🟢 ใช้แค่ HN' end as "ชื่อผู้ป่วย (0026)",
   case when retention_enabled then '🔴 เปิดอยู่' else '🟢 ปิดอยู่' end as "ลบข้อมูลรุ่นเก่า",
   retention_cohorts                                                    as "เก็บย้อนหลัง (รุ่น)",
   case when cardinality(export_roles) = 0 then '🟢 ไม่มีใครส่งออกได้'

@@ -3,7 +3,7 @@ import type { HeatRow } from '../../domain/analytics';
 import { personName, t } from '../../lib/i18n';
 
 /**
- * ตารางรายคน × ด้านเกณฑ์ — แบบ "ช่องนับชิ้น" (ผู้ใช้เคาะแล้ว 27 ส.ค. หลังลองเทียบกับวงกลมรวมและแท่ง)
+ * ตารางรายคน × ด้านเกณฑ์ — แบบ "ช่องนับชิ้น"
  *  - เป้าเป็นหน่วยเล็ก (1–3 ชิ้น) → วาดเป็นวงตามจำนวนจริง: ทึบ = จบแล้ว · เติมวนตาม step = กำลังทำ · ว่าง = ยังไม่เริ่ม
  *  - ช่องที่เป้าเป็นเลขใหญ่ (lab ทำเอง) ใช้แท่ง+ตัวเลขเสมอ เพราะนับวงไม่ไหว
  */
@@ -41,7 +41,7 @@ export function Heatmap({ rows }: { rows: HeatRow[] }) {
     const [done, need] = p;
     const full = done >= need;
     const partials = c.partials ?? [];
-    const slotTitle = partials.length ? `${title} · กำลังทำอีก ${partials.length} งาน` : title;
+    const slotTitle = partials.length ? `${title} · ${t('กำลังทำอีก {n} งาน', { n: partials.length })}` : title;
     return (
       <span title={slotTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 3.5 }}>
         {Array.from({ length: need }, (_, i) => {

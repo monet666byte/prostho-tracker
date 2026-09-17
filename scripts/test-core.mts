@@ -1,5 +1,5 @@
 /**
- * เทสต์ชุดที่ 10 — โมดูลพื้นฐานที่ยังไม่เคยมีเทสต์เลย · รันด้วย `npm run test:core`
+ * โมดูลพื้นฐานที่ยังไม่เคยมีเทสต์เลย · รันด้วย `npm run test:core`
  *
  * ครอบ 5 ไฟล์: lib/privacy.ts · lib/date.ts · domain/cohort.ts · domain/checkin.ts · domain/cheer.ts
  *
@@ -73,8 +73,10 @@ ok('id ต่างกันเล็กน้อยต้องได้รห�
 
 /* ── ข้อจำกัดที่รู้ตัว: ผู้ป่วยที่นำเข้าจากชีต รหัสเคสคำนวณย้อนได้ ─────────────
    sheetImport.patientId() = `p-imp-<FNV1a(รหัสนักศึกษา|HN)>` ไม่มีความลับในสูตรเลย
-   เทสต์นี้ "ปักหมุดของจริง" ไว้ ไม่ใช่รับรองว่ามันถูก — วันที่ใครใส่ salt ของภาคเข้าไปตามแผน
-   (README หัวข้อ PDPA ข้อ 11) เทสต์นี้จะพังทันที ให้กลับมาแก้ทั้งเทสต์และหัวไฟล์ privacy.ts
+   เทสต์นี้ "ปักหมุดของจริง" ไว้ ไม่ใช่รับรองว่ามันถูก — patientId ไม่ได้ export จึงเทียบผ่าน
+   importSheetCsv ตัวจริง: ป้อนชีตหนึ่งแถวแล้วดูว่า id ที่ได้ตรงกับสูตร FNV ที่เขียนซ้ำไว้ตรงนี้
+   วันที่ใครใส่ salt ของภาคเข้าไปตามแผน (README หัวข้อ PDPA ข้อ 11) ข้อแรกข้างล่างจะตกทันที
+   ให้กลับมาแก้ทั้งเทสต์และหัวไฟล์ privacy.ts
    ⚠️ ห้าม "แก้เทสต์ให้ผ่าน" เฉย ๆ — มันคือสัญญาณว่าคำอธิบายเรื่องความเป็นส่วนตัวเปลี่ยนไปแล้ว */
 {
   const fnv = (str: string) => {
@@ -83,6 +85,11 @@ ok('id ต่างกันเล็กน้อยต้องได้รห�
     return h.toString(36);
   };
   const importedId = (studentId: string, hn: string) => `p-imp-${fnv(`${studentId}|${hn}`)}`;
+  const { importSheetCsv } = await import('../src/lib/sheetImport.ts');
+  const header = "No.,Patient's Name-Surname,HN,Prosthodontic work,Accepted date,Minimum Req,Step งานที่ผ่านแล้ว,0,1,2,3,4,5,6,7,8,9,10,Payment,หมายเหตุ / สถานะผู้ป่วย,วันที่บันทึกข้อมูล";
+  const real = importSheetCsv([header, `1,นาย ก,66-01234,CD/- (Upper),5/6/69,Yes,,/,/,,,,,,,,,,ชำระแล้ว,,`].join('\n'), 'st-6504001');
+  ok('id ผู้ป่วยที่ตัวนำเข้าจริงสร้าง = FNV1a(รหัส นศ.|HN) ไม่มี salt (ถ้าตกแปลว่าสูตรเปลี่ยน — อ่านคอมเมนต์ข้างบน)',
+    real.patients[0]?.id === importedId('st-6504001', '66-01234'), `${real.patients[0]?.id} vs ${importedId('st-6504001', '66-01234')}`);
   const guessed = caseCode(importedId('st-6504001', '66-01234'));
   ok('⚠️ รหัสเคสของผู้ป่วยนำเข้า ยังคำนวณย้อนได้จาก (รหัส นศ. + HN) — ตามที่บันทึกไว้ใน README ข้อ 10',
     guessed === caseCode(importedId('st-6504001', '66-01234')) && /^PT-[0-9A-Z]{5}$/.test(guessed), guessed);

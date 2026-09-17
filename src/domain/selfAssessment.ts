@@ -17,7 +17,7 @@ import { lang } from '../lib/i18n';
 export const SA_FORM_VERSION = '2569.2';
 
 /**
- * รหัสวิชาบนหัวเอกสาร — แยกตามชั้นปี (ผู้ใช้ยืนยัน 7 ก.ย. 69 จากปกเล่ม Clinical Performance Portfolio
+ * รหัสวิชาบนหัวเอกสาร — แยกตามชั้นปี (ตามปกเล่ม Clinical Performance Portfolio
  * ที่เขียน "DTPT502 – Academic year 2024 / DTPT602 – Academic year 2025")
  * ฟอร์ม SA ต้นฉบับพิมพ์ DTIS543 ไว้ ซึ่งเป็นรหัสเก่า/คนละวิชา — ใช้ตามปกเล่มแทน
  */
@@ -154,7 +154,7 @@ export const SA_SECTIONS: readonly SASection[] = [
       { key: 'goals', kind: 'text', label: 'Goals', th: 'เป้าหมายของฉันในคลินิกนี้',
         hint: 'What do you want to achieve in this rotation?', hintTh: 'อยากได้อะไรกลับไปจากการขึ้นคลินิกรอบนี้' },
       { key: 'strength', kind: 'text', label: 'Strength', th: 'จุดแข็งของฉัน' },
-      /* บอกตรงๆ ว่าใครเห็น — ผู้ใช้ยืนยัน 4 ก.ย. 69 ว่าอาจารย์ทุกคนในภาคเห็นได้
+      /* บอกตรงๆ ว่าใครเห็น — อาจารย์ทุกคนในภาคเห็นได้
          (ที่ปรึกษาแลกกลุ่มกันระหว่างปี) ข้อความจึงต้องไม่สัญญาว่า "เฉพาะที่ปรึกษา" */
       { key: 'limitations', kind: 'text', label: 'Limitations', th: 'ข้อจำกัดของฉัน',
         hint: 'Instructors in the department can read this — not your classmates',
@@ -240,7 +240,7 @@ export const SA_SECTIONS: readonly SASection[] = [
     th: 'การตรวจ วางแผน และออกแบบชิ้นงาน',
     questions: [
       /* ข้อนี้อยู่ใต้หัวหมวดในฟอร์มต้นฉบับ ("Type of cases accepted: CD, RPD/APD, Crown or Bridges, Post and core")
-         เคยตกหล่นตอนถอดฟอร์ม — เจอตอนเทียบทีละบรรทัด 6 ก.ย. 69 */
+         เคยตกหล่นตอนถอดฟอร์ม — ต้องเทียบกับกระดาษทีละบรรทัด */
       { key: 'typesAccepted', kind: 'multi', label: 'Type of cases accepted', th: 'ประเภทเคสที่รับไว้',
         options: SA_TYPES.map((t) => t.key), optionsTh: SA_TYPES.map((t) => t.th), other: true },
       { key: 'infoGathering', kind: 'scale', label: 'Information gathering', th: 'การเก็บข้อมูลผู้ป่วย' },
@@ -342,7 +342,7 @@ export function saColLabel(col: 'K' | 'S'): string {
  * ข้อความในช่อง "อื่นๆ" ที่นักศึกษาพิมพ์เอง
  *
  * เก็บไว้ที่คีย์ `${key}Other` ซึ่งไม่มีคำถามรองรับในโครงฟอร์ม — ถ้าไม่ดึงออกมาตรงนี้
- * ข้อความจะถูกบันทึกลงฐานข้อมูลแล้วไม่มีใครเห็นเลยสักที่ (เจอตอนไล่บั๊ก 6 ก.ย. 69)
+ * ข้อความจะถูกบันทึกลงฐานข้อมูลแล้วไม่มีใครเห็นเลยสักที่
  */
 export function saOtherText(q: SAQuestion, answers: Record<string, SAValue>): string {
   if (!q.other) return '';
@@ -358,6 +358,30 @@ export function saSub(q: SAQuestion): string | undefined {
 export function saOption(q: SAQuestion, i: number): string {
   const en = q.options?.[i] ?? '';
   return lang === 'en' ? en : (q.optionsTh?.[i] ?? en);
+}
+
+/**
+ * แปลงคำตอบหนึ่งข้อเป็นข้อความอ่านได้ — ใช้ทั้งโหมดอ่านอย่างเดียวฝั่งนักศึกษาและหน้าอาจารย์
+ * ต่อท้ายด้วยข้อความช่อง "อื่นๆ" เสมอ ไม่งั้นสิ่งที่ นศ. พิมพ์เองจะหายไปจากทุกหน้าจอ
+ */
+export function readableAnswer(q: SAQuestion, v: SAValue | undefined, answers?: Record<string, SAValue>): string {
+  const extra = answers ? saOtherText(q, answers) : '';
+  const join = (main: string) => [main, extra].filter(Boolean).join(' · ');
+  if (v === undefined || v === null || v === '') return extra;
+  if (Array.isArray(v)) {
+    return join(v.map((x) => {
+      const i = (q.options ?? []).indexOf(x);
+      return i >= 0 ? saOption(q, i) : x;
+    }).join(' · '));
+  }
+  if (typeof v === 'number') {
+    if (q.kind === 'level') return v === SA_APPROPRIATE ? (lang === 'en' ? 'Appropriate' : 'เหมาะสมแล้ว') : (lang === 'en' ? 'Need improvement' : 'ต้องปรับปรุง');
+    if (q.kind === 'yesno') return v === 1 ? (lang === 'en' ? 'Yes' : 'ใช่') : (lang === 'en' ? 'No' : 'ไม่');
+    if (v < 0) return 'N/A';
+    const s = SA_SCALE.find((x) => x.v === v);
+    return join(s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v));
+  }
+  return join(String(v));
 }
 
 /** ข้อที่นักศึกษาชั้นปีนี้ต้องเห็น (ฟอร์มมีบล็อกเฉพาะปี 5) */
@@ -412,8 +436,6 @@ export const num = (v: SAValue | undefined): number | null =>
   typeof v === 'number' && v >= 0 ? v : null;
 
 export const list = (v: SAValue | undefined): string[] => (Array.isArray(v) ? v : []);
-
-export const text = (v: SAValue | undefined): string => (typeof v === 'string' ? v : '');
 
 /**
  * คีย์ของแบบประเมินตนเอง — หนึ่งคน หนึ่งปีการศึกษา หนึ่งใบ

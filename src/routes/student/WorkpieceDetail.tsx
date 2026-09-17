@@ -7,7 +7,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { typeMeta } from '../../domain/catalog';
 import {
-  maxProgression, nextProc, progression, stepGroups, isReturned } from '../../domain/rules';
+  maxProgression, nextProc, progression, stepGroups, isReturned, stepFraction } from '../../domain/rules';
 import { usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
 import { setWorkpieceReturned } from '../../data/repo';
@@ -29,7 +29,7 @@ export default function WorkpieceDetail() {
   const shots = useWorkpiecePhotos(id);
   const shotSrcs = usePhotoSrc(shots);
 
-  /* คืนเคส — เคสที่คนไข้ไม่มาต่อ/ยกเลิก นักศึกษากดเองได้ (ผู้ใช้ถาม 2 ก.ย.)
+  /* คืนเคส — เคสที่คนไข้ไม่มาต่อ/ยกเลิก นักศึกษากดเองได้
      ⚠️ hook ต้องอยู่เหนือ early return ด้านล่าง (กฎของ hook — เคยพลาดตรงนี้จนหน้าเปล่า) */
   const [askReturn, setAskReturn] = useState(false);
   const [returnNote, setReturnNote] = useState('');
@@ -154,7 +154,7 @@ export default function WorkpieceDetail() {
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          {/* หัวหน้าแบบหน้าแรก (ผู้ใช้เลือก mock 4A · 14 ก.ย. 69): ชื่อผู้ป่วยเป็นหัวเรื่อง
+          {/* หัวหน้าแบบหน้าแรก: ชื่อผู้ป่วยเป็นหัวเรื่อง
               ชิปประเภท/ขากรรไกร/ซี่ → บรรทัดเทาบรรทัดเดียวพร้อม HN กึ่งหนา · ชิป minimum requirement → ข้อความเขียว
               ตัดหัวข้อ "CD / Complicated APD" ตัวใหญ่ (ซ้ำกับบรรทัดเทา) */}
           <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)' }}>{patientTitle(w.patient, namesOn, t)}</h1>
@@ -185,7 +185,7 @@ export default function WorkpieceDetail() {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-          <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={8} />
+          <Bar value={stepFraction(w) * 100} color={meta.color} height={8} />
           <span style={{ font: '600 12px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
             {Math.max(prog, 0)}/{max}
           </span>
@@ -210,7 +210,7 @@ export default function WorkpieceDetail() {
 
               <div className="tl__body">
                 {/* V1: แถวเดียวจบ — สถานะบอกด้วยสีจุด+น้ำหนักตัวอักษรแทนบรรทัดคำอธิบาย
-                    (คำว่า "ผ่านแล้ว/รอดำเนินการ" ซ้ำกับสีจุด — ผู้ใช้บอกรก 1 ก.ย.)
+
                     เหลือวันที่เฉพาะขั้นที่ผ่านล่าสุด · จำนวนขั้นย่อยย่อเป็น ×N */}
                 <button
                   aria-expanded={expanded}

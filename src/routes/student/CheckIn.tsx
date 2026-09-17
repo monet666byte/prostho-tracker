@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
 import { addCheckIn, deleteCheckIn, updateCheckIn } from '../../data/repo';
-import { ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
+import { ACTIVITY_GROUPS, CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, checkInStamp, totalScore } from '../../domain/checkin';
 import { useCheckIns, usePatientNamesOn, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { patientWithHn } from '../../lib/privacy';
 import { thaiShort, toISODate } from '../../lib/date';
@@ -41,7 +41,7 @@ export default function CheckInPage() {
     if (todayEntry) openEditForm(todayEntry);
   }
 
-  /** เปิดฟอร์มแก้คาบใดๆ ที่ยังไม่ถูกประเมิน — กดผิด/ลืมติ๊ก แก้เองได้ไม่ต้องรออาจารย์ (ผู้ใช้ขอ 1 ก.ย.) */
+  /** เปิดฟอร์มแก้คาบใดๆ ที่ยังไม่ถูกประเมิน — กดผิด/ลืมติ๊ก แก้เองได้ไม่ต้องรออาจารย์ */
   function openEditForm(entry: (typeof checkins)[number]) {
     if (entry.status === 'evaluated') return;
     setEditingId(entry.id);
@@ -70,11 +70,8 @@ export default function CheckInPage() {
       // โหมดเติมรายละเอียด — เวลากับความตรงเวลาถูกล็อกไว้ตั้งแต่ตอนเช็คอินด่วนแล้ว
       await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, currentActor());
     } else {
-      // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — ตรงเวลา/สายคำนวณจากเวลานี้
-      // (สมมติฐานเดโม: คาบเช้าเริ่ม 09:00 บ่าย 13:00 เผื่อสาย 15 นาที — ของจริงผูกกับตารางคาบ)
-      const now = new Date();
-      const checkinAt = now.toTimeString().slice(0, 5);
-      const punctual = now.getHours() < 12 ? checkinAt <= '09:15' : checkinAt <= '13:15';
+      // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — เกณฑ์ตรงเวลา/สายอยู่ที่ domain/checkin.ts ที่เดียว
+      const { checkinAt, punctual } = checkInStamp();
       await addCheckIn({
         studentId: session.studentId,
         date,
@@ -222,10 +219,10 @@ export default function CheckInPage() {
         )}
 
         {checkins.length === 0 && (
-          <Empty icon={<CalendarCheck size={26} />} title={t('ยังไม่มีคาบที่บันทึก')} hint="" />
+          <Empty icon={<CalendarCheck size={26} />} title={t('ยังไม่มีคาบที่บันทึก')} />
         )}
 
-        {/* หน้าคาบแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69): การ์ด 8 ใบ → การ์ดเดียวแถวละคาบ
+        {/* หน้าคาบแบบ "ตัดของซ้ำ": การ์ด 8 ใบ → การ์ดเดียวแถวละคาบ
             ตัดเลขลำดับในกล่องเทา · ชิปคะแนน/รอประเมิน → ตัวอักษร (เต็ม = เขียว · รอ = ส้ม) */}
         {checkins.length > 0 && (
           <div className="homelabel" style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 4px -3px' }}>
@@ -238,7 +235,7 @@ export default function CheckInPage() {
           const open = expanded === c.id;
           return (
             /* div ไม่ใช่ button: ข้างในมีปุ่มแก้/ลบ และ HTML ห้าม button ซ้อน button
-               (React เตือน hydration error — เจอจากคอนโซล 1 ก.ย.) */
+ */
             <div
               key={c.id}
               role="button"
@@ -282,7 +279,7 @@ export default function CheckInPage() {
                     <div key={cr.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ flex: 1, font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{cr.label}</span>
                       <span className="bar" style={{ height: 7, width: 60, flex: 'none' }}>
-                        <i style={{ width: `${((c.scores?.[cr.key] ?? 0) / 3) * 100}%`, background: (c.scores?.[cr.key] ?? 0) >= 3 ? 'var(--accent)' : 'var(--warning)' }} />
+                        <i style={{ width: `${((c.scores?.[cr.key] ?? 0) / MAX_SCORE) * 100}%`, background: (c.scores?.[cr.key] ?? 0) >= MAX_SCORE ? 'var(--accent)' : 'var(--warning)' }} />
                       </span>
                       <span className="mono" style={{ width: 14, textAlign: 'right', font: '600 10.5px var(--font-mono)' }}>
                         {c.scores?.[cr.key] ?? '—'}

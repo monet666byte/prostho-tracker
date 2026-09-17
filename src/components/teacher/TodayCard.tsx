@@ -21,7 +21,7 @@ export interface TodayScope {
 
 const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise } as const;
 
-/** "สวัสดีตอนเช้า" ก่อนเที่ยง · หลังเที่ยง "สวัสดีวันศุกร์" (ผู้ใช้ขอ 15 ก.ย. 69 — ให้ดูมีระดับ) */
+/** "สวัสดีตอนเช้า" ก่อนเที่ยง · หลังเที่ยง "สวัสดีวันศุกร์" */
 export function greeting(now = new Date()): string {
   if (now.getHours() < 12) return t('สวัสดีตอนเช้า');
   const day = new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'th-TH', { weekday: 'long' }).format(now);
@@ -29,7 +29,7 @@ export function greeting(now = new Date()): string {
 }
 
 /**
- * กล่อง "สรุปวันนี้" หน้าภาพรวมอาจารย์ (ผู้ใช้เลือก mock 15 ก.ย. 69)
+ * กล่อง "สรุปวันนี้" หน้าภาพรวมอาจารย์
  * ขอบรุ้งแบบ Siri หมุนช้าๆ เฉพาะตอนมีเรื่องต้องทำ/ต้องดู · ไม่มีอะไรน่าห่วง = ขอบนิ่ง
  * ไอคอนแบบ 3 (วงกลมสีอ่อน) — สีบอกความหมาย ฟ้า = ต้องทำ · ส้ม = ต้องดู · เขียว = ข่าวดี
  */

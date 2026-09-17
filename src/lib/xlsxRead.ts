@@ -1,5 +1,5 @@
 /**
- * อ่านไฟล์ Excel (.xlsx) เป็นตารางข้อความ — ใช้กับแบบฟอร์มขอรายชื่อจากภาคเท่านั้น (15 ก.ย. 69)
+ * อ่านไฟล์ Excel (.xlsx) เป็นตารางข้อความ — ใช้กับแบบฟอร์มขอรายชื่อจากภาคเท่านั้น
  *
  * ทำไมเขียนเอง ไม่ใช้ไลบรารี: `xlsx` บน npm ค้างที่รุ่นที่มีช่องโหว่ตอนอ่านไฟล์จากคนอื่น
  * ส่วนตัวอื่นลากแพ็กเกจที่ไม่รู้จักมาอีกหลายตัว — ไฟล์ที่เราอ่านมาจากภายนอก (ภาคส่งมา)
@@ -18,6 +18,13 @@ export interface SheetTable {
 
 const FAIL = 'อ่านไฟล์นี้ไม่ได้ — ต้องเป็นไฟล์ .xlsx จากแบบฟอร์มขอรายชื่อ (ถ้าเป็น .xls ให้เปิดใน Excel แล้ว Save As เป็น .xlsx)';
 
+/* เพดานกันไฟล์ที่ตั้งใจทำมาให้เครื่องค้าง (zip ที่คลายแล้วใหญ่หลายร้อย MB · แถว/คอลัมน์เลขหลักพันล้าน)
+   แบบฟอร์มรายชื่อจริงมีไม่กี่ร้อยแถว — เกินเพดานถือว่าไม่ใช่ไฟล์ที่เราอ่าน */
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_INFLATED_BYTES = 20 * 1024 * 1024;
+const MAX_ROWS = 100_000;
+const MAX_COLS = 1_000;
+
 /* ── zip ─────────────────────────────────────────────────────────────────── */
 
 async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
@@ -26,11 +33,14 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
     throw new Error('เบราว์เซอร์นี้เปิดไฟล์ Excel ไม่ได้ — อัปเดต Safari/iPadOS หรือใช้ Chrome · หรือก๊อปตารางมาวางในช่อง "หรือก๊อปตารางมาวางเอง" แทน');
   }
   const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const out = new Uint8Array(await new Response(stream).arrayBuffer());
+  if (out.length > MAX_INFLATED_BYTES) throw new Error(FAIL);
+  return out;
 }
 
 /** คืนไฟล์ในซิปตามชื่อที่ขอ (อ่านเฉพาะที่ต้องใช้) */
 async function unzip(buf: ArrayBuffer, wanted: (name: string) => boolean): Promise<Map<string, string>> {
+  if (buf.byteLength > MAX_FILE_BYTES) throw new Error(FAIL);
   const u8 = new Uint8Array(buf);
   const dv = new DataView(buf);
   let eocd = -1;
@@ -55,8 +65,9 @@ async function unzip(buf: ArrayBuffer, wanted: (name: string) => boolean): Promi
     p += 46 + nameLen + extraLen + commentLen;
     if (!wanted(name)) continue;
     if (flags & 1) throw new Error('ไฟล์นี้ตั้งรหัสผ่านไว้ — เปิดใน Excel แล้วเอารหัสผ่านออกก่อน');
-    if (dv.getUint32(local, true) !== 0x04034b50) throw new Error(FAIL);
+    if (local + 30 > u8.length || dv.getUint32(local, true) !== 0x04034b50) throw new Error(FAIL);
     const start = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+    if (start + compSize > u8.length) throw new Error(FAIL);
     const raw = u8.subarray(start, start + compSize);
     if (method === 0) out.set(name, dec.decode(raw));
     else if (method === 8) out.set(name, dec.decode(await inflateRaw(raw)));
@@ -70,7 +81,10 @@ async function unzip(buf: ArrayBuffer, wanted: (name: string) => boolean): Promi
 function unescapeXml(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|lt|gt|amp|quot|apos);/gi, (_, e: string) => {
     const k = e.toLowerCase();
-    if (k[0] === '#') return String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10));
+    if (k[0] === '#') {
+      const cp = k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10);
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+    }
     return ({ lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" } as Record<string, string>)[k];
   });
 }
@@ -97,12 +111,14 @@ function readSheet(xml: string, shared: string[]): string[][] {
   let nextRow = 0;
   for (const rm of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
     const r = Number(attr(rm[1], 'r')) || nextRow + 1;
+    if (r > MAX_ROWS) throw new Error(FAIL);
     nextRow = r;
     const cells: string[] = [];
     let nextCol = 0;
     for (const cm of (rm[2] ?? '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const ref = attr(cm[1], 'r');
       const col = ref ? colIndex(ref) : nextCol;
+      if (col > MAX_COLS) throw new Error(FAIL);
       nextCol = col + 1;
       const type = attr(cm[1], 't');
       const body = cm[2] ?? '';
@@ -140,7 +156,7 @@ export async function readXlsx(buf: ArrayBuffer): Promise<SheetTable[]> {
     if (id && tg) target.set(id, tg.startsWith('/') ? tg.slice(1) : `xl/${tg}`);
   }
   /* <si/> (ข้อความว่างที่บางโปรแกรมเขียนแบบปิดตัวเอง) ต้องนับเป็นหนึ่งช่องด้วย — ข้ามไปแล้วลำดับเลื่อนทั้งไฟล์
-     ชื่อทุกคนหลังจากนั้นจะไปหยิบข้อความของอีกเซลล์มาแทนโดยไม่มี error (ตรวจซ้ำ 15 ก.ย. 69) */
+     ชื่อทุกคนหลังจากนั้นจะไปหยิบข้อความของอีกเซลล์มาแทนโดยไม่มี error */
   const shared = [...(files.get('xl/sharedStrings.xml') ?? '').matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)].map((m) => runText(m[1] ?? ''));
 
   const sheets: SheetTable[] = [];

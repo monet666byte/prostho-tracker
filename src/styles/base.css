@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 /* iOS/iPadOS ขยายขนาดตัวอักษรให้เอง (text auto-sizing) เมื่อเจอคอลัมน์กว้างๆ
-   → ชื่อในตารางฝั่งอาจารย์ตัดบรรทัดบน iPad ทั้งที่ตั้งขนาดเล็กสุดแล้ว (ผู้ใช้เจอ 2 ก.ย.)
+   → ชื่อในตารางฝั่งอาจารย์ตัดบรรทัดบน iPad ทั้งที่ตั้งขนาดเล็กสุดแล้ว
    ล็อกไว้ 100% ให้ขนาดเป็นไปตามที่ออกแบบ — ผู้ใช้ยังปรับเองได้ที่ปุ่ม ก ก ก */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
@@ -28,13 +28,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
 @keyframes sheetUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-/* toast ออกตัวเร็วแล้วผ่อน + ขยายจาก 96% (ผู้ใช้เลือกจาก mock 14 ก.ย.) */
+/* toast ออกตัวเร็วแล้วผ่อน + ขยายจาก 96% */
 @keyframes toastIn { from { opacity: 0; transform: translateY(18px) scale(0.96) } to { opacity: 1; transform: none } }
-@keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 rgba(43, 92, 230, 0.45) }
-  70% { box-shadow: 0 0 0 8px rgba(43, 92, 230, 0) }
-  100% { box-shadow: 0 0 0 0 rgba(43, 92, 230, 0) }
-}
 @keyframes shellIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
 
 /* ── shared primitives ── */
@@ -42,7 +37,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .h2 { font: 600 20px/1.35 var(--font-head); margin: 0; }
 .h3 { font: 600 17px/1.4 var(--font-head); margin: 0; }
 .mono { font-family: var(--font-mono); }
-.muted { color: var(--text-muted); }
 .faint { color: var(--text-faint); }
 .pretty { text-wrap: pretty; }
 
@@ -97,15 +91,13 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   box-shadow: 0 2px 0 var(--accent-hover), 0 8px 18px rgba(43, 92, 230, 0.22);
   transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
 }
-/* ทุก :hover ในแอปห่อ @media (hover: hover) — iPhone แตะแล้วสี hover ค้างจนแตะที่อื่น (เจอ 14 ก.ย.)
+/* ทุก :hover ในแอปห่อ @media (hover: hover) — iPhone แตะแล้วสี hover ค้างจนแตะที่อื่น
    เพิ่ม :hover ใหม่เมื่อไหร่ต้องห่อแบบเดียวกัน */
 @media (hover: hover) { .btn:hover { background: var(--accent-hover); } }
 .btn:active { transform: translateY(1px); box-shadow: none; }
 .btn:disabled { background: var(--text-disabled); box-shadow: none; cursor: not-allowed; }
 .btn--success { background: var(--success); box-shadow: 0 2px 0 var(--success-dark); }
 @media (hover: hover) { .btn--success:hover { background: var(--success-dark); } }
-.btn--light { background: #fff; color: var(--accent); box-shadow: 0 2px 0 rgba(16, 24, 40, 0.08); }
-@media (hover: hover) { .btn--light:hover { background: #f3f6ff; } }
 .btn--ghost {
   background: transparent;
   color: var(--text-muted);
@@ -127,7 +119,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 /* form */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* iOS: input[type=date] มีความกว้างขั้นต่ำในตัว ไม่ยอมหดตาม flex — ทำให้ล้นไปทับปุ่มข้างๆ
-   (เจอจริงบน iPhone 1 ก.ย. 69: ช่องวันที่ทับปุ่มแนบรูปในแผ่นยืนยัน step)
+ (ช่องวันที่ทับปุ่มแนบรูปในแผ่นยืนยัน step)
    min-width:0 + appearance:none บังคับให้หดตามกล่องเสมอ */
 .input { min-width: 0; }
 input[type='date'].input { -webkit-appearance: none; appearance: none; text-align: left; }
@@ -162,8 +154,6 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   border-radius: 12px;
   background: var(--bg-subtle);
 }
-
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* ── รายงาน A4 สำหรับพิมพ์ให้อาจารย์ลงนาม ── */
 /* บนจอมือถือ ตารางรายงานกว้างเกินกรอบ — ให้เลื่อนแนวนอนได้ ส่วนตอนพิมพ์ค่อยกางเต็มหน้า */
@@ -200,9 +190,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   .screen { overflow: visible; height: auto; }
   .a4wrap { overflow: visible; }
   .a4 { border: 0; padding: 0; border-radius: 0; min-width: 0; }
-  .printonly { display: block !important; }
 }
-.printonly { display: none; }
 
 /* ── กล่องอธิบาย step (กดเลข 0–10 แล้วเห็นว่าข้างในมีอะไร) ── */
 .stepinfo {
@@ -212,7 +200,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   overflow: hidden;
   animation: shellIn 0.18s ease;
 }
-/* หัว: "Step 9 · 108 ชิ้น" บรรทัดเดียว ปุ่มปิดเป็นตัวหนังสือ (14 ก.ย. 69 — เดิมวงกลมเลขน้ำเงินซ้ำกับเลขใต้กราฟ) */
+/* หัว: "Step 9 · 108 ชิ้น" บรรทัดเดียว ปุ่มปิดเป็นตัวหนังสือ */
 .stepinfo__head { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font: 400 13px var(--font-body); }
 .stepinfo__head b { font: 600 14px var(--font-head); }
 .stepinfo__meta { margin-left: 8px; font: 400 12.5px var(--font-body); color: var(--text-muted); }
@@ -243,7 +231,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   .rolefab {
     position: fixed;
     right: 14px;
-    bottom: 86px; /* พ้น tab bar ฝั่งนักศึกษา */
+    bottom: calc(var(--tabbar-h) + 20px); /* พ้น tab bar ฝั่งนักศึกษา */
     z-index: 70;
     display: inline-flex;
     align-items: center;
@@ -266,17 +254,6 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   border-radius: 6px;
 }
 
-/* ── ป้ายรุ่นทดลอง ── ขึ้นทุกขนาดจอ เพราะแถบเดโมด้านบนซ่อนบนมือถือ */
-.betabadge {
-  display: inline-flex; align-items: center;
-  padding: 2px 7px; border-radius: 6px;
-  /* เทาเรียบ — เดิมพื้นเหลืองขอบส้มแย่งสายตาข้างชื่อ และคนละทรงกับชิปกลุ่ม (14 ก.ย.) */
-  background: transparent; color: var(--text-faint);
-  border: 1px solid var(--border-2);
-  font: 700 9.5px/1.5 var(--font-mono); letter-spacing: .06em;
-  flex: none; white-space: nowrap;
-}
-
 /* ── แบบประเมินตนเองฉบับพิมพ์ (A4) ──────────────────────────────────────────
    ใช้โครง .a4 เดิม เพิ่มเฉพาะสิ่งที่ฟอร์มนี้ต้องการ:
    หมวดต้องไม่ถูกตัดกลางหน้า และหัวข้อมีป้ายอังกฤษกำกับตามฟอร์มจริงของภาค */
@@ -288,14 +265,6 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
 .a4 .sasec table { margin-top: 5px; }
 .a4 .saq { width: 46%; color: #475467; }
 .a4 .sacaption { font: 400 8px var(--font-body); color: #667085; margin-top: 3px; }
-.a4 .sanote {
-  border: 1px solid #d6dae1; border-radius: 6px; padding: 7px 9px; margin-top: 6px;
-  font: 400 8.5px/1.5 var(--font-body); white-space: pre-wrap;
-}
-.a4 .sacard { border: 1px solid #d6dae1; border-radius: 6px; padding: 6px 8px; margin-top: 5px; break-inside: avoid; }
-.a4 .sacard b { font: 600 8.5px var(--font-head); }
-.a4 .sacard p { margin: 2px 0 0; font: 400 8.5px/1.5 var(--font-body); color: #475467; }
-.a4 .sacard .ev { font: 500 8px var(--font-mono); color: #667085; margin-top: 3px; display: block; }
 /* กระดาษจริงกว้าง A4 — ปลดความกว้างขั้นต่ำที่ตั้งไว้เพื่อตารางช่อง 0–10 ของอีกรายงาน */
 .a4--sa { min-width: 0; max-width: 780px; margin: 0 auto; }
 /* กรอบหน้าจอของหน้าพิมพ์ — ตอนพิมพ์ต้องไม่เหลือพื้นหลังสีหรือระยะขอบของแอปติดไปบนกระดาษ */

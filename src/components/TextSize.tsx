@@ -39,7 +39,7 @@ export function TextSizeControl({ compact = false }: { compact?: boolean } = {})
       {!compact && <span className="textsize__label">{t('ขนาดตัวหนังสือ')}</span>}
       <div className="textsize__btns">
         {LEVELS.map((l) => (
-          <button key={l.key} data-on={zoom === l.key} style={{ fontSize: l.size }} onClick={() => setZoom(l.key)} aria-label={`${t('ขนาด')} ${l.key}`}>
+          <button key={l.key} data-on={zoom === l.key} style={{ fontSize: l.size }} onClick={() => setZoom(l.key)} aria-label={`${t('ขนาดตัวหนังสือ')} ${l.label}`}>
             {l.label}
           </button>
         ))}

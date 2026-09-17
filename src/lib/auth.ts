@@ -2,7 +2,8 @@
  * ยามหน้าประตู (auth) — ใช้เฉพาะโหมด cloud
  *
  * โหมด local/แชร์เดโม: ไม่มีไฟล์นี้เข้ามาเกี่ยว ล็อกอินปลอมแบบเดิม (เลือกบทบาทแล้วเข้าเลย)
- * โหมด cloud: ต้องอีเมล+รหัสผ่านจริง แล้วระบบจะไปดูตาราง app_users ว่าอีเมลนี้คือ นศ./อาจารย์ คนไหน
+ * โหมด cloud: เข้าด้วย Google (ทางหลัก) หรืออีเมล+รหัสผ่าน (บัญชีสาธิต/สำรอง)
+ * แล้วระบบไปดูตาราง app_users ว่าบัญชีนี้คือ นศ./อาจารย์ คนไหน
  */
 import { supabase } from './cloud';
 import { t } from './i18n';
@@ -20,11 +21,11 @@ export interface AppUser {
 
 /** ล็อกอินด้วยอีเมล+รหัสผ่าน — คืน error เป็นข้อความไทยให้เอาไปโชว์ได้เลย */
 export async function signInWithPassword(email: string, password: string): Promise<{ error?: string }> {
-  if (!supabase) return { error: 'ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์' };
+  if (!supabase) return { error: t('ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์') };
   const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
   if (!error) return {};
-  if (/invalid login credentials/i.test(error.message)) return { error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
-  if (/email not confirmed/i.test(error.message)) return { error: 'ยังไม่ได้ยืนยันอีเมล — เช็คกล่องจดหมายก่อนครับ' };
+  if (/invalid login credentials/i.test(error.message)) return { error: t('อีเมลหรือรหัสผ่านไม่ถูกต้อง') };
+  if (/email not confirmed/i.test(error.message)) return { error: t('ยังไม่ได้ยืนยันอีเมล — เช็คกล่องจดหมายก่อนครับ') };
   return { error: error.message };
 }
 
@@ -37,7 +38,7 @@ export async function signInWithPassword(email: string, password: string): Promi
  * คืนค่าเฉพาะตอนพาออกไปไม่ได้ · ถ้าสำเร็จหน้านี้จะถูกเปลี่ยนไปแล้ว
  */
 export async function signInWithGoogle(): Promise<{ error?: string }> {
-  if (!supabase) return { error: 'ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์' };
+  if (!supabase) return { error: t('ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์') };
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -54,14 +55,21 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
   return { error: error.message };
 }
 
-/** แปลข้อความที่ Google/Supabase ส่งกลับมาใน URL เป็นภาษาคน */
+/**
+ * แปลข้อความที่ Google/Supabase ส่งกลับมาใน URL เป็นภาษาคน
+ *
+ * ⚠️ ห้ามเอาข้อความดิบจาก URL ขึ้นหน้าจอ — ใครก็ส่งลิงก์ `?error_description=โทร 08x…` ให้คนอื่นเปิดได้
+ * แล้วข้อความนั้นจะโผล่ในกล่องแดงของหน้าเข้าระบบเหมือนเป็นของแอป · รู้จักรหัสไหนค่อยแปล ไม่รู้จัก = ข้อความกลาง
+ * (ข้อความดิบยังดูได้ใน console)
+ */
 export function explainOAuthError(raw: string): string {
   // trigger ไม่ยอมสร้างบัญชี = อีเมลไม่อยู่ในรายชื่อเชิญ · Supabase ห่อ error ของ trigger เป็นข้อความนี้เสมอ
   if (/database error saving new user/i.test(raw)) {
     return t('อีเมลนี้ยังไม่อยู่ในรายชื่อที่ภาควิชาเชิญ — ตรวจว่าเลือกบัญชี Google ถูกอัน หรือติดต่อภาควิชาเพื่อเพิ่มรายชื่อ');
   }
   if (/access_denied|cancel/i.test(raw)) return t('ยกเลิกการเข้าด้วย Google');
-  return `${t('เข้าด้วย Google ไม่สำเร็จ')} (${raw})`;
+  console.warn('[oauth] error จาก URL:', raw);
+  return t('เข้าด้วย Google ไม่สำเร็จ — ลองใหม่อีกครั้ง ถ้ายังไม่ได้ให้ติดต่อภาควิชา');
 }
 
 export async function signOutCloud(): Promise<void> {

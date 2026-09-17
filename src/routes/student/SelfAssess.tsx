@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  saColLabel, saHint, saLabel, saNote, saOpenFor, saOption, saOtherText, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
+  readableAnswer, saColLabel, saHint, saLabel, saNote, saOpenFor, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -20,7 +20,7 @@ import { currentActor, useApp } from '../../store/app';
 /**
  * แถวตัวเลือก — ขนาดปุ่มขึ้นกับ "ชนิดของคำตอบ" ไม่ใช่ความกว้างจอ
  *
- * ปัญหาเดิม (ผู้ใช้ทัก 6 ก.ย. 69 ว่า "ปุ่มมันกว้างแปลกๆ"): ทุกปุ่มตั้ง flex: 1 1 0
+ * ปัญหาเดิม: ทุกปุ่มตั้ง flex: 1 1 0
  * = แบ่งความกว้างเท่ากันเสมอ ยิ่งจอกว้างยิ่งยืด · วัดจริงบน iPad:
  *   เลข 0–4 กลายเป็น 123×35 (3.5:1) · ปุ่ม "ใช่/ไม่" กลายเป็น 456×37 (12.3:1)
  * ตัวเลขหลักเดียวในกล่องแบนยาว อ่านแล้วไม่เหมือนสเกลให้คะแนน และสูงแค่ 35px
@@ -68,7 +68,7 @@ const scaleOptions = (allowNA?: boolean, bare?: boolean) => [
 /**
  * คำอธิบายสเกล — ขึ้นครั้งเดียวต่อหมวด แทนที่จะซ้ำใต้ปุ่มทุกข้อ
  *
- * ตัวเลขต้องเด่นกว่าคำอธิบายชัดๆ (ผู้ใช้ทัก 6 ก.ย. 69 ว่า "ตอนนี้อ่อนไปนิด")
+ * ตัวเลขต้องเด่นกว่าคำอธิบายชัดๆ
  * เพราะสิ่งที่ต้องเทียบตอนกดปุ่มคือเลข ไม่ใช่คำ — เลขจึงเป็นชิปสีเน้น ส่วนคำเป็นตัวรอง
  */
 function ScaleLegend({ withNA }: { withNA?: boolean }) {
@@ -141,7 +141,7 @@ export default function SelfAssess() {
   /**
    * โหลดร่าง + รับฉบับใหม่จากเครื่องอื่น
    *
-   * นักศึกษาใช้ทั้งมือถือและ iPad (ผู้ใช้บอก 6 ก.ย. 69) เคสจริง: เปิดฟอร์มค้างไว้บนมือถือ
+   * นักศึกษาใช้ทั้งมือถือและ iPad เคสจริง: เปิดฟอร์มค้างไว้บนมือถือ
    * ไปกรอกต่อบน iPad แล้วกลับมาแตะมือถือหนึ่งที → เดิมมือถือจะเขียนคำตอบชุดเก่าทั้งก้อน
    * ทับของที่ iPad เพิ่งกรอกไป จึงต้องรวมแบบรายช่อง: ช่องที่แก้ในเครื่องนี้ชนะ
    * ที่เหลือใช้ของที่ sync มาล่าสุด (saved เป็น live query — ขยับเองเมื่อ Dexie เปลี่ยน)
@@ -204,7 +204,7 @@ export default function SelfAssess() {
    * บันทึกสิ่งที่ค้างทันทีเมื่อออกจากหน้า/สลับแอป/ปิดแท็บ
    *
    * เดิม cleanup แค่ clearTimeout เฉยๆ — พิมพ์เสร็จแล้วกดย้อนกลับภายใน 600ms
-   * ข้อความล่าสุดหายไปเลยโดยไม่มีใครรู้ (เจอตอนไล่บั๊ก 6 ก.ย. 69)
+   * ข้อความล่าสุดหายไปเลยโดยไม่มีใครรู้
    * ในคลินิกเกิดง่ายมาก เพราะ นศ. สลับแอปตลอดเวลา
    */
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function SelfAssess() {
             <h1 className="h2">{t('ประเมินตนเอง')}</h1>
           </div>
         </header>
-        {/* กล่องเขียว + ปุ่มพิมพ์ → บรรทัดเดียว · ข้อคะแนนชิดขวาในแถว (ผู้ใช้เลือก mock 14 ก.ย. 69) */}
+        {/* กล่องเขียว + ปุ่มพิมพ์ → บรรทัดเดียว · ข้อคะแนนชิดขวาในแถว */}
         <div className="newform" style={{ paddingBottom: 22 }}>
           <div className="sadone">
             <span className="dot" style={{ width: 10, height: 10, background: 'var(--success)' }} />
@@ -277,7 +277,7 @@ export default function SelfAssess() {
               <div className="homelabel">{saSectionLabel(s)}</div>
               <div className="card formcard">
                 {s.questions.map((q) => {
-                  const value = readable(q, answers[q.key], answers);
+                  const value = readableAnswer(q, answers[q.key], answers);
                   const label = `${saLabel(q)}${q.col ? ` · ${saColLabel(q.col)}` : ''}`;
                   const short = q.kind === 'scale' || q.kind === 'level' || q.kind === 'yesno';
                   return short ? (
@@ -583,26 +583,4 @@ function Field({
       )}
     </div>
   );
-}
-
-/** แปลงคำตอบเป็นข้อความอ่านได้ — ใช้ตอนโหมดอ่านอย่างเดียวและฝั่งอาจารย์ */
-export function readable(q: SAQuestion, v: SAValue | undefined, answers?: Record<string, SAValue>): string {
-  // ต่อท้ายด้วยข้อความช่อง "อื่นๆ" เสมอ ไม่งั้นสิ่งที่ นศ. พิมพ์เองจะหายไปจากทุกหน้าจอ
-  const extra = answers ? saOtherText(q, answers) : '';
-  const join = (main: string) => [main, extra].filter(Boolean).join(' · ');
-  if (v === undefined || v === null || v === '') return extra;
-  if (Array.isArray(v)) {
-    return join(v.map((x) => {
-      const i = (q.options ?? []).indexOf(x);
-      return i >= 0 ? saOption(q, i) : x;
-    }).join(' · '));
-  }
-  if (typeof v === 'number') {
-    if (q.kind === 'level') return v === SA_APPROPRIATE ? (lang === 'en' ? 'Appropriate' : 'เหมาะสมแล้ว') : (lang === 'en' ? 'Need improvement' : 'ต้องปรับปรุง');
-    if (q.kind === 'yesno') return v === 1 ? (lang === 'en' ? 'Yes' : 'ใช่') : (lang === 'en' ? 'No' : 'ไม่');
-    if (v < 0) return 'N/A';
-    const s = SA_SCALE.find((x) => x.v === v);
-    return join(s ? `${v} · ${lang === 'en' ? s.label : s.th}` : String(v));
-  }
-  return join(String(v));
 }

@@ -41,6 +41,7 @@
   --success-tint: #e7f7f1;
   --success-mid: #8fd9be;
   --success-toast: #5ae0a8;
+  --warning-toast: #fdba5e;
   --warning: #b54708;
   --warning-dark: #93370d;
   --warning-tint: #fef6e7;
@@ -113,11 +114,11 @@ html.theme-ink {
   --toast-bg: #1a212c;
 }
 
-/* สีประจำประเภทงาน — ชุด T6 "ปกติ ทั่วไป" (ผู้ใช้เคาะ 1 ก.ย. — ต้องตรงกับ TYPES ใน src/domain/catalog.ts) */
-.t-CD { --type: #2c50ba; --type-tint: #e9edf9; }
-.t-APD { --type: #6c86dd; --type-tint: #edf0fb; }
-.t-RPD { --type: #d97706; --type-tint: #fbf0de; }
-.t-PC { --type: #c2478d; --type-tint: #f9eaf3; }
-.t-CB { --type: #0d9bb8; --type-tint: #e2f5f9; }
-.t-RRM { --type: #64748b; --type-tint: #f1f3f7; }
-.t-RFX { --type: #475569; --type-tint: #eef1f5; }
+/* สีประจำประเภทงาน — ต้องตรงกับ TYPES ใน src/domain/catalog.ts */
+.t-CD { --type: #2c50ba; }
+.t-APD { --type: #6c86dd; }
+.t-RPD { --type: #d97706; }
+.t-PC { --type: #c2478d; }
+.t-CB { --type: #0d9bb8; }
+.t-RRM { --type: #64748b; }
+.t-RFX { --type: #475569; }

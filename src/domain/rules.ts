@@ -1,4 +1,7 @@
-/** กฎธุรกิจทั้งหมด — อ้างอิงหัวข้อ "กฎธุรกิจ" ใน handoff */
+/**
+ * กติกาทั้งหมดของชิ้นงาน — ขั้นตอน · เปอร์เซ็นต์ · เกณฑ์สะสม/รายปี · เคสค้าง · gate
+ * หน้าจอต้องเรียกจากที่นี่เท่านั้น (ห้ามคำนวณเองใน routes/) ไม่งั้นแต่ละหน้าจะได้ตัวเลขคนละแบบ
+ */
 
 import { CUM_REQ_TYPES, DENTURE_CLASSES, PROCS, RECALL, REQ_TYPES, TYPES, orderOf, type Proc, typeMeta } from './catalog';
 import { academicYear } from '../lib/date';
@@ -20,7 +23,7 @@ export function procList(w: Pick<Workpiece, 'type' | 'variant'>): Proc[] {
    *
    * เดิมคืน undefined แล้ว procList(w)[i] ระเบิดทันที — และเพราะไม่มี ErrorBoundary
    * ทั้งหน้าจอขาวสนิท ไม่มีข้อความ ไม่มีทางออก **และรีโหลดก็ไม่หาย** เพราะแถวยังอยู่ในเครื่อง
-   * (ทดลองแล้ว 10 ก.ย. 69: ใส่ชิ้นงาน type ที่ไม่รู้จักหนึ่งแถว แล้วเปิดหน้าคนไข้ → #root ว่างเปล่า)
+   * (ใส่ชิ้นงาน type ที่ไม่รู้จักหนึ่งแถว แล้วเปิดหน้าคนไข้ → #root ว่างเปล่า)
    * ลิสต์ว่างทำให้ทุกฟังก์ชันปลายทางได้คำตอบที่ปลอดภัย: procAt = null · progression = -1
    * · isComplete = false · percentCompleted = 0 — ชิ้นงานโผล่ในรายการแต่ไม่มีความคืบหน้า
    */
@@ -152,13 +155,13 @@ export function sortWorkpieces<T extends Workpiece>(list: T[]): T[] {
 }
 
 /**
- * ชิ้นงานนับเข้าเกณฑ์เมื่อจบเคส (progression 10) ตั้งค่าให้นับเกณฑ์
+ * ชิ้นงานนับเข้าเกณฑ์เมื่อจบเคส (ถึงขั้นสุดท้ายของประเภทนั้น — Recall จบที่ 3) ตั้งค่าให้นับเกณฑ์
  * และอาจารย์ตรวจรับแล้วว่าเข้าเกณฑ์ (ไม่ติดสถานะ "ยังไม่เข้าเกณฑ์ รอตรวจ")
  */
 export function countsTowardRequirement(w: Workpiece): boolean {
   if (w.pendingQualification) return false;
   /* ใช้ CUM_REQ_TYPES (เกณฑ์สะสม) ไม่ใช่ REQ_TYPES (เกณฑ์รายปี) — สองชุดนี้ต่างกันตั้งแต่
-     10 ก.ย. 69 ที่เพิ่ม Recall เข้าเกณฑ์สะสม · เกณฑ์รายปียังอ่าน REQ_TYPES ผ่าน completedInYear */
+     Recall เข้าเกณฑ์สะสมแต่ไม่เข้าเกณฑ์รายปี · เกณฑ์รายปีอ่าน REQ_TYPES ผ่าน countsForYearlyReq */
   return w.minimumRequirement && isComplete(w) && (CUM_REQ_TYPES as readonly string[]).includes(w.type);
 }
 
@@ -250,7 +253,7 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
       postCoreRequired: req.postCoreMin,
       postCoreComplete: postCoreDone >= req.postCoreMin,
     },
-    /* Recall สองแถว (ผู้ใช้เพิ่ม 10 ก.ย. 69) — นับรายชิ้นตรง ๆ ไม่ยุบคู่ upper/lower
+    /* Recall สองแถว — นับรายชิ้นตรง ๆ ไม่ยุบคู่ upper/lower
        เพราะ recall คือการนัดตรวจชิ้นงานที่ใส่ไปแล้ว ไม่ใช่การรับเคสมาเป็นคู่ */
     {
       group: 'RRM',
@@ -283,14 +286,21 @@ export function caseCountTotals(list: Workpiece[], settings: Settings) {
   };
 }
 
+/**
+ * ประเภทนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
+ * เป็นกติกาเดียวที่ completedInYear · กราฟ burn-up · ตัวประเมินความเสี่ยงใช้ร่วมกัน (ห้ามเขียนซ้ำที่อื่น)
+ */
+export const countsForYearlyReq = (w: Pick<Workpiece, 'type'>, settings: Settings): boolean =>
+  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
+
 /** ชิ้นงานที่จบเคสในปีการศึกษาที่กำหนด (เกณฑ์รายปี — นับรายชิ้นงาน ไม่ยุบคู่) */
 export function completedInYear(list: Workpiece[], year: number, settings: Settings): Workpiece[] {
   return list.filter((w) => {
     if (!isComplete(w) || !w.completedAt) return false;
-    if (!settings.perYearCountsAllTypes && !(REQ_TYPES as readonly string[]).includes(w.type)) return false;
+    if (!countsForYearlyReq(w, settings)) return false;
     /* ชีตระบุปีที่ชิ้นงานนับเข้าไว้เอง (คอลัมน์ for PT502/PT602) — เชื่อชีตก่อน
        เพราะงานที่นำเข้ามีวันจบ = วันนำเข้า ถ้าดูจากวันจบอย่างเดียว งานของปี 5
-       จะไหลมากองรวมในปีปัจจุบันหมด (ผู้ใช้ทัก 3 ก.ย.) */
+       จะไหลมากองรวมในปีปัจจุบันหมด */
     if (w.countsForYear) return w.countsForYear === year;
     return academicYear(w.completedAt) === year;
   });
@@ -322,14 +332,13 @@ export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date
   const years: number[] = [];
   for (let y = first; y <= current; y++) years.push(y);
   return years
-    .sort((a, b) => a - b)
     .map((year) => {
       const done = completedInYear(list, year, settings).length;
       return { year, done, required: settings.req.perYear, complete: done >= settings.req.perYear };
     });
 }
 
-/** ครบเกณฑ์จริงต้องผ่านทั้งเกณฑ์สะสมและเกณฑ์รายปีทุกปี */
+/** gate ทั้งสี่ในสมุด portfolio — เรียงตามลำดับในเล่ม (OSCE ก่อน Design RPD) */
 export const GATE_KEYS: GateKey[] = ['sect2Removable', 'sect2Fixed', 'osce', 'designRpd'];
 /** ชื่อตามหัวคอลัมน์ในชีต — คงเป็นอังกฤษทั้งสองภาษาเหมือนหัวข้อ radar */
 export const GATE_LABELS: Record<GateKey, string> = {
@@ -340,8 +349,7 @@ export const GATE_LABELS: Record<GateKey, string> = {
 };
 
 /** ข้อที่อาจารย์ติ๊กเองในหน้า "การสอบ" — ที่เหลือระบบติ๊กให้จากใบประเมิน Section II
- *  เรียง OSCE ก่อน (ผู้ใช้เคาะ 8 ก.ย. 69) ให้ตรงลำดับในเล่ม — ลำดับใน GATE_KEYS ก็สลับตามแล้ว
- *  หน้าเกณฑ์ฝั่งนักศึกษาจะได้เรียงเหมือนกัน */
+ *  เรียง OSCE ก่อนให้ตรงลำดับในเล่ม (GATE_KEYS เรียงแบบเดียวกัน หน้าเกณฑ์ฝั่งนักศึกษาจึงตรงกัน) */
 export const EXAM_GATE_KEYS: GateKey[] = ['osce', 'designRpd'];
 
 export interface GateRow {
@@ -370,4 +378,17 @@ export function meetsAllRequirements(list: Workpiece[], settings: Settings, now 
 export function overallPercent(list: Workpiece[]): number {
   if (!list.length) return 0;
   return Math.round(list.reduce((s, w) => s + percentCompleted(w), 0) / list.length);
+}
+
+/**
+ * สัดส่วนขั้นที่ผ่านแล้ว 0–1 สำหรับ "หลอด/วง" ที่วางคู่กับป้าย "n/m" — ต้องเต็มพอดีที่ขั้นสุดท้าย
+ * คนละอย่างกับ percentCompleted() (สูตรของชีต (n+1)/(m+1) ใช้ในใบรายงาน) — ห้ามคำนวณเองในหน้าจอ
+ */
+export function stepFraction(w: Workpiece): number {
+  return Math.max(0, progression(w)) / Math.max(1, maxProgression(w));
+}
+
+/** จำนวนขั้นที่ผ่านมาแล้ว (progression 0 = ผ่านขั้นแรกแล้ว 1 ขั้น) — นับตามเลขที่ผู้ใช้เห็น ไม่ใช่ procIndex */
+export function stepsPassed(w: Workpiece): number {
+  return progression(w) + 1;
 }

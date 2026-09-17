@@ -12,8 +12,9 @@
  * และทุกใบรวมได้ 10 พอดี — assertTotals() ท้ายไฟล์กันถอดผิด
  *
  * ⚠️ ข้อความหัวข้อคัดมาตรงจากกระดาษ ห้ามแก้ไวยากรณ์หรือจัดถ้อยคำใหม่
- *    (บทเรียนตอนทำ SA report: ผมเผลอ "จัดให้สวย" แล้วต้องคืนทั้งหมด)
+ *    (ใบพิมพ์ต้องตรงกับต้นฉบับที่อาจารย์เซ็น — เคย "จัดให้สวย" แล้วต้องคืนทั้งหมด)
  */
+import type { Sect3Record } from './types';
 
 /** ระดับที่อาจารย์กาในฟอร์ม */
 export type S3Grade = 'O' | 'S' | 'U';
@@ -292,7 +293,7 @@ export function sect3Total(form: S3Form, grades: Record<string, S3Grade | undefi
 
 /**
  * ยามกันถอดฟอร์มผิด — ทุกใบต้องรวมได้ 10 พอดี และคีย์ห้ามซ้ำ
- * เรียกตอนเปิดแอปในโหมด dev ถ้าพังคือผมพิมพ์ตัวเลขผิด ไม่ใช่ผู้ใช้ทำอะไรผิด
+ * เรียกตอนเปิดแอปในโหมด dev — พังแปลว่าถอดฟอร์มผิดในโค้ด ไม่ใช่ข้อมูลผู้ใช้
  */
 export function assertSect3(): string[] {
   const errs: string[] = [];
@@ -309,4 +310,9 @@ export function assertSect3(): string[] {
     }
   }
   return errs;
+}
+
+/** ใบ Section III ประเมินเสร็จแล้วหรือยัง — total เป็น null จนกว่าจะกาครบทุกข้อ */
+export function isSect3Evaluated(r: Pick<Sect3Record, 'total'> | undefined): boolean {
+  return !!r && r.total !== undefined && r.total !== null;
 }

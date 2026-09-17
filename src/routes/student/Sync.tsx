@@ -58,7 +58,7 @@ export default function Sync() {
     });
   }
 
-  /* การ์ด 9 ใบ → 4 หมวดแบบแอปตั้งค่าในมือถือ (ผู้ใช้เลือก mock 14 ก.ย. 69) */
+  /* การ์ด 9 ใบ → 4 หมวดแบบแอปตั้งค่าในมือถือ */
   return (
     <PlainShell>
       <header className="s-header">
@@ -153,7 +153,7 @@ export default function Sync() {
 
         <div className="homelabel">{t('การแสดงผล')}</div>
         <div className="card formcard">
-          {/* สลับภาษา — เดิมอยู่แค่แถบเดโมบนคอม มือถือเปลี่ยนไม่ได้ (ผู้ใช้ขอ 1 ก.ย.)
+          {/* สลับภาษา — เดิมอยู่แค่แถบเดโมบนคอม มือถือเปลี่ยนไม่ได้
               เขียนชื่อภาษาด้วยภาษาตัวเองเสมอ คนอ่านไม่ออกอีกภาษาจะได้หาปุ่มเจอ */}
           <div className="formrow">
             <span className="formrow__main"><b>ภาษา · Language</b></span>
@@ -162,7 +162,7 @@ export default function Sync() {
               <button data-on={lang === 'en'} aria-pressed={lang === 'en'} onClick={() => lang !== 'en' && setLang('en')}>EN</button>
             </span>
           </div>
-          {/* ธีมสี — เหตุผลเดียวกับปุ่มภาษา: คนเปิดลิงก์แชร์จากมือถือเลือกไม่ได้ (ผู้ใช้ขอ 1 ก.ย.) */}
+          {/* ธีมสี — เหตุผลเดียวกับปุ่มภาษา: คนเปิดลิงก์แชร์จากมือถือเลือกไม่ได้ */}
           <div className="formrow">
             <span className="formrow__main"><b>{t('ธีมสี')}</b></span>
             <span className="minseg">
@@ -219,7 +219,7 @@ export default function Sync() {
               await signOut();
               /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน student/Shell.tsx
                  พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
-                 ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
+                 ข้อความจึงไม่มีทางถึงตาผู้ใช้ */
               noteSignOutOutcome(res);
               navigate('/login');
             }}

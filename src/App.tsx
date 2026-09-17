@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useApp } from './store/app';
 import { t } from './lib/i18n';
 
@@ -50,8 +50,7 @@ const SaPrint = page(loadPrint, 'SaPrint');
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
   const session = useApp((s) => s.session);
-  const location = useLocation();
-  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!session) return <Navigate to="/login" replace />;
   if (session.role !== role) return <Navigate to={session.role === 'student' ? '/app' : '/teacher'} replace />;
   return <>{children}</>;
 }
@@ -218,8 +217,6 @@ export default function App() {
         <Route path="/teacher/exams" element={<Guard role="teacher"><Exams /></Guard>} />
         <Route path="/teacher/portfolio" element={<Navigate to="/teacher/sect2" replace />} />
         <Route path="/teacher/portfolio/:studentId/print" element={<Guard role="teacher"><PortfolioPrint /></Guard>} />
-        {/* ลิงก์เดิมตอนที่ยังมีแค่ Section III */}
-        <Route path="/teacher/sect3" element={<Navigate to="/teacher/portfolio" replace />} />
         <Route path="/teacher/sa/:studentId/print" element={<Guard role="teacher"><SaPrint /></Guard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

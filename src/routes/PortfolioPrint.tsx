@@ -11,6 +11,8 @@
  */
 import { ArrowLeft, Printer } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { isSect2Evaluated } from '../domain/sect2';
+import { isSect3Evaluated } from '../domain/sect3';
 import { useApp } from '../store/app';
 import { PortfolioPrintSheet } from '../components/PortfolioPrintSheet';
 import { saYearNow } from '../domain/saFeedback';
@@ -28,13 +30,9 @@ export default function PortfolioPrint() {
   const allSect2 = useSect2(studentId, year);
   const allSect3 = useSect3(studentId, year);
   // ใบร่างต้องไม่ออกกระดาษ — ใบให้คะแนนดูที่ total · ใบ RPD design ดูที่ passed
-  const sect2 = allSect2.filter((r) => (r.formKey === 'rpdDesign' ? r.passed != null : r.total != null));
-  const sect3 = allSect3.filter((r) => r.total != null);
+  const sect2 = allSect2.filter(isSect2Evaluated);
+  const sect3 = allSect3.filter(isSect3Evaluated);
   const count = sect2.length + sect3.length;
-  // ให้ข้อมูลวาดเสร็จก่อนค่อยปล่อยให้กดพิมพ์ — กันพิมพ์ออกมาเป็นหน้าว่าง
-  // คำนวณตรงๆ ได้ ไม่ต้องเป็น state (state จะทำให้ render สองรอบโดยไม่ได้อะไร)
-  const ready = !!student && count > 0;
-
   if (!student || count === 0) {
     return (
       <div style={{ padding: 28, display: 'grid', gap: 12, placeItems: 'center', minHeight: '100vh', alignContent: 'center' }}>
@@ -54,7 +52,7 @@ export default function PortfolioPrint() {
         <button className="btn btn--sec" style={{ height: 40, flex: '0 0 120px' }} onClick={() => navigate(-1)}>
           <ArrowLeft size={15} /> {t('ย้อนกลับ')}
         </button>
-        <button className="btn" style={{ height: 40, flex: 1 }} disabled={!ready} onClick={() => window.print()}>
+        <button className="btn" style={{ height: 40, flex: 1 }} onClick={() => window.print()}>
           <Printer size={16} weight="fill" /> {t('พิมพ์ / บันทึกเป็น PDF')}
         </button>
       </div>

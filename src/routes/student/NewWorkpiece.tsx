@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { createWorkpieces } from '../../data/repo';
-import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, TYPES, orderOf, typeMeta } from '../../domain/catalog';
+import { DENTURE_CLASSES, DENTURE_CLASSES_FOR, TYPES, isArchWork, isRemovableType, isToothWork, orderOf, typeMeta } from '../../domain/catalog';
 import { maxProgression } from '../../domain/rules';
 import type { DentureClass, KennedyClass, Payment, WorkType } from '../../domain/types';
 import { t } from '../../lib/i18n';
@@ -43,12 +43,12 @@ export default function NewWorkpiece() {
   const [designRpd, setDesignRpd] = useState('ยังไม่ออกแบบ');
 
   const meta = typeMeta(type);
-  const removable = type === 'CD' || type === 'RPD' || type === 'APD';
-  const needsTooth = type === 'PC' || type === 'CB' || type === 'RFX';
+  const removable = isArchWork(type);
+  const needsTooth = isToothWork(type);
   /* ซี่ฟันขาดไม่ได้สำหรับงานที่ผูกกับซี่ — ฟอร์มเขียนไว้เองว่า "ต้องระบุให้ชัดเจน"
      แต่เดิมไม่ได้บังคับ ผลคือได้แถวที่ชื่อเคสขึ้นว่า "— Recall Fixed" / "— Crown (PFM)"
      ทั้งในหน้าคนไข้ หน้าตรวจงานของอาจารย์ และใบรายงาน A4 ที่เอาไปลงนาม
-     (เจอ 10 ก.ย. 69) — ไม่มีใครรู้ว่าเคสนั้นคือฟันซี่ไหน */
+ — ไม่มีใครรู้ว่าเคสนั้นคือฟันซี่ไหน */
   const canSave = (!namesOn || name.trim().length > 0) && hn.trim().length > 0 && (!needsTooth || tooth.trim().length > 0);
 
   async function submit() {
@@ -90,7 +90,7 @@ export default function NewWorkpiece() {
       footer={
         <div className="footer">
           {/* ปุ่มเทาโดยไม่บอกเหตุผล = ทางตัน — ช่องชื่อ/HN อยู่ไกลขึ้นไปบนหน้า
-              บนมือถือมองไม่เห็นพร้อมกันกับปุ่ม คนกดแล้วไม่เกิดอะไรจะไม่รู้ว่าต้องทำอะไร (เจอ 10 ก.ย. 69) */}
+              บนมือถือมองไม่เห็นพร้อมกันกับปุ่ม คนกดแล้วไม่เกิดอะไรจะไม่รู้ว่าต้องทำอะไร */}
           {!canSave && !saving && (
             <div style={{
               font: '500 11px/1.5 var(--font-body)', color: 'var(--text-muted)',
@@ -123,7 +123,7 @@ export default function NewWorkpiece() {
         </div>
       </header>
 
-      {/* ฟอร์มเรียบแบ่งกลุ่ม (ผู้ใช้เลือก mock 14 ก.ย. 69) — กล่องสีหลายกล่องในฟอร์มเดียวอ่านว่า "รก"
+      {/* ฟอร์มเรียบแบ่งกลุ่ม — กล่องสีหลายกล่องในฟอร์มเดียวอ่านว่า "รก"
           กลุ่ม: ประเภท → ชนิด (สวิตช์) → ผู้ป่วย · ช่องกรอกอยู่ในการ์ดเดียว แถวคั่นเส้น */}
       <div className="newform">
         <div className="homelabel">{t('ประเภทงาน')}</div>
@@ -138,9 +138,8 @@ export default function NewWorkpiece() {
                 setType(k);
                 const options = DENTURE_CLASSES_FOR[k];
                 if (options?.length) setDentureClass(options[0]);
-                const isRemovable = k === 'CD' || k === 'RPD' || k === 'APD';
-                setSect2Removable(isRemovable);
-                setSect2Fixed(!isRemovable);
+                setSect2Removable(isRemovableType(k));
+                setSect2Fixed(!isRemovableType(k));
               }}
             >
               <i className="dot" style={{ background: typeMeta(k).color }} />
@@ -150,7 +149,7 @@ export default function NewWorkpiece() {
         </div>
         <p className="newform__hint">
           {/* ขั้นสุดท้ายของแต่ละประเภทไม่เท่ากัน — Recall จบที่ 3 ไม่ใช่ 10
-              เดิมตรึง 10 ไว้ตายตัว คนเปิดเคส Recall จึงถูกบอกว่าจะมี 11 ขั้น แล้วเจอ 4 ขั้น (เจอ 10 ก.ย. 69) */}
+              เดิมตรึง 10 ไว้ตายตัว คนเปิดเคส Recall จึงถูกบอกว่าจะมี 11 ขั้น แล้วเจอ 4 ขั้น */}
           {meta.full} · {t('ขั้น 0 ถึง {n}', { n: maxProgression({ type, variant }) })}
         </p>
 

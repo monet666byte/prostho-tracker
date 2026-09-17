@@ -3,7 +3,11 @@
  *
  * ทำไมต้องมี (12 ก.ย. 69): เรามี `npm run backup` มาตั้งแต่ ส.ค. แต่ **ไม่มีอะไรกู้กลับเลย**
  * สำเนาที่ไม่เคยลองกู้ยังไม่นับว่าเป็นสำเนา — วันที่ข้อมูลหายจริงคือวันที่แย่ที่สุด
- * ที่จะมาค้นว่ากู้ยังไง · ตอนนี้ระบบยังไม่มีข้อมูลผู้ป่วยจริง = ซ้อมพังได้ฟรี
+ * ที่จะมาค้นว่ากู้ยังไง
+ *
+ * ⚠️ เซิร์ฟเวอร์นำร่องอาจมีข้อมูลผู้ป่วยจริงอยู่แล้ว — การ "เขียนจริง" (--yes) คือการทับของบนเซิร์ฟเวอร์
+ *    ซ้อมกู้ให้ทำกับปลายทางแยก (RESTORE_URL) หรือ `npm run test:restore-e2e` ซึ่งใช้เซิร์ฟเวอร์จำลองในเครื่อง
+ *    ตรวจสำเนาเฉยๆ (ไม่ใส่ธง) ปลอดภัยเสมอ ไม่ต่อเน็ต
  *
  * ─── วิธีใช้ ────────────────────────────────────────────────────────────────
  *   npm run restore                    ตรวจสำเนาชุดล่าสุดว่ากู้ได้จริงไหม (ไม่แตะเซิร์ฟเวอร์)
@@ -11,6 +15,13 @@
  *   npm run restore -- --yes           เขียนจริง
  *   npm run restore -- 2026-08-29      เลือกชุดสำเนา (ค่าเริ่มต้น = ชุดล่าสุด)
  *   npm run restore -- --tables=patients,workpieces     กู้เฉพาะบางตาราง
+ *   BACKUP_DIR=/path/to/backups        โฟลเดอร์สำเนา (ค่าเริ่มต้น backups/ · ตัวเดียวกับ backup.ts)
+ *
+ * ─── ด่านกันกู้ผิดเซิร์ฟเวอร์ ────────────────────────────────────────────────
+ * สำเนาแต่ละชุดจด url ของเซิร์ฟเวอร์ที่ดึงมาไว้ใน _meta.json · ตอน --yes โดยไม่ตั้ง RESTORE_URL
+ * สคริปต์เทียบ url นั้นกับ VITE_SUPABASE_URL — ไม่ตรง = หยุด ไม่เขียนอะไร
+ * (สำเนาของโปรเจกต์ทดสอบเผลอถูกกู้ทับโปรเจกต์นำร่อง หรือกลับกัน คือความเสียหายที่ย้อนไม่ได้)
+ * ตั้งใจกู้ข้ามโปรเจกต์ (ย้ายเข้าเซิร์ฟเวอร์ภาค) ให้ตั้ง RESTORE_URL ชี้ปลายทางอย่างชัดเจน
  *
  * ─── กู้เข้าเซิร์ฟเวอร์ "คนละตัว" (ซ้อมกู้ / ย้ายเข้าเซิร์ฟเวอร์ภาค) ─────────
  * ใส่ใน .env.local แล้วสคริปต์จะเขียนไปที่ปลายทางใหม่ ไม่แตะตัวจริง:
@@ -79,6 +90,8 @@ export const PLAN: Array<{ table: string; pk: string; mode: 'upsert' | 'insert-m
 
 const PHOTO_BUCKET = 'case-photos';
 const CHUNK = 500;
+/** โฟลเดอร์เก็บสำเนา — ต้องอ่านตัวแปรเดียวกับ backup.ts ไม่งั้นสำรองไว้ที่หนึ่ง แล้วตัวกู้ไปหาอีกที่ */
+const BACKUP_ROOT = process.env.BACKUP_DIR || 'backups';
 
 /** ตารางที่ backup.ts เก็บ — ใช้เตือนว่าสำเนาชุดนี้เก่ากว่ารายการปัจจุบันไหม */
 const EXPECTED_TABLES = PLAN.map((p) => p.table);
@@ -191,8 +204,8 @@ export function checkSet(dir: string): SetCheck {
   return res;
 }
 
-/** ชุดสำเนาล่าสุดในโฟลเดอร์ backups/ */
-export function latestSet(root = 'backups'): string | null {
+/** ชุดสำเนาล่าสุดในโฟลเดอร์สำเนา (BACKUP_DIR หรือ backups/) */
+export function latestSet(root = BACKUP_ROOT): string | null {
   if (!existsSync(root)) return null;
   const dirs = readdirSync(root).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   return dirs.length ? join(root, dirs[dirs.length - 1]) : null;
@@ -439,10 +452,10 @@ async function main() {
   const studentArg = args.find((a) => a.startsWith('--student='))?.slice('--student='.length);
   const overwrite = args.includes('--overwrite');
   const picked = args.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a));
-  const dir = picked ? join('backups', picked) : latestSet();
+  const dir = picked ? join(BACKUP_ROOT, picked) : latestSet();
 
   if (!dir || !existsSync(dir)) {
-    console.error('✗ ไม่เจอสำเนาใน backups/ — รัน npm run backup ก่อน');
+    console.error(`✗ ไม่เจอสำเนาใน ${BACKUP_ROOT}/ — รัน npm run backup ก่อน`);
     process.exit(1);
   }
 
@@ -461,8 +474,31 @@ async function main() {
   }
 
   const env = loadEnv();
-  const t = await signIn(env);
   const targetIsLive = !env.RESTORE_URL;
+
+  /* ด่านกันกู้ผิดเซิร์ฟเวอร์ (เหตุผลหัวไฟล์) — ตรวจก่อนล็อกอิน จะได้ไม่ต้องต่อเน็ตเพื่อรู้ว่าจะถูกปฏิเสธ
+     เทียบแบบตัด / ท้ายและไม่สนตัวพิมพ์ เพราะคนพิมพ์ .env.local เองได้ทั้งสองแบบ */
+  if (targetIsLive) {
+    const norm = (u?: string) => (u ?? '').trim().replace(/\/+$/, '').toLowerCase();
+    const target = norm(env.VITE_SUPABASE_URL);
+    const source = norm(check.sourceUrl);
+    if (!source || source !== target) {
+      const msg = !source
+        ? '_meta.json ของสำเนาชุดนี้ไม่ได้บอกว่าดึงมาจากเซิร์ฟเวอร์ไหน'
+        : `สำเนาชุดนี้ดึงมาจาก ${check.sourceUrl} แต่ปลายทางคือ ${env.VITE_SUPABASE_URL}`;
+      if (confirmed) {
+        console.error(`\n✗ หยุด — ${msg}`);
+        console.error('  สำเนา     ' + (check.sourceUrl ?? '(ไม่มีใน _meta.json)'));
+        console.error('  ปลายทาง   ' + (env.VITE_SUPABASE_URL ?? '(ไม่มี VITE_SUPABASE_URL)'));
+        console.error('  ถ้าตั้งใจกู้ข้ามโปรเจกต์จริงๆ ให้ตั้ง RESTORE_URL (+ RESTORE_ANON_KEY / RESTORE_EMAIL / RESTORE_PASSWORD)');
+        console.error('  ชี้ปลายทางนั้นตรงๆ ใน .env.local แล้วรันใหม่ — ไม่มีธงข้ามด่านนี้');
+        process.exit(1);
+      }
+      console.warn(`\n⚠ ${msg} — --yes จะถูกปฏิเสธ จนกว่าจะตั้ง RESTORE_URL`);
+    }
+  }
+
+  const t = await signIn(env);
   console.log(`\nปลายทาง: ${t.url}${targetIsLive ? '  ← เซิร์ฟเวอร์ตัวจริง' : '  (ปลายทางซ้อม/ย้าย)'}`);
   console.log(`ล็อกอินเป็น: ${t.as}  ${t.isTeacher ? '· เป็นอาจารย์ ✓' : '· ไม่ใช่อาจารย์ ✗'}`);
 

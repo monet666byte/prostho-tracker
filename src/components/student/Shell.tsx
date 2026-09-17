@@ -70,10 +70,10 @@ function StatusBar() {
   );
 }
 
-/* แถบล่างแบบกระจกไอคอนล้วน (ผู้ใช้ส่งคลิป Instagram มาเป็นตัวอย่าง 14 ก.ย.)
+/* แถบล่างแบบกระจก ไอคอนล้วน · ป้ายชื่ออยู่ใน aria-label
    · ป้ายชื่อแท็บซ่อนจากตา แต่ยังอยู่ใน aria-label ให้ VoiceOver อ่าน
    · พื้นรองแท็บที่เลือกเป็นชิ้นเดียว เลื่อนไปหาแท็บใหม่ (ไม่กระพริบย้ายที่)
-   · เคยหดตอนเลื่อนลง — ผู้ใช้ลองบนมือถือแล้วขอเอาออก (14 ก.ย. 69) แถบคงขนาดเดียว */
+   · เคยหดตอนเลื่อนลง — ผู้ใช้ลองบนมือถือแล้วขอเอาออก แถบคงขนาดเดียว */
 // แต่ละหน้าสร้าง Shell ของตัวเอง แถบจึงถูกสร้างใหม่ทุกครั้งที่เปลี่ยนแท็บ
 // จำตำแหน่งเดิมไว้นอกคอมโพเนนต์ แล้วค่อยเลื่อนพื้นรองจากที่เดิมไปที่ใหม่หลังวาดเฟรมแรก
 let lastTabIndex = 0;
@@ -104,7 +104,7 @@ function TabBar() {
   );
 }
 
-/* แถบเมนูด้านซ้ายสำหรับ iPad (ผู้ใช้เลือก mock B 15 ก.ย. 69)
+/* แถบเมนูด้านซ้ายสำหรับ iPad
    จอกว้างแถบล่างยืดเต็มจอ ไอคอนห่างกันมาก ขอบไม่ตรงกับเนื้อหาที่อยู่กลางจอ
    แท็บเดียวกับแถบล่าง แต่มีป้ายชื่อใต้ไอคอนเพราะที่เหลือ · แสดง/ซ่อนด้วย CSS ใน student-tablet.css
    (มือถือและกรอบเดโมบนคอมยังใช้แถบล่างเหมือนเดิม) */
@@ -142,7 +142,7 @@ export function Shell({ children, footer, overlay }: { children: ReactNode; foot
       <PhoneFrame rail>
         <StatusBar />
         <SideRail />
-        <div className="screen screen--pad" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
+        <div className="screen" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
         <TabBar />
         <RoleFab />

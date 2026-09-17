@@ -53,7 +53,7 @@ export function takeOAuthReturnError(): string | null {
 export const supabase: SupabaseClient | null = cloudEnabled
   // persistSession: จำการล็อกอินไว้ในเครื่อง — เปิดแอปวันรุ่งขึ้นไม่ต้องล็อกอินใหม่
   /* flowType 'pkce': กลับจาก Google มาเป็น `?code=` ไม่ใช่ `#access_token=`
-     แอปใช้ HashRouter — แบบเดิม (implicit) token ใน # จะชนกับเส้นทางของแอป (14 ก.ย. 69)
+     แอปใช้ HashRouter — แบบเดิม (implicit) token ใน # จะชนกับเส้นทางของแอป
      ไม่กระทบการล็อกอินด้วยรหัสผ่าน */
   ? createClient(url!, anonKey!, { auth: { persistSession: true, autoRefreshToken: true, flowType: 'pkce' } })
   : null;

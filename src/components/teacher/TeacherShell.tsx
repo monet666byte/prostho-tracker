@@ -16,13 +16,13 @@ import { groupShort, sortGroupCodes } from '../../domain/group';
 /* โลโก้ต้อง import ผ่าน bundler ไม่ใช่อ่านจาก public/ ตอนรัน
    เดิมเป็น `${BASE_URL}logo-mark.svg` = ไฟล์แยกที่ต้องวางข้าง index.html
    แต่ build:share ส่งออกไฟล์เดียว และ artifact host รับแค่ index.html
-   รูปเลยขึ้นเป็น "?" ในลิงก์เดโมทุกครั้ง (ผู้ใช้ทัก 8 ก.ย. 69) — ในเครื่อง dev ไม่เจอเพราะ public/ ถูกเสิร์ฟอยู่
+   รูปเลยขึ้นเป็น "?" ในลิงก์เดโมทุกครั้ง — ในเครื่อง dev ไม่เจอเพราะ public/ ถูกเสิร์ฟอยู่
    พอ import แบบนี้ assetsInlineLimit ของโหมด share จะฝังเป็น data URI ให้เอง ไม่ว่าไฟล์จะใหญ่แค่ไหน */
 import logoMark from '../../assets/logo-mark.svg';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
-export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'exams' | 'settings' | 'roster' | 'import' | 'alumni';
+export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'exams' | 'settings' | 'roster' | 'alumni';
 
 type NavItem = {
   key: TeacherNav; label: string; short?: string; to: string; Icon: typeof SquaresFour;
@@ -35,18 +35,18 @@ const GROUP_NAV: NavItem[] = [
   // ตรวจงานรายคนยุบเป็นหน้าลูกของสรุปกลุ่ม (กดชื่อนักศึกษาในตาราง) — ไม่มีเมนูของตัวเอง
   { key: 'mygroup', label: t('สรุปกลุ่ม'), to: '/teacher/group', Icon: Users },
   { key: 'evaluate', label: t('ประเมินรายคาบ'), short: t('ประเมิน'), to: '/teacher/evaluate', Icon: Table, sect: 'I' },
-  /* Section II กับ III แยกเป็นคนละเมนู (ผู้ใช้เสนอ 7 ก.ย. 69)
+  /* Section II กับ III แยกเป็นคนละเมนู
      เดิมรวมหน้าเดียวใช้แท็บ เพราะกลัวว่าเห็น "Section III" ลอยมาแล้วงงว่าเลขอื่นหายไปไหน
      พอติดเลขครบทั้งสามหัวข้อ เมนูก็เล่าตัวเองได้ว่าไม่มีเลขไหนหาย และไม่ต้องมีแท็บซ้อนข้างใน
      ชื่อย่อภาษาไทยตามหัวข้อจริงในสมุด (Patient examination and treatment planning /
      Knowledge and skill assessments) ซึ่งยาวเกินกว่าจะใส่เต็มในแถบ 214px */
   { key: 'sect2', label: t('แผนการรักษา'), short: t('แผนรักษา'), to: '/teacher/sect2', Icon: ClipboardText, sect: 'II' },
   { key: 'sect3', label: t('ความรู้และทักษะ'), short: t('ความรู้'), to: '/teacher/sect3', Icon: ListChecks, sect: 'III' },
-  /* OSCE + สอบ RPD design — ผู้ใช้เคาะ 8 ก.ย. 69 ว่าทำเป็นแค่ช่องติ๊กพอ ไม่ต้องมีฟอร์ม
+  /* OSCE + สอบ RPD design ว่าทำเป็นแค่ช่องติ๊กพอ ไม่ต้องมีฟอร์ม
      ไม่ติดเลข section เพราะ OSCE อยู่หน้าแรกสุดของเล่ม ส่วนใบสอบ design อยู่ใน Section II
      ติดเลขจะยิ่งงงกว่าเดิม — ตรงนี้จึงเป็นหมวดของตัวเองว่า "การสอบ" */
   { key: 'exams', label: t('การสอบ'), short: t('สอบ'), to: '/teacher/exams', Icon: SealCheck },
-  /* แบบประเมินตนเอง — อยู่ล่างสุดเพราะทำปีละครั้งตอนจบเทอม 1 (ผู้ใช้ขอ 7 ก.ย. 69)
+  /* แบบประเมินตนเอง — อยู่ล่างสุดเพราะทำปีละครั้งตอนจบเทอม 1
      ไม่ใช่งานประจำเหมือนสามอันบน · ผลพลอยได้คือ Section I กับ II–III ได้อยู่ติดกันตามลำดับเล่ม */
   { key: 'sa', label: t('ประเมินตนเอง'), short: t('SA'), to: '/teacher/sa', Icon: ClipboardText },
 ];
@@ -56,22 +56,19 @@ const SETUP_KEYS: TeacherNav[] = ['settings', 'roster'];
 
 /** ระดับชั้นปี */
 const COHORT_NAV: NavItem[] = [
-  { key: 'overview', label: t('ภาพรวม'), to: '/teacher?tab=overview', Icon: SquaresFour },
+  { key: 'overview', label: t('ภาพรวม'), to: '/teacher', Icon: SquaresFour },
   { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
   { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
-  /* ชื่อเมนู/หัวหน้าเป็น "ตั้งค่า" — หน้านี้มีทั้งเกณฑ์ · ระบบ · สำรองข้อมูล · PDPA แล้ว (ผู้ใช้ขอ 16 ก.ย. 69) */
+  /* ชื่อเมนู/หัวหน้าเป็น "ตั้งค่า" — หน้านี้มีทั้งเกณฑ์ · ระบบ · สำรองข้อมูล · PDPA แล้ว */
   { key: 'settings', label: t('ตั้งค่า'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
-  /* รายชื่อ+นำเข้า: อาจารย์ทุกคนใช้ได้ (ทุกการกระทำมี audit log) — การให้สิทธิ์เข้าระบบข้างในยังเป็นของหัวหน้าภาค */
+  /* รายชื่อ+นำเข้า: หน้าเปิดให้เฉพาะหัวหน้ารายวิชา (Roster.tsx ตรวจเอง) — เมนูโชว์ทุกคนเพื่อให้รู้ว่ามีหน้านี้ */
   { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];
-
-/** เมนูเฉพาะหัวหน้าภาค */
-
 
 /** ถามเรื่องกลุ่มที่ปรึกษาไปแล้วในการเปิดแอปครั้งนี้ — อยู่นอกคอมโพเนนต์เพราะเชลล์ถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า */
 let advisorPromptShown = false;
 
-/* แถบซ้ายพับเหลือไอคอน (ผู้ใช้ขอ 15 ก.ย. 69) — จำไว้ในเครื่อง · ค่าเริ่มต้นกางไว้ (อ่านชื่อเมนูได้ทันที) */
+/* แถบซ้ายพับเหลือไอคอน — จำไว้ในเครื่อง · ค่าเริ่มต้นกางไว้ (อ่านชื่อเมนูได้ทันที) */
 const RAIL_KEY = 'pt-side-rail';
 function readRail(): boolean {
   try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; }
@@ -82,7 +79,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
   const navigate = useNavigate();
   const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
-  /* อาจารย์ดูแลได้หลายกลุ่ม (ผู้ใช้ยืนยัน 14 ก.ย. 69) — "กำลังดูกลุ่มอื่น" = ไม่อยู่ในกลุ่มไหนเลยที่ดูแล
+  /* อาจารย์ดูแลได้หลายกลุ่ม — "กำลังดูกลุ่มอื่น" = ไม่อยู่ในกลุ่มไหนเลยที่ดูแล
      อ่านสดจากตาราง groups (ตัวที่กฎบนเซิร์ฟเวอร์ใช้) จึงอัปเดตทันทีหลังเลือก/ถอนตัว */
   const groupsAll = useGroups();
   const myGroups = session?.teacherId
@@ -124,12 +121,12 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
   ).size;
   /* ปีของกลุ่ม = ชั้นปีของนักศึกษาในกลุ่มนั้น (คำนวณจากรุ่น) — ห้ามอ่านจากเลขในรหัสกลุ่ม
      เพราะรหัสใหม่คือ TH54-PT1 ที่ 54 = เลขรุ่น เดิมแปลเป็น "ปี 54" แล้วโชว์ "จบแล้ว" ทุกกลุ่ม
-     (ผู้ใช้เจอ 2 ก.ย. หลังนำเข้าชีตรุ่น 54) */
+ */
   /**
    * ป้ายกลุ่มในตัวเลือก — ต้องแยกออกจากกันได้ทุกบรรทัด
    *
    * เดิมเขียนแค่ "PT1 · จบแล้ว" ทุกรุ่นที่จบ ผลคือในเดโมมี 27 บรรทัดที่ข้อความเหมือนกันเป๊ะ
-   * (TH7-PT1 / TH8-PT1 / TH9-PT1 …) อาจารย์เลือกไม่ได้ว่าอันไหนรุ่นไหน (เจอ 10 ก.ย. 69)
+   * (TH7-PT1 / TH8-PT1 / TH9-PT1 …) อาจารย์เลือกไม่ได้ว่าอันไหนรุ่นไหน
    * → รุ่นที่จบแล้วและรุ่นที่ยังไม่เริ่มต้องมีเลขรุ่นกำกับ
    *
    * และรุ่นที่รับรายชื่อไว้ล่วงหน้า (ยังไม่ถึง 1 มิ.ย.) ห้ามเขียน "ปี 4"
@@ -155,7 +152,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
         <aside className={`side${rail ? ' side--rail' : ''}`}>
           <div className="side__logo">
             {/* logo-mark = ไอคอนแอปเวอร์ชันสำหรับขนาดเล็ก (พื้นน้ำเงิน เส้นขาวหนา)
-                ตัวเต็ม icon.svg เส้นบางบนพื้นขาว พอย่อเหลือ 30px แทบมองไม่เห็น (ผู้ใช้แจ้ง 2 ก.ย.) */}
+                ตัวเต็ม icon.svg เส้นบางบนพื้นขาว พอย่อเหลือ 30px แทบมองไม่เห็น */}
             <img
               src={logoMark}
               alt=""
@@ -163,7 +160,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               height={30}
               style={{ borderRadius: 9, flex: 'none' }}
             />
-            {/* ชื่อฝั่งอาจารย์ตามที่ผู้ใช้เคาะ 2 ก.ย. (แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยนภายหลัง) */}
+            {/* ชื่อแอปฝั่งอาจารย์ — แก้ได้ทีเดียวที่นี่ถ้าภาคขอเปลี่ยน */}
             <b>Prosth Mahidol</b>
             <button
               className="side__railbtn"
@@ -176,12 +173,12 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             </button>
           </div>
 
-          {/* แถบซ้ายแบบ B (ผู้ใช้เลือก 14 ก.ย. 69 — เดิม "ดูกลืนไปหมด แบ่งไม่ชัด")
+          {/* แถบซ้ายแบบ B
               กล่องขาวสองใบบนพื้นเทา: งานของกลุ่ม (หัวกล่องคือตัวเลือกกลุ่ม) · ดูทั้งชั้นปี
               ตั้งค่า & ข้อมูล แยกออกมาเป็นหมวดของตัวเอง ไม่ปนกับงานดูข้อมูล */}
           <div className="sidebox sidebox--group">
           <label className="mygroup">
-            {/* ป้าย "กลุ่มที่ดูแล" ซ่อนจากจอ (ตัดตัวเทา 15 ก.ย. 69) แต่โปรแกรมอ่านหน้าจอยังอ่านเป็นชื่อช่องเลือก */}
+            {/* ป้าย "กลุ่มที่ดูแล" ซ่อนจากจอ แต่โปรแกรมอ่านหน้าจอยังอ่านเป็นชื่อช่องเลือก */}
             <span className="mygroup__label sronly">{t('กลุ่มที่ดูแล')}</span>
             <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
               {groupCodes.map((code) => (
@@ -207,7 +204,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                 <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
                 <span className="navlabel">{label}</span>
                 <span className="navlabel--short">{short ?? label}</span>
-                {/* เลข I / II / III ข้างเมนูตัดออก — ชื่อเมนูบอกอยู่แล้ว (ผู้ใช้เลือกข้อ 9 · 15 ก.ย. 69) */}
+                {/* เลข I / II / III ข้างเมนูตัดออก — ชื่อเมนูบอกอยู่แล้ว */}
                 {key === 'evaluate' && pendingEval > 0 && (
                   <span className="count" title={t('นักศึกษา {n} คนรอประเมิน', { n: pendingEval })}>{pendingEval}</span>
                 )}
@@ -236,13 +233,13 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             </NavLink>
           ))}
 
-          {/* กล่อง "ขนาดตัวหนังสือ" กับป้าย BETA ย้ายไปหน้าตั้งค่าแล้ว (ผู้ใช้เลือกข้อ 10 · 16 ก.ย. 69) — แถบซ้ายเหลือชื่อ + ออกจากระบบ */}
+          {/* กล่อง "ขนาดตัวหนังสือ" กับป้าย BETA ย้ายไปหน้าตั้งค่าแล้ว — แถบซ้ายเหลือชื่อ + ออกจากระบบ */}
           <div className="side__foot" style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
             <div className="card" style={{ padding: 12, boxShadow: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ font: '600 12.5px var(--font-head)' }}>{personName(teacher, 'อ. Liv')}</span>
+                <span style={{ font: '600 12.5px var(--font-head)' }}>{personName(teacher, 'อาจารย์')}</span>
               </div>
-              {/* บรรทัด "อาจารย์ที่ปรึกษากลุ่ม · PT7" ตัดออก — ซ้ำกับกล่องกลุ่มด้านบน (ตัดตัวเทา 15 ก.ย. 69) */}
+              {/* บรรทัด "อาจารย์ที่ปรึกษากลุ่ม · PT7" ตัดออก — ซ้ำกับกล่องกลุ่มด้านบน */}
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
                   ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
               <button
@@ -251,7 +248,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
                   await signOut();
                   /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน TeacherShell ตัวนี้เอง
                      พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
-                     ข้อความจึงไม่มีทางถึงตาผู้ใช้ (พิสูจน์ 13 ก.ย. 69 · ดู data/localWipe.ts) */
+                     ข้อความจึงไม่มีทางถึงตาผู้ใช้ */
                   noteSignOutOutcome(res);
                   navigate('/login');
                 }}

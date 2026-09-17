@@ -7,7 +7,7 @@ import { usePatientNamesOn, usePending, useWorkpieces } from '../../hooks/data';
 import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned, isActiveWork } from '../../domain/rules';
+import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned, isActiveWork, stepFraction } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -34,7 +34,7 @@ function MiniRow({
           {cur ? cur.name : t('ยังไม่เริ่ม')}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-          <Bar value={(Math.max(prog, 0) / max) * 100} color={meta.color} height={5} />
+          <Bar value={stepFraction(w) * 100} color={meta.color} height={5} />
           <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)', flex: 'none' }}>
             {Math.max(prog, 0)}/{max}
           </span>
@@ -152,7 +152,7 @@ export default function Patients() {
         </div>
       </header>
 
-      {/* หน้าคนไข้แบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย.): แบ่งกำลังทำ / จบแล้ว ·
+      {/* หน้าคนไข้แบบ "ตัดของซ้ำ": แบ่งกำลังทำ / จบแล้ว ·
           ไม่มีกล่องชิ้นงานซ้อนในการ์ด · ตัดตัวอักษรย่อ · "+ เพิ่มสถานะ" โผล่เฉพาะโหมดแก้ไข */}
       <div style={{ paddingTop: 6 }}>
         {(['active', 'done'] as const).map((section) => {
@@ -185,7 +185,7 @@ export default function Patients() {
                     {namesOn && <><b className="herocase__hn">HN {patient.hn}</b> · </>}{tSexAge(patient.sexAge)}
                   </span>
                   <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{patientTitle(patient, namesOn, t)}</span>
-                  {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย (ผู้ใช้ขอ 2 ก.ย.) */}
+                  {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย */}
                   {noteEdit?.id !== patient.id && (patient.note || editing) && (
                     <button
                       onClick={() => setNoteEdit({ id: patient.id, text: patient.note ?? '' })}
@@ -269,7 +269,7 @@ export default function Patients() {
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
                       <Bar
-                        value={(Math.max(progression(w), 0) / maxProgression(w)) * 100}
+                        value={stepFraction(w) * 100}
                         color={progression(w) >= maxProgression(w) ? 'var(--success)' : typeMeta(w.type).color}
                         height={5}
                       />

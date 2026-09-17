@@ -15,21 +15,32 @@ import type { Plugin } from 'vite';
  *    ถ้าจะให้ผ่าน CSP ต้องเปิด `script-src 'unsafe-inline'` ซึ่งทำให้ CSP เกือบไร้ความหมาย
  *    — ยอมไม่ใส่ในเดโมดีกว่าใส่แบบหลอกตัวเอง (และตัวเดโมถูก sandbox ของ artifact ครอบอยู่แล้ว)
  */
-export function cspMeta({ skip = false }: { skip?: boolean } = {}): Plugin {
+/**
+ * @param supabaseUrl ที่อยู่ Supabase ของ build นี้ (VITE_SUPABASE_URL) — ถ้ามี CSP จะยอมเฉพาะโฮสต์นั้น
+ *   ไม่ใช่ `*.supabase.co` ทั้งหมด: โค้ดที่หลุดเข้ามาได้ (XSS จากไลบรารีวันหน้า) จะส่งข้อมูลผู้ป่วยไปโปรเจกต์
+ *   Supabase ของคนอื่นไม่ได้ · ไม่มีค่า (build เดโม/แชร์) → ใช้ wildcard เหมือนเดิม
+ */
+export function cspMeta({ skip = false, supabaseUrl }: { skip?: boolean; supabaseUrl?: string } = {}): Plugin {
+  let sbHost = '*.supabase.co';
+  try {
+    if (supabaseUrl) sbHost = new URL(supabaseUrl).host;
+  } catch {
+    /* ค่าไม่ใช่ URL — ใช้ wildcard */
+  }
   /* style-src ต้องมี 'unsafe-inline' เพราะทั้งแอปใช้ style={{…}} ของ React
      ซึ่งเป็น inline style attribute · ความเสี่ยงต่ำกว่า inline script มาก
      img-src ต้องมี blob: (รูปงานที่ถ่ายมาแสดงผ่าน object URL) และ data: (ไอคอนที่ฝังมา)
      และ https://*.supabase.co — เครื่องที่ไม่มีสำเนารูปในเครื่อง (อาจารย์ · นศ. เครื่องที่สอง) แสดงรูปจากลิงก์ที่เซ็นแล้ว
      ของบักเก็ต case-photos (photoStore.resolvePhotoSrc) · เดิมไม่มี = รูปงานไม่ขึ้นเลยบนเว็บจริง
-     ทุกเทสต์ในเบราว์เซอร์ใช้ bypassCSP จึงไม่มีใครเห็น (เจอ 14 ก.ย. 69 · test:photos ตรวจแล้ว)
+     ทุกเทสต์ในเบราว์เซอร์ใช้ bypassCSP จึงไม่มีใครเห็น (photos ตรวจแล้ว)
      connect-src เปิดให้ *.supabase.co ทั้ง https และ wss (realtime ใช้ websocket) */
   const policy = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    `img-src 'self' data: blob: https://${sbHost}`,
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    `connect-src 'self' https://${sbHost} wss://${sbHost}`,
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",

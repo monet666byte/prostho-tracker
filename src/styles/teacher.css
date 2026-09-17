@@ -32,27 +32,16 @@
   width: 214px; flex: none; background: var(--bg-subtle); border-right: 1px solid var(--border);
   padding: 18px 14px; display: flex; flex-direction: column; gap: 4px;
 }
-.side--narrow { width: 186px; }
 .side { overflow-y: auto; }
 .side__logo { display: flex; align-items: center; gap: 9px; padding: 0 6px 16px; }
 .side__logo b { font: 700 14.5px var(--font-head); }
-.side a, .side button.navitem {
+.side a {
   display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
   font: 500 12.5px var(--font-body); color: var(--text-body); width: 100%; text-align: left;
   transition: background .15s, color .15s;
 }
-@media (hover: hover) { .side a:hover, .side button.navitem:hover { background: var(--fill); } }
-.side a.on, .side button.navitem.on { background: var(--accent-tint); color: var(--accent-hover); font-weight: 600; }
-/* เลขหัวข้อในสมุด portfolio ต่อท้ายชื่อเมนู (ผู้ใช้เสนอ 7 ก.ย. 69)
-   เป็นตัวอ้างอิงกลับไปที่เล่มกระดาษ ไม่ใช่ชื่อเมนู — จึงต้องเบากว่าชื่อชัดเจน
-   ตัวเลขโรมันสั้นๆ พอ ("Sect II–III" เต็มๆ ยาวเกินแถบ 214px จนตกบรรทัด) */
-.side .navsect {
-  margin-left: -3px; flex: none;
-  font: 600 9.5px var(--font-mono); letter-spacing: .02em;
-  color: var(--text-faint); background: var(--fill);
-  border-radius: 5px; padding: 1px 4px;
-}
-.side a.on .navsect { color: var(--accent-hover); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+@media (hover: hover) { .side a:hover { background: var(--fill); } }
+.side a.on { background: var(--accent-tint); color: var(--accent-hover); font-weight: 600; }
 
 .side .count {
   margin-left: auto; background: var(--danger); color: #fff; border-radius: 99px;
@@ -63,7 +52,7 @@
 .main__head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
 /* หัวหน้า: ชื่อหน้า + ตัวเลือกปี อยู่แถวเดียวกัน พอที่ว่างไม่พอต้องตกบรรทัด
    ไม่ใช่ดันทะลุจอ · โหมดตัวใหญ่บน iPad แนวตั้งเหลือที่ 390px แต่ต้องการ 442px
-   (วัดเจอ 7 ก.ย. 69 — @media ไม่ช่วยเพราะจอกว้าง 820 จริงๆ แค่ zoom ทำให้แคบ) */
+ */
 :root[data-zoom='lg'] .main__head > :first-child,
 :root[data-zoom='xl'] .main__head > :first-child { min-width: 100%; }
 .main__head h1 { margin: 0; font: 700 22px var(--font-head); }
@@ -82,22 +71,6 @@
 .kpi__value { font: 700 27px var(--font-head); margin-top: 7px; }
 .kpi__hint { font: 400 10.5px var(--font-body); color: var(--text-faint); margin-top: 3px; }
 
-.groupgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 11px; }
-.groupcard {
-  background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px;
-  text-align: left; transition: all .15s; position: relative;
-}
-@media (hover: hover) { .groupcard:hover { border-color: var(--border-2); } }
-.groupcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
-.groupcard__code { font: 600 12.5px var(--font-mono); }
-.groupcard__pct { font: 700 17px var(--font-head); margin-top: 6px; }
-.groupcard__badge {
-  position: absolute; top: 9px; right: 9px;
-  display: inline-flex; align-items: center; gap: 3px;
-  background: var(--danger-tint); color: var(--danger-dark); border: 1px solid var(--danger-border);
-  border-radius: 99px; padding: 2px 7px; font: 600 9.5px var(--font-mono);
-}
-
 .panel { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
 .panel h3 { margin: 0; font: 600 14px var(--font-head); }
 .panel .sub { margin: 3px 0 0; font: 400 10.5px var(--font-body); color: var(--text-faint); }
@@ -111,10 +84,6 @@
 .tbl tr:last-child td { border-bottom: 0; }
 .tbl tr.on td { background: var(--accent-tint); }
 
-.matrix { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
-.matrix th { font: 600 10px var(--font-body); color: var(--text-faint); padding: 0 6px 4px; text-align: center; }
-.matrix th:first-child { text-align: left; }
-.matrix td { padding: 0 3px; }
 .cell {
   width: 100%; height: 34px; border-radius: 8px; font: 600 10px var(--font-body);
   display: grid; place-items: center; transition: all .15s;
@@ -138,8 +107,6 @@
 .rail .sub { margin: 0 0 11px; font: 400 10.5px/1.5 var(--font-body); color: var(--text-faint); }
 
 .reviewcard { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 15px; display: flex; gap: 16px; }
-.reviewcard__main { flex: 1; min-width: 0; }
-.reviewcard__side { width: 246px; flex: none; border-left: 1px solid var(--divider); padding-left: 15px; }
 
 .hbar { display: flex; align-items: center; gap: 9px; padding: 5px 0; }
 .hbar__label { width: 118px; flex: none; font: 500 11px var(--font-body); color: var(--text-secondary); }
@@ -154,48 +121,6 @@
 
 .stacked { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--track); }
 .stacked i { display: block; height: 100%; transition: width .5s ease; }
-
-/* แถวเลือกนักศึกษาในหน้าตรวจงาน — อยู่ในเนื้อหา ไม่ไปแทนที่เมนูซ้าย */
-.pickrow {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.pickrow button {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 8px 13px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid var(--border);
-  font: 600 12px var(--font-body);
-  color: var(--text-secondary);
-  transition: all 0.15s;
-}
-@media (hover: hover) { .pickrow button:hover { border-color: var(--border-2); background: var(--bg-subtle); } }
-.pickrow button span { font: 400 9.5px var(--font-mono); color: var(--text-faint); }
-.pickrow button[data-on='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.pickrow button[data-on='true'] span { color: rgba(255, 255, 255, 0.72); }
-
-/* ตัวกรองกลุ่ม PT1–PT12 ในหน้าที่ต้องเลือกกลุ่ม */
-.grouppick { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.grouppick__label { font: 600 11px var(--font-body); color: var(--text-faint); margin-right: 4px; }
-.grouppick button {
-  padding: 6px 11px;
-  border-radius: 8px;
-  background: var(--fill);
-  font: 600 11.5px var(--font-mono);
-  color: var(--text-muted);
-  transition: all 0.15s;
-}
-@media (hover: hover) { .grouppick button:hover { background: var(--fill-2); color: var(--text-secondary); } }
-.grouppick button[data-on='true'] { background: var(--accent); color: #fff; }
 
 /* ── ตัวเลือกชั้นปี — segmented แบบ iOS: รางเทา เม็ดขาวเลื่อนนุ่มๆ ตามตัวที่เลือก ── */
 .yearseg {
@@ -265,33 +190,6 @@
   color: var(--text-faint);
 }
 .heat td { padding: 0; min-width: 58px; }
-.heat__cell {
-  position: relative;
-  display: block;
-  height: 14px;
-  border-radius: 99px;
-  background: var(--fill-2);
-  overflow: hidden;
-  transition: background 0.15s;
-}
-.heat__cell > i {
-  display: block;
-  height: 100%;
-  border-radius: 99px;
-  background: #6e93f2;
-  transition: width 0.4s ease, background 0.15s;
-}
-.heat__cell[data-full='true'] > i { background: var(--accent); }
-.heat__cell[data-on='true'] { box-shadow: 0 0 0 2px var(--accent-ring); }
-.heat__cell > b {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font: 700 9px var(--font-mono);
-}
-@media (hover: hover) { .heat tbody tr:hover .heat__cell { background: var(--fill); } }
 
 /* ── legend ใต้กราฟ ── */
 .chartlegend {
@@ -326,20 +224,6 @@
 }
 .dvg__bar { position: absolute; top: 3px; height: 10px; transition: width 0.4s ease, left 0.4s ease; }
 .dvg__value { width: 34px; flex: none; text-align: right; font: 600 11px var(--font-mono); }
-
-/* ── แถบสรุปเคสในมือ (ใกล้ปิด / ครึ่งทาง / เพิ่งเริ่ม) ── */
-.pipe { display: flex; gap: 3px; }
-.pipe__seg {
-  flex: 1;
-  height: 24px;
-  border-radius: 5px;
-  display: grid;
-  place-items: center;
-  font: 600 10.5px var(--font-mono);
-}
-.pipe__seg[data-tone='near'] { background: var(--success-tint); color: var(--success-dark); }
-.pipe__seg[data-tone='mid'] { background: var(--accent-tint); color: var(--accent-hover); }
-.pipe__seg[data-tone='early'] { background: var(--fill); color: var(--text-faint); }
 
 /* ── ช่องเกณฑ์ทีละเคส ── */
 .slots { display: flex; gap: 5px; margin-top: 8px; }
@@ -408,19 +292,6 @@
 }
 @media (hover: hover) { button.casemap__step:hover { color: var(--accent); } }
 button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; border-top: 2px solid var(--accent); }
-
-/* ปุ่มเลข step ใต้แผนที่เคส */
-.stepbar { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; margin-top: 8px; }
-.stepbar button {
-  height: 24px;
-  border-radius: 7px;
-  background: var(--fill);
-  font: 600 10.5px var(--font-mono);
-  color: var(--text-muted);
-  transition: all 0.15s;
-}
-@media (hover: hover) { .stepbar button:hover { background: var(--accent-tint); color: var(--accent); } }
-.stepbar button[data-on='true'] { background: var(--accent); color: #fff; }
 
 /* ── การ์ดประเมินรายคาบ ── */
 .evalcard {
@@ -497,7 +368,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
    เดิมใส่แต่ .phone ปุ่มขยายตัวอักษรจึงไม่ทำงานเลยบน iPad
    ซึ่งเป็นเครื่องที่อาจารย์อาวุโสใช้จริงและเป็นเหตุผลที่ทำปุ่มนี้ขึ้นมาตั้งแต่แรก */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
-  /* ⚠️ iPad: หน้าอาจารย์ขอบบน-ล่างโดนตัด (ผู้ใช้เจอ 2 ก.ย.)
+  /* ⚠️ iPad: หน้าอาจารย์ขอบบน-ล่างโดนตัด
      เหตุ 2 ชั้นซ้อนกัน — (1) .window สูง 100vh ซึ่งบน iOS คือความสูงตอนไม่มีแถบเบราว์เซอร์
      (2) สถาปัตยกรรมมือถือล็อก body ไม่ให้เลื่อน (html,body{overflow:hidden} ใน student.css)
      ส่วนที่ล้นจึงไม่มีทางเลื่อนไปดู · แก้: ใช้ dvh + ไม่ต้องเผื่อแถบเดโมที่ซ่อนอยู่แล้ว */
@@ -509,7 +380,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   :root[data-zoom='xl'] .window { height: calc(100dvh / 1.38); }
   /* ⚠️ .phone ต้องชดเชยความสูงแบบเดียวกับ .window — เดิมใส่ zoom แต่ไม่ได้หารความสูง
      กรอบเลยสูง 1206px บนจอ 874 (xl) · body เลื่อนไม่ได้ → ปุ่ม "ถัดไป/ส่ง" ของฟอร์ม
-     ที่วางท้ายกรอบหลุดใต้จอ กดไม่ได้เลย (เจอตอนวัดจริง 6 ก.ย. 69 — แถบเมนูรอดเพราะเป็น fixed) */
+     ที่วางท้ายกรอบหลุดใต้จอ กดไม่ได้เลย */
   :root[data-zoom='lg'] .phone { height: calc(100dvh / 1.18); }
   :root[data-zoom='xl'] .phone { height: calc(100dvh / 1.38); }
   :root[data-zoom='lg'] .phone, :root[data-zoom='lg'] .window { zoom: 1.18; }
@@ -519,7 +390,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* iPad แนวตั้ง (~768px): ฝั่งอาจารย์บีบ sidebar และระยะขอบลง ให้เนื้อหามีที่หายใจ */
 @media (max-width: 900px) {
   .side { width: 176px; padding: 14px 10px; }
-  .side--narrow { width: 168px; }
   .main { padding: 16px 14px; }
   .evalcard { flex-direction: column; gap: 12px; }
   .kpis { grid-template-columns: 1fr 1fr !important; }
@@ -551,15 +421,13 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .side .side__cluster { display: flex; gap: 6px; margin: 0; padding: 0; border: 0; background: none; flex: none; }
   .side .mygroup { border-radius: 11px; }
   .side__section { display: none; }
-  .side a, .side button.navitem { width: auto; white-space: nowrap; padding: 8px 11px; font-size: 12px; flex: none; }
-  .side .navsect { display: none; } /* เมนูเรียงแถวเดียวบนจอเล็ก ที่ไม่พอให้ป้ายเลขอยู่แล้ว */
+  .side a { width: auto; white-space: nowrap; padding: 8px 11px; font-size: 12px; flex: none; }
   .side__foot { display: none !important; } /* ขนาดตัวหนังสือ + การ์ดชื่ออาจารย์ — ตัดออกบนจอเล็ก */
   .main { padding: 13px 12px 80px; }
   .main__head h1 { font-size: 19px; }
   .kpis { gap: 9px; }
   .panel { overflow-x: auto; } /* ตารางกว้างเลื่อนในแผงตัวเอง ไม่ดันทั้งหน้า */
   .evalcard__scores { width: 100%; }
-  .groupgrid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* โหมดตัวใหญ่ = ผู้ใช้บอกว่าอ่านยาก — เพิ่ม contrast ของตัวหนังสือรองไปด้วย */
@@ -711,7 +579,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   border: 1px solid var(--border-2); background: #fff;
   font: 500 10.5px var(--font-body); color: var(--text-muted);
   /* ปุ่มนี้อยู่ในช่องตารางที่ถูกบีบ — ไอคอน 14px + คำว่า "แก้" ต้องการ 36px
-     แต่ช่องให้มาแค่ 28px ตัวหนังสือเลยหาย · ล็อกความกว้างขั้นต่ำตามเนื้อหา (วัดเจอ 7 ก.ย. 69) */
+     แต่ช่องให้มาแค่ 28px ตัวหนังสือเลยหาย · ล็อกความกว้างขั้นต่ำตามเนื้อหา */
   white-space: nowrap; min-width: max-content; flex: none;
   transition: all 0.12s;
 }
@@ -789,7 +657,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .toast--desk { bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
 
-/* ══ สกิน Duolingo ฝั่งอาจารย์ — เข้าชุดกับฝั่ง นศ. (ผู้ใช้สั่ง 1 ก.ย.)
+/* ══ สกิน Duolingo ฝั่งอาจารย์ — เข้าชุดกับฝั่ง นศ.
    ภาษาเดียวกับท้าย student.css: ขอบ 2px + ขอบล่าง 4px แทนเงา · ปุ่มเงาแข็งกดยุบ ══ */
 .kpi, .panel {
   border: 2px solid var(--border-2);
@@ -797,9 +665,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   border-radius: 16px;
   box-shadow: none;
 }
-.groupcard { border: 2px solid var(--border-2); border-bottom-width: 4px; }
-@media (hover: hover) { .groupcard:hover { border-color: var(--text-disabled); } }
-.groupcard.on { border-color: var(--accent); box-shadow: none; }
 .evalcard { border: 2px solid var(--border-2); border-bottom-width: 4px; border-radius: 16px; }
 .window .btn { background: var(--accent); box-shadow: 0 4px 0 var(--accent-hover); }
 @media (hover: hover) { .window .btn:hover { background: var(--accent); filter: brightness(1.04); } }
@@ -809,11 +674,11 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .window .btn--sec { background: var(--fill); box-shadow: none; }
 .window .btn--ghost { background: transparent; box-shadow: none; }
 
-/* ── ฟอร์มประเมิน: เกณฑ์ 8 ข้อเรียง 2 คอลัมน์ การ์ดต่อคนเตี้ยลงครึ่งนึง (ผู้ใช้สั่ง 1 ก.ย.)
+/* ── ฟอร์มประเมิน: เกณฑ์ 8 ข้อเรียง 2 คอลัมน์ การ์ดต่อคนเตี้ยลงครึ่งนึง
    แถวรวมคะแนน+ปุ่มลงนาม (ลูกตัวสุดท้าย) กินเต็มความกว้างเหมือนเดิม ── */
 .evalcard__scores {
   /* ห้ามล็อกความกว้างตายตัว — โหมดตัวหนังสือใหญ่ทำให้เนื้อหาในกริดบานจนดันปุ่มลงนาม
-     ทะลุออกนอกการ์ด (ผู้ใช้ทัก 1 ก.ย.) · flex-basis + min-width:0 ให้หดได้ตามที่เหลือจริง */
+     ทะลุออกนอกการ์ด · flex-basis + min-width:0 ให้หดได้ตามที่เหลือจริง */
   flex: 0 1 470px;
   width: auto;
   min-width: 0;
@@ -833,12 +698,12 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 :root[data-zoom='xl'] .evalcard__scores { flex-basis: 520px; }
 :root[data-zoom='xl'] .evalcard__scores { grid-template-columns: minmax(0, 1fr); }
 
-/* ══ ฝั่งอาจารย์บนมือถือ: กันบรรทัดล้น/ตัวอักษรถูกบีบจนตกทีละตัว (ผู้ใช้ทัก 1 ก.ย.)
+/* ══ ฝั่งอาจารย์บนมือถือ: กันบรรทัดล้น/ตัวอักษรถูกบีบจนตกทีละตัว
    ต้นเหตุร่วม = แถวหัวเรื่องเป็น flex row ที่มีปุ่ม/ชิปอยู่ข้างๆ พอจอแคบข้อความโดนบีบเหลือ ~36px
    ประกาศไว้ท้ายไฟล์เพื่อให้ชนะกฎความกว้างคงที่ที่ประกาศทีหลัง media query เดิม ══ */
 @media (max-width: 780px) {
   /* ตัวเลือกปีมี 4 ช่องแล้ว (เพิ่ม "จบแล้ว") — min-width 288 + โหมดตัวใหญ่ = กว้างเกินจอ 320
-     บนมือถือให้ยืดเต็มบรรทัดแทน (ผู้ใช้ทัก 1 ก.ย.) */
+     บนมือถือให้ยืดเต็มบรรทัดแทน */
   .yearseg { min-width: 0; width: 100%; }
   .yearseg button { padding: 0 4px; font-size: 11.5px; }
 
@@ -877,12 +742,12 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 
 @media (max-width: 780px) {
   /* ป้ายสั้นแทนป้ายเต็ม — เดิมแถบกว้าง 765px บนจอ 375 ทำให้คำท้ายโดนตัดกลางคัน
-     ดูเหมือนบรรทัดล้น (ผู้ใช้ทัก 1 ก.ย.) */
+     ดูเหมือนบรรทัดล้น */
   .side .navlabel { display: none; }
   .side .navlabel--short { display: inline; }
   /* ไอคอนเมนูซ่อนบนมือถือ — ป้ายสั้นสื่อชัดอยู่แล้ว ประหยัดที่ให้เห็นเมนูครบ */
-  .side a svg, .side button.navitem svg { display: none; }
-  .side a, .side button.navitem { padding: 8px 8px; gap: 4px; }
+  .side a svg { display: none; }
+  .side a { padding: 8px 8px; gap: 4px; }
   .side { gap: 3px; padding: 9px 10px; }
   /* ตัวเลือกกลุ่มย่อลง เหลือที่ให้เมนู (กรอบ+พื้นอ่อนตัดออก เหลือ select อย่างเดียว) */
   .mygroup { padding: 0; border: 0; background: none; gap: 0; }
@@ -894,63 +759,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
     scroll-snap-type: x proximity;
   }
   .side a, .side .mygroup { scroll-snap-align: start; }
-}
-
-/* ป้ายเลขรุ่นข้างหัวเรื่อง — ภาคเรียกกันด้วยเลขรุ่น (DTMU55) ให้เห็นทุกโหมด ไม่ใช่แค่ "รวมปี" */
-.cohortchip {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 10px;
-  padding: 3px 10px;
-  border-radius: 99px;
-  background: var(--accent-tint);
-  color: var(--accent-hover);
-  /* ฟอนต์ระบบแบบ Apple (SF Pro บน Mac/iPhone) — mono เดิมดูแข็งเป็นโค้ด (ผู้ใช้ขอ 1 ก.ย.)
-     ตัวเลขในสแตกนี้เป็น proportional อ่านลื่นกว่าเมื่อเป็นป้ายชื่อ ไม่ใช่ตาราง */
-  font: 600 12.5px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-  letter-spacing: -0.01em;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-/* แถบเตือนว่ากำลังดูข้อมูลรุ่นที่จบไปแล้ว (อ่านอย่างเดียว) */
-.archivebar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--warning-tint);
-  border: 1px solid var(--warning-border);
-  color: var(--warning-dark);
-  font: 600 12px var(--font-body);
-}
-
-/* แถวเลือกรุ่นที่จบแล้ว — เก็บย้อนหลังหลายรุ่นจึงต้องเลือกดูทีละรุ่นได้ (ผู้ใช้ขอ 1 ก.ย.) */
-.cohortpick {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.cohortpick__label { font: 600 11.5px var(--font-body); color: var(--text-muted); margin-right: 2px; }
-.cohortpick button {
-  padding: 7px 13px;
-  border-radius: 99px;
-  border: 2px solid var(--border-2);
-  background: var(--surface);
-  color: var(--text-secondary);
-  font: 600 12px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  letter-spacing: -0.01em;
-  transition: background .15s, border-color .15s, color .15s;
-}
-@media (hover: hover) { .cohortpick button:hover { border-color: var(--text-disabled); } }
-.cohortpick button[data-on='true'] {
-  background: var(--accent-tint);
-  border-color: var(--accent);
-  color: var(--accent-hover);
 }
 
 /* หัวการ์ดตารางนักศึกษา — เลือกกลุ่มและค้นหาได้ในที่เดียว ไม่ต้องเลื่อนขึ้นไปกดการ์ดกลุ่ม */
@@ -1034,7 +842,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 }
 
 
-/* ── พื้นที่กดบนมือถือ (สแกนเจอ 7 ก.ย. 69) ─────────────────────────────────
+/* ── พื้นที่กดบนมือถือ ─────────────────────────────────
    วัดจริงบน iPhone แล้วเจอปุ่มสูง 16–29px ซึ่งกดพลาดง่ายมาก โดยเฉพาะตอนใส่ถุงมือ
    วิธีแก้ต้องไม่ทำให้เลย์เอาต์ขยับ ไม่งั้นตารางที่มี 96 คนจะยาวขึ้นเป็นเท่าตัว */
 
@@ -1061,7 +869,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   display: flex; align-items: center; min-height: 34px;
   /* ถอย margin ออกไปทับ padding ของ td แล้วใส่กลับเป็น padding ของปุ่มเอง
      width ต้องบวก padding คืนด้วย เพราะ box-sizing: border-box ทั้งโปรเจกต์
-     ไม่งั้นตัวหนังสือจะถูกบีบหายไป 16px (เจอตอนวัดซ้ำ 7 ก.ย. 69) */
+     ไม่งั้นตัวหนังสือจะถูกบีบหายไป 16px */
   /* min-width ไม่ใช่ width — ชื่อ+รหัสยาวกว่าช่อง ถ้าล็อกความกว้างตัวหนังสือจะถูกตัด
      ตารางนี้เลื่อนแนวนอนได้อยู่แล้ว ปล่อยให้ช่องกว้างตามเนื้อหาปลอดภัยกว่า */
   min-width: calc(100% + 16px);
@@ -1071,17 +879,12 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* ตัวเลือกปี/รุ่น — สูง 38px ทำให้ปุ่มข้างในเหลือ 30px */
 @media (pointer: coarse) {
   .yearseg { height: 44px; }
-  .cohortpick button { min-height: 34px; }
 }
-
-/* ป้ายที่ยอมหายบนจอแคบ — ไอคอนยังอยู่ อ่านออกจากบริบท
-   ใช้กับปุ่มในตารางที่คอลัมน์โดนเบียดจนตัดคำ (เจอ 7 ก.ย. 69: "เตือน" เหลือ "เตือ") */
-@media (max-width: 640px) { .hidenarrow { display: none; } }
 
 /* แถบขั้นงาน 0–10 ในหน้าวิเคราะห์ — สูง 20px กดยากบนมือถือ */
 @media (pointer: coarse) { .casemap__step { min-height: 32px; } }
 
-/* ── ตารางที่ไม่มีกรอบเลื่อนครอบ (เจอ 7 ก.ย. 69 บน iPad แนวตั้ง) ────────────
+/* ── ตารางที่ไม่มีกรอบเลื่อนครอบ ────────────
    `.tbl` หลายที่วางตรงใน .panel เลย ไม่มี .tblwrap ครอบ พอจอแคบกว่าตาราง
    มันดันทะลุออกนอก main ทำให้ทั้งหน้าเลื่อนแนวนอนได้ (หน้า /teacher/group ล้น 18px)
 
@@ -1096,16 +899,10 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* ── โหมดตัวหนังสือใหญ่ทำให้ที่ว่างจริงแคบลง แต่ media query ไม่รู้ ─────────
    zoom: 1.38 ย่อพื้นที่ CSS ที่ใช้ได้ลง 28% แต่ @media ยังอ่านความกว้างจริงของจอ
    กฎ "จอแคบ" จึงไม่ทำงาน แล้วเลย์เอาต์คอลัมน์ตายตัวก็ดันทะลุออกนอกหน้า
-   (วัดเจอ 7 ก.ย. 69: iPad แนวตั้ง + xl → หน้าวิเคราะห์ล้น 113px · หน้าแรกล้น 51px)
+ (iPad แนวตั้ง + xl → หน้าวิเคราะห์ล้น 113px · หน้าแรกล้น 51px)
 
    แก้สองทาง — ทางที่ยั่งยืนกว่าคือให้กริดรีโฟลว์เองตามที่ว่าง ไม่ใช่สั่งจำนวนคอลัมน์
    ส่วนกล่องที่กว้างตายตัวจริงๆ (แผนที่ขั้นงาน 11 ช่อง) ให้เลื่อนในแผงตัวเอง */
-
-/* การ์ดกลุ่ม PT1–PT12: repeat(6, 1fr) ไม่ยอมลดคอลัมน์ตามที่ว่าง
-   เปลี่ยนเป็น auto-fill เฉพาะโหมดตัวใหญ่ — บนจอปกติคง 6 คอลัมน์ไว้เหมือนเดิม
-   (ถ้าใช้ auto-fill ทุกกรณี จอกว้างจะกลายเป็น 8–10 คอลัมน์ซึ่งไม่ใช่ที่ออกแบบไว้) */
-:root[data-zoom='lg'] .groupgrid,
-:root[data-zoom='xl'] .groupgrid { grid-template-columns: repeat(auto-fill, minmax(min(96px, 100%), 1fr)); }
 
 :root[data-zoom='lg'] .panel,
 :root[data-zoom='xl'] .panel { overflow-x: auto; }
@@ -1113,17 +910,8 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* การ์ดตรวจงาน: ฝั่งขวากว้างตายตัว 246px พอตัวใหญ่ขึ้นก็ไม่เหลือที่ให้ฝั่งซ้าย */
 :root[data-zoom='lg'] .reviewcard,
 :root[data-zoom='xl'] .reviewcard { flex-wrap: wrap; }
-:root[data-zoom='lg'] .reviewcard__side,
-:root[data-zoom='xl'] .reviewcard__side {
-  width: 100%; border-left: 0; padding-left: 0;
-  border-top: 1px solid var(--divider); padding-top: 12px;
-}
 @media (max-width: 640px) {
   .reviewcard { flex-wrap: wrap; }
-  .reviewcard__side {
-    width: 100%; border-left: 0; padding-left: 0;
-    border-top: 1px solid var(--divider); padding-top: 12px;
-  }
 }
 
 /* ปุ่มเลือกเคสของนักศึกษาบนหัวฟอร์มประเมิน — แตะแล้วเติมชื่อ/HN/ประเภทงานให้เอง */
@@ -1137,7 +925,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 @media (hover: hover) { .chipbtn:hover { background: var(--fill); } }
 .chipbtn[data-on='true'] { background: var(--accent-tint); border-color: var(--accent-ring); color: var(--accent-hover); }
 
-/* ปุ่มติ๊กผ่านทั้งกลุ่มใต้หัวคอลัมน์การสอบ (ผู้ใช้ขอ 14 ก.ย. 69) — กดสองจังหวะ */
+/* ปุ่มติ๊กผ่านทั้งกลุ่มใต้หัวคอลัมน์การสอบ — กดสองจังหวะ */
 .bulkpass {
   display: inline-flex; align-items: center; margin-top: 6px; padding: 4px 10px; border-radius: 99px;
   border: 1px solid var(--border-2); background: var(--surface); color: var(--text-secondary);
@@ -1148,8 +936,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .bulkpass--done { border-color: transparent; background: var(--success-tint); color: var(--success-dark); cursor: default; }
 @media (hover: hover) { .bulkpass:not(:disabled):not(.bulkpass--done):not(.bulkpass--go):hover { background: var(--fill); } .bulkpass--go:not(:disabled):hover { background: var(--success-dark); } }
 
-/* ══ หน้าภาพรวมแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) ══ */
-.tlabel { margin: 4px 4px 8px; }
+/* ══ หน้าภาพรวมแบบ "ตัดของซ้ำ" ══ */
 .kpis--strip { gap: 0; background: var(--surface); border: 2px solid var(--border-2); border-radius: 16px; overflow: hidden; }
 .kpis--strip .kpi { border: 0; border-radius: 0; padding: 14px 18px; background: transparent; }
 .kpis--strip .kpi + .kpi { border-left: 1px solid var(--border); }
@@ -1170,9 +957,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 }
 @media (hover: hover) { .groupcell:hover { background: var(--fill); } }
 .groupcell__code { font: 500 11px var(--font-mono); color: var(--text-faint); }
-.groupcell__pct { font: 700 17px/1.25 var(--font-head); color: var(--text-secondary); }
 .groupcell--low { background: var(--warning-tint); }
-.groupcell--low .groupcell__pct { color: var(--warning); }
 .groupcell--on { box-shadow: inset 0 0 0 1.5px var(--border-2); }
 /* กลุ่มที่อาจารย์ดูแล — กรอบฟ้าเข้ม + พื้นฟ้าอ่อน + ป้ายลอย (ต้องชัดกว่ากลุ่มที่แค่เลือกดู) */
 .groupcell--mine { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -1181,8 +966,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
   font: 600 10px/17px var(--font-head); color: #fff; background: var(--accent); border-radius: 99px; padding: 0 7px; white-space: nowrap;
 }
-.grouplegend { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 4px 16px; font: 400 11.5px var(--font-body); color: var(--text-faint); }
-.grouplegend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
 .staledays { font: 600 13px var(--font-mono); color: var(--danger); white-space: nowrap; }
 .staledays small { font: 400 11px var(--font-body); margin-left: 3px; }
 .textbtn { border: 0; background: none; padding: 6px 2px; cursor: pointer; font: 600 12px var(--font-body); color: var(--accent); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
@@ -1195,7 +978,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .grouprow__label { grid-column: 1 / -1; }
 }
 
-/* ══ แถบซ้ายแบบ B — กล่องแยกหมวดบนพื้นเทา (ผู้ใช้เลือกจาก mock 14 ก.ย. 69) ══
+/* ══ แถบซ้ายแบบ B — กล่องแยกหมวดบนพื้นเทา ══
    เดิม: หัวข้อ "ทั้งชั้นปี" ตัวเล็กจาง · กล่องกลุ่มสีจางมาก · ตั้งค่าปนกับงานดูข้อมูล → "ดูกลืนไปหมด" */
 @media (min-width: 781px) {
   .side { background: var(--bg-dash); }
@@ -1217,10 +1000,6 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .sidebox--group .side__cluster { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
   .sidebox .side__section { font: 700 12px var(--font-head); color: var(--text-faint); letter-spacing: 0; padding: 5px 8px 6px; }
   .side__section--loose { font: 700 12px var(--font-head); color: var(--text-faint); letter-spacing: 0; padding: 4px 12px 4px; }
-  /* เลข I / II / III ชิดขวา สีจาง ไม่แย่งชื่อเมนู */
-  .side .navsect { margin-left: auto; background: none; color: var(--text-disabled); padding: 0; font-weight: 500; }
-  .side a.on .navsect { background: none; }
-  .side .navsect + .count { margin-left: 5px; }
   /* ชื่อเมนูบรรทัดเดียวเสมอ — "ประเมินรายคาบ" + เลข I + ป้าย 5 เคยดันชื่อตกสองบรรทัด */
   .side a .navlabel { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebox { padding: 5px; }
@@ -1232,7 +1011,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .side__section--loose { display: none; }
 }
 
-/* ══ การ์ดประเมินรายคาบแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) ══
+/* ══ การ์ดประเมินรายคาบแบบ "ตัดของซ้ำ" ══
    ค่าตั้งต้น 3 = ปุ่มขาวในแถบเทา · ให้ 1 = เหลือง (ผู้ใช้ขอเปลี่ยนจากส้ม — ใกล้แดงเกินไป) · ให้ 0 = แดง */
 .evalcard--calm { background: var(--surface); padding: 0; gap: 0; }
 .evalcard--calm .evalcard__info { padding: 16px 18px; border-right: 1px solid var(--border); flex: 0 0 220px; }
@@ -1271,7 +1050,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
   .evalcard--calm .evalcard__scores { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ══ หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" (ผู้ใช้เลือก mock 14 ก.ย. 69) ══
+/* ══ หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" ══
    ชิปประเภท/ติดมา n คาบ → ตัวอักษรสี · ตัดหลอดในแถว (ข้อความ "กำลังทำขั้น n" บอกอยู่แล้ว) · ชื่อเลิกขีดเส้นใต้ */
 .grpname { font: 600 13px/1.35 var(--font-head); color: var(--text); }
 @media (hover: hover) { .cellbtn:hover .grpname { color: var(--accent); } }
@@ -1279,16 +1058,14 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .worknow__flag { font: 600 12px var(--font-head); flex: none; white-space: nowrap; }
 .worknow__ago { font: 400 11.5px var(--font-body); color: var(--text-faint); flex: none; white-space: nowrap; }
 .worknow__more { color: var(--text-faint) !important; font-weight: 500 !important; }
-/* ปุ่มแก้คะแนนในตารางประวัติ — ข้อความสีฟ้า ไม่มีกรอบ (mock 14 ก.ย. 69) */
+/* ปุ่มแก้คะแนนในตารางประวัติ — ข้อความสีฟ้า ไม่มีกรอบ */
 .revisebtn.revisebtn--text { border: 0; background: none; padding: 6px 4px; color: var(--accent); font: 600 12.5px var(--font-head); box-shadow: none; }
 .revisebtn.revisebtn--text:disabled { color: var(--text-disabled); }
-/* สัญลักษณ์ใต้ช่องกลุ่ม — พื้นส้มอ่อนอย่างเดียวมองไม่เห็นบนพื้นเทา ต้องมีขอบ (ไล่ตรวจธีม 14 ก.ย.) */
-.grouplegend i.groupcell--low { box-shadow: inset 0 0 0 1.5px var(--warning); }
-/* การ์ดตรวจงานรายคน (14 ก.ย. 69) — ป้ายเป็นตัวอักษรสี ไม่มีพื้นไม่มีกรอบ */
+/* การ์ดตรวจงานรายคน — ป้ายเป็นตัวอักษรสี ไม่มีพื้นไม่มีกรอบ */
 .rvtype { font: 700 12px var(--font-head); flex: none; }
 .rvtag { font: 600 12px var(--font-head); flex: none; white-space: nowrap; }
 
-/* ══ รายชื่อซ้าย + ใบประเมินเป็นแถว — Section II/III · ประเมินตนเอง (ผู้ใช้เลือก mock 14 ก.ย. 69) ══
+/* ══ รายชื่อซ้าย + ใบประเมินเป็นแถว — Section II/III · ประเมินตนเอง ══
    เดิมการ์ดทีละคนมีไอคอน + การ์ดซ้อนในการ์ดทีละใบ → รายการเดียวคั่นเส้น */
 .panel.plist { padding: 0; overflow: hidden; }
 .plist__head { padding: 12px 16px 6px; font: 600 12.5px var(--font-head); color: var(--text-faint); }
@@ -1329,7 +1106,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .insight p { margin: 2px 0 0; font: 400 12.5px/1.6 var(--font-body); color: var(--text-secondary); }
 .insight small { display: block; margin-top: 3px; font: 500 11.5px/1.5 var(--font-mono); color: var(--text-faint); overflow-wrap: anywhere; }
 
-/* ตั้งค่าเกณฑ์ — การ์ดละหัวเรื่อง แถวละเรื่อง ตัวเลือกชิดขวา (ผู้ใช้เลือก mock 14 ก.ย. 69) */
+/* ตั้งค่าเกณฑ์ — การ์ดละหัวเรื่อง แถวละเรื่อง ตัวเลือกชิดขวา */
 .panel.setcard { padding: 0; overflow: hidden; }
 .setcard__head { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px 8px; }
 .setcard__head h3 { margin: 0; }
@@ -1352,12 +1129,12 @@ button.setrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .setcard .stepper span { width: 28px; }
 .textbtn:disabled { color: var(--text-disabled); cursor: default; }
 
-/* เลข step ที่เลือกใต้กราฟ = พื้นน้ำเงิน (แทนวงกลมเลขในกล่องขั้นตอน · 14 ก.ย. 69) */
+/* เลข step ที่เลือกใต้กราฟ = พื้นน้ำเงิน (แทนวงกลมเลขในกล่องขั้นตอน) */
 button.casemap__step[data-on='true'] { background: var(--accent); color: #fff; border-top: 0; border-radius: 8px; }
 button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @media (hover: hover) { button.casemap__step[data-on='true']:hover { color: #fff; } }
 
-/* ══ รายชื่อ & นำเข้า (ผู้ใช้เลือก mock 14 ก.ย. 69) ══ */
+/* ══ รายชื่อ & นำเข้า ══ */
 .tabs--line { display: flex; background: none; border-radius: 0; padding: 0; gap: 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
 .tabs--line button { padding: 0 2px 9px; border-radius: 0; font: 600 13.5px var(--font-head); color: var(--text-faint); }
 .tabs--line button[data-on='true'] { background: none; color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
@@ -1380,7 +1157,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .personpick__opt em { font: 400 11.5px var(--font-body); font-style: normal; color: var(--text-faint); flex: none; }
 .personpick__none { padding: 10px 12px; font: 400 12.5px var(--font-body); color: var(--text-faint); }
 
-/* งานเก่าจากชีต — ขั้นตอนเป็นแถวเลข · ขั้นที่ยังไปไม่ถึงสีจาง (ผู้ใช้เลือก mock 14 ก.ย. 69) */
+/* งานเก่าจากชีต — ขั้นตอนเป็นแถวเลข · ขั้นที่ยังไปไม่ถึงสีจาง */
 .stepline { align-items: flex-start; }
 .stepline .setrow__main { padding-top: 1px; }
 .stepn { width: 24px; height: 24px; border-radius: 99px; background: var(--fill); display: grid; place-items: center; flex: none; font: 600 12px var(--font-head); color: var(--text-secondary); }
@@ -1394,7 +1171,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @media (hover: hover) { .filebtn:not([data-disabled='true']):hover { background: var(--bg-subtle); } }
 .rosterimport--single { grid-template-columns: minmax(0, 1fr); }
 
-/* ── หน้ารายชื่อ: เลือกไฟล์ Excel + เพิ่มทีละคน (15 ก.ย. 69) ── */
+/* ── หน้ารายชื่อ: เลือกไฟล์ Excel + เพิ่มทีละคน ── */
 .rosterfile { margin-top: 12px; }
 .rosterfile__name { margin: 0 0 8px; font: 600 12.5px var(--font-mono); color: var(--text-secondary); word-break: break-all; }
 .rosterfile__sum { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -1413,7 +1190,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .roster-more > summary::before { content: '▸'; font-size: 11px; transition: transform .15s; }
 .roster-more[open] > summary::before { transform: rotate(90deg); }
 
-/* ══ ช่องกลุ่มแบบหลอด — ตัวเลข % โผล่ตอนชี้เมาส์ (คอม) หรือจิ้ม (ไอแพด) · ผู้ใช้เลือก 15 ก.ย. 69 ══ */
+/* ══ ช่องกลุ่มแบบหลอด — ตัวเลข % โผล่ตอนชี้เมาส์ (คอม) หรือจิ้ม (ไอแพด) ══ */
 .groupcell--bar { gap: 0; padding: 10px 6px 11px; }
 .groupcell--bar .groupcell__code { font: 600 12.5px var(--font-head); color: var(--text-secondary); }
 .groupcell__bar { display: block; width: 100%; max-width: 56px; height: 6px; margin-top: 7px; border-radius: 99px; background: var(--track); overflow: hidden; }
@@ -1462,10 +1239,10 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 }
 /* กล่องตัวเลขลอยเหนือช่อง — แผงนี้ห้ามตัดขอบ (แผงอื่นเลื่อนแนวนอนได้ตอนตัวหนังสือใหญ่) */
 .panel.groupstrip, :root[data-zoom='xl'] .panel.groupstrip { overflow: visible; }
-/* ช่องที่ชี้/จิ้มลอยเหนือช่องอื่น — เดิมป้าย "กลุ่มคุณ" ของช่องถัดไปทะลุขึ้นมาทับกล่องตัวเลข (ผู้ใช้เจอ 15 ก.ย. 69) */
+/* ช่องที่ชี้/จิ้มลอยเหนือช่องอื่น — เดิมป้าย "กลุ่มคุณ" ของช่องถัดไปทะลุขึ้นมาทับกล่องตัวเลข */
 .groupcell--bar:hover, .groupcell--peek, .groupcell--bar:focus-visible { z-index: 20; }
 
-/* ══ ช่องกลุ่มแบบหลอด · ลูกเล่นชุด 1 3 4 5 7 (ผู้ใช้เลือกจาก mock 15 ก.ย. 69) ══
+/* ══ ช่องกลุ่มแบบหลอด · ลูกเล่นชุด 1 3 4 5 7 ══
    1 หลอดเติมเป็นคลื่นตอนเปิดหน้า · 3 ช่องที่ชี้ลอยขึ้น · 4 หลอดขยายพร้อม % ในหลอด
    5 ช่องอื่นจางลง · 7 กล่องมีจุดคน (สีเสี่ยงจาก riskByGroup) */
 .groupcell--bar { transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s, background-color 0.2s, opacity 0.25s, filter 0.25s; }
@@ -1508,7 +1285,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
   .groupcell__ppl i { transform: none; }
 }
 
-/* ══ สรุปกลุ่ม: ชี้แถวแล้วการ์ดงานในมือโผล่ · แถวไม่ขยับ (ผู้ใช้ขอ "motion เยอะเกิน" 15 ก.ย. 69) ══ */
+/* ══ สรุปกลุ่ม: ชี้แถวแล้วการ์ดงานในมือโผล่ · แถวไม่ขยับ ══ */
 .panel.grppanel { position: relative; }
 .grptable tbody tr { transition: background-color 0.15s, opacity 0.2s; }
 .grptable tbody tr.grprow--focus { background: var(--bg-subtle); }
@@ -1533,15 +1310,15 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @keyframes grpcardIn { from { opacity: 0; transform: translateY(calc(-100% + 6px)) scale(0.96); } }
 @media (prefers-reduced-motion: reduce) { .grpcard { animation: none; } .grptable tbody tr { transition: none; } }
 
-/* ══ หน้าวิเคราะห์: แผนที่เคสมีชีวิต (ผู้ใช้เลือก 15 ก.ย. 69) ══
+/* ══ หน้าวิเคราะห์: แผนที่เคสมีชีวิต ══
    จุดเด้งขึ้นไล่ทีละคอลัมน์ตอนเปิดหน้า · ชี้คอลัมน์ → คอลัมน์อื่นจาง + การ์ดสรุป (แถวประเภทในการ์ดขึ้นพร้อมกัน ไม่ไล่ — ผู้ใช้ขอ) · กดทั้งคอลัมน์ได้ */
 .casemap-wrap { position: relative; }
-/* จุดเด้งพร้อมกันทุกคอลัมน์ — ไม่ไล่ทีละ step (ผู้ใช้ย้ำ 15 ก.ย. 69 หลังรอบก่อนเข้าใจผิดใส่คลื่นกลับไป) */
+/* จุดเด้งพร้อมกันทุกคอลัมน์ — ไม่ไล่ทีละ step (ห้ามใส่แบบไล่คลื่นกลับมา) */
 .casemap-wrap--lively .casemap__dots > i { animation: casemapDotIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes casemapDotIn { from { opacity: 0; transform: scale(0.3); } }
 .casemap-wrap--lively .casemap__col { cursor: pointer; border-radius: 10px; }
 .casemap-wrap--lively .casemap__col[data-focus='true'] { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-/* เดิมคอลัมน์อื่นจางลงทุกครั้งที่ชี้ → ลากเมาส์ผ่านแล้วกะพริบทั้งกราฟ (ผู้ใช้ทัก 15 ก.ย. 69) · เหลือไฮไลต์พื้นคอลัมน์ที่ชี้อย่างเดียว ไม่มีเฟด */
+/* เดิมคอลัมน์อื่นจางลงทุกครั้งที่ชี้ → ลากเมาส์ผ่านแล้วกะพริบทั้งกราฟ · เหลือไฮไลต์พื้นคอลัมน์ที่ชี้อย่างเดียว ไม่มีเฟด */
 .casemap__card {
   position: absolute; z-index: 20; width: 200px; transform: translateY(-100%); pointer-events: none;
   padding: 10px 13px 11px; border-radius: 13px; background: #1a2029; color: #fff; font: 500 12px/1.5 var(--font-body);
@@ -1562,7 +1339,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
   .casemap__card { transition: none; }
 }
 
-/* ══ ช่องกลุ่ม: ปุ่มในช่อง + ปุ่ม "ดูรายชื่อ" ในการ์ด (ผู้ใช้เลือก 15 ก.ย. 69) ══ */
+/* ══ ช่องกลุ่ม: ปุ่มในช่อง + ปุ่ม "ดูรายชื่อ" ในการ์ด ══ */
 .groupcell--bar { padding: 0; }
 .groupcell__hit {
   display: grid; justify-items: center; width: 100%; padding: 10px 6px 11px; border: 0; border-radius: inherit;
@@ -1586,11 +1363,11 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 @keyframes panelFlash { 0%, 30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .panel--flash { animation: none; } }
 
-/* ─── สรุปวันนี้ + วงงานที่กำลังทำ (ผู้ใช้เลือก mock 15 ก.ย. 69 · แทนกล่องตัวเลข 4 ตัว) ─── */
+/* ─── สรุปวันนี้ + วงงานที่กำลังทำ ─── */
 .todayrow { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-bottom: 18px; align-items: stretch; }
 @media (max-width: 980px) { .todayrow { grid-template-columns: minmax(0, 1fr); } }
 /* ขอบรุ้ง = แผ่นสีรุ้งใต้การ์ด หมุนด้วย transform แล้วมีพื้นการ์ดทับเหลือขอบ 1.5px
-   เดิมหมุนด้วย @property ใน border-image → เบราว์เซอร์ต้องวาดการ์ดใหม่ทุกเฟรม ผู้ใช้บอกเปิดหน้าแล้วแลค (Safari · 15 ก.ย. 69)
+   เดิมหมุนด้วย @property ใน border-image → เบราว์เซอร์ต้องวาดการ์ดใหม่ทุกเฟรม ผู้ใช้บอกเปิดหน้าแล้วแลค (Safari)
    transform หมุนบนการ์ดจอได้เลย ไม่ต้องวาดใหม่ */
 .todaycard {
   position: relative; isolation: isolate; overflow: hidden; border: 0;
@@ -1612,7 +1389,6 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .todaycard__top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 6px; }
 .todaycard__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
 .todaycard__orb { align-self: center; }
-.todaycard__label { font: 500 12px var(--font-body); color: var(--text-faint); }
 .todaycard__scope { margin-left: auto; display: flex; background: var(--fill); border-radius: 99px; padding: 2px; }
 .todaycard__scope button, .todaycard__scope span {
   border: 0; background: none; border-radius: 99px; padding: 3px 12px; font: 600 12px var(--font-body); color: var(--text-secondary);
@@ -1663,7 +1439,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .typedonut__seg { transition: opacity 0.2s; }
 }
 
-/* งานไม่ขยับนานสุด: ป้ายประเภท · step แทนรหัสขั้นยาว + วันเป็นป้ายแดง (ผู้ใช้เลือก B2 15 ก.ย. 69) */
+/* งานไม่ขยับนานสุด: ป้ายประเภท · step แทนรหัสขั้นยาว + วันเป็นป้ายแดง */
 .stalepill {
   display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 1px 8px; border-radius: 99px;
   background: var(--fill); font: 600 10.5px var(--font-body); color: var(--text-secondary); white-space: nowrap;
@@ -1671,7 +1447,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .stalepill i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .staledays--pill { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--danger-tint, #fef3f2); font-family: var(--font-head); font-weight: 700; }
 
-/* ─── แถบซ้ายพับเหลือไอคอน (ผู้ใช้ขอ 15 ก.ย. 69) · เฉพาะจอที่แถบอยู่ด้านซ้าย (มือถือเป็นแถบบนอยู่แล้ว) ─── */
+/* ─── แถบซ้ายพับเหลือไอคอน · เฉพาะจอที่แถบอยู่ด้านซ้าย (มือถือเป็นแถบบนอยู่แล้ว) ─── */
 .side__railbtn, .side__railgroup { display: none; }
 .side__logo b { white-space: nowrap; min-width: 0; }
 @media (min-width: 781px) {
@@ -1695,19 +1471,19 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
     background: none; font: 700 12px var(--font-head); color: var(--text); cursor: pointer;
   }
   .side--rail .sidebox { padding: 5px 4px; }
-  .side--rail a, .side--rail button.navitem { justify-content: center; padding: 9px 0; position: relative; }
+  .side--rail a { justify-content: center; padding: 9px 0; position: relative; }
   .side--rail a svg { width: 19px; height: 19px; }
   .side--rail .count { position: absolute; top: 2px; right: 3px; margin: 0; min-width: 16px; height: 16px; font-size: 9.5px; line-height: 16px; padding: 0 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .side, .side__railbtn svg { transition: none; } }
 
-/* วงเล็กท้ายแถวสรุปกลุ่ม — ชิ้นละวง (ผู้ใช้เลือก 16 ก.ย. 69 · เดิมหลอดจิ๋วอ่านยาก) */
+/* วงเล็กท้ายแถวสรุปกลุ่ม — ชิ้นละวง */
 .worknow__minis { gap: 4px; }
 .minring { width: 18px; height: 18px; flex: none; display: block; }
 .minring__track { fill: none; stroke: var(--track); stroke-width: 3; }
 .minring__fill { fill: none; stroke-width: 3; stroke-linecap: round; }
 
-/* จุดแดงหลังชื่อ = มีงานค้าง (แทนคอลัมน์ "ค้าง") · ปุ่มเตือนเหลือไอคอน (ผู้ใช้เลือก 16 ก.ย. 69) */
+/* จุดแดงหลังชื่อ = มีงานค้าง (แทนคอลัมน์ "ค้าง") · ปุ่มเตือนเหลือไอคอน */
 .staledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); margin-left: 6px; vertical-align: 1px; }
 .textbtn--icon { padding: 5px; border-radius: 8px; }
 .textsize--compact { display: flex; gap: 6px; align-items: center; }

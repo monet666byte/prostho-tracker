@@ -4,7 +4,7 @@ const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.�
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /* สตริงวันล้วน 'YYYY-MM-DD' ถ้าโยนเข้า new Date ตรงๆ จะถูกตีความเป็นเที่ยงคืน UTC
-   (ไทย +7 เลยรอดมาตลอด แต่เป็นระเบิดเวลาแบบเดียวกับบั๊ก 1 ก.ย. 69) — เติม T00:00 ให้เป็นเวลาท้องถิ่นเสมอ */
+   (ไทย +7 เลยรอดมาตลอด แต่วันจะเพี้ยนทันทีที่เครื่องอยู่โซนเวลาอื่น) — เติม T00:00 ให้เป็นเวลาท้องถิ่นเสมอ */
 const asDate = (v: string | Date) =>
   v instanceof Date ? v : new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00` : v);
 
@@ -12,7 +12,7 @@ const asDate = (v: string | Date) =>
 export function thaiShort(v: string | Date): string {
   const d = asDate(v);
   /* วันที่พังต้องไม่พ่น "NaN undefined NaN" ออกหน้าจอ
-     เกิดได้จากแถวที่ sync มาจากแอปเวอร์ชันอื่นหรือข้อมูลที่ถูกแก้มือ (เจอตอนไล่บั๊ก 7 ก.ย. 69) */
+     เกิดได้จากแถวที่ sync มาจากแอปเวอร์ชันอื่นหรือข้อมูลที่ถูกแก้มือ */
   if (Number.isNaN(d.getTime())) return '—';
   if (lang === 'en') return `${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
   return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${String((d.getFullYear() + 543) % 100).padStart(2, '0')}`;
@@ -29,7 +29,7 @@ export function thaiLong(v: string | Date): string {
 /** "14:32" */
 export function clock(v: string | Date): string {
   const d = asDate(v);
-  /* กันแบบเดียวกับ thaiShort/thaiLong ที่กันไว้ตั้งแต่ 7 ก.ย. — ตัวนี้ตกสำรวจ
+  /* กันแบบเดียวกับ thaiShort/thaiLong ที่กันไว้ — ตัวนี้ตกสำรวจ
      ที่เจ็บคือหน้า audit log ของอาจารย์ (Settings.tsx) อ่านเวลาจากคอลัมน์ text ในตาราง audit
      แถวที่ sync มาจากแอปเวอร์ชันอื่นหรือถูกแก้มือ จะขึ้นเป็น "NaN:NaN" คาหน้าจอ */
   if (Number.isNaN(d.getTime())) return '—';
@@ -93,7 +93,7 @@ export function academicYear(v: string | Date): number {
  *
  * ช่อง <input type="date"> มี max="วันนี้" แต่ max กันได้แค่ตัวเลือกในปฏิทิน
  * พิมพ์ปีเองบนเดสก์ท็อปยังใส่ได้ และไม่มี <form> ไหนอ่าน validity — ทดลองแล้วได้แถว
- * performedAt = 2035-01-01 ลงฐานข้อมูลจริง (10 ก.ย. 69) นอกจากนี้ยังเข้ามาได้จาก
+ * performedAt = 2035-01-01 ลงฐานข้อมูลจริง นอกจากนี้ยังเข้ามาได้จาก
  * เครื่องที่ตั้งเวลาผิด และจากชีตที่นำเข้า
  *
  * ผลถ้าปล่อยไว้ไม่ได้แค่ "วันที่เพี้ยน": ถ้าแถวนั้นคือขั้นปิดเคส completedAt จะไปอยู่

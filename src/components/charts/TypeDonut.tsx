@@ -7,14 +7,14 @@ const R = 62;
 const C = 2 * Math.PI * R;
 
 /**
- * วงงานที่กำลังทำ แยกประเภท (ผู้ใช้เลือก 15 ก.ย. 69 — "อยากให้เปิดแล้วมีวงๆ")
+ * วงงานที่กำลังทำ แยกประเภท
  * ข้างวงมีแค่ชื่อประเภท ไม่มีตัวเลข · ชี้/จิ้มส่วนไหน เลขกลางวงเปลี่ยนเป็นของประเภทนั้น
  */
 export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; count: number }>; foot?: string }) {
   const total = items.reduce((s, x) => s + x.count, 0);
   const [hot, setHot] = useState<WorkType | null>(null);
   /* เริ่มจากวงว่างแล้ววาดขึ้นหนึ่งครั้ง — รอให้หน้าวาดเสร็จก่อน (เครื่องว่าง) ค่อยเริ่ม
-     เดิมเริ่มทันทีแล้วชนกับจังหวะที่ทั้งหน้ากำลังโหลด วงเลยวาดกระตุก (ผู้ใช้บอก "แลคๆ" 15 ก.ย. 69) */
+     เดิมเริ่มทันทีแล้วชนกับจังหวะที่ทั้งหน้ากำลังโหลด วงเลยวาดกระตุก */
   const [drawn, setDrawn] = useState(false);
   useEffect(() => {
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };

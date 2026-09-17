@@ -15,7 +15,7 @@ import { useApp } from '../../store/app';
 /**
  * อาจารย์ที่ปรึกษาของกลุ่ม (0024_group_advisors.sql)
  *
- * ผู้ใช้เคาะ 14 ก.ย. 69:
+ * ภาคยืนยัน:
  *   · อาจารย์เลือกเอง แบ่งตามชั้นปี (ปี 5 / ปี 6) ติ๊ก PT ได้หลายกลุ่ม · หัวหน้าภาคแก้ได้
  *   · กลุ่มหนึ่งมีที่ปรึกษากี่ท่านก็ได้
  *   · ขึ้นปีการศึกษาใหม่ ล้างที่เลือกไว้ทั้งหมด ทุกคนเลือกใหม่ (วันที่ยังไม่เคาะ — ใช้ 1 มิ.ย. ไปก่อน)
@@ -85,7 +85,7 @@ export function useAdvisorPrompt(): boolean {
   return useMemo(() => {
     if (!cloudEnabled || !isTeacher || !me) return false;
     /* เครื่องใหม่: ตาราง students ลงมาก่อน groups → ทุกกลุ่มดูเหมือนไม่มีที่ปรึกษาชั่วครู่
-       แล้วกล่องถามเด้งผิดๆ (เจอใน test:google-login 14 ก.ย. 69) — รอจนรู้จักทุกกลุ่มก่อน */
+       แล้วกล่องถามเด้งผิดๆ — รอจนรู้จักทุกกลุ่มก่อน */
     if (rows.length === 0 || rows.some((r) => !r.known)) return false;
     if (readDismissedYear() === academicYear(new Date())) return false;
     return !rows.some((r) => r.advisors.includes(me));
@@ -126,7 +126,7 @@ export function AdvisorGroupsDialog({ mode, onClose }: { mode: 'prompt' | 'manag
     <div className="confirmwrap" onClick={mode === 'manage' ? onClose : undefined}>
       <div className="confirmbox" role="dialog" aria-label={t('เลือกกลุ่มที่ปรึกษา')} style={{ maxWidth: 560, width: '100%', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', font: '700 17px var(--font-head)' }}>
-          <UsersThree size={20} weight="duotone" style={{ color: 'var(--accent)' }} />
+          <UsersThree size={20} weight="fill" style={{ color: 'var(--accent)' }} />
           {t('ปีการศึกษา {y} คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?', { y: academicYear(new Date()) })}
         </div>
         <p className="confirmbox__note" style={{ marginTop: 6 }}>
@@ -222,7 +222,7 @@ export function AdvisorEditor() {
     setBusy(null);
     if (!res.ok) { setError(res.error); return; }
     /* เซิร์ฟเวอร์รับแล้ว แต่รอบดึงข้อมูลอาจตกระหว่างทาง (เน็ตหลุด) — ถ้าในเครื่องยังไม่ใช่ชุดที่ส่งไป
-       ห้ามขึ้น "บันทึกแล้ว" ทับชื่อเก่า (ป้ายหลอก) · เก็บร่างไว้และบอกตรงๆ (ตรวจซ้ำ 15 ก.ย. 69) */
+       ห้ามขึ้น "บันทึกแล้ว" ทับชื่อเก่า (ป้ายหลอก) · เก็บร่างไว้และบอกตรงๆ */
     const nowLocal = currentAdvisorIds(await db.groups.get(r.code));
     if ([...nowLocal].sort().join('|') !== sent.filter(Boolean).sort().join('|')) {
       setError(t('บันทึกกลุ่ม {g} บนเซิร์ฟเวอร์แล้ว แต่เครื่องนี้ยังดึงข้อมูลกลับมาไม่ได้ — รีเฟรชหน้าเพื่อดูค่าจริง', { g: groupShort(r.code) }));
@@ -273,7 +273,7 @@ export function AdvisorEditor() {
                       </select>
                     )}
                   </span>
-                  {/* ไม่มีอะไรแก้ = ข้อความ "บันทึกแล้ว" แทนปุ่มเทา — ปุ่มเทาดูเหมือนระบบค้าง (ผู้ใช้ถาม 15 ก.ย. 69) */}
+                  {/* ไม่มีอะไรแก้ = ข้อความ "บันทึกแล้ว" แทนปุ่มเทา — ปุ่มเทาดูเหมือนระบบค้าง */}
                   {changed(r) || busy === r.code ? (
                     <button className="btn" style={{ width: 'auto', height: 34, padding: '0 14px' }} disabled={busy === r.code} onClick={() => save(r)}>
                       {busy === r.code ? t('กำลังบันทึก…') : t('บันทึก')}

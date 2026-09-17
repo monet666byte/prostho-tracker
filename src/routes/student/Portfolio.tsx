@@ -1,7 +1,7 @@
 /**
  * สมุดของฉัน — นักศึกษาเปิดดู portfolio ของตัวเองทั้งเล่ม
  *
- * ที่มา: ผู้ใช้ขอ 7 ก.ย. 69 "อยากให้เห็นหนังสือทั้งเล่มของตัวเอง section 1 2 3"
+ * ที่มา: นักศึกษาควรเห็นสมุด portfolio ของตัวเองทั้งเล่ม (Section I–III) แบบอ่านอย่างเดียว
  * ของเดิมข้อมูล Section II/III ซิงก์ลงเครื่องนักศึกษาแล้ว สิทธิ์อ่านก็เปิดไว้แล้ว
  * แต่ไม่มีหน้าไหนแสดงเลย — เขาเห็นแค่ธง "ผ่าน/ไม่ผ่าน" ในหน้าเกณฑ์
  * ไม่รู้ว่าตกข้อไหน ได้เท่าไหร่ ใครประเมิน
@@ -27,7 +27,8 @@ import { saCourseCode } from '../../domain/selfAssessment';
 import {
   RPD_DESIGN_GROUPS, S2_FULL_SCORE, S2_GRADES, s2Points, sect2Form,
 } from '../../domain/sect2';
-import { S3_FULL_SCORE, s3Points, sect3Form, sect3FormsFor } from '../../domain/sect3';
+import { isSect2Evaluated } from '../../domain/sect2';
+import { S3_FULL_SCORE, isSect3Evaluated, s3Points, sect3Form, sect3FormsFor } from '../../domain/sect3';
 import { useCheckIns, useSect2, useSect3, useStudent } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
@@ -53,9 +54,8 @@ const S3_GROUP_TITLE = {
  * ประเมินเสร็จแล้วจริงหรือยัง — ใบให้คะแนนดูที่ total · ใบ RPD design ดูที่ passed
  * ที่ต้องมีฟังก์ชันนี้เพราะแถวร่างกับแถวเสร็จหน้าตาเหมือนกันทุกอย่าง ต่างแค่ช่องนี้
  */
-const done2 = (r: Sect2Record | undefined): boolean =>
-  !!r && (r.formKey === 'rpdDesign' ? r.passed !== undefined && r.passed !== null : r.total !== null && r.total !== undefined);
-const done3 = (r: Sect3Record | undefined): boolean => !!r && r.total !== null && r.total !== undefined;
+const done2 = isSect2Evaluated;
+const done3 = isSect3Evaluated;
 
 /** ใบล่าสุดของแต่ละฟอร์ม นับเฉพาะที่ประเมินเสร็จ (rows เรียงใหม่→เก่ามาแล้วจาก repo) */
 function latestDone<T extends { formKey: string }>(rows: T[], ok: (r: T) => boolean): Map<string, T> {
@@ -97,7 +97,7 @@ function Row({ code, title, score, open, onToggle, children }: {
         <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
           {/* "ยังไม่ได้ประเมิน" เป็นสถานะที่นักศึกษาต้องอ่าน ไม่ใช่ข้อความของปุ่มที่กดไม่ได้
               จึงห้ามใช้ --text-disabled (#c6cdd8 บนพื้นขาว = คอนทราสต์ 1.60 : 1)
-              WCAG 1.4.3 ต้องการ 4.5 : 1 · --text-faint ได้ 4.97 (วัดแล้ว 12 ก.ย. 69)
+              WCAG 1.4.3 ต้องการ 4.5 : 1 · --text-faint ได้ 4.97
               ที่ 1.60 บนจอมือถือในคลินิกคือแทบมองไม่เห็น — ไม่ใช่เรื่องมาตรฐานอย่างเดียว */}
           <span style={{
             font: graded ? '700 14px var(--font-mono)' : '400 12px var(--font-body)',
@@ -238,7 +238,7 @@ function Sect2Detail({ row }: { row: Sect2Record }) {
 }
 
 function RpdDesignDetail({ row }: { row: Sect2Record }) {
-  /* อาจารย์อนุมัติโดยไม่ได้กาทีละข้อ (ทางปกติตั้งแต่ 7 ก.ย. 69) — ไม่ต้องโชว์ 17 ข้อว่างเปล่า */
+  /* อาจารย์อนุมัติโดยไม่ได้กาทีละข้อ — ไม่ต้องโชว์ 17 ข้อว่างเปล่า */
   if (!Object.keys(row.marks ?? {}).length) {
     return (
       <>
@@ -331,7 +331,7 @@ export default function Portfolio() {
       <div style={{ padding: '14px 16px 0', display: 'grid', gap: 16 }}>
         {/* ── Section I ── */}
         <section style={{ display: 'grid', gap: 7 }}>
-          {/* สมุดแบบ "ตัดของซ้ำ" (14 ก.ย. 69 · หลักเดียวกับหน้าเกณฑ์): ใบละการ์ด 15 ใบ → การ์ดเดียวต่อหมวด แถวคั่นเส้น */}
+          {/* สมุดแบบ "ตัดของซ้ำ": ใบละการ์ด 15 ใบ → การ์ดเดียวต่อหมวด แถวคั่นเส้น */}
           <h2 className="pfhead">Section I · <span>{t('ประเมินรายคาบ')}</span></h2>
           <Link to="/app/checkin" className="card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottomWidth: 2 }}>
             <CalendarCheck size={17} color="var(--accent)" style={{ flex: 'none' }} />
