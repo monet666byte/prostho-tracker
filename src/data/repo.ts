@@ -1110,7 +1110,8 @@ export async function importRoster(rows: RosterRow[], dtmu: number, by: string):
     const prev = byCode.get(r.code);
     if (prev) {
       /* ไม่มีชื่ออังกฤษมาในรอบนี้ = คงของเดิม (รายชื่อบางชุดมีแค่ชื่อไทย) */
-      toPut.push({ ...prev, name: r.name, ...(r.nameEn ? { nameEn: r.nameEn } : {}), group: groupCode, entryYear, year: 5 });
+      // ไม่แตะ year ของคนเดิม — ชั้นปีจริงคิดจาก entryYear (studentYear) · เดิมบังคับ 5 ทับทุกครั้งที่นำเข้าซ้ำ
+      toPut.push({ ...prev, name: r.name, ...(r.nameEn ? { nameEn: r.nameEn } : {}), group: groupCode, entryYear });
       updated++;
     } else {
       toPut.push({
@@ -1464,7 +1465,8 @@ export async function saveSect3(input: Sect3Input, actor: string): Promise<Sect3
     grades: input.grades,
     total: input.total,
     by: actor,
-    at: input.at,
+    // วันที่ประเมินจากช่องกรอก — กันปีอนาคต/ค่าว่างแบบเดียวกับ performedAt
+    at: clampPerformedAt(input.at, undefined),
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
   };
@@ -1566,7 +1568,7 @@ export async function saveSect2(input: Sect2Input, actor: string): Promise<Sect2
     marks: input.marks,
     passed: input.passed,
     by: actor,
-    at: input.at,
+    at: clampPerformedAt(input.at, undefined),
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
   };

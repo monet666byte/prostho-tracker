@@ -61,7 +61,7 @@ const COHORT_NAV: NavItem[] = [
   { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
   /* ชื่อเมนู/หัวหน้าเป็น "ตั้งค่า" — หน้านี้มีทั้งเกณฑ์ · ระบบ · สำรองข้อมูล · PDPA แล้ว */
   { key: 'settings', label: t('ตั้งค่า'), short: t('ตั้งค่า'), to: '/teacher/settings', Icon: GearSix },
-  /* รายชื่อ+นำเข้า: หน้าเปิดให้เฉพาะหัวหน้ารายวิชา (Roster.tsx ตรวจเอง) — เมนูโชว์ทุกคนเพื่อให้รู้ว่ามีหน้านี้ */
+  /* รายชื่อ+นำเข้า: เฉพาะหัวหน้ารายวิชา — เมนูถูกซ่อนจากคนอื่น (canSeeRoster) และ Roster.tsx ตรวจซ้ำอีกชั้น */
   { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];
 
@@ -77,7 +77,9 @@ let advisorResetTried = false;
 
 export function TeacherShell({ active, children }: { active: TeacherNav; children: ReactNode }) {
   const navigate = useNavigate();
-  const { session, signOut, teacherGroup, setTeacherGroup, myGroup } = useApp();
+  const { session, signOut, teacherGroup, setTeacherGroup, myGroup, cloudUser } = useApp();
+  // หน้า "รายชื่อ & นำเข้า" เปิดให้เฉพาะหัวหน้ารายวิชา — ไม่โชว์เมนูที่กดแล้วเจอทางตัน (โหมดเดโมเห็นได้ทุกคน)
+  const canSeeRoster = !cloudEnabled || !!cloudUser?.isAdmin;
   // เปิดดูกลุ่มที่ไม่ใช่ของตัวเอง — ไม่ห้าม (อาจารย์เวรต้องข้ามกลุ่มได้) แต่ต้องรู้ตัวตลอดเวลา
   /* อาจารย์ดูแลได้หลายกลุ่ม — "กำลังดูกลุ่มอื่น" = ไม่อยู่ในกลุ่มไหนเลยที่ดูแล
      อ่านสดจากตาราง groups (ตัวที่กฎบนเซิร์ฟเวอร์ใช้) จึงอัปเดตทันทีหลังเลือก/ถอนตัว */
@@ -225,7 +227,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             ))}
           </div>
           <div className="side__section side__section--loose">{t('ตั้งค่า & ข้อมูล')}</div>
-          {COHORT_NAV.filter((n) => SETUP_KEYS.includes(n.key)).map(({ key, label, short, to, Icon }) => (
+          {COHORT_NAV.filter((n) => SETUP_KEYS.includes(n.key) && (n.key !== 'roster' || canSeeRoster)).map(({ key, label, short, to, Icon }) => (
             <NavLink key={key} to={to} className={key === active ? 'on' : undefined} title={rail ? label : undefined}>
               <Icon size={17} weight={key === active ? 'fill' : 'regular'} />
               <span className="navlabel">{label}</span>

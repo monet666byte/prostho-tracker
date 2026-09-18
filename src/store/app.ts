@@ -3,7 +3,7 @@ import { db, isBlockedByOtherTab, kvGet, kvSet } from '../data/db';
 import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/repo';
 import { assertSect2 } from '../domain/sect2';
 import { assertSect3 } from '../domain/sect3';
-import { cloudReset, initCloudSync, stopCloudSync } from '../data/cloudSync';
+import { cloudReset, foreignPendingCount, initCloudSync, stopCloudSync } from '../data/cloudSync';
 import { initPhotoSync, stopPhotoSync } from '../data/photoStore';
 import { onRemoteSettings, pushSettings } from '../data/settingsSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, purgeLocalDemoRows, resetDemoData, seedIfEmpty } from '../data/seed';
@@ -68,6 +68,14 @@ interface AppState {
   cloudUser: AppUser | null;
   /** ล็อกอินแล้วแต่อีเมลไม่อยู่ในรายชื่อที่ภาคเชิญ — เข้าใช้งานไม่ได้ ต้องติดต่อภาค */
   cloudUnlinked: boolean;
+  /**
+   * เครื่องนี้ยังมีงานของ "บัญชีก่อนหน้า" ที่ไม่เคยขึ้นเซิร์ฟเวอร์ กี่รายการ (0 = ไม่มี)
+   * > 0 = ไม่ให้บัญชีใหม่เข้า จนกว่าเจ้าของเดิมจะกลับมา sync หรือมีคนกดยืนยันทิ้งงานนั้น (allowDiscardForeign)
+   * เครื่องไอแพดกลางคลินิกที่สลับกันใช้: เดิมคนถัดไปล็อกอินปุ๊บ งานทั้งคาบของคนก่อนถูกล้างเงียบๆ
+   */
+  foreignPending: number;
+  /** ยืนยันทิ้งงานค้างของบัญชีก่อนหน้า — ล็อกอินครั้งถัดไปจะผ่าน */
+  allowDiscardForeign: () => Promise<void>;
 
   init: () => Promise<void>;
   /** ข้อความอธิบายเมื่อเปิดฐานข้อมูลในเครื่องไม่ได้ (โหมดส่วนตัว / เครื่องเต็ม) */
@@ -87,6 +95,12 @@ interface AppState {
   dismissInstall: () => void;
   openInstall: () => void;
   touch: () => void;
+}
+
+/** บัญชีนี้ถูกกันไม่ให้เข้าเครื่องไหม — มีงานค้างของบัญชีก่อนหน้า และยังไม่มีใครยืนยันให้ทิ้ง */
+async function blockedByForeignWork(uid: string): Promise<boolean> {
+  if ((await foreignPendingCount(uid)) === 0) return false;
+  return !(await kvGet<boolean>('allowDiscardForeign', false));
 }
 
 /**
@@ -197,6 +211,7 @@ export const useApp = create<AppState>((set, get) => ({
   myGroup: null,
   cloudUser: null,
   cloudUnlinked: false,
+  foreignPending: 0,
   teacherGroup: (() => {
     try { return localStorage.getItem('teacherGroup') || 'TH-PT7'; } catch { return 'TH-PT7'; }
   })(),
@@ -245,6 +260,11 @@ export const useApp = create<AppState>((set, get) => ({
         if (purged) console.warn(`[ล้างข้อมูลตัวอย่างที่ค้างในเครื่อง] ${purged} แถว`);
         // โหมด cloud: ยามต้องปล่อยผ่านก่อน ถึงจะ sync ได้ (RLS ฝั่งตู้กลางบังคับอยู่แล้ว)
         const user = await getAppUser();
+        if (user && await blockedByForeignWork(user.uid)) {
+          set({ ready: true, initError: null, settings, session: null, cloudUser: null, cloudUnlinked: false, foreignPending: await foreignPendingCount(user.uid) });
+          await signOutCloud();
+          return;
+        }
         if (user) {
           /* บัญชีที่สลับ นศ.↔อาจารย์ ได้ (เจ้าของระบบ / demo@) — เปิดแอปใหม่ต้องอยู่มุมเดิมที่เลือกไว้
              เดิมรีเฟรชทีไรเด้งกลับหน้า นศ. ทุกครั้ง แม้กำลังทำงานหน้าจัดการรายชื่ออยู่
@@ -321,8 +341,15 @@ export const useApp = create<AppState>((set, get) => ({
       set({ cloudUnlinked: true });
       return { error: 'บัญชีนี้ยังไม่ได้ผูกกับนักศึกษา/อาจารย์ — ติดต่อภาควิชาเพื่อเพิ่มรายชื่อ' };
     }
+    if (await blockedByForeignWork(user.uid)) {
+      const n = await foreignPendingCount(user.uid);
+      set({ foreignPending: n });
+      await signOutCloud();
+      return { error: '' }; // หน้าเข้าระบบแสดงกล่องอธิบายจาก foreignPending เอง
+    }
     const session = sessionFromUser(user);
     await kvSet('session', session);
+    await kvSet('allowDiscardForeign', false);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
     const myGroup = await findMyGroup(session.teacherId);
     set({
@@ -341,6 +368,11 @@ export const useApp = create<AppState>((set, get) => ({
     await kvSet('session', session);
     try { localStorage.removeItem('loggedOut'); } catch { /* private mode */ }
     set({ session, actorName: await actorNameFor(session) });
+  },
+
+  async allowDiscardForeign() {
+    await kvSet('allowDiscardForeign', true);
+    set({ foreignPending: 0 });
   },
 
   async signOut() {

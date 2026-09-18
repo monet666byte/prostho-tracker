@@ -141,5 +141,23 @@ let got = false;
 for (let i = 0; i < 4; i++) got = (await pullSettings()) || got;
 check('เครื่องที่เขียนไม่ได้ (นักศึกษา) ยังรับค่าจากอาจารย์ได้', got, JSON.stringify(store.settings));
 
+/* ── ③ ปิดแท็บตอนค่าตั้งยังค้างส่ง ──────────────────────────────────────────
+   อาจารย์กดเปิดฟอร์มตอนเน็ตหลุดแล้วปิดแท็บ — เปิดใหม่ต้องยังส่งค่านั้น และห้ามให้ของบนตู้มาทับก่อน
+   "เปิดใหม่" = โหลดโมดูลสำเนาที่สอง (สถานะในหน่วยความจำว่าง) โดยยก kv ของเครื่องเดิมไปให้ */
+console.log('\nปิดแท็บตอนค่าตั้งยังค้างส่ง');
+setFailNext(1);
+await pushSettings({ saOpenYears: [6] });
+check('ค้างส่ง → มีสำเนาคิวในเครื่อง', !!store.settingsOutbox, JSON.stringify(store.settingsOutbox));
+const mod2 = join(dir, 'mod2.mts');
+writeFileSync(mod2, FAKE + real);
+const m2 = await import(mod2);
+Object.assign(m2.store, store);
+m2.setRemote({ value: { saOpenYears: [] }, updated_at: 'r9' });
+const pulled = await m2.pullSettings();
+check('เปิดใหม่: ของบนตู้ไม่ทับค่าที่ยังค้างส่ง', pulled === false, String(pulled));
+await m2.flushSettings();
+check('เปิดใหม่: ค่าที่ค้างถูกส่งขึ้นจริง', m2.log.at(-1) === 'OK {"saOpenYears":[6]}', JSON.stringify(m2.log));
+check('ส่งแล้วสำเนาคิวว่าง', m2.store.settingsOutbox === null, JSON.stringify(m2.store.settingsOutbox));
+
 console.log(failures ? `\n❌ ตก ${failures} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(failures ? 1 : 0);

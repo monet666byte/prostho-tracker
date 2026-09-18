@@ -1290,4 +1290,10 @@ export const DICT: Record<string, string> = {
   'แนบรูปเข้าเคส': 'Attach photos to case',
   'ต่ำกว่า {n}%': 'Below {n}%',
   'ปัญหา / ข้อสงสัยเรื่องข้อมูลรายวิชา ติดต่อหัวหน้ารายวิชา (ดูรายชื่อในหน้า "รายชื่อ & นำเข้า")': 'For course-data questions contact the course lead (see the "People & import" page)',
+  /* ── สลับบัญชีบนเครื่องที่ยังมีงานค้างของคนก่อน ── */
+  'เครื่องนี้ยังมีงานของบัญชีก่อนหน้าที่ไม่เคยขึ้นเซิร์ฟเวอร์ {n} รายการ — ให้เจ้าของเดิมเข้าระบบบนเครื่องนี้แล้วรอ sync ให้ครบก่อน ไม่งั้นงานนั้นจะหายถาวร':
+    'This device still holds {n} item(s) from the previous account that never reached the server — have that person sign in here and let it finish syncing first, or that work is lost for good',
+  'ทิ้งงานที่ค้างของบัญชีก่อนหน้า {n} รายการ แล้วให้บัญชีใหม่เข้าเครื่องนี้? กู้คืนไม่ได้':
+    'Discard the previous account’s {n} unsent item(s) and let a new account use this device? This cannot be undone',
+  'ทิ้งงานนั้น แล้วเข้าด้วยบัญชีอื่น': 'Discard that work and sign in with another account',
 };

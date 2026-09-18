@@ -57,6 +57,29 @@ export function useWorkpiece(id: string | undefined) {
   );
 }
 
+/**
+ * วันที่ทำจริงของขั้นล่าสุดที่ผ่าน — อ่านจากประวัติ (performedAt ที่นักศึกษาเลือก)
+ * ห้ามใช้ lastUpdatedAt: มันขยับทุกครั้งที่แตะชิ้นงาน (คืนเคส · เลิกทำ) และเป็น "ตอนที่กดบันทึก"
+ * ไม่ใช่ "วันที่ทำ" — กรอกย้อนหลังของสัปดาห์ก่อนแล้วเส้นทางเคสขึ้นเป็นวันนี้
+ * null = ไม่มีประวัติของขั้นนี้ในเครื่อง (งานนำเข้าจากชีต) → ไม่แสดงวันที่ ดีกว่าแสดงวันที่ผิด
+ */
+export function useLastStepDate(w: { id: string; procIndex: number } | null | undefined): string | null {
+  const id = w?.id;
+  const procIndex = w?.procIndex ?? -1;
+  return useLiveQuery(
+    async () => {
+      if (!id || procIndex < 0) return null;
+      const rows = await db.updates.where('workpieceId').equals(id).toArray();
+      const hit = rows
+        .filter((u) => !u.reversal && u.procIndex === procIndex)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      return hit?.performedAt ?? null;
+    },
+    [id, procIndex],
+    null,
+  ) ?? null;
+}
+
 export function usePending() {
   return useLiveQuery(() => pendingIds(), [], new Set<string>()) ?? new Set<string>();
 }

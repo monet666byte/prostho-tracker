@@ -27,6 +27,36 @@ type Bag = Record<string, unknown>;
  * — บั๊กแบบเดียวกับที่เจอใน cloudSync คืนแรก
  */
 let pending: { value: Bag; by?: string } | null = null;
+
+/**
+ * สำเนาของ pending ในเครื่อง — คิวต้องรอดการปิดแท็บ เหมือน syncOutbox ของ cloudSync
+ * เดิมอยู่แค่ในหน่วยความจำ: อาจารย์กด "เปิดฟอร์มปี 5" ตอนเน็ตหลุดแล้วปิดแท็บ = หน้าจอตัวเองขึ้นว่าเปิด
+ * แต่เซิร์ฟเวอร์ไม่เคยรู้ และ pull รอบหน้าทับค่านั้นกลับเงียบๆ
+ */
+const OUTBOX_KEY = 'settingsOutbox';
+let restored = false;
+
+async function restorePending(): Promise<void> {
+  if (restored) return;
+  restored = true;
+  try {
+    const saved = await kvGet<{ value: Bag; by?: string } | null>(OUTBOX_KEY, null);
+    if (saved && !pending) {
+      pending = saved;
+      setState('pending');
+    }
+  } catch {
+    /* อ่านไม่ได้ = เริ่มด้วยคิวว่าง */
+  }
+}
+
+async function persistPending(): Promise<void> {
+  try {
+    await kvSet(OUTBOX_KEY, pending);
+  } catch {
+    /* เขียนไม่ได้ (ดิสก์เต็ม/หน้าต่างส่วนตัว) — คิวในหน่วยความจำยังทำงานต่อ */
+  }
+}
 /**
  * ส่งไม่ผ่านติดกันกี่ครั้งแล้ว — ครบโควตาแล้วยอมทิ้งคิว
  *
@@ -81,6 +111,7 @@ async function applyRemote(value: Bag, stamp: string): Promise<void> {
  */
 export async function pullSettings(): Promise<boolean> {
   if (!cloudEnabled || !supabase) return false;
+  await restorePending(); // ต้องรู้ก่อนว่ามีของค้างจากรอบก่อนไหม ไม่งั้นรอบแรกหลังเปิดแอปดึงมาทับ
   if (pending) return false; // ของเราค้างอยู่ ยังไม่รับของใหม่ทับ
 
   const { data, error } = await supabase
@@ -128,6 +159,8 @@ export async function pushSettings(value: Bag, by?: string): Promise<void> {
   if (!cloudEnabled || !supabase) return;
   const job = { value, by };
   pending = job;
+  restored = true; // ของใหม่กว่าสำเนาเก่าเสมอ — ไม่ต้องอ่านกลับมาทับ
+  await persistPending();
   setState('pending');
   /**
    * ต่อคิวทีละใบ ห้ามยิงพร้อมกัน
@@ -159,7 +192,7 @@ async function sendOne(job: { value: Bag; by?: string }, track = true): Promise<
     // ครบโควตาแล้วยังไม่ผ่าน = เขียนไม่ได้จริงๆ ปล่อยคิวทิ้ง (ค่าในเครื่องยังอยู่ครบ)
     // ต้องปล่อย ไม่งั้น pullSettings ถูกล็อกถาวรตามคอมเมนต์ที่ failCount
     if (++failCount >= MAX_PUSH_RETRY) {
-      if (pending === job) pending = null;
+      if (pending === job) { pending = null; await persistPending(); }
       failCount = 0;
       setState('failed');
     }
@@ -167,7 +200,7 @@ async function sendOne(job: { value: Bag; by?: string }, track = true): Promise<
   }
   if (track) {
     // เคลียร์เฉพาะใบของตัวเอง — ถ้ามีใบใหม่กว่าเข้าคิวระหว่างรอเน็ต ห้ามไปล้างของเขา
-    if (pending === job) pending = null;
+    if (pending === job) { pending = null; await persistPending(); }
     failCount = 0;
     setState('synced');
   }
@@ -178,6 +211,7 @@ async function sendOne(job: { value: Bag; by?: string }, track = true): Promise<
 
 /** ลองส่งของค้างขึ้นอีกรอบ — cloudSync เรียกใน loop 15 วิ และตอนเน็ตกลับมา */
 export async function flushSettings(): Promise<void> {
+  await restorePending();
   const job = pending;
   if (!job) return;
   const run = () => sendOne(job); // ใบเดิม ไม่ใช่ใบใหม่ — ไม่งั้น pending !== job แล้วจะถูกข้ามทิ้ง

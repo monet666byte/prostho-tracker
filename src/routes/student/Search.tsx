@@ -39,7 +39,7 @@ export default function Search() {
         .toLowerCase()
         .includes(q),
     );
-  }, [query, works]);
+  }, [query, works, namesOn]);
 
   return (
     <PlainShell>

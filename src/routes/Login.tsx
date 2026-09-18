@@ -13,7 +13,7 @@ import { takeSignOutNotice } from '../data/localWipe';
 
 export default function Login() {
   const [role, setRole] = useState<Role | null>(null);
-  const { signIn, signInCloud, installPrompt, dismissInstall, cloudUnlinked } = useApp();
+  const { signIn, signInCloud, installPrompt, dismissInstall, cloudUnlinked, foreignPending, allowDiscardForeign } = useApp();
   const navigate = useNavigate();
   // โหมด cloud: ปุ่ม Google เป็นทางหลัก อีเมล+รหัสผ่านเป็นทางสำรอง — โหมด local/แชร์เดโมเลือกบทบาทเข้าได้เลย
   const [email, setEmail] = useState('');
@@ -69,7 +69,8 @@ export default function Login() {
     setError(null);
     const res = await signInCloud(email, password);
     setBusy(false);
-    if (res.error) { setError(res.error); return; }
+    // error ว่าง = ถูกกันด้วยงานค้างของบัญชีก่อนหน้า — กล่องอธิบายมาจาก foreignPending ไม่ต้องขึ้นข้อความซ้ำ
+    if (res.error !== undefined) { if (res.error) setError(res.error); return; }
     navigate(useApp.getState().session?.role === 'teacher' ? '/teacher' : '/app');
   }
 
@@ -139,6 +140,29 @@ export default function Login() {
           >
             {signOutNotice.message}
           </span>
+        </div>
+      )}
+      {foreignPending > 0 && (
+        <div
+          role="alert"
+          style={{
+            display: 'grid', gap: 8, borderRadius: 12, padding: '10px 12px', textAlign: 'left',
+            background: 'var(--warning-tint)', border: '1px solid var(--warning-border)',
+            font: '500 12px/1.6 var(--font-body)', color: 'var(--warning-dark)',
+          }}
+        >
+          <span>
+            {t('เครื่องนี้ยังมีงานของบัญชีก่อนหน้าที่ไม่เคยขึ้นเซิร์ฟเวอร์ {n} รายการ — ให้เจ้าของเดิมเข้าระบบบนเครื่องนี้แล้วรอ sync ให้ครบก่อน ไม่งั้นงานนั้นจะหายถาวร', { n: foreignPending })}
+          </span>
+          <button
+            className="textlink"
+            style={{ justifySelf: 'start', color: 'var(--danger-dark)' }}
+            onClick={() => {
+              if (window.confirm(t('ทิ้งงานที่ค้างของบัญชีก่อนหน้า {n} รายการ แล้วให้บัญชีใหม่เข้าเครื่องนี้? กู้คืนไม่ได้', { n: foreignPending }))) void allowDiscardForeign();
+            }}
+          >
+            {t('ทิ้งงานนั้น แล้วเข้าด้วยบัญชีอื่น')}
+          </button>
         </div>
       )}
       {errorBox}

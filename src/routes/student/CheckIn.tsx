@@ -56,7 +56,7 @@ export default function CheckInPage() {
     const seen = new Map<string, string>();
     works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
     return [...seen.entries()];
-  }, [works]);
+  }, [works, namesOn]);
 
   const evaluated = checkins.filter((c) => c.status === 'evaluated');
   const stepsByDate = useStepsOnDates(

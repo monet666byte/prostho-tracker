@@ -58,7 +58,7 @@ const M: Mutant[] = [
   { id: 'M25', what: 'ตราเวลาอนาคตทำให้หยุดดึง', find: 'const stampIsSane = remoteMax && remoteMax <= new Date().toISOString();', replace: 'const stampIsSane = remoteMax;' },
   { id: 'M26', what: 'pushAll ส่งทุกแถวที่ตู้มีแล้ว', find: '.filter((o) => !onServer || !onServer.has(o[def.pk]));', replace: ';' },
   { id: 'M27', what: 'pushAll เขียนทับแถวบนตู้ (merge แทน do nothing)', find: '{ ignoreDuplicates: true, defaultToNull: false },\n      );\n    }\n  }\n}', replace: '{ defaultToNull: false },\n      );\n    }\n  }\n}' },
-  { id: 'M28', what: 'สลับบัญชีแล้วคิวของคนก่อนไม่ถูกล้าง', find: '    await clearOutbox();\n    lastPulled.clear();\n  serverKeys.clear();', replace: '    lastPulled.clear();\n  serverKeys.clear();' },
+  { id: 'M28', what: 'สลับบัญชีแล้วคิวของคนก่อนไม่ถูกล้าง', find: '    await clearOutbox();\n    lastPulled.clear();\n    serverKeys.clear();', replace: '    lastPulled.clear();\n    serverKeys.clear();' },
   { id: 'M29', what: 'ออกจากระบบแล้วเข้าใหม่ ไม่อ่านคิวซ้ำ', find: '  outboxRestored = false;\n  lastPulled.clear();', replace: '  lastPulled.clear();' },
   { id: 'M30', what: 'pushAll ลืมว่าตู้มีอะไร: serverKeys ไม่ถูกบันทึกหลังดึงทั้งตาราง', find: 'else serverKeys.set(def.local, new Set(data.map((r) => r[remotePkCol])));', replace: 'else {}' },
   { id: 'M31', what: 'หยุด sync ซ้อนกัน: งานแรกจบแล้วปลดทั้งหมด', find: 'pauseDepth = Math.max(0, pauseDepth + (v ? 1 : -1));', replace: 'pauseDepth = v ? 1 : 0;' },

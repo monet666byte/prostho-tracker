@@ -519,7 +519,20 @@ async function runPumpHooks(): Promise<void> {
 }
 
 /** ส่งของค้างขึ้นตู้กลาง */
-async function flush(): Promise<void> {
+/**
+ * ห้ามวิ่งซ้อนกัน — รอบ 15 วิ · online · visibilitychange · pagehide · ปุ่ม sync เรียกพร้อมกันได้
+ * ซ้อนกันแล้วตัวนับ "ตู้ปฏิเสธครบ 3 ครั้ง → กัก" นับซ้ำจากการปฏิเสธครั้งเดียว (กักเร็วเกินจริง)
+ * ต่อคิวให้รอบใหม่เริ่มหลังรอบเก่าจบ ไม่ใช่คืน promise ของรอบเก่า —
+ * งานที่เข้าคิวหลังรอบเก่าเริ่มไปแล้ว ต้องได้ส่งในรอบของตัวเอง
+ */
+let flushChain: Promise<void> = Promise.resolve();
+function flush(): Promise<void> {
+  const run = () => flushOnce();
+  flushChain = flushChain.then(run, run);
+  return flushChain;
+}
+
+async function flushOnce(): Promise<void> {
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
@@ -937,13 +950,46 @@ let started = false;
  */
 const POLICY_VERSION = 'v3';
 
+/** บัญชีที่เครื่องนี้ผูกอยู่ (ไม่รวมเลขรุ่นสิทธิ์) — null = ยังไม่เคยผูก */
+const boundUidOf = (bound: string | null): string | null => (bound ? bound.split('@')[0] : null);
+
+/**
+ * งานของ "บัญชีก่อนหน้า" ที่ยังไม่ขึ้นเซิร์ฟเวอร์ — ถามก่อนให้บัญชีใหม่เข้าเครื่องนี้
+ * (ผูกบัญชีใหม่ = ล้างลิ้นชักและคิวทิ้ง · งานที่นับได้ตรงนี้คืองานที่จะหายถาวร)
+ * 0 = เข้าได้เลย: เครื่องใหม่ · บัญชีเดิม · หรือบัญชีก่อนส่งครบแล้ว
+ */
+export async function foreignPendingCount(uid: string): Promise<number> {
+  const prev = boundUidOf(await kvGet<string | null>('cloudBoundUid', null));
+  if (!prev || prev === uid) return 0;
+  const snap = await kvGet<OutboxSnapshot | null>(OUTBOX_KEY, null);
+  const rows = (snap?.dirty ?? []).reduce((n, [, r]) => n + r.length, 0)
+    + (snap?.deletes ?? []).reduce((n, [, r]) => n + r.length, 0);
+  // รูปที่ไบต์ยังไม่ขึ้น Storage — ไม่อยู่ในคิวแถว แต่หายถาวรเหมือนกันถ้าล้าง
+  const photos = await db.photos.filter((p) => !p.storagePath).count();
+  return rows + photos;
+}
+
 async function bindToUser(uid: string): Promise<boolean> {
   const key = `${uid}@${POLICY_VERSION}`;
   const bound = await kvGet<string | null>('cloudBoundUid', null);
   if (bound === key) return false;
+  const sameUser = boundUidOf(bound) === uid;
+  if (sameUser) {
+    /* คนเดิม แต่เลขรุ่นสิทธิ์ขยับ (แอปเพิ่งอัปเดต) — งานที่เขาทำค้างไว้ตอนออฟไลน์ต้องขึ้นตู้ก่อน
+       ถึงจะล้างลิ้นชักได้ · ยังส่งไม่หมด (ไม่มีเน็ต) = ยังไม่ล้าง รอบเปิดแอปครั้งหน้าค่อยลองใหม่
+       ล้างทันทีแบบบัญชีใหม่ = งานทั้งคาบของคนที่อัปเดตแอปกลางคาบหายเงียบ (test:offline "สำเนาคิวรูปเก่า") */
+    await restoreOutbox();
+    await flush();
+    if (pendingPushCount() > 0) return false;
+  }
   setSyncPaused(true);
   try {
     for (const def of TABLES) await db.table(def.local).clear();
+    if (!sameUser) {
+      // ของบัญชีก่อนหน้าที่ไม่อยู่ใน TABLES — ไฟล์รูปในเครื่องกับรายการรอส่ง ต้องไม่ตกถึงมือคนถัดไป
+      await db.table('blobs').clear();
+      await db.table('queue').clear();
+    }
     // บัญชีใหม่ = ลิ้นชักถูกล้าง คิวของบัญชีก่อนหน้าจึงชี้ไปที่แถวที่ไม่มีอยู่แล้ว
     // ต้องล้างสำเนาในเครื่องด้วย ไม่ใช่แค่ในหน่วยความจำ ไม่งั้นรอบหน้าอ่านกลับมาแล้วส่งของคนอื่น
     await clearOutbox();

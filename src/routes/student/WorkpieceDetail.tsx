@@ -8,7 +8,7 @@ import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { typeMeta } from '../../domain/catalog';
 import {
   maxProgression, nextProc, progression, stepGroups, isReturned, stepFraction } from '../../domain/rules';
-import { usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
+import { useLastStepDate, usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
 import { setWorkpieceReturned } from '../../data/repo';
 import { thaiShort } from '../../lib/date';
@@ -34,6 +34,7 @@ export default function WorkpieceDetail() {
   const [askReturn, setAskReturn] = useState(false);
   const [returnNote, setReturnNote] = useState('');
   const savingReturn = useRef(false);
+  const lastStepDate = useLastStepDate(w);
 
   if (!w) return <PlainShell><div style={{ padding: 24 }}>{t('ไม่พบชิ้นงานนี้')}</div></PlainShell>;
 
@@ -61,6 +62,7 @@ export default function WorkpieceDetail() {
   const prog = progression(w);
   const max = maxProgression(w);
   const next = nextProc(w);
+  const lastDoneIndex = groups.map((x) => x.state).lastIndexOf('done');
 
   const footer = (
     <div className="footer">
@@ -196,8 +198,7 @@ export default function WorkpieceDetail() {
         {groups.map((g, gi) => {
           const first = g.procs[0];
           const extra = g.procs.length - 1;
-          const lastDoneIndex = groups.map((x) => x.state).lastIndexOf('done');
-          const passedDate = gi === lastDoneIndex ? thaiShort(w.lastUpdatedAt) : null;
+          const passedDate = gi === lastDoneIndex && lastStepDate ? thaiShort(lastStepDate) : null;
           const expanded = g.state === 'active' || openStep === g.progression;
           return (
             <div className="tl__item" key={g.progression} style={{ '--i': gi } as React.CSSProperties}>

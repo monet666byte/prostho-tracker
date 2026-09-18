@@ -229,7 +229,7 @@ export default function Home() {
     const seen = new Map<string, string>();
     works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
     return [...seen.entries()];
-  }, [works]);
+  }, [works, namesOn]);
 
   async function submitAskCheckIn() {
     if (!session || checkingIn.current) return;
