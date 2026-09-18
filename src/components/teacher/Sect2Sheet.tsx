@@ -8,7 +8,7 @@
  */
 import { ArrowLeft, CaretDown, CaretUp, CheckCircle, Trash, X } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { useDraftSave } from '../../hooks/useDraftSave';
+import { useAdoptOwnRow, useOwnRow, useOwnRowDraft } from './useOwnRowDraft';
 import { firstNameOnly } from '../../domain/group';
 import { studentYear } from '../../domain/cohort';
 import {
@@ -92,8 +92,8 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   onSaved: (total: number | null) => void;
   onDeleted: () => void;
 }) {
-  const prev = history[0];
-  const [editing, setEditing] = useState<string | undefined>(prev?.id);
+  const own = useOwnRow(history);
+  const { editing, editingRef, everSaved, skipDraft } = own;
   const cur = history.find((r) => r.id === editing);
   const [grades, setGrades] = useState<Record<string, S2Grade>>((cur?.grades ?? {}) as Record<string, S2Grade>);
   const [f, setF] = useState({
@@ -107,47 +107,19 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
   const done = form.criteria.filter((c) => grades[c.key]).length;
 
   /* ร่างอัตโนมัติ — เหตุผลเดียวกับ Sect3Sheet (กาครึ่งใบแล้วถูกขัดจังหวะ ของต้องไม่หาย) */
-  const editingRef = useRef(editing);
-  editingRef.current = editing;
-  const skipNext = useRef(false);
-  const { touch, cancel } = useDraftSave(async () => {
-    const row = await saveSect2({
-      id: editingRef.current, studentId: student.id, formKey: form.key,
-      academicYear: year, classYear, ...f, grades, total, silent: true,
-    }, currentActor());
-    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
-  });
-  const firstRender = useRef(true);
+  const { touch, cancel } = useOwnRowDraft(own, (id) => saveSect2({
+    id, studentId: student.id, formKey: form.key,
+    academicYear: year, classYear, ...f, grades, total, silent: true,
+  }, currentActor()));
   useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return; }
-    if (skipNext.current) { skipNext.current = false; return; }
+    if (skipDraft()) return;
     if (!Object.keys(grades).length) return;
     touch();
-  }, [grades, f, touch]);
-
-
-  /* สองเครื่องของ "คนเดียวกัน" (มือถือ+iPad) → รับแถวที่มีอยู่มาแก้ต่อ
-     ไม่งั้นต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
-     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง)
-
-     ⚠️ แต่ต้องเป็นใบของตัวเองเท่านั้น — อาจารย์สองท่านเปิดใบเดียวกันคือคนละเรื่อง
-     เดิมรับใบของท่านอื่นมาแก้ต่อด้วย บวกกับร่างอัตโนมัติที่ยิงทุกครั้งที่กา
-     = คะแนนของอีกท่านถูกทับรัวๆ ตลอดเวลาที่เปิดใบค้างไว้ และนี่คือคะแนนเงื่อนไขจบ
-     เจอใบของท่านอื่น → เริ่มใบใหม่ ทั้งสองใบอยู่ครบ (repo.saveSect2/3 แตกใบให้อีกชั้น) */
-  const wantNew = useRef(false);
-  useEffect(() => {
-    if (editingRef.current || wantNew.current) return;
-    if (Object.keys(grades).length) return;
-    const latest = history.find((r) => r.by === currentActor());
-    if (latest) reset(latest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history]);
+  }, [grades, f, touch, skipDraft]);
+  useAdoptOwnRow(own, history, !Object.keys(grades).length, reset);
 
   function reset(row?: Sect2Record) {
-    everSaved.current = !!row;
-    skipNext.current = true;
-    setEditing(row?.id);
-    editingRef.current = row?.id;
+    own.switchTo(row);
     setGrades((row?.grades ?? {}) as Record<string, S2Grade>);
     setF({
       patientName: row?.patientName ?? '', hn: row?.hn ?? '',
@@ -155,10 +127,6 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
     });
   }
 
-  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
-     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
-     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
-  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -183,11 +151,11 @@ export function Sect2ScoreSheet({ form, student, classYear, year, history, onClo
       {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+            <button key={r.id} data-on={r.id === editing} onClick={() => { own.setWantNew(false); reset(r); }}>
               {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { own.setWantNew(true); reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 
@@ -307,8 +275,8 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   onSaved: (passed: boolean) => void;
   onDeleted: () => void;
 }) {
-  const prev = history[0];
-  const [editing, setEditing] = useState<string | undefined>(prev?.id);
+  const own = useOwnRow(history);
+  const { editing, editingRef, everSaved, skipDraft } = own;
   const cur = history.find((r) => r.id === editing);
   const [marks, setMarks] = useState<Record<string, boolean>>(cur?.marks ?? {});
   const [f, setF] = useState({
@@ -333,47 +301,19 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
   const passed = detailed ? rpdDesignPassed(marks) : approved;
   const canSave = detailed ? complete : approved !== undefined;
 
-  const editingRef = useRef(editing);
-  editingRef.current = editing;
-  const skipNext = useRef(false);
-  const { touch, cancel } = useDraftSave(async () => {
-    const row = await saveSect2({
-      id: editingRef.current, studentId: student.id, formKey: 'rpdDesign',
-      academicYear: year, classYear, ...f, marks,
-      passed: detailed ? (complete && passed) : approved, silent: true,
-    }, currentActor());
-    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
-  });
-  const firstRender = useRef(true);
+  const { touch, cancel } = useOwnRowDraft(own, (id) => saveSect2({
+    id, studentId: student.id, formKey: 'rpdDesign',
+    academicYear: year, classYear, ...f, marks,
+    passed: detailed ? (complete && passed) : approved, silent: true,
+  }, currentActor()));
   useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return; }
-    if (skipNext.current) { skipNext.current = false; return; }
+    if (skipDraft()) return;
     touch();
-  }, [marks, f, approved, touch]);
-
-
-  /* สองเครื่องของ "คนเดียวกัน" (มือถือ+iPad) → รับแถวที่มีอยู่มาแก้ต่อ
-     ไม่งั้นต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
-     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง)
-
-     ⚠️ แต่ต้องเป็นใบของตัวเองเท่านั้น — อาจารย์สองท่านเปิดใบเดียวกันคือคนละเรื่อง
-     เดิมรับใบของท่านอื่นมาแก้ต่อด้วย บวกกับร่างอัตโนมัติที่ยิงทุกครั้งที่กา
-     = คะแนนของอีกท่านถูกทับรัวๆ ตลอดเวลาที่เปิดใบค้างไว้ และนี่คือคะแนนเงื่อนไขจบ
-     เจอใบของท่านอื่น → เริ่มใบใหม่ ทั้งสองใบอยู่ครบ (repo.saveSect2/3 แตกใบให้อีกชั้น) */
-  const wantNew = useRef(false);
-  useEffect(() => {
-    if (editingRef.current || wantNew.current) return;
-    if (Object.keys(marks).length) return;
-    const latest = history.find((r) => r.by === currentActor());
-    if (latest) reset(latest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history]);
+  }, [marks, f, approved, touch, skipDraft]);
+  useAdoptOwnRow(own, history, !Object.keys(marks).length, reset);
 
   function reset(row?: Sect2Record) {
-    everSaved.current = !!row;
-    skipNext.current = true;
-    setEditing(row?.id);
-    editingRef.current = row?.id;
+    own.switchTo(row);
     setMarks(row?.marks ?? {});
     setF({
       patientName: row?.patientName ?? '', hn: row?.hn ?? '',
@@ -383,10 +323,6 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
     setShowItems(Object.keys(row?.marks ?? {}).length > 0);
   }
 
-  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
-     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
-     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
-  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -414,11 +350,11 @@ export function RpdDesignSheet({ student, classYear, year, history, onClose, onS
       {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+            <button key={r.id} data-on={r.id === editing} onClick={() => { own.setWantNew(false); reset(r); }}>
               {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { own.setWantNew(true); reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 

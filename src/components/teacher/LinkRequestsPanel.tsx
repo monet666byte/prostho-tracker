@@ -1,5 +1,6 @@
 import { Check, IdentificationCard, WarningCircle, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ConfirmActions, ConfirmBox } from '../ui/ConfirmBox';
 import { cloudEnabled } from '../../lib/cloud';
 import { decideLink, pendingLinkRequests, type PendingLink } from '../../lib/link';
 import { t } from '../../lib/i18n';
@@ -124,25 +125,20 @@ export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean
       </div>
 
       {confirm && (
-        <div className="confirmwrap" onClick={() => setConfirm(null)}>
-          <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
-            <div className="confirmbox__q">{confirm.approve ? t('ยืนยันว่าบัญชีนี้เป็นของ') : t('ปฏิเสธคำขอผูกบัญชีของ')}</div>
-            <div className="confirmbox__who">{confirm.row.studentName}</div>
-            <div className="confirmbox__meta" style={{ overflowWrap: 'anywhere' }}>{confirm.row.studentCode} · {confirm.row.email}</div>
-            <p className="confirmbox__note">
-              {confirm.approve
-                ? t('บัญชีนี้จะเห็นเคสและคนไข้ของนักศึกษาคนนี้ทั้งหมด')
-                : t('นักศึกษาส่งคำขอใหม่ได้ ถ้าใส่รหัสผิด')}
-            </p>
-            <div className="confirmbox__actions">
-              <button className="btn btn--sec" onClick={() => setConfirm(null)}>{t('ยกเลิก')}</button>
-              <button className="btn" onClick={decide}>
-                {confirm.approve ? <Check size={16} weight="bold" /> : <X size={16} weight="bold" />}
-                {confirm.approve ? t('ยืนยัน') : t('ปฏิเสธ')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmBox onBackdrop={() => setConfirm(null)}>
+          <div className="confirmbox__q">{confirm.approve ? t('ยืนยันว่าบัญชีนี้เป็นของ') : t('ปฏิเสธคำขอผูกบัญชีของ')}</div>
+          <div className="confirmbox__who">{confirm.row.studentName}</div>
+          <div className="confirmbox__meta" style={{ overflowWrap: 'anywhere' }}>{confirm.row.studentCode} · {confirm.row.email}</div>
+          <p className="confirmbox__note">
+            {confirm.approve
+              ? t('บัญชีนี้จะเห็นเคสและคนไข้ของนักศึกษาคนนี้ทั้งหมด')
+              : t('นักศึกษาส่งคำขอใหม่ได้ ถ้าใส่รหัสผิด')}
+          </p>
+          <ConfirmActions onCancel={() => setConfirm(null)} onConfirm={decide}>
+            {confirm.approve ? <Check size={16} weight="bold" /> : <X size={16} weight="bold" />}
+            {confirm.approve ? t('ยืนยัน') : t('ปฏิเสธ')}
+          </ConfirmActions>
+        </ConfirmBox>
       )}
     </div>
   );

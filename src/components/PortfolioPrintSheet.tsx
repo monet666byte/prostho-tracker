@@ -13,6 +13,7 @@ import {
 } from '../domain/sect2';
 import { S3_FULL_SCORE, s3Points, sect3Form } from '../domain/sect3';
 import { SheetBoundary } from './SheetBoundary';
+import { SignatureBlock } from './SignatureBlock';
 import { thaiShort } from '../lib/date';
 import { personName, t } from '../lib/i18n';
 import { patientNamesOn } from '../data/pdpaSync';
@@ -53,18 +54,10 @@ function CaseLine({ row }: { row: Sect2Record | Sect3Record }) {
 
 function Sign({ caption = 'Instructor signature', date }: { caption?: string; date?: string }) {
   return (
-    <div className="sign">
-      <div>
-        <div className="line" />
-        <div className="cap">{caption}</div>
-      </div>
-      <div style={{ maxWidth: 190 }}>
-        <div className="line" style={{ textAlign: 'center', font: '400 9px var(--font-body)', paddingTop: 16 }}>
-          {date ? thaiShort(date) : ''}
-        </div>
-        <div className="cap">Date</div>
-      </div>
-    </div>
+    <SignatureBlock
+      captions={[caption]}
+      dated={{ caption: 'Date', text: date ? thaiShort(date) : '', maxWidth: 190 }}
+    />
   );
 }
 
@@ -256,22 +249,10 @@ export function RpdDesignPrintPage({ row, student }: { row: Sect2Record; student
       </table>
 
       <p className="pfnote"><b>Remark:</b> {RPD_DESIGN_REMARK}</p>
-      <div className="sign">
-        <div>
-          <div className="line" />
-          <div className="cap">Examinee signature</div>
-        </div>
-        <div>
-          <div className="line" />
-          <div className="cap">Examiner signature</div>
-        </div>
-        <div style={{ maxWidth: 150 }}>
-          <div className="line" style={{ textAlign: 'center', font: '400 9px var(--font-body)', paddingTop: 16 }}>
-            {thaiShort(row.at)}
-          </div>
-          <div className="cap">Date</div>
-        </div>
-      </div>
+      <SignatureBlock
+        captions={['Examinee signature', 'Examiner signature']}
+        dated={{ caption: 'Date', text: thaiShort(row.at), maxWidth: 150 }}
+      />
     </section>
   );
 }

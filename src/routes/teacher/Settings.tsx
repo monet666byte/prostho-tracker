@@ -2,6 +2,7 @@ import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { TextSizeControl } from '../../components/TextSize';
+import { ConfirmBox } from '../../components/ui/ConfirmBox';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
@@ -355,30 +356,28 @@ export default function Settings() {
         </div>
         {/* ลบจริง กู้ไม่ได้ — ต้องเห็นตัวเลขที่จะหายไปก่อนกดยืนยัน */}
         {confirmPurge && report && (
-          <div className="confirmwrap" onClick={() => setConfirmPurge(false)}>
-            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
-              <div className="confirmbox__q">{t('ยืนยันลบข้อมูลรุ่นที่เกินกำหนดเก็บ')}</div>
-              <div className="confirmbox__who">{report.expired.map((e) => cohortLabel(e.cohort)).join(' · ')}</div>
-              <div className="confirmbox__meta">
-                {t('{a} คน · {b} ชิ้นงาน · {c} คาบ', {
-                  a: report.expired.reduce((n, e) => n + e.students, 0),
-                  b: report.expired.reduce((n, e) => n + e.workpieces, 0),
-                  c: report.expired.reduce((n, e) => n + e.checkins, 0),
-                })}
-              </div>
-              <p className="confirmbox__note">
-                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-                {t('ลบแล้วกู้คืนไม่ได้ — รวมถึงคะแนนประเมินและรูปงานของรุ่นนั้นทั้งหมด')}
-              </p>
-              <div style={{ display: 'flex', gap: 9, marginTop: 14 }}>
-                <button className="btn btn--sec" onClick={() => setConfirmPurge(false)}>{t('ยกเลิก')}</button>
-                <button className="btn" disabled={purging} onClick={doPurge}>
-                  <Trash size={16} weight="bold" />
-                  {purging ? t('กำลังลบ…') : t('ลบถาวร')}
-                </button>
-              </div>
+          <ConfirmBox onBackdrop={() => setConfirmPurge(false)}>
+            <div className="confirmbox__q">{t('ยืนยันลบข้อมูลรุ่นที่เกินกำหนดเก็บ')}</div>
+            <div className="confirmbox__who">{report.expired.map((e) => cohortLabel(e.cohort)).join(' · ')}</div>
+            <div className="confirmbox__meta">
+              {t('{a} คน · {b} ชิ้นงาน · {c} คาบ', {
+                a: report.expired.reduce((n, e) => n + e.students, 0),
+                b: report.expired.reduce((n, e) => n + e.workpieces, 0),
+                c: report.expired.reduce((n, e) => n + e.checkins, 0),
+              })}
             </div>
-          </div>
+            <p className="confirmbox__note">
+              <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+              {t('ลบแล้วกู้คืนไม่ได้ — รวมถึงคะแนนประเมินและรูปงานของรุ่นนั้นทั้งหมด')}
+            </p>
+            <div style={{ display: 'flex', gap: 9, marginTop: 14 }}>
+              <button className="btn btn--sec" onClick={() => setConfirmPurge(false)}>{t('ยกเลิก')}</button>
+              <button className="btn" disabled={purging} onClick={doPurge}>
+                <Trash size={16} weight="bold" />
+                {purging ? t('กำลังลบ…') : t('ลบถาวร')}
+              </button>
+            </div>
+          </ConfirmBox>
         )}
       </main>
     </TeacherShell>

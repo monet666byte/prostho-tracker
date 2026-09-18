@@ -7,6 +7,7 @@
  * หน้าตายึดตามฟอร์มจริง: หัวข้อภาษาอังกฤษ ตาราง Topics|Assessment และช่องลงนามท้ายเอกสาร
  */
 import { Fragment } from 'react';
+import { SignatureBlock } from './SignatureBlock';
 import {
   SA_APPROPRIATE, SA_SCALE, SA_SOURCE, saCourseCode, saOtherText, saSectionsFor,
   type SAQuestion, type SAValue,
@@ -132,20 +133,13 @@ export function SaPrintSheet({
         );
       })}
 
-      <div className="sign">
-        <div>
-          <div className="line" />
-          <div className="cap">{t('ลงนามนักศึกษา')}</div>
-        </div>
-        <div>
-          <div className="line" />
-          <div className="cap">{t('ลงนามอาจารย์ที่ปรึกษา')}</div>
-        </div>
-        <div>
-          <div className="line" />
-          <div className="cap">{t('วันที่')}</div>
-        </div>
-      </div>
+      <SignatureBlock
+        captions={[
+          t('ลงนามนักศึกษา'),
+          t('ลงนามอาจารย์ที่ปรึกษา'),
+          t('วันที่'),
+        ]}
+      />
     </div>
   );
 }

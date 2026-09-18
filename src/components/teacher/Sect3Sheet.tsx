@@ -4,7 +4,7 @@
  */
 import { ArrowLeft, CheckCircle, Trash } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { useDraftSave } from '../../hooks/useDraftSave';
+import { useAdoptOwnRow, useOwnRow, useOwnRowDraft } from './useOwnRowDraft';
 import { firstNameOnly } from '../../domain/group';
 import {
   S3_FULL_SCORE, s3Points, sect3Total,
@@ -81,9 +81,8 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   onSaved: (total: number | null) => void;
   onDeleted: () => void;
 }) {
-  /* แก้ครั้งล่าสุดเป็นค่าตั้งต้น — อาจารย์มักเปิดมาแก้ ไม่ใช่เพิ่มใบใหม่ */
-  const prev = history[0];
-  const [editing, setEditing] = useState<string | undefined>(prev?.id);
+  const own = useOwnRow(history);
+  const { editing, editingRef, everSaved, skipDraft } = own;
   const cur = history.find((r) => r.id === editing);
   const [grades, setGrades] = useState<Record<string, S3Grade>>(cur?.grades ?? {});
   const [patientName, setPatientName] = useState(cur?.patientName ?? '');
@@ -95,54 +94,22 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
   const total = sect3Total(form, grades);
   const answered = form.topics.filter((x) => grades[x.key]).length;
 
-  /* ── ร่างอัตโนมัติ ──────────────────────────────────────────────────────
-     อาจารย์กาไปครึ่งใบแล้วมีคนไข้เรียก กดออกจากใบ ของต้องยังอยู่
-     แถวแรกที่สร้างจากร่างต้องจำ id ไว้ ไม่งั้นเซฟรอบถัดไปจะสร้างแถวใหม่ซ้ำเรื่อยๆ */
-  const editingRef = useRef(editing);
-  editingRef.current = editing;
-  const skipNext = useRef(false);
+  const { touch, cancel } = useOwnRowDraft(own, (id) => saveSect3({
+    id, studentId: student.id, formKey: form.key,
+    academicYear: year, classYear,
+    patientName, hn, grades, total, at, silent: true,
+  }, currentActor()));
 
-  const { touch, cancel } = useDraftSave(async () => {
-    const row = await saveSect3({
-      id: editingRef.current, studentId: student.id, formKey: form.key,
-      academicYear: year, classYear,
-      patientName, hn, grades, total, at, silent: true,
-    }, currentActor());
-    if (!editingRef.current) { editingRef.current = row.id; setEditing(row.id); }
-  });
-
-  const firstRender = useRef(true);
   useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return; }
-    if (skipNext.current) { skipNext.current = false; return; }
+    if (skipDraft()) return;
     // ยังไม่ได้กาอะไรเลย = อย่าเพิ่งสร้างแถวเปล่าไว้ในฐานข้อมูล
     if (!Object.keys(grades).length) return;
     touch();
-  }, [grades, patientName, hn, at, touch]);
-
-
-  /* สองเครื่องของ "คนเดียวกัน" (มือถือ+iPad) → รับแถวที่มีอยู่มาแก้ต่อ
-     ไม่งั้นต่างคนต่างสร้างแถวใหม่ กลายเป็นสองใบที่ไม่รู้จักกัน
-     (แถวมาช้ากว่าตอน mount ด้วย เพราะ liveQuery ยิงข้อมูลรอบสอง)
-
-     ⚠️ แต่ต้องเป็นใบของตัวเองเท่านั้น — อาจารย์สองท่านเปิดใบเดียวกันคือคนละเรื่อง
-     เดิมรับใบของท่านอื่นมาแก้ต่อด้วย บวกกับร่างอัตโนมัติที่ยิงทุกครั้งที่กา
-     = คะแนนของอีกท่านถูกทับรัวๆ ตลอดเวลาที่เปิดใบค้างไว้ และนี่คือคะแนนเงื่อนไขจบ
-     เจอใบของท่านอื่น → เริ่มใบใหม่ ทั้งสองใบอยู่ครบ (repo.saveSect2/3 แตกใบให้อีกชั้น) */
-  const wantNew = useRef(false);
-  useEffect(() => {
-    if (editingRef.current || wantNew.current) return;
-    if (Object.keys(grades).length) return;
-    const latest = history.find((r) => r.by === currentActor());
-    if (latest) reset(latest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history]);
+  }, [grades, patientName, hn, at, touch, skipDraft]);
+  useAdoptOwnRow(own, history, !Object.keys(grades).length, reset);
 
   function reset(row?: Sect3Record) {
-    everSaved.current = !!row;
-    skipNext.current = true; // สลับดูครั้งเก่า ไม่ใช่การแก้ ไม่ต้องเซฟทับ
-    setEditing(row?.id);
-    editingRef.current = row?.id;
+    own.switchTo(row);
     setGrades(row?.grades ?? {});
     setPatientName(row?.patientName ?? '');
     setHn(row?.hn ?? '');
@@ -151,10 +118,6 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
 
   /* กันกดบันทึกรัว — ต้องเป็น ref เพราะ disabled={busy} มีผลหลัง re-render
      กดสองทีเร็วๆ บนเครื่องช้าจะสร้างแถวซ้ำ */
-  /* ใบนี้เคยถูก "กดบันทึก" มาก่อนแล้วหรือยัง — ร่างอัตโนมัติไม่นับ
-     ส่งไปให้ repo ใช้เลือกคำใน audit ("บันทึก" vs "แก้") เพราะดูจากแถวในฐานข้อมูล
-     อย่างเดียวไม่ได้: ร่างสร้างแถวไว้ตั้งแต่กาข้อแรก แถวจึงมีอยู่แล้วเสมอตอนกดบันทึกจริง */
-  const everSaved = useRef(!!prev);
   const saving = useRef(false);
   async function save() {
     if (saving.current) return;
@@ -196,11 +159,11 @@ export function Sect3Sheet({ form, student, classYear, year, history, onClose, o
       {history.length > 0 && (
         <div className="seg" style={{ marginTop: 11, flexWrap: 'wrap' }}>
           {history.map((r, i) => (
-            <button key={r.id} data-on={r.id === editing} onClick={() => { wantNew.current = false; reset(r); }}>
+            <button key={r.id} data-on={r.id === editing} onClick={() => { own.setWantNew(false); reset(r); }}>
               {history.length === 1 ? t('ใบที่ทำไว้') : i === 0 ? t('ครั้งล่าสุด') : t('ครั้งที่ {n}', { n: history.length - i })} · {thaiShort(r.at)}
             </button>
           ))}
-          <button data-on={editing === undefined} onClick={() => { wantNew.current = true; reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
+          <button data-on={editing === undefined} onClick={() => { own.setWantNew(true); reset(undefined); }}>+ {t('ประเมินใหม่')}</button>
         </div>
       )}
 

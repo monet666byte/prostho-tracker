@@ -6,9 +6,10 @@
  * แยกเป็นหน้าของตัวเองแทนการซ่อน/แสดงตอนพิมพ์ เพราะเอกสารที่จะเซ็นจริง
  * ต้องไม่มีโอกาสติดปุ่มหรือแถบเมนูของแอปหลุดไปบนกระดาษ
  */
-import { ArrowLeft, Printer } from '@phosphor-icons/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { PrintEmpty, PrintToolbar } from '../components/PrintShell';
 import { SaPrintSheet } from '../components/SaPrintSheet';
+import { SheetBoundary } from '../components/SheetBoundary';
 import { db } from '../data/db';
 import { saYearNow } from '../domain/saFeedback';
 import { useSelfAssessment, useStudent } from '../hooks/data';
@@ -22,7 +23,6 @@ const NO_TEACHERS: Teacher[] = [];
 export default function SaPrint() {
   const { studentId: fromRoute } = useParams();
   const session = useApp((s) => s.session);
-  const navigate = useNavigate();
   const studentId = fromRoute ?? session?.studentId;
   const student = useStudent(studentId);
   const sa = useSelfAssessment(studentId, saYearNow());
@@ -31,39 +31,17 @@ export default function SaPrint() {
 
   // ถึงตรงนี้ได้แปลว่าข้อมูลครบแล้ว (ด่านด้านล่างคืนหน้าว่างถ้ายังไม่มีใบที่ส่ง) ปุ่มพิมพ์จึงกดได้เสมอ
   if (!student || !sa || sa.status !== 'submitted') {
-    return (
-      <div style={{ padding: 28, display: 'grid', gap: 12, placeItems: 'center', minHeight: '100vh', alignContent: 'center' }}>
-        <span style={{ font: '600 14px var(--font-head)', color: 'var(--text-muted)' }}>
-          {t('ยังไม่มีแบบประเมินที่ส่งแล้วของปีนี้')}
-        </span>
-        <button className="btn btn--sec" style={{ height: 42, width: 180 }} onClick={() => navigate(-1)}>
-          <ArrowLeft size={15} /> {t('ย้อนกลับ')}
-        </button>
-      </div>
-    );
+    return <PrintEmpty message={t('ยังไม่มีแบบประเมินที่ส่งแล้วของปีนี้')} />;
   }
 
   return (
     <div className="saprint">
-      <div
-        className="noprint"
-        style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 780, margin: '0 auto 14px' }}
-      >
-        <button className="btn btn--sec" style={{ height: 40, flex: '0 0 120px' }} onClick={() => navigate(-1)}>
-          <ArrowLeft size={15} /> {t('ย้อนกลับ')}
-        </button>
-        <button className="btn" style={{ height: 40, flex: 1 }} onClick={() => window.print()}>
-          <Printer size={16} weight="fill" /> {t('พิมพ์ / บันทึกเป็น PDF')}
-        </button>
-      </div>
-      <p
-        className="noprint"
-        style={{ maxWidth: 780, margin: '0 auto 12px', font: '400 11px/1.6 var(--font-body)', color: 'var(--text-faint)' }}
-      >
-        {t('ในหน้าต่างพิมพ์ เลือกปลายทางเป็น “บันทึกเป็น PDF” เพื่อได้ไฟล์ · ช่องลงนามอยู่ท้ายเอกสาร')}
-      </p>
+      <PrintToolbar hint={t('ในหน้าต่างพิมพ์ เลือกปลายทางเป็น “บันทึกเป็น PDF” เพื่อได้ไฟล์ · ช่องลงนามอยู่ท้ายเอกสาร')} />
       <div className="a4wrap">
-        <SaPrintSheet sa={sa} student={student} advisors={advisors} />
+        {/* ใบเดียวก็ต้องมีตาข่าย — แถวที่ข้อมูลไม่ครบต้องได้กรอบแจ้งเตือน ไม่ใช่หน้าว่างทั้งหน้า */}
+        <SheetBoundary label="SA">
+          <SaPrintSheet sa={sa} student={student} advisors={advisors} />
+        </SheetBoundary>
       </div>
     </div>
   );

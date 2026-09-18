@@ -1,6 +1,7 @@
 import { Check, CheckSquare, Square, UsersThree, WarningCircle } from '@phosphor-icons/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useRef, useState } from 'react';
+import { ConfirmBox } from '../ui/ConfirmBox';
 import { db } from '../../data/db';
 import { useAllStudents, useGroups } from '../../hooks/data';
 import { claimGroup, releaseGroup, setGroupAdvisors } from '../../lib/advisors';
@@ -123,77 +124,80 @@ export function AdvisorGroupsDialog({ mode, onClose }: { mode: 'prompt' | 'manag
   }
 
   return (
-    <div className="confirmwrap" onClick={mode === 'manage' ? onClose : undefined}>
-      <div className="confirmbox" role="dialog" aria-label={t('เลือกกลุ่มที่ปรึกษา')} style={{ maxWidth: 560, width: '100%', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', font: '700 17px var(--font-head)' }}>
-          <UsersThree size={20} weight="fill" style={{ color: 'var(--accent)' }} />
-          {t('ปีการศึกษา {y} คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?', { y: academicYear(new Date()) })}
-        </div>
-        <p className="confirmbox__note" style={{ marginTop: 6 }}>
-          {t('ติ๊กได้หลายกลุ่ม ทั้งปี 5 และปี 6 · บันทึกทันทีที่ติ๊ก · ขึ้นปีการศึกษาใหม่จะให้เลือกใหม่')}
-        </p>
-
-        {error && (
-          <div role="alert" style={{ display: 'flex', gap: 8, marginTop: 10, borderRadius: 12, padding: '10px 12px', background: 'var(--danger-tint)', color: 'var(--danger-dark)', font: '500 12px var(--font-body)' }}>
-            <WarningCircle size={16} weight="fill" style={{ flex: 'none', marginTop: 1 }} />
-            {error}
-          </div>
-        )}
-
-        <div style={{ maxHeight: '56vh', overflowY: 'auto', marginTop: 12, display: 'grid', gap: 16 }}>
-          {rows.length === 0 && (
-            <p style={{ margin: 0, font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('ยังไม่มีกลุ่มของรุ่นที่กำลังเรียน')}</p>
-          )}
-          {bySection(rows).map((sec) => (
-            <section key={sec.year} aria-label={sectionTitle(sec.year)}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
-                <b style={{ font: '700 14px var(--font-head)' }}>{sectionTitle(sec.year)}</b>
-                <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>{sec.cohorts}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
-                {sec.rows.map((r) => {
-                  const mine = !!me && r.advisors.includes(me);
-                  const others = r.advisors.filter((id) => id !== me);
-                  return (
-                    <button
-                      key={r.code}
-                      role="checkbox"
-                      aria-checked={mine}
-                      aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)}`}
-                      disabled={!!busy}
-                      onClick={() => toggle(r)}
-                      style={{
-                        display: 'flex', gap: 8, alignItems: 'flex-start', textAlign: 'left', padding: '8px 10px', borderRadius: 12,
-                        border: `1px solid ${mine ? 'var(--accent)' : 'var(--border-2)'}`, background: mine ? 'var(--accent-tint)' : '#fff',
-                        opacity: busy && busy !== r.code ? 0.6 : 1,
-                      }}
-                    >
-                      {mine
-                        ? <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent)', flex: 'none', marginTop: 1 }} />
-                        : <Square size={18} style={{ color: 'var(--text-faint)', flex: 'none', marginTop: 1 }} />}
-                      <span style={{ minWidth: 0 }}>
-                        <b style={{ display: 'block', font: '700 13px var(--font-head)' }}>{groupShort(r.code)}</b>
-                        <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: others.length ? 'var(--text-muted)' : 'var(--text-faint)' }}>
-                          {busy === r.code ? t('กำลังบันทึก…') : others.length ? others.map(nameOf).join(' / ') : t('ยังไม่มีท่านอื่น')}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <div className="confirmbox__actions">
-          {mode === 'prompt' && mineCount === 0 ? (
-            <button className="btn btn--sec" onClick={notAdvisor}>{t('ปีนี้ไม่ได้เป็นที่ปรึกษากลุ่มไหน')}</button>
-          ) : (
-            <button className="btn" onClick={onClose}>{t('เสร็จแล้ว')}{mineCount ? ` · ${t('{n} กลุ่ม', { n: mineCount })}` : ''}</button>
-          )}
-        </div>
+    <ConfirmBox
+      onBackdrop={mode === 'manage' ? onClose : undefined}
+      role="dialog"
+      ariaLabel={t('เลือกกลุ่มที่ปรึกษา')}
+      style={{ maxWidth: 560, width: '100%', textAlign: 'left' }}
+    >
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', font: '700 17px var(--font-head)' }}>
+        <UsersThree size={20} weight="fill" style={{ color: 'var(--accent)' }} />
+        {t('ปีการศึกษา {y} คุณเป็นอาจารย์ที่ปรึกษากลุ่มไหน?', { y: academicYear(new Date()) })}
       </div>
-    </div>
+      <p className="confirmbox__note" style={{ marginTop: 6 }}>
+        {t('ติ๊กได้หลายกลุ่ม ทั้งปี 5 และปี 6 · บันทึกทันทีที่ติ๊ก · ขึ้นปีการศึกษาใหม่จะให้เลือกใหม่')}
+      </p>
+
+      {error && (
+        <div role="alert" style={{ display: 'flex', gap: 8, marginTop: 10, borderRadius: 12, padding: '10px 12px', background: 'var(--danger-tint)', color: 'var(--danger-dark)', font: '500 12px var(--font-body)' }}>
+          <WarningCircle size={16} weight="fill" style={{ flex: 'none', marginTop: 1 }} />
+          {error}
+        </div>
+      )}
+
+      <div style={{ maxHeight: '56vh', overflowY: 'auto', marginTop: 12, display: 'grid', gap: 16 }}>
+        {rows.length === 0 && (
+          <p style={{ margin: 0, font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('ยังไม่มีกลุ่มของรุ่นที่กำลังเรียน')}</p>
+        )}
+        {bySection(rows).map((sec) => (
+          <section key={sec.year} aria-label={sectionTitle(sec.year)}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
+              <b style={{ font: '700 14px var(--font-head)' }}>{sectionTitle(sec.year)}</b>
+              <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>{sec.cohorts}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+              {sec.rows.map((r) => {
+                const mine = !!me && r.advisors.includes(me);
+                const others = r.advisors.filter((id) => id !== me);
+                return (
+                  <button
+                    key={r.code}
+                    role="checkbox"
+                    aria-checked={mine}
+                    aria-label={`${sectionTitle(sec.year)} ${groupShort(r.code)}`}
+                    disabled={!!busy}
+                    onClick={() => toggle(r)}
+                    style={{
+                      display: 'flex', gap: 8, alignItems: 'flex-start', textAlign: 'left', padding: '8px 10px', borderRadius: 12,
+                      border: `1px solid ${mine ? 'var(--accent)' : 'var(--border-2)'}`, background: mine ? 'var(--accent-tint)' : '#fff',
+                      opacity: busy && busy !== r.code ? 0.6 : 1,
+                    }}
+                  >
+                    {mine
+                      ? <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent)', flex: 'none', marginTop: 1 }} />
+                      : <Square size={18} style={{ color: 'var(--text-faint)', flex: 'none', marginTop: 1 }} />}
+                    <span style={{ minWidth: 0 }}>
+                      <b style={{ display: 'block', font: '700 13px var(--font-head)' }}>{groupShort(r.code)}</b>
+                      <span style={{ display: 'block', font: '400 10.5px/1.5 var(--font-body)', color: others.length ? 'var(--text-muted)' : 'var(--text-faint)' }}>
+                        {busy === r.code ? t('กำลังบันทึก…') : others.length ? others.map(nameOf).join(' / ') : t('ยังไม่มีท่านอื่น')}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <div className="confirmbox__actions">
+        {mode === 'prompt' && mineCount === 0 ? (
+          <button className="btn btn--sec" onClick={notAdvisor}>{t('ปีนี้ไม่ได้เป็นที่ปรึกษากลุ่มไหน')}</button>
+        ) : (
+          <button className="btn" onClick={onClose}>{t('เสร็จแล้ว')}{mineCount ? ` · ${t('{n} กลุ่ม', { n: mineCount })}` : ''}</button>
+        )}
+      </div>
+    </ConfirmBox>
   );
 }
 

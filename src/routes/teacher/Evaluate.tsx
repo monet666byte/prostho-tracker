@@ -2,6 +2,7 @@ import { ArrowClockwise, CheckCircle, PencilSimple, Signature, WarningCircle } f
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { Radar } from '../../components/charts/Radar';
+import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
 import { evaluateCheckIn, reviseCheckIn, setCheckInPunctual } from '../../data/repo';
 import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, supersededBy, supersededTitle, totalScore } from '../../domain/checkin';
@@ -583,133 +584,118 @@ export default function Evaluate() {
         {/* แก้ป้ายตรงต่อเวลา — โชว์เวลาที่ระบบจับได้คู่กับเกณฑ์ ให้อาจารย์ตัดสินบนข้อเท็จจริง
             ไม่ใช่กดเปลี่ยนลอยๆ · เวลาที่ระบบจับได้เป็นข้อเท็จจริง ตรงนี้แก้แค่ "คำตัดสิน" */}
         {punctualRow && (
-          <div className="confirmwrap" onClick={closePunctual}>
-            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
-              <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
-              <div className="confirmbox__who">{personName(punctualStudent, '')}</div>
-              <div className="confirmbox__meta">
-                <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
-                {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
-              </div>
-              <p className="confirmbox__note" style={{ textAlign: 'left' }}>
-                {t('ตอนนี้ระบบบันทึกว่า')} <b>{punctualRow.punctual ? t('ตรงเวลา') : t('มาสาย')}</b>
-                {' — '}{t('เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย')}
-                <br />
-                {t('เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม')}
-              </p>
-              <label className="field" style={{ marginTop: 4 }}>
-                <span>{t('เหตุผล (ไม่บังคับ · ลงใน audit log)')}</span>
-                <input
-                  className="input"
-                  value={punctualNote}
-                  onChange={(e) => setPunctualNote(e.target.value)}
-                  placeholder={t('เช่น มาทันแต่ลืมเช็คอิน')}
-                />
-              </label>
-              <div className="confirmbox__actions">
-                <button className="btn btn--sec" onClick={closePunctual}>{t('ยกเลิก')}</button>
-                <button className="btn" onClick={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
-                  {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
-                </button>
-              </div>
+          <ConfirmBox onBackdrop={closePunctual}>
+            <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
+            <div className="confirmbox__who">{personName(punctualStudent, '')}</div>
+            <div className="confirmbox__meta">
+              <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
+              {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
             </div>
-          </div>
+            <p className="confirmbox__note" style={{ textAlign: 'left' }}>
+              {t('ตอนนี้ระบบบันทึกว่า')} <b>{punctualRow.punctual ? t('ตรงเวลา') : t('มาสาย')}</b>
+              {' — '}{t('เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย')}
+              <br />
+              {t('เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม')}
+            </p>
+            <label className="field" style={{ marginTop: 4 }}>
+              <span>{t('เหตุผล (ไม่บังคับ · ลงใน audit log)')}</span>
+              <input
+                className="input"
+                value={punctualNote}
+                onChange={(e) => setPunctualNote(e.target.value)}
+                placeholder={t('เช่น มาทันแต่ลืมเช็คอิน')}
+              />
+            </label>
+            <ConfirmActions onCancel={closePunctual} onConfirm={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
+              {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
+            </ConfirmActions>
+          </ConfirmBox>
         )}
 
         {confirmRow && (
-          <div className="confirmwrap" onClick={() => setConfirmId(null)}>
-            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
-              <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
-              <div className="confirmbox__who">{personName(confirmStudent, '')}</div>
-              <div className="confirmbox__meta">
-                <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
-                {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
-              </div>
-              <div className="confirmbox__score">
-                {totalScore(draftFor(confirmRow.id)) ?? 0}<span>/{MAX_TOTAL}</span>
-              </div>
-              <p className="confirmbox__note">
-                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-                {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
-              </p>
-              <div className="confirmbox__actions">
-                <button className="btn btn--sec" onClick={() => setConfirmId(null)}>{t('ยกเลิก')}</button>
-                <button className="btn" onClick={() => sign(confirmRow.id)}>
-                  <Signature size={17} weight="bold" />
-                  {t('ยืนยัน · ลงนาม')}
-                </button>
-              </div>
+          <ConfirmBox onBackdrop={() => setConfirmId(null)}>
+            <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
+            <div className="confirmbox__who">{personName(confirmStudent, '')}</div>
+            <div className="confirmbox__meta">
+              <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
+              {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
             </div>
-          </div>
+            <div className="confirmbox__score">
+              {totalScore(draftFor(confirmRow.id)) ?? 0}<span>/{MAX_TOTAL}</span>
+            </div>
+            <p className="confirmbox__note">
+              <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+              {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
+            </p>
+            <ConfirmActions onCancel={() => setConfirmId(null)} onConfirm={() => sign(confirmRow.id)}>
+              <Signature size={17} weight="bold" />
+              {t('ยืนยัน · ลงนาม')}
+            </ConfirmActions>
+          </ConfirmBox>
         )}
 
         {/* กล่องแก้คะแนนที่ลงไปแล้ว — โชว์ค่าเดิมคู่ค่าใหม่ทุกหัวข้อ ไม่ให้แก้แบบไม่รู้ตัว */}
         {reviseRow && (
-          <div className="confirmwrap" onClick={closeRevise}>
-            <div className="confirmbox confirmbox--wide" onClick={(e) => e.stopPropagation()}>
-              <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
-              <div className="confirmbox__who">{personName(reviseStudent, '')}</div>
-              <div className="confirmbox__meta">
-                <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
-                {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
-              </div>
-              {supersededBy(reviseRow) && (
-                <div className="confirmbox__meta" style={{ color: 'var(--warning-dark)' }}>
-                  <WarningCircle size={11} weight="fill" /> {supersededTitle(reviseRow)}
-                </div>
-              )}
-
-              <div className="revisegrid">
-                {CRITERIA.map((cr) => {
-                  const was = reviseBefore[cr.key] ?? 0;
-                  const now = reviseDraft[cr.key] ?? 0;
-                  return (
-                    <div key={cr.key} className="scorerow" data-changed={was !== now}>
-                      <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
-                      {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
-                      <span className="scorerow__btns">
-                        {SCORE_OPTIONS.map((n) => (
-                          <button
-                            key={n}
-                            data-on={now === n}
-                            onClick={() => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="revisesum">
-                {reviseDiffs.length === 0 ? (
-                  <span className="faint">{t('ยังไม่ได้แก้อะไร')}</span>
-                ) : (
-                  <>
-                    <b>{t('แก้ {n} หัวข้อ', { n: reviseDiffs.length })}</b>
-                    <span className="mono">
-                      {totalScore(reviseBefore) ?? 0} → {totalScore(reviseDraft) ?? 0}/{MAX_TOTAL}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <p className="confirmbox__note">
-                <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-                {t('การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}
-              </p>
-
-              <div className="confirmbox__actions">
-                <button className="btn btn--sec" onClick={closeRevise}>{t('ยกเลิก')}</button>
-                <button className="btn" disabled={reviseDiffs.length === 0} onClick={saveRevise}>
-                  <PencilSimple size={17} weight="bold" />
-                  {t('ยืนยันการแก้')}
-                </button>
-              </div>
+          <ConfirmBox onBackdrop={closeRevise} wide>
+            <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
+            <div className="confirmbox__who">{personName(reviseStudent, '')}</div>
+            <div className="confirmbox__meta">
+              <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
+              {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
             </div>
-          </div>
+            {supersededBy(reviseRow) && (
+              <div className="confirmbox__meta" style={{ color: 'var(--warning-dark)' }}>
+                <WarningCircle size={11} weight="fill" /> {supersededTitle(reviseRow)}
+              </div>
+            )}
+
+            <div className="revisegrid">
+              {CRITERIA.map((cr) => {
+                const was = reviseBefore[cr.key] ?? 0;
+                const now = reviseDraft[cr.key] ?? 0;
+                return (
+                  <div key={cr.key} className="scorerow" data-changed={was !== now}>
+                    <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
+                    {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
+                    <span className="scorerow__btns">
+                      {SCORE_OPTIONS.map((n) => (
+                        <button
+                          key={n}
+                          data-on={now === n}
+                          onClick={() => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="revisesum">
+              {reviseDiffs.length === 0 ? (
+                <span className="faint">{t('ยังไม่ได้แก้อะไร')}</span>
+              ) : (
+                <>
+                  <b>{t('แก้ {n} หัวข้อ', { n: reviseDiffs.length })}</b>
+                  <span className="mono">
+                    {totalScore(reviseBefore) ?? 0} → {totalScore(reviseDraft) ?? 0}/{MAX_TOTAL}
+                  </span>
+                </>
+              )}
+            </div>
+
+            <p className="confirmbox__note">
+              <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+              {t('การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}
+            </p>
+
+            <ConfirmActions onCancel={closeRevise} onConfirm={saveRevise} disabled={reviseDiffs.length === 0}>
+              <PencilSimple size={17} weight="bold" />
+              {t('ยืนยันการแก้')}
+            </ConfirmActions>
+          </ConfirmBox>
         )}
       </main>
     </TeacherShell>

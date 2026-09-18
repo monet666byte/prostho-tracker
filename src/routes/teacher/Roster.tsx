@@ -9,6 +9,7 @@
 import { CheckCircle, Clock, Trash } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { AdvisorEditor } from '../../components/teacher/AdvisorGroups';
 import { useAllStudents } from '../../hooks/data';
@@ -435,27 +436,22 @@ export default function Roster() {
         </>)}
 
         {confirmDel && (
-          <div className="confirmwrap" onClick={() => setConfirmDel(null)}>
-            <div className="confirmbox" onClick={(e) => e.stopPropagation()}>
-              <div className="confirmbox__q">{t('เอาออกจากรายชื่อผู้มีสิทธิ์เข้าระบบ')}</div>
-              <div className="confirmbox__who" style={{ fontSize: 19, wordBreak: 'break-all' }}>{confirmDel.email}</div>
-              <div className="confirmbox__meta">
-                {confirmDel.role === 'student' ? t('นักศึกษา') : t('อาจารย์')} · {t(nameOf(confirmDel))}
-              </div>
-              <p className="confirmbox__note">
-                {linked.has(confirmDel.email.toLowerCase())
-                  ? t('คนนี้สมัครเข้าระบบไปแล้ว — การลบจากรายชื่อไม่ได้ปิดบัญชีเดิม ต้องไปปิดในหน้า Supabase อีกที')
-                  : t('คนนี้ยังไม่ได้สมัคร — ลบแล้วจะสมัครด้วยอีเมลนี้ไม่ได้')}
-              </p>
-              <div className="confirmbox__actions">
-                <button className="btn btn--sec" onClick={() => setConfirmDel(null)}>{t('ยกเลิก')}</button>
-                <button className="btn" onClick={() => removeInvite(confirmDel.email)}>
-                  <Trash size={16} weight="bold" />
-                  {t('เอาออก')}
-                </button>
-              </div>
+          <ConfirmBox onBackdrop={() => setConfirmDel(null)}>
+            <div className="confirmbox__q">{t('เอาออกจากรายชื่อผู้มีสิทธิ์เข้าระบบ')}</div>
+            <div className="confirmbox__who" style={{ fontSize: 19, wordBreak: 'break-all' }}>{confirmDel.email}</div>
+            <div className="confirmbox__meta">
+              {confirmDel.role === 'student' ? t('นักศึกษา') : t('อาจารย์')} · {t(nameOf(confirmDel))}
             </div>
-          </div>
+            <p className="confirmbox__note">
+              {linked.has(confirmDel.email.toLowerCase())
+                ? t('คนนี้สมัครเข้าระบบไปแล้ว — การลบจากรายชื่อไม่ได้ปิดบัญชีเดิม ต้องไปปิดในหน้า Supabase อีกที')
+                : t('คนนี้ยังไม่ได้สมัคร — ลบแล้วจะสมัครด้วยอีเมลนี้ไม่ได้')}
+            </p>
+            <ConfirmActions onCancel={() => setConfirmDel(null)} onConfirm={() => removeInvite(confirmDel.email)}>
+              <Trash size={16} weight="bold" />
+              {t('เอาออก')}
+            </ConfirmActions>
+          </ConfirmBox>
         )}
       </main>
     </TeacherShell>
