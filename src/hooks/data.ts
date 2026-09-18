@@ -61,21 +61,25 @@ export function useWorkpiece(id: string | undefined) {
  * วันที่ทำจริงของขั้นล่าสุดที่ผ่าน — อ่านจากประวัติ (performedAt ที่นักศึกษาเลือก)
  * ห้ามใช้ lastUpdatedAt: มันขยับทุกครั้งที่แตะชิ้นงาน (คืนเคส · เลิกทำ) และเป็น "ตอนที่กดบันทึก"
  * ไม่ใช่ "วันที่ทำ" — กรอกย้อนหลังของสัปดาห์ก่อนแล้วเส้นทางเคสขึ้นเป็นวันนี้
- * null = ไม่มีประวัติของขั้นนี้ในเครื่อง (งานนำเข้าจากชีต) → ไม่แสดงวันที่ ดีกว่าแสดงวันที่ผิด
+ * ไม่มีประวัติเลย (งานนำเข้าจากชีต · ข้อมูลตัวอย่าง) = ไม่มีอะไรดีกว่า lastUpdatedAt ซึ่งสำหรับงานนำเข้าคือวันที่ในชีต
  */
-export function useLastStepDate(w: { id: string; procIndex: number } | null | undefined): string | null {
+export function useLastStepDate(
+  w: { id: string; procIndex: number; lastUpdatedAt: string } | null | undefined,
+): string | null {
   const id = w?.id;
   const procIndex = w?.procIndex ?? -1;
+  const fallback = w?.lastUpdatedAt ?? null;
   return useLiveQuery(
     async () => {
       if (!id || procIndex < 0) return null;
-      const rows = await db.updates.where('workpieceId').equals(id).toArray();
-      const hit = rows
-        .filter((u) => !u.reversal && u.procIndex === procIndex)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-      return hit?.performedAt ?? null;
+      const rows = (await db.updates.where('workpieceId').equals(id).toArray())
+        .filter((u) => !u.reversal)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      if (!rows.length) return fallback;
+      // บันทึกของขั้นปัจจุบันก่อน · ไม่มี (ประวัติไม่ครบ) ก็ใช้บันทึกล่าสุดที่มี
+      return (rows.find((u) => u.procIndex === procIndex) ?? rows[0]).performedAt;
     },
-    [id, procIndex],
+    [id, procIndex, fallback],
     null,
   ) ?? null;
 }

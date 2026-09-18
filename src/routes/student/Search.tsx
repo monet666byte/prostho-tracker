@@ -1,13 +1,14 @@
 import { ArrowLeft, MagnifyingGlass, XCircle } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bar, Empty, TypeBadge } from '../../components/ui/Bits';
+import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
+import { SingleWorkBody } from '../../components/student/WorkRow';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, maxProgression, progression, stepFraction } from '../../domain/rules';
+import { currentProc } from '../../domain/rules';
 import { usePatientNamesOn, useWorkpieces } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
-import { t, tSexAge, tText } from '../../lib/i18n';
+import { t, tSexAge } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
 
@@ -93,9 +94,6 @@ export default function Search() {
         /* หน้าตาเดียวกับหน้าคนไข้ — HN กึ่งหนา · ชื่อ · ป้ายประเภท · หลอด */
         results.map((w) => {
           const cur = currentProc(w);
-          const prog = Math.max(progression(w), 0);
-          const max = maxProgression(w);
-          const done = prog >= max;
           return (
             <Link key={w.id} to={`/app/work/${w.id}`} className="rowcard" style={{ display: 'block', color: 'inherit' }}>
               <div className="rowcard__head">
@@ -107,21 +105,11 @@ export default function Search() {
                 </span>
               </div>
               <div className="singlerow">
-                <TypeBadge type={w.type} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', font: '400 13px var(--font-body)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tText(w.detail)}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                    <Bar value={stepFraction(w) * 100} color={done ? 'var(--success)' : typeMeta(w.type).color} height={5} />
-                    <span style={{ font: '500 11.5px var(--font-mono)', color: done ? 'var(--success-dark)' : 'var(--text-faint)', flex: 'none' }}>
-                      {prog}/{max}
-                    </span>
-                  </span>
+                <SingleWorkBody w={w} doneGreen="clamped">
                   <span style={{ display: 'block', marginTop: 6, font: '400 12.5px var(--font-body)', color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {cur ? t('ขั้นล่าสุด: {step}', { step: cur.name }) : t('ยังไม่เริ่ม')}
                   </span>
-                </span>
+                </SingleWorkBody>
               </div>
             </Link>
           );

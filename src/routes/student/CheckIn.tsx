@@ -1,12 +1,14 @@
 import { CalendarCheck, CheckCircle, Clock, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
+import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
+import { checkInNow } from '../../components/student/checkInNow';
 import { Shell } from '../../components/student/Shell';
-import { addCheckIn, deleteCheckIn, updateCheckIn } from '../../data/repo';
-import { ACTIVITY_GROUPS, CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, checkInStamp, totalScore } from '../../domain/checkin';
+import { useCheckInPatients } from '../../components/student/useCheckInPatients';
+import { deleteCheckIn, updateCheckIn } from '../../data/repo';
+import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
 import { useCheckIns, usePatientNamesOn, useStepsOnDates, useWorkpieces } from '../../hooks/data';
-import { patientWithHn } from '../../lib/privacy';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { isComplete } from '../../domain/rules';
@@ -52,11 +54,7 @@ export default function CheckInPage() {
     setFormOpen(true);
   }
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
-  const patients = useMemo(() => {
-    const seen = new Map<string, string>();
-    works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
-    return [...seen.entries()];
-  }, [works, namesOn]);
+  const patients = useCheckInPatients(works, namesOn);
 
   const evaluated = checkins.filter((c) => c.status === 'evaluated');
   const stepsByDate = useStepsOnDates(
@@ -70,13 +68,10 @@ export default function CheckInPage() {
       // โหมดเติมรายละเอียด — เวลากับความตรงเวลาถูกล็อกไว้ตั้งแต่ตอนเช็คอินด่วนแล้ว
       await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, currentActor());
     } else {
-      // เวลาเช็คอิน = เวลาระบบตอนกด แก้เองไม่ได้ — เกณฑ์ตรงเวลา/สายอยู่ที่ domain/checkin.ts ที่เดียว
-      const { checkinAt, punctual } = checkInStamp();
-      await addCheckIn({
+      // เวลาเช็คอินกับตรงเวลา/สาย ประทับใน checkInNow — หน้านี้ส่งแค่สิ่งที่ผู้ใช้กรอก
+      await checkInNow({
         studentId: session.studentId,
         date,
-        punctual,
-        checkinAt,
         noPatient,
         patientId: patientId || undefined,
         activities,
@@ -136,29 +131,13 @@ export default function CheckInPage() {
 
         <div className="field" style={{ marginTop: 12 }}>
           <label>{t('กิจกรรมในคาบ')}</label>
-          {ACTIVITY_GROUPS.map((g) => (
-                <div key={g.label} className="actgroup">
-                  <div className="actgroup__label">{t(g.label)}</div>
-                  <div className="actgrid">
-                    {g.items.map((a) => (
-                      <button key={a} data-on={activities.includes(a)} onClick={() => setActivities(activities.includes(a) ? activities.filter((x) => x !== a) : [...activities, a])}>
-                        {t(a)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+          <ActivityChips selected={activities} onChange={setActivities} />
         </div>
 
         {!noPatient && (
           <label className="field" style={{ marginTop: 12 }}>
             <span>{t('ผู้ป่วยที่นัด')}</span>
-            <select className="input" value={patientId} onChange={(e) => setPatientId(e.target.value)}>
-              <option value="">{t('— ไม่ระบุ —')}</option>
-              {patients.map(([id, label]) => (
-                <option key={id} value={id}>{label}</option>
-              ))}
-            </select>
+            <PatientSelect value={patientId} onChange={setPatientId} patients={patients} />
           </label>
         )}
 

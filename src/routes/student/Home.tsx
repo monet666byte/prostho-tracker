@@ -2,20 +2,23 @@ import { Bell, CaretRight, Check, CheckCircle, CheckSquare, HandTap, MagnifyingG
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
+import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
+import { checkInNow } from '../../components/student/checkInNow';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
-import { addCheckIn } from '../../data/repo';
 import { Shell } from '../../components/student/Shell';
+import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge } from '../../lib/i18n';
-import { patientTitle, patientWithHn } from '../../lib/privacy';
+import { patientTitle } from '../../lib/privacy';
 import { typeMeta } from '../../domain/catalog';
+import type { WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
-import { ACTIVITY_GROUPS, NO_PATIENT_ACTIVITY, checkInStamp } from '../../domain/checkin';
+import { NO_PATIENT_ACTIVITY } from '../../domain/checkin';
 import { isSect2Evaluated } from '../../domain/sect2';
 import { isSect3Evaluated } from '../../domain/sect3';
 import { FIRSTS } from './Achievements';
@@ -48,7 +51,7 @@ function Ring({ value, max }: { value: number; max: number }) {
 function HeroCard({
   w, pending, stale, onPass,
 }: {
-  w: ReturnType<typeof useWorkpieces>[number];
+  w: WorkpieceView;
   pending: boolean;
   stale: boolean;
   onPass: () => void;
@@ -225,20 +228,15 @@ export default function Home() {
   const [askActs, setAskActs] = useState<string[]>([]);
   const [askPatient, setAskPatient] = useState('');
   const askNoPatient = askActs.includes(NO_PATIENT_ACTIVITY);
-  const askPatients = useMemo(() => {
-    const seen = new Map<string, string>();
-    works.forEach((w) => seen.set(w.patient.id, patientWithHn(w.patient, namesOn, t)));
-    return [...seen.entries()];
-  }, [works, namesOn]);
+  const askPatients = useCheckInPatients(works, namesOn);
 
   async function submitAskCheckIn() {
     if (!session || checkingIn.current) return;
     checkingIn.current = true;
     tapFeedback();
     try {
-      const { checkinAt, punctual } = checkInStamp();
-      await addCheckIn({
-        studentId: session.studentId, date: today, punctual, checkinAt,
+      const { checkinAt } = await checkInNow({
+        studentId: session.studentId, date: today,
         noPatient: askNoPatient,
         patientId: askNoPatient ? undefined : (askPatient || undefined),
         activities: askActs, note: '', actor: currentActor(),
@@ -272,9 +270,8 @@ export default function Home() {
     checkingIn.current = true;
     tapFeedback();
     try {
-      const { checkinAt, punctual } = checkInStamp();
-      await addCheckIn({
-        studentId: session.studentId, date: today, punctual, checkinAt,
+      const { checkinAt } = await checkInNow({
+        studentId: session.studentId, date: today,
         noPatient: false, activities: [], note: '', actor: currentActor(),
       });
       touch();
@@ -293,28 +290,14 @@ export default function Home() {
             {/* คำอธิบายวิธีใช้ตัดออก — ปุ่ม "ไว้ก่อน" ข้างล่างบอกอยู่แล้วว่าไม่กรอกก็ได้ */}
 
             <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
-            {ACTIVITY_GROUPS.map((g) => (
-                <div key={g.label} className="actgroup">
-                  <div className="actgroup__label">{t(g.label)}</div>
-                  <div className="actgrid">
-                    {g.items.map((a) => (
-                      <button key={a} data-on={askActs.includes(a)} onClick={() => setAskActs(askActs.includes(a) ? askActs.filter((x) => x !== a) : [...askActs, a])}>
-                        {t(a)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <ActivityChips selected={askActs} onChange={setAskActs} />
 
             {!askNoPatient && (
               <>
                 {/* ป้ายเป็น div ที่ไม่ได้ผูกกับ select — โปรแกรมอ่านหน้าจอจะอ่านแค่ "กล่องรายการ"
                     ไม่บอกว่ากล่องนี้คือช่องอะไร (WCAG 1.3.1 · 3.3.2) */}
                 <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('ผู้ป่วยที่นัด')}</div>
-                <select className="input" aria-label={t('ผู้ป่วยที่นัด')} value={askPatient} onChange={(e) => setAskPatient(e.target.value)} style={{ marginBottom: 14 }}>
-                  <option value="">{t('— ไม่ระบุ —')}</option>
-                  {askPatients.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                </select>
+                <PatientSelect value={askPatient} onChange={setAskPatient} patients={askPatients} ariaLabel={t('ผู้ป่วยที่นัด')} style={{ marginBottom: 14 }} />
               </>
             )}
 

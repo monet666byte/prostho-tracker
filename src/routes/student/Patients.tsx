@@ -1,13 +1,13 @@
 import { LinkSimple, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, PendingBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { Shell } from '../../components/student/Shell';
+import { SingleWorkBody, WorkBadges, WorkProgress } from '../../components/student/WorkRow';
 import { usePatientNamesOn, usePending, useWorkpieces } from '../../hooks/data';
 import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, daysSinceUpdate, isStale, maxProgression, progression, isReturned, isActiveWork, stepFraction } from '../../domain/rules';
+import { currentProc, isStale, isReturned, isActiveWork } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -17,9 +17,6 @@ function MiniRow({
 }: {
   w: WorkpieceView; pending: boolean; stale: boolean; editing: boolean; onDelete: (w: WorkpieceView) => void;
 }) {
-  const meta = typeMeta(w.type);
-  const prog = progression(w);
-  const max = maxProgression(w);
   const cur = currentProc(w);
   return (
     <Link to={`/app/work/${w.id}`} className="pairrow">
@@ -33,25 +30,9 @@ function MiniRow({
         >
           {cur ? cur.name : t('ยังไม่เริ่ม')}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-          <Bar value={stepFraction(w) * 100} color={meta.color} height={5} />
-          <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-faint)', flex: 'none' }}>
-            {Math.max(prog, 0)}/{max}
-          </span>
-        </span>
+        <WorkProgress w={w} labelSize={10} />
       </span>
-      {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
-      {pending && !isReturned(w) && <PendingBadge />}
-      {stale && !isReturned(w) && <StaleBadge days={daysSinceUpdate(w)} />}
-      {editing && (
-        <button
-          className="delbtn"
-          onClick={(e) => { e.preventDefault(); onDelete(w); }}
-          aria-label={`${t('ลบ')} ${w.detail}`}
-        >
-          <Trash size={15} />
-        </button>
-      )}
+      <WorkBadges w={w} pending={pending} stale={stale} staleOnReturned={false} editing={editing} onDelete={onDelete} />
     </Link>
   );
 }
@@ -257,39 +238,9 @@ export default function Patients() {
 
               {singles.map((w) => (
                 <Link key={w.id} to={`/app/work/${w.id}`} className={`singlerow${isReturned(w) ? ' returned' : ''}`} title={w.returnNote ?? undefined}>
-                  <TypeBadge type={w.type} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span
-                      style={{
-                        display: 'block', font: '400 13px var(--font-body)', color: 'var(--text-secondary)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {tText(w.detail)}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                      <Bar
-                        value={stepFraction(w) * 100}
-                        color={progression(w) >= maxProgression(w) ? 'var(--success)' : typeMeta(w.type).color}
-                        height={5}
-                      />
-                      <span style={{ font: '500 11.5px var(--font-mono)', color: progression(w) >= maxProgression(w) ? 'var(--success-dark)' : 'var(--text-faint)', flex: 'none' }}>
-                        {Math.max(progression(w), 0)}/{maxProgression(w)}
-                      </span>
-                    </span>
-                  </span>
-                  {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
-                  {pending.has(w.id) && !isReturned(w) && <PendingBadge />}
-                  {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
-                  {editing && (
-                    <button
-                      className="delbtn"
-                      onClick={(e) => { e.preventDefault(); setTarget(w); }}
-                      aria-label={`${t('ลบ')} ${w.detail}`}
-                    >
-                      <Trash size={15} />
-                    </button>
-                  )}
+                  <SingleWorkBody w={w} doneGreen="raw" />
+                  {/* แถวชิ้นเดี่ยวยังขึ้นป้าย "ค้าง" แม้คืนเคสแล้ว (แถวคู่ไม่ขึ้น) — คงของเดิมไว้ */}
+                  <WorkBadges w={w} pending={pending.has(w.id)} stale={isStale(w, settings)} staleOnReturned editing={editing} onDelete={setTarget} />
                 </Link>
               ))}
             </section>
