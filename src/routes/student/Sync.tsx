@@ -1,29 +1,20 @@
 import { ArrowLeft } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
-import { onSyncProblems, retryQuarantined, syncProblems, type SyncProblem } from '../../data/cloudSync';
-import { usePendingPushCount, useQueue } from '../../hooks/data';
+import { SyncProblemsCard } from '../../components/SyncProblemsCard';
+import { usePendingPushCount, useQueue, useSyncStatus } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
+import { onUpdateReady, updateReady } from '../../lib/appUpdate';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
-import { currentActor, useApp } from '../../store/app';
+import { currentActor, signOutToReLogin, useApp } from '../../store/app';
 import {
   onPersistState, persistState, requestPersistentStorage, type PersistState,
 } from '../../lib/storagePersist';
-
-/** เหตุผลที่ผู้ใช้อ่านรู้เรื่อง — รหัสที่รู้จักแปลให้ ที่เหลือแสดงข้อความของเซิร์ฟเวอร์ตามจริง */
-function problemText(p: SyncProblem): string {
-  if (p.kind === 'delete') return t('เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง') + ' · ' + p.reason;
-  // 0029: นักศึกษาคนเดียวเช็คอินวันเดียวกันจากสองเครื่อง — แถวของเครื่องที่ขึ้นทีหลังถูกปฏิเสธ
-  if (p.reason.includes('checkins_student_date_uidx')) {
-    return t('วันนั้นเช็คอินจากอีกเครื่องไปแล้ว — คาบนี้ซ้ำ ย้ายโน้ตที่ต้องการไปคาบเดิม แล้วลบคาบนี้ได้');
-  }
-  return p.reason;
-}
 
 export default function Sync() {
   const navigate = useNavigate();
@@ -33,15 +24,14 @@ export default function Sync() {
      (ตาราง queue ว่างเสมอเมื่อเน็ตหลุดเอง — เดิมจึงขึ้น "ส่งขึ้นเซิร์ฟเวอร์แล้ว" ทั้งที่ยังค้าง) */
   const unsent = usePendingPushCount();
   const waiting = queue.length || unsent;
+  /* แถวบนสุดต้องบอกความจริงจากผลของคำขอจริง — เดิมดูแค่สวิตช์ออฟไลน์ที่ผู้ใช้กดเอง
+     จึงขึ้นจุดเขียว "ข้อมูลขึ้นเซิร์ฟเวอร์ทันที" แม้ยิงไม่ถึงเซิร์ฟเวอร์เลย */
+  const link = useSyncStatus();
+  const linkDown = cloudEnabled && !offline && link.link === 'down';
+  const authLost = cloudEnabled && link.link === 'auth';
+  const hasUpdate = useSyncExternalStore(onUpdateReady, updateReady);
   // ธีมเก็บใน localStorage (ไม่ใช่ store) — ถือ state ไว้ให้ปุ่มที่เลือกอยู่รีเฟรชทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
-  /**
-   * ของที่เซิร์ฟเวอร์ปฏิเสธจนเลิกลองแล้ว — ต้องเห็นด้วยตา
-   * เดิมของพวกนี้ถูกทิ้งเงียบๆ พร้อมงานอื่นที่อยู่ในก้อนเดียวกัน (ดู flush() ใน cloudSync.ts)
-   * ผู้ใช้จะรู้ตัวก็ต่อเมื่อเปิดจากอีกเครื่องแล้วของไม่อยู่ ซึ่งสายไปแล้ว
-   */
-  const [problems, setProblems] = useState<SyncProblem[]>(syncProblems);
-  useEffect(() => onSyncProblems(() => setProblems(syncProblems())), []);
   /* สถานะความถาวรของที่เก็บในเครื่อง — init() ยิงคำขอไว้แล้ว ตรงนี้แค่ฟังผล
      (ถามอีกรอบเผื่อผู้ใช้เปิดหน้านี้ก่อนคำตอบรอบแรกมาถึง) */
   const [persist, setPersist] = useState<PersistState>(persistState);
@@ -50,6 +40,7 @@ export default function Sync() {
     void requestPersistentStorage().then(setPersist);
     return off;
   }, []);
+  const atRisk = cloudEnabled && unsent > 0 && persist !== 'persisted';
 
   async function doSync() {
     const r = await syncNow(currentActor());
@@ -87,40 +78,57 @@ export default function Sync() {
       <div className="newform">
         <div className="homelabel">{t('การเชื่อมต่อ')}</div>
         <div className="card formcard">
-          <div className="formrow">
-            <span className="dot" style={{ width: 10, height: 10, background: offline ? 'var(--warning)' : 'var(--success)' }} />
-            <span className="formrow__main">
-              <b>{offline ? t('โหมดออฟไลน์') : t('ออนไลน์')}</b>
-              <span className="formrow__sub">
-                {offline
-                  ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
-                  : cloudEnabled
-                    ? t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')
-                    : t('โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น')}
-              </span>
-            </span>
-            <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
-              <i />
-            </button>
-          </div>
+          {hasUpdate && (
+            <div className="formrow formrow--stack" style={{ background: 'var(--accent-tint)' }}>
+              <b style={{ font: '600 14px var(--font-head)', color: 'var(--accent)' }}>{t('มีแอปรุ่นใหม่')}</b>
+              <span className="formrow__sub">{t('รุ่นที่เปิดอยู่เก่ากว่าที่ขึ้นเว็บแล้ว งานบางอย่างอาจส่งไม่ขึ้น · งานที่ค้างไม่หาย')}</span>
+              <button className="textlink textlink--left" onClick={() => window.location.reload()}>{t('อัปเดตเลย')} ›</button>
+            </div>
+          )}
 
-          {/* ของที่เซิร์ฟเวอร์ปฏิเสธ — ต้องเห็นด้วยตา ไม่ย่อเหลือบรรทัดจาง */}
-          {problems.length > 0 && (
-            <div className="formrow formrow--stack formrow--warn">
-              <b>{t('{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้', { n: problems.length })}</b>
-              <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
-                {t('ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ')}
+          {/* หมดเวลาเข้าสู่ระบบ — งานส่งต่อไม่ได้จนกว่าจะล็อกอินใหม่ · ต้องให้เจ้าตัวลงมือ จึงเด่นกว่าทุกแถว */}
+          {authLost && (
+            <div className="formrow formrow--stack" style={{ background: 'var(--danger-tint)' }}>
+              <b style={{ font: '600 14px var(--font-head)', color: 'var(--danger-dark)' }}>{t('ต้องเข้าสู่ระบบใหม่')}</b>
+              <span className="formrow__sub" style={{ color: 'var(--danger-dark)' }}>
+                {unsent > 0
+                  ? t('หมดเวลาเข้าสู่ระบบ งาน {n} รายการยังอยู่ในเครื่องครบ จะส่งต่อทันทีหลังเข้าสู่ระบบ', { n: unsent })
+                  : t('หมดเวลาเข้าสู่ระบบ ข้อมูลในเครื่องยังอยู่ครบ')}
               </span>
-              {problems.slice(0, 5).map((p) => (
-                <span key={p.table + String(p.key)} style={{ font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
-                  {p.table} · {String(p.key)} — {problemText(p)}
-                </span>
-              ))}
-              <button className="textlink textlink--left" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>
-                {t('ลองส่งใหม่')} ›
+              <button
+                className="textlink textlink--left"
+                style={{ color: 'var(--danger-dark)' }}
+                onClick={async () => { await signOutToReLogin(); navigate('/login'); }}
+              >
+                {t('เข้าสู่ระบบอีกครั้ง')} ›
               </button>
             </div>
           )}
+
+          {!authLost && (
+            <div className="formrow">
+              <span className="dot" style={{ width: 10, height: 10, background: offline || linkDown ? 'var(--warning)' : 'var(--success)' }} />
+              <span className="formrow__main">
+                <b>{offline ? t('โหมดออฟไลน์') : linkDown ? t('ยังต่อเซิร์ฟเวอร์ไม่ได้') : t('ออนไลน์')}</b>
+                <span className="formrow__sub">
+                  {offline
+                    ? t('บันทึกลงเครื่อง แล้ว sync เองเมื่อมีสัญญาณ')
+                    : linkDown
+                      ? t('งานอยู่ในเครื่องนี้ครบ ระบบลองส่งให้เองเรื่อยๆ')
+                      : !cloudEnabled
+                        ? t('โหมดตัวอย่าง — ข้อมูลเก็บในเครื่องนี้เท่านั้น')
+                        : link.lastContactAt !== null && waiting === 0
+                          ? <>{t('ส่งขึ้นเซิร์ฟเวอร์ครบแล้ว')} · {relative(new Date(link.lastContactAt).toISOString())}</>
+                          : t('ข้อมูลขึ้นเซิร์ฟเวอร์ทันที')}
+                </span>
+              </span>
+              <button className="toggle" data-on={offline} onClick={() => setOffline(!offline)} aria-label={t('สลับโหมดออฟไลน์')}>
+                <i />
+              </button>
+            </div>
+          )}
+
+          <SyncProblemsCard />
 
           <div className="formrow">
             <span className="formrow__main">
@@ -149,6 +157,17 @@ export default function Sync() {
             </div>
           ))}
 
+          {/* คำเตือนเรื่องเบราว์เซอร์ลบข้อมูลเอง ขึ้นเป็นแถวเด่นเฉพาะตอนที่มันสำคัญจริง:
+              มีงานที่ยังไม่มีสำเนาที่ไหนเลย + เบราว์เซอร์ไม่รับปากว่าจะเก็บ · วันปกติเหลือแค่บรรทัดจางข้างล่าง */}
+          {atRisk && (
+            <div className="formrow formrow--stack formrow--warn">
+              <b>{t('อย่าปล่อยค้างนาน')}</b>
+              <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
+                {t('เครื่องนี้อาจลบข้อมูลของแอปเองถ้าไม่ได้เปิด 7 วัน — งาน {n} รายการนี้ยังไม่มีสำเนาที่อื่น', { n: unsent })}
+              </span>
+            </div>
+          )}
+
           <button className="formrow" disabled={offline} onClick={doSync}>
             <span className="formrow__main">
               <b style={{ color: offline ? 'var(--text-disabled)' : 'var(--accent)' }}>
@@ -162,13 +181,13 @@ export default function Sync() {
             Safari/iOS ลบที่เก็บของเว็บที่ไม่ได้เปิดใน 7 วัน (ยกเว้นที่เพิ่มลงหน้าจอโฮม)
             ข้อมูลที่ยังไม่ได้ขึ้นตู้กลางอยู่ในนั้นทั้งหมด ผู้ใช้ควรรู้ ไม่ใช่ให้หายแล้วค่อยรู้
             ⚠️ ห้ามเขียนว่า "ปลอดภัยแล้ว" — ของที่ปลอดภัยจริงคือของที่ขึ้นตู้กลางแล้ว */}
-        <p className="newform__hint" style={persist === 'persisted' ? undefined : { color: 'var(--warning-dark)' }}>
+        {!atRisk && <p className="newform__hint" style={persist === 'persisted' ? undefined : { color: 'var(--warning-dark)' }}>
           {persist === 'persisted'
             ? t('ข้อมูลในเครื่องนี้: เบราว์เซอร์รับปากว่าจะไม่ลบทิ้งเอง')
             : persist === 'best-effort'
               ? t('⚠ เบราว์เซอร์อาจลบข้อมูลในเครื่องถ้าพื้นที่ไม่พอ — เพิ่มแอปลงหน้าจอโฮมช่วยได้')
               : t('⚠ เบราว์เซอร์นี้ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน (Safari/iPhone) — เพิ่มแอปลงหน้าจอโฮมจะไม่ถูกลบ')}
-        </p>
+        </p>}
 
         <div className="homelabel">{t('การแสดงผล')}</div>
         <div className="card formcard">

@@ -31,13 +31,14 @@ const settle = () => new Promise((r) => setTimeout(r, 2000));
 
 /* ── เวทีกลาง: Postgres + สวิตช์เน็ต ───────────────────────────────────────── */
 
-interface Stage { db: PGlite; netDown: Set<string>; uid: Record<string, string>; errors: Map<string, string[]>; upserted: Map<string, number>; pulled: Map<string, number> }
+interface Stage { db: PGlite; netDown: Set<string>; authGone: Set<string>; uid: Record<string, string>; errors: Map<string, string[]>; upserted: Map<string, number>; pulled: Map<string, number> }
 const G = globalThis as never as { __STAGE__: Stage; __CLIENT__: (dev: string, who: string) => unknown };
 
 G.__CLIENT__ = (dev: string, who: string) =>
   pgSupabase(G.__STAGE__.db, { uid: G.__STAGE__.uid[who] }, {
     pkOf: REMOTE_PK,
     networkDown: () => G.__STAGE__.netDown.has(dev),
+    authExpired: () => G.__STAGE__.authGone.has(dev),
     onUpsert: (_t, n) => G.__STAGE__.upserted.set(dev, (G.__STAGE__.upserted.get(dev) ?? 0) + n),
     onSelect: (t, n) => G.__STAGE__.pulled.set(`${dev}|${t}`, (G.__STAGE__.pulled.get(`${dev}|${t}`) ?? 0) + n),
     onError: (e) => {
@@ -117,6 +118,7 @@ interface Device {
   seedLocal: (n: string, rows: unknown[]) => void;
   syncProblems: () => { table: string; key: unknown; reason: string }[];
   onOutboxChange: (fn: () => void) => () => void;
+  syncStatus: () => { link: 'ok' | 'down' | 'auth'; lastContactAt: number | null; pendingSince: number | null };
 }
 
 let nth = 0;
@@ -179,7 +181,7 @@ async function stage(): Promise<Stage> {
     const r = await db.query<{ id: string }>(`insert into auth.users (email) values ($1) returning id`, [email]);
     uid[who] = r.rows[0].id;
   }
-  return { db, netDown: new Set(), uid, errors: new Map(), upserted: new Map(), pulled: new Map() };
+  return { db, netDown: new Set(), authGone: new Set(), uid, errors: new Map(), upserted: new Map(), pulled: new Map() };
 }
 
 /** อ่านแถวบนเซิร์ฟเวอร์ตรงๆ (สิทธิ์เจ้าของ ไม่ผ่าน RLS) — ใช้ตรวจผลเท่านั้น */
@@ -513,6 +515,8 @@ console.log('\n⑧ เน็ตหลุดนานเกินโควตา 
   await settle();
   for (let i = 0; i < 6; i++) await phone.flushNow();
   check('เน็ตหลุดไม่ถูกกักเป็นปัญหา', phone.syncProblems().length === 0, phone.syncProblems());
+  check('เน็ตหลุด: สถานะเป็น "ต่อเซิร์ฟเวอร์ไม่ได้" และเริ่มนับอายุของค้าง',
+    phone.syncStatus().link === 'down' && typeof phone.syncStatus().pendingSince === 'number', phone.syncStatus());
   check('เน็ตหลุด: หน้าจอได้รับแจ้งว่ามีของค้างส่ง 2 รายการ',
     seen.at(-1) === 2 && phone.pendingPushCount() === 2, { seen, now: phone.pendingPushCount() });
 
@@ -520,11 +524,42 @@ console.log('\n⑧ เน็ตหลุดนานเกินโควตา 
   await phone.pullAll();
   await phone.flushNow();
   check('เน็ตกลับมา: หน้าจอได้รับแจ้งว่าเหลือ 0', seen.at(-1) === 0, seen);
+  check('เน็ตกลับมา: สถานะกลับเป็นปกติ ไม่มีของค้าง และจำเวลาที่ถึงเซิร์ฟเวอร์',
+    phone.syncStatus().link === 'ok' && phone.syncStatus().pendingSince === null && phone.syncStatus().lastContactAt !== null,
+    phone.syncStatus());
   stopWatching();
   const [w] = await server(S.db, `select proc_index from workpieces where id = 'w-st9'`);
   check('step ที่กดตอนเน็ตหลุดขึ้นเซิร์ฟเวอร์', w.proc_index === 5, w.proc_index);
   check('คาบที่เช็คอินตอนเน็ตหลุดขึ้นเซิร์ฟเวอร์',
     (await server(S.db, `select 1 from checkins where id = 'ci-st9'`)).length === 1);
+  await S.db.close();
+}
+
+/* ══ ⑧ข หมดเวลาเข้าสู่ระบบกลางคาบ ═══════════════════════════════════════════
+ * เดิม PGRST301 ถูกนับเป็น "เซิร์ฟเวอร์ปฏิเสธแถวนี้" → ครบ 3 รอบงานถูกกักพร้อมข้อความ "JWT expired"
+ * ทั้งที่แถวไม่ได้ผิดอะไร แค่ต้องล็อกอินใหม่ · ต้องคาไว้ในคิว และบอกหน้าจอให้ชวนเข้าสู่ระบบ */
+console.log('\n⑧ข หมดเวลาเข้าสู่ระบบกลางคาบ');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phone = await device('phone-st10', 'st10');
+  await phone.db.table('checkins').put(checkinOf('st10'));
+  await settle(); await phone.flushNow();
+
+  S.authGone.add('phone-st10');
+  await phone.db.table('checkins').put({ ...phone.peek('checkins', 'ci-st10')!, note: 'พิมพ์ตอน session หมดอายุ' });
+  await settle();
+  for (let i = 0; i < 6; i++) await phone.flushNow();
+  check('งานไม่ถูกกักเป็น "ส่งไม่ได้"', phone.syncProblems().length === 0, phone.syncProblems());
+  check('งานยังรออยู่ในคิว', phone.pendingPushCount() === 1, phone.pendingPushCount());
+  check('สถานะบอกว่าต้องเข้าสู่ระบบใหม่', phone.syncStatus().link === 'auth', phone.syncStatus());
+  await phone.pullAll();
+  check('ทางดึงที่ล้มเพราะเหตุเดียวกัน ไม่ทำให้สถานะกลายเป็น "เน็ตหลุด"', phone.syncStatus().link === 'auth', phone.syncStatus());
+
+  S.authGone.delete('phone-st10'); // ล็อกอินใหม่แล้ว
+  await phone.flushNow();
+  const [row] = await server(S.db, `select note from checkins where id = 'ci-st10'`);
+  check('ล็อกอินใหม่แล้วงานที่ค้างขึ้นเซิร์ฟเวอร์เอง', row.note === 'พิมพ์ตอน session หมดอายุ', row);
+  check('สถานะกลับเป็นปกติ', phone.syncStatus().link === 'ok' && phone.pendingPushCount() === 0, phone.syncStatus());
   await S.db.close();
 }
 

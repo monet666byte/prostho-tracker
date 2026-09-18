@@ -6,6 +6,7 @@ import { ActivityChips, PatientSelect } from '../../components/student/CheckInFi
 import { checkInNow } from '../../components/student/checkInNow';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { Shell } from '../../components/student/Shell';
+import { SyncBanner } from '../../components/student/SyncBanner';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
@@ -344,6 +345,7 @@ export default function Home() {
  */}
       <div className="homegrid" style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
       <div className="homecol">
+      <SyncBanner />
       {(() => {
         const inner = (
           <>

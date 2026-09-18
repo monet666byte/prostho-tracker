@@ -14,12 +14,14 @@ import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, sum
 import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
 import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
 import type { WorkType } from '../../domain/types';
-import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useTeacher } from '../../hooks/data';
+import {
+  useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, usePendingPushCount, useSyncProblems, useSyncStatus, useTeacher,
+} from '../../hooks/data';
 import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
-import { useApp } from '../../store/app';
+import { signOutToReLogin, useApp } from '../../store/app';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
@@ -32,6 +34,9 @@ const EMPTY_TEACHERS: Teacher[] = [];
 export default function Dashboard() {
   const { settings, showToast } = useApp();
   const navigate = useNavigate();
+  const link = useSyncStatus();
+  const unsentCount = usePendingPushCount();
+  const syncProblemList = useSyncProblems();
 
   const allStudents = useAllStudents();
   const allWorks = useAllWorkpieces();
@@ -259,7 +264,24 @@ export default function Dashboard() {
       },
     });
   }
-  if (!today.needsAttention) {
+  /* งานของอาจารย์เองที่ยังไม่ถึงเซิร์ฟเวอร์ — เดิมไม่มีหน้าไหนบอก: คะแนนที่ถูกปฏิเสธ หรือค้างเพราะต่อไม่ติด
+     หายจากสายตาไปเลย ทั้งที่นักศึกษายังไม่เห็น · ของที่กำลังส่งตามปกติ (ค้างแค่ชั่วอึดใจ) ไม่นับ
+     นับเฉพาะ "เซิร์ฟเวอร์ปฏิเสธ" กับ "ค้างเพราะต่อไม่ได้/หมดเวลาเข้าสู่ระบบ" · อยู่บนสุดเสมอ */
+  const stuck = syncProblemList.length + (link.link === 'ok' ? 0 : unsentCount);
+  if (cloudEnabled && (stuck > 0 || link.link === 'auth')) {
+    todayLines.unshift(link.link === 'auth'
+      ? {
+          key: 'auth', tone: 'warn', icon: 'offline',
+          text: <>{t('ต้องเข้าสู่ระบบใหม่')}{unsentCount > 0 && <> · {t('งาน')} <b>{t('{n} รายการ', { n: unsentCount })}</b> {t('รอส่งอยู่ในเครื่องนี้')}</>}</>,
+          go: { label: t('เข้าสู่ระบบ'), onClick: () => { void signOutToReLogin().then(() => navigate('/login')); } },
+        }
+      : {
+          key: 'unsent', tone: 'warn', icon: 'offline',
+          text: <>{t('งาน')} <b>{t('{n} รายการ', { n: stuck })}</b> {t('ยังไม่ถึงเซิร์ฟเวอร์')} · {t('คนอื่นยังไม่เห็น')}</>,
+          go: { label: t('ดูรายการ'), onClick: () => navigate('/teacher/settings') },
+        });
+  }
+  if (!today.needsAttention && !todayLines.some((l) => l.key === 'unsent' || l.key === 'auth')) {
     todayLines.unshift({ key: 'calm', tone: 'good', icon: 'good', text: t('วันนี้ไม่มีอะไรน่าห่วง') });
   }
   if (today.doneThisWeek > 0 && todayLines.length < 3) {

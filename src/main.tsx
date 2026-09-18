@@ -21,11 +21,13 @@ import { AppBoundary } from './components/AppBoundary';
 import { initTextSize } from './components/TextSize';
 import { initTheme } from './lib/theme';
 import { initInstall } from './lib/install';
+import { watchAppUpdate } from './lib/appUpdate';
 
 initTextSize();
 initTheme();
 // ต้องดักก่อน React เริ่มวาด — เบราว์เซอร์ยิง beforeinstallprompt เร็วมาก ช้าไปคือหลุด
 initInstall();
+watchAppUpdate();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

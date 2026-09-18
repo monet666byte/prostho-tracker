@@ -322,6 +322,7 @@ export async function persistOutboxNow(): Promise<void> {
   if (!outboxRestored) return;
   try {
     await kvSet(OUTBOX_KEY, snapshotOutbox());
+    await kvSet(SINCE_KEY, status.pendingSince);
   } catch {
     /* เขียนไม่ได้ (ดิสก์เต็ม/หน้าต่างส่วนตัว) — คิวในหน่วยความจำยังทำงานต่อได้ */
   }
@@ -338,7 +339,49 @@ export function onOutboxChange(fn: () => void): () => void {
   return () => outboxListeners.delete(fn);
 }
 
+/* ── สถานะการเชื่อมต่อกับตู้กลาง — ให้หน้าจอบอกความจริง ────────────────────────
+ *
+ * เดิมแถวบนสุดของหน้าตั้งค่านักศึกษาขึ้นจุดเขียว "ออนไลน์ · ข้อมูลขึ้นเซิร์ฟเวอร์ทันที" เสมอ
+ * (ดูแค่สวิตช์ออฟไลน์ที่ผู้ใช้กดเอง) แม้ยิงไม่ถึงตู้เลย · ฝั่งอาจารย์ไม่มีหน้าไหนบอกว่างานค้างส่ง
+ *
+ *   'ok'   = คำขอล่าสุดถึงตู้ (ตู้ตอบกลับมา จะรับหรือปฏิเสธก็นับว่าถึง)
+ *   'down' = คำขอล่าสุดไปไม่ถึง (error ไม่มีรหัส — กติกาเดียวกับ isRefusal)
+ *   'auth' = ตู้ตอบว่าหมดเวลาเข้าสู่ระบบ — ส่งต่อไม่ได้จนกว่าผู้ใช้จะล็อกอินใหม่
+ *
+ * ⚠️ ค่าพวกนี้เปลี่ยนได้จาก "ผลของคำขอจริง" เท่านั้น (กติกาห้ามมีป้ายหลอก) ไม่เดาจาก navigator.onLine
+ */
+export interface SyncStatus {
+  link: 'ok' | 'down' | 'auth';
+  /** ครั้งล่าสุดที่ตู้ตอบกลับมา · null = ยังไม่เคยตั้งแต่เปิดแอป */
+  lastContactAt: number | null;
+  /** คิวเริ่มมีของค้างตั้งแต่เมื่อไหร่ · null = ไม่มีของค้าง */
+  pendingSince: number | null;
+}
+const SINCE_KEY = 'syncPendingSince';
+let status: SyncStatus = { link: 'ok', lastContactAt: null, pendingSince: null };
+/** คืนก้อนเดิมจนกว่าจะมีอะไรเปลี่ยน — useSyncExternalStore เทียบด้วย === */
+export const syncStatus = (): SyncStatus => status;
+
+function setStatus(patch: Partial<SyncStatus>): void {
+  const next = { ...status, ...patch };
+  if (next.link === status.link && next.lastContactAt === status.lastContactAt && next.pendingSince === status.pendingSince) return;
+  status = next;
+  outboxListeners.forEach((fn) => fn());
+}
+
+/** ตู้ตอบกลับมา (รับหรือปฏิเสธก็ตาม) — ปัดเวลาเป็นนาที ไม่งั้นหน้าจอ re-render ทุกคำขอ */
+function noteContact(): void {
+  setStatus({ link: 'ok', lastContactAt: Math.floor(Date.now() / 60_000) * 60_000 });
+}
+
+/** หมดเวลาเข้าสู่ระบบ — PostgREST ตอบ PGRST301 เมื่อ JWT หมดอายุและต่ออายุไม่ได้แล้ว */
+const isAuthLost = (err: { code?: string | null; message?: string | null } | null | undefined): boolean =>
+  err?.code === 'PGRST301' || /jwt (is )?expired|invalid jwt/i.test(err?.message ?? '');
+
 function persistOutboxSoon(): void {
+  const n = pendingPushCount();
+  if (n > 0 && status.pendingSince === null) setStatus({ pendingSince: Date.now() });
+  else if (n === 0 && status.pendingSince !== null) setStatus({ pendingSince: null });
   outboxListeners.forEach((fn) => fn());
   if (persistTimer || !outboxRestored) return;
   persistTimer = setTimeout(() => { persistTimer = null; void persistOutboxNow(); }, 0);
@@ -378,6 +421,13 @@ export async function restoreOutbox(): Promise<void> {
     /* อ่านไม่ได้ = เริ่มด้วยคิวว่าง ซึ่งเป็นสภาพเดิมก่อนมีไฟล์นี้ */
   }
   outboxRestored = true;
+  /* ของค้างจากเซสชันก่อน: อายุต้องนับต่อจากเดิม ไม่ใช่เริ่มนับใหม่ทุกครั้งที่เปิดแอป
+     (ไม่งั้น "ค้างเกิน 1 วัน" ไม่มีวันจริงสำหรับคนที่เปิดปิดแอปบ่อย) */
+  if (pendingPushCount() > 0) {
+    let since: unknown = null;
+    try { since = await kvGet(SINCE_KEY, null); } catch { /* อ่านไม่ได้ = นับจากตอนนี้ */ }
+    setStatus({ pendingSince: typeof since === 'number' ? since : Date.now() });
+  }
   outboxListeners.forEach((fn) => fn()); // คิวของเซสชันก่อนเพิ่งกลับมา — หน้าจอต้องเห็นเลขจริงทันที
 }
 
@@ -426,9 +476,15 @@ const deleteFail = new Map<string, number>();
  * ถ้าเดาผิดทาง "ไม่ใช่การปฏิเสธ" = แถวค้างคิวให้เห็นเป็นตัวเลข เสียแค่เน็ต
  * ถ้าเดาผิดทาง "ปฏิเสธ" = งานของผู้ใช้หาย · จึงเลือกทางแรกเสมอเมื่อไม่แน่ใจ
  */
-export function isRefusal(err: { code?: string | null } | null | undefined): boolean {
+export function isRefusal(err: { code?: string | null; message?: string | null } | null | undefined): boolean {
   const c = err?.code ?? '';
-  return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\d+$/.test(c);
+  /* หมดเวลาเข้าสู่ระบบ ≠ แถวผิด — เดิมนับเป็นการปฏิเสธ งานจึงถูกกักพร้อมข้อความ "JWT expired"
+     ทั้งที่ล็อกอินใหม่แล้วส่งได้ทุกแถว · ต้องคาไว้ในคิว แล้วให้หน้าจอชวนเข้าสู่ระบบใหม่ */
+  if (isAuthLost(err)) { setStatus({ link: 'auth' }); return false; }
+  const refused = /^[0-9A-Z]{5}$/.test(c) || /^PGRST\d+$/.test(c);
+  // ทุก error ของทางส่งผ่านฟังก์ชันนี้ — ใช้เป็นจุดเดียวที่ตัดสินว่า "ถึงตู้ไหม"
+  if (refused) noteContact(); else if (err && status.link !== 'auth') setStatus({ link: 'down' });
+  return refused;
 }
 
 /* ── ของที่ส่งขึ้นไม่ได้จริงๆ — ต้องบอกผู้ใช้ ห้ามทิ้งเงียบ ─────────────────────
@@ -627,6 +683,7 @@ async function flushOnce(): Promise<void> {
     const { error } = await supabase.from(def.remote).delete().in(remotePk, ids);
     if (!error) {
       deleteFail.delete(local);
+      noteContact();
       clearSent(pendingDeletes, local, keys, ids);
       continue;
     }
@@ -688,6 +745,7 @@ async function flushOnce(): Promise<void> {
         continue;
       }
       patchFail.delete(keyOf(local, pk));
+      noteContact();
       if ((res.data?.length ?? 0) > 0) { patched.push([pk, fields]); continue; }
 
       /* PATCH ไม่โดนแถวไหนเลย = ตู้กลางไม่มีแถวนี้ (ยังไม่เคยขึ้น หรือถูกลบไป)
@@ -715,6 +773,7 @@ async function flushOnce(): Promise<void> {
     );
     if (!error) {
       failCount.delete(local);
+      noteContact();
       clearSentFields(local, fieldMap, asSent(fullIds));
       continue;
     }
@@ -869,7 +928,9 @@ async function pullAllOnce(): Promise<void> {
   for (const def of TABLES) {
     // เช็คก่อนว่าตารางนี้มีอะไรใหม่มั้ย — ส่วนใหญ่ไม่มี จะได้ไม่ต้องดึง/เขียนทับให้เสี่ยง
     const head = await supabase.from(def.remote).select('updated_at').order('updated_at', { ascending: false }).limit(1);
-    if (head.error) { missed = true; continue; }
+    // ทางดึงก็เป็นหลักฐานว่า "ถึงตู้ไหม" — เครื่องที่ไม่มีอะไรจะส่งยังต้องรู้ว่าต่อไม่ติด/หมดเวลาเข้าสู่ระบบ
+    if (head.error) { isRefusal(head.error); missed = true; continue; }
+    noteContact();
     const remoteMax = (head.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? '';
     /**
      * ⚠️ ตราเวลาที่อยู่ "ในอนาคต" ห้ามใช้เป็นเหตุผลข้ามการดึง
@@ -1207,6 +1268,7 @@ export function stopCloudSync(): void {
   quarantine.clear();
   patchFail.clear();
   deleteFail.clear();
+  status = { link: 'ok', lastContactAt: null, pendingSince: null }; // ออกจากระบบ = ไม่มีอะไรให้รายงาน
   problemListeners.forEach((fn) => fn());
   outboxListeners.forEach((fn) => fn());
   supabase?.removeAllChannels();

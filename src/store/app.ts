@@ -3,7 +3,7 @@ import { db, isBlockedByOtherTab, kvGet, kvSet } from '../data/db';
 import { getSettings, logAudit, saveSettings, migrateSettings } from '../data/repo';
 import { assertSect2 } from '../domain/sect2';
 import { assertSect3 } from '../domain/sect3';
-import { cloudReset, foreignPendingCount, initCloudSync, stopCloudSync } from '../data/cloudSync';
+import { cloudReset, foreignPendingCount, initCloudSync, persistOutboxNow, stopCloudSync } from '../data/cloudSync';
 import { initPhotoSync, stopPhotoSync } from '../data/photoStore';
 import { onRemoteSettings, pushSettings } from '../data/settingsSync';
 import { DEFAULT_SETTINGS, DEMO, DEMO_STUDENT_NAME, purgeLocalDemoRows, resetDemoData, seedIfEmpty } from '../data/seed';
@@ -101,6 +101,18 @@ interface AppState {
 async function blockedByForeignWork(uid: string): Promise<boolean> {
   if ((await foreignPendingCount(uid)) === 0) return false;
   return !(await kvGet<boolean>('allowDiscardForeign', false));
+}
+
+/**
+ * ออกจากระบบเพื่อ "เข้าสู่ระบบอีกครั้ง" หลัง session หมดอายุ — **ไม่ล้างเครื่อง**
+ *
+ * งานที่ค้างส่งต้องอยู่รอดข้ามการล็อกอิน: เขียนสำเนาคิวลงเครื่องให้เสร็จก่อน (stopCloudSync ยกเลิก
+ * ตัวเขียนที่ค้างอยู่) แล้วบัญชีเดิมที่เข้ามาใหม่จะอ่านคิวนั้นกลับมาส่งต่อเอง
+ * บัญชีอื่นที่เข้ามาแทนจะเจอด่าน foreignPending ตามปกติ
+ */
+export async function signOutToReLogin(): Promise<void> {
+  await persistOutboxNow();
+  await useApp.getState().signOut();
 }
 
 /**

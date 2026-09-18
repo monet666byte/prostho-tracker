@@ -1,4 +1,4 @@
-import { ArrowsClockwise, Check, Clock, PencilSimple, Warning } from '@phosphor-icons/react';
+import { ArrowsClockwise, Check, Clock, CloudSlash, PencilSimple, Warning } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import type { TodaySummary } from '../../domain/today';
 import { lang, t } from '../../lib/i18n';
@@ -6,7 +6,7 @@ import { lang, t } from '../../lib/i18n';
 export interface TodayLine {
   key: string;
   tone: 'do' | 'warn' | 'good';
-  icon: 'eval' | 'warn' | 'stale' | 'good' | 'sync';
+  icon: 'eval' | 'warn' | 'stale' | 'good' | 'sync' | 'offline';
   text: ReactNode;
   go?: { label: string; onClick: () => void };
 }
@@ -19,7 +19,7 @@ export interface TodayScope {
   onPick?: () => void;
 }
 
-const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise } as const;
+const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise, offline: CloudSlash } as const;
 
 /** "สวัสดีตอนเช้า" ก่อนเที่ยง · หลังเที่ยง "สวัสดีวันศุกร์" */
 export function greeting(now = new Date()): string {

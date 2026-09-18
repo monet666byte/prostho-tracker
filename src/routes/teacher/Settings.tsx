@@ -1,12 +1,15 @@
 import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { SyncProblemsCard } from '../../components/SyncProblemsCard';
 import { TextSizeControl } from '../../components/TextSize';
 import { ConfirmBox } from '../../components/ui/ConfirmBox';
 import { TYPES } from '../../domain/catalog';
 import { staleRows } from '../../domain/aggregate';
 import type { Requirement } from '../../domain/types';
-import { useAllStudents, useAllWorkpieces, useAudit, useSelfAssessments } from '../../hooks/data';
+import {
+  useAllStudents, useAllWorkpieces, useAudit, usePendingPushCount, useSelfAssessments, useSyncProblems, useSyncStatus,
+} from '../../hooks/data';
 import { clock } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
@@ -117,6 +120,8 @@ export default function Settings() {
             <p>{t('มีผลทั้งระบบทันที')}</p>
           </div>
         </div>
+
+        <TeacherSyncNotice />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
           <div className="panel setcard">
@@ -384,6 +389,31 @@ export default function Settings() {
   );
 }
 
+
+/**
+ * งานของอาจารย์ที่ยังไม่ถึงเซิร์ฟเวอร์ — ปลายทางของบรรทัด "ดูรายการ" ในการ์ดวันนี้ (หน้าภาพรวม)
+ * ไม่มีอะไรค้าง = ไม่วาดอะไรเลย
+ */
+function TeacherSyncNotice() {
+  const link = useSyncStatus();
+  const unsent = usePendingPushCount();
+  const problems = useSyncProblems();
+  const waiting = cloudEnabled && link.link === 'down' && unsent > 0;
+  if (!cloudEnabled || (!problems.length && !waiting)) return null;
+  return (
+    <section className="panel" style={{ padding: 0, overflow: 'hidden', maxWidth: 620, marginBottom: 16 }} aria-label={t('งานที่ยังไม่ถึงเซิร์ฟเวอร์')}>
+      {waiting && (
+        <div className="formrow formrow--stack formrow--warn">
+          <b>{t('ยังต่อเซิร์ฟเวอร์ไม่ได้')}</b>
+          <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
+            {t('งาน {n} รายการอยู่ในเครื่องนี้ครบ ระบบลองส่งให้เองเรื่อยๆ — ระหว่างนี้คนอื่นยังไม่เห็น', { n: unsent })}
+          </span>
+        </div>
+      )}
+      <SyncProblemsCard />
+    </section>
+  );
+}
 
 /**
  * บอกว่าค่าที่เพิ่งกด "ถึงเครื่องคนอื่นหรือยัง"

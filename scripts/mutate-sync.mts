@@ -47,7 +47,7 @@ const M: Mutant[] = [
   { id: 'M14', what: 'ส่งทั้งแถวแบบก้อน: ช่องที่ไม่มีกลายเป็น NULL', find: "objs.map((o) => toRow(def, o)), { defaultToNull: false },\n    );\n    if (!error) {", replace: "objs.map((o) => toRow(def, o)),\n    );\n    if (!error) {" },
   { id: 'M15', what: 'ก้อนทั้งแถว: เน็ตหลุดนับรอบ (ครบ 3 = กัก)', find: '    if (!isRefusal(error)) continue;\n    const n = (failCount', replace: '    const n = (failCount', layered: 'ก้อนที่ตกครบ 3 รอบจะแยกส่งรายแถว ซึ่งยังเช็ค isRefusal ของตัวเอง (M16) → เน็ตหลุดไม่ถูกกัก' },
   { id: 'M16', what: 'ก้อนทั้งแถว: ส่งรายแถวแล้วเน็ตหลุดก็กัก', find: 'if (one.error && !isRefusal(one.error)) continue;', replace: '', layered: 'ก้อนที่เน็ตหลุดไม่เคยมาถึงการแยกส่งรายแถว เพราะด่าน M15 continue ไปก่อน' },
-  { id: 'M17', what: 'isRefusal: ทุก error คือการปฏิเสธ', find: "return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\\d+$/.test(c);", replace: 'return true;' },
+  { id: 'M17', what: 'isRefusal: ทุก error คือการปฏิเสธ', find: "const refused = /^[0-9A-Z]{5}$/.test(c) || /^PGRST\\d+$/.test(c);", replace: 'const refused = true;' },
   { id: 'M18', what: 'isRefusal: ไม่มีอะไรเป็นการปฏิเสธ', find: "return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\\d+$/.test(c);", replace: 'return false && !!c;' },
   { id: 'M19', what: 'กด "ลองส่งใหม่" แต่ตัวนับ PATCH ไม่ถูกล้าง', find: '  patchFail.clear(); // ไม่ล้าง', replace: '  // ไม่ล้าง', layered: 'แถวที่ถูกกักถูก patchFail.delete ไปแล้วตั้งแต่ตอนกัก — clear ตอนลองใหม่จึงซ้ำซ้อน' },
   { id: 'M20', what: 'คิวรุ่นเก่า (v1) อ่านแล้วทิ้ง', find: '            m.set(row, null);\n          }', replace: '            continue;\n          }' },
@@ -75,6 +75,9 @@ const M: Mutant[] = [
   { id: 'M43', what: 'ตัวลบ: เน็ตหลุดนับเป็นการปฏิเสธ', find: '    if (!isRefusal(error)) continue;\n    const n = (deleteFail', replace: '    const n = (deleteFail', layered: 'ครบโควตาแล้วแยกลบทีละแถว ซึ่งเช็ค isRefusal ของตัวเอง → เน็ตหลุดยังคาอยู่ในคิว ไม่ถูกแจ้งเป็นปัญหา' },
   { id: 'M44', what: 'ตัวลบ: แถวที่ตู้ไม่ยอมให้ลบ ไม่ถูกดึงกลับลงเครื่อง', find: '  if (row) {\n    await applyRemote(def.local, [pk], async () => {', replace: '  if (row && Math.random() > 2) {\n    await applyRemote(def.local, [pk], async () => {' },
   { id: 'M45', what: 'แถวที่ดึงกลับหลังลบไม่ผ่าน ถูกแช่แข็งเหมือนแถวที่ถูกกัก', find: "return !!q && q.kind !== 'delete';", replace: 'return !!q;' },
+  { id: 'M46', what: 'หมดเวลาเข้าสู่ระบบถูกนับเป็นการปฏิเสธ (งานถูกกักพร้อม "JWT expired")', find: "  if (isAuthLost(err)) { setStatus({ link: 'auth' }); return false; }\n", replace: '' },
+  { id: 'M47', what: 'ต่อเซิร์ฟเวอร์ไม่ได้แต่สถานะยังบอกว่าปกติ (จุดเขียวหลอก)', find: "else if (err && status.link !== 'auth') setStatus({ link: 'down' });", replace: ';' },
+  { id: 'M48', what: 'อายุของค้างส่งเริ่มนับใหม่ทุกครั้งที่คิวขยับ', find: '  if (n > 0 && status.pendingSince === null) setStatus({ pendingSince: Date.now() });', replace: '  if (n > 0) setStatus({ pendingSince: Date.now() });', layered: 'ยังไม่มีเทสต์ที่วัดอายุข้ามเวลา — แถบ "ค้างเกิน 1 วัน" หน้าแรกพึ่งค่านี้ ถ้าจะเข้มขึ้นให้เพิ่มเทสต์ที่ปลอมนาฬิกา' },
   { id: 'M36', what: 'realtime ทับแถวที่ยังค้างส่ง', find: '      if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;', replace: '' },
 ];
 

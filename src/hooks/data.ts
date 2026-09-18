@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import { onOutboxChange, pendingPushCount } from '../data/cloudSync';
+import {
+  onOutboxChange, onSyncProblems, pendingPushCount, syncProblems, syncStatus, type SyncProblem, type SyncStatus,
+} from '../data/cloudSync';
 import { onPdpaPolicy, patientNamesOn, pdpaPolicy } from '../data/pdpaSync';
 import { identityLevelFor, type IdentityLevel, type IdentitySurface } from '../lib/privacy';
 import { useEffect, useState } from 'react';
@@ -96,6 +98,23 @@ export function useQueue() {
 /** จำนวนแถวที่ยังไม่ถึงเซิร์ฟเวอร์จริง ณ ตอนนี้ (คิวของ cloudSync) — โหมดไม่ต่อ cloud ได้ 0 เสมอ */
 export function usePendingPushCount(): number {
   return useSyncExternalStore(onOutboxChange, pendingPushCount);
+}
+
+/** ต่อเซิร์ฟเวอร์ได้ไหม · หมดเวลาเข้าสู่ระบบหรือยัง · ของค้างมานานแค่ไหน — มาจากผลของคำขอจริงเท่านั้น */
+export function useSyncStatus(): SyncStatus {
+  return useSyncExternalStore(onOutboxChange, syncStatus);
+}
+
+/** รายการที่เซิร์ฟเวอร์ปฏิเสธจนเลิกลองแล้ว (ทั้งสองฝั่งใช้การ์ดใบเดียวกัน — components/SyncProblemsCard) */
+let problemsSnap: SyncProblem[] = [];
+const readProblems = (): SyncProblem[] => {
+  const now = syncProblems();
+  // syncProblems() สร้าง array ใหม่ทุกครั้ง — ต้องคืนก้อนเดิมถ้าเนื้อหาไม่เปลี่ยน ไม่งั้น useSyncExternalStore วนไม่จบ
+  if (now.length !== problemsSnap.length || now.some((p, i) => p !== problemsSnap[i])) problemsSnap = now;
+  return problemsSnap;
+};
+export function useSyncProblems(): SyncProblem[] {
+  return useSyncExternalStore(onSyncProblems, readProblems);
 }
 
 export function usePhotos(studentId: string | undefined) {

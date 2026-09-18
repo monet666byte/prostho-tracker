@@ -57,7 +57,7 @@ const encode = (udt: string, v: unknown) =>
 /** สร้าง client หนึ่งตัวต่อ "เครื่อง" · ทุกคำขอรันในนามของ identity นั้นด้วย role จริง */
 export function pgSupabase(
   db: PGlite, identity: Identity,
-  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; onError?: (e: PgError) => void; onUpsert?: (table: string, rows: number) => void; onSelect?: (table: string, rows: number) => void },
+  opts: { pkOf: Record<string, string>; networkDown?: () => boolean; authExpired?: () => boolean; onError?: (e: PgError) => void; onUpsert?: (table: string, rows: number) => void; onSelect?: (table: string, rows: number) => void },
 ) {
   const types = new Map<string, Map<string, string>>();
 
@@ -67,6 +67,10 @@ export function pgSupabase(
        (ต่างจากการปฏิเสธจริงที่มีรหัส SQLSTATE เสมอ — cloudSync แยกสองอย่างนี้ด้วย isRefusal) */
     if (opts.networkDown?.()) {
       return { error: { message: 'TypeError: Failed to fetch', code: '', details: null, hint: null } };
+    }
+    /* หมดเวลาเข้าสู่ระบบ = คำขอถึงเซิร์ฟเวอร์ แต่ PostgREST ตอบ 401 รหัส PGRST301 ก่อนแตะฐานข้อมูล */
+    if (opts.authExpired?.()) {
+      return { error: { message: 'JWT expired', code: 'PGRST301', details: null, hint: null } };
     }
     try {
       const value = await db.transaction(async (tx) => {
