@@ -67,7 +67,8 @@ export const PLAN: Array<{ table: string; pk: string; mode: 'upsert' | 'insert-m
   { table: 'teachers', pk: 'id', mode: 'upsert' },
   { table: 'students', pk: 'id', mode: 'upsert',
     note: 'trigger students_merge_gates (0017) "รวม" ช่อง gates ตอน update ไม่ได้ทับ — ประตูที่เคยติ๊กไว้บนเซิร์ฟเวอร์จะไม่ถูกลบโดยการกู้' },
-  { table: 'groups', pk: 'code', mode: 'upsert' },
+  { table: 'groups', pk: 'code', mode: 'upsert',
+    note: 'ช่อง advisor_ids กู้ได้เฉพาะบัญชีหัวหน้ารายวิชา — บัญชีอาจารย์ทั่วไป ยาม 0028 คงค่าบนเซิร์ฟเวอร์ไว้เงียบๆ' },
   { table: 'patients', pk: 'id', mode: 'upsert' },
   { table: 'workpieces', pk: 'id', mode: 'upsert' },
   { table: 'updates', pk: 'id', mode: 'upsert' },
@@ -76,7 +77,8 @@ export const PLAN: Array<{ table: string; pk: string; mode: 'upsert' | 'insert-m
   { table: 'reviews', pk: 'id', mode: 'upsert' },
   { table: 'submissions', pk: 'id', mode: 'upsert' },
   { table: 'issues', pk: 'student_id', mode: 'upsert' },
-  { table: 'self_assessments', pk: 'id', mode: 'upsert' },
+  { table: 'self_assessments', pk: 'id', mode: 'upsert',
+    note: 'เขียนตรงไม่ได้ (ยาม 0011 ให้เฉพาะนักศึกษาเจ้าของ) — ยิงผ่าน rpc restore_self_assessments (0028) ซึ่งต้องเป็นหัวหน้ารายวิชา' },
   { table: 'sect2_records', pk: 'id', mode: 'upsert' },
   { table: 'sect3_records', pk: 'id', mode: 'upsert' },
   { table: 'app_settings', pk: 'id', mode: 'upsert' },
@@ -289,6 +291,24 @@ export async function writeTable(
   t: Target, table: string, rows: unknown[], mode: 'upsert' | 'insert-missing',
 ): Promise<WriteReport> {
   const rep: WriteReport = { table, sent: rows.length, ok: 0, failed: 0 };
+  /* แบบประเมินตนเอง: ตารางนี้ไม่มีบัญชีไหน insert แทนนักศึกษาได้ (กฎ 0010 + ยาม 0011)
+     ทางเดียวคือฟังก์ชัน restore_self_assessments (0028) — หัวหน้ารายวิชาเท่านั้น · จด audit ให้เอง */
+  if (table === 'self_assessments') {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const res = await fetch(`${t.url}/rest/v1/rpc/restore_self_assessments`, {
+        method: 'POST',
+        headers: t.headers,
+        body: JSON.stringify({ p_rows: chunk, p_overwrite: mode === 'upsert' }),
+      });
+      if (res.ok) rep.ok += chunk.length;
+      else {
+        rep.failed += chunk.length;
+        rep.firstError ??= (await res.text()).slice(0, 200);
+      }
+    }
+    return rep;
+  }
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     /* upsert = merge-duplicates · audit = ignore-duplicates เพราะ trigger ห้าม update

@@ -613,8 +613,13 @@ console.log('\n⑫ กลุ่มที่ปรึกษา (0024)');
   const expect = new Date().getMonth() >= 5 ? new Date().getFullYear() + 543 : new Date().getFullYear() + 542;
   check('current_academic_year ตรงกับ academicYear() ของแอป', y === expect, { sql: y, app: expect });
 
-  const viaSync = await commitAs(U.T1, `update groups set advisor_ids = array['t2', ''] where code = 'G3' returning advisor_year`);
-  check('แก้ที่ปรึกษาทางอื่น (เช่นนำเข้าชีตที่ sync ขึ้นมา) ถูกประทับปีให้เอง', viaSync.ok && (viaSync.rows[0] as { advisor_year: number }).advisor_year === y, viaSync);
+  /* 0028: อาจารย์ทั่วไปเขียน advisor_ids ตรงๆ ไม่ได้แล้ว (ค่าเดิมคงอยู่เงียบๆ) — หัวหน้ารายวิชายังทำได้และถูกประทับปีให้ */
+  const before = (await db.query<{ a: string[] }>(`select advisor_ids as a from groups where code = 'G3'`)).rows[0].a;
+  const sneaky = await commitAs(U.T1, `update groups set advisor_ids = array['t1', ''] where code = 'G3' returning advisor_ids`);
+  check('0028: อาจารย์ตั้งตัวเองเป็นที่ปรึกษาด้วยการเขียนตรงไม่ได้ — ค่าเดิมคงอยู่ ไม่ error (sync ไม่ถูกกัก)',
+    sneaky.ok && JSON.stringify((sneaky.rows[0] as { advisor_ids: string[] }).advisor_ids) === JSON.stringify(before), { sneaky, before });
+  const viaSync = await commitAs(U.HEAD, `update groups set advisor_ids = array['t2', ''] where code = 'G3' returning advisor_year`);
+  check('หัวหน้ารายวิชาแก้ที่ปรึกษาตรงๆ ได้ และถูกประทับปีให้เอง', viaSync.ok && (viaSync.rows[0] as { advisor_year: number }).advisor_year === y, viaSync);
   await db.exec(`update groups set advisor_year = ${y - 1} where code = 'G3'`);   // จำลองว่าเป็นของปีก่อน
   const staleMine = await as(db, U.T2, async (tx) => (await tx.query<{ g: string[]; d: boolean; c: string[] }>(
     `select my_advised_groups() as g, can_decide_link('sE') as d, current_advisors('G3') as c`)).rows[0]);
@@ -825,6 +830,35 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
     (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'));
   const row = checker.rows.find((r) => r.migration.startsWith('0027'));
   check('check-migrations.sql ตอบว่า 0027 รันแล้ว', !!row && row['สถานะ'].startsWith('✓'), row);
+  const row28 = checker.rows.find((r) => r.migration.startsWith('0028'));
+  check('check-migrations.sql ตอบว่า 0028 รันแล้ว', !!row28 && row28['สถานะ'].startsWith('✓'), row28);
+
+  // ── ⑯ กู้แบบประเมินตนเอง (0028) ──
+  console.log('\n⑯ กู้แบบประเมินตนเองจากสำเนา (0028)');
+  const saRow = {
+    id: 'sa-sA-2569', student_id: 'sA', academic_year: 2569, class_year: 5, form_version: '2569.2',
+    answers: { q1: 3 }, status: 'submitted', submitted_at: '2026-08-31T03:00:00Z',
+    created_at: '2026-08-30T03:00:00Z', updated_at: '2026-08-31T03:00:00Z',
+  };
+  const direct = await commit(U.T1, `insert into self_assessments select * from jsonb_populate_recordset(null::self_assessments, $1::jsonb)`, [JSON.stringify([saRow])]);
+  check('ทางเดิม: อาจารย์ insert ตรงๆ ถูกปฏิเสธ (จึงกู้ด้วย REST ไม่ได้)', !direct.ok, direct);
+  const byTeacher = await commit(U.T1, `select restore_self_assessments($1::jsonb)`, [JSON.stringify([saRow])]);
+  check('อาจารย์ทั่วไปเรียกตัวกู้ไม่ได้', !byTeacher.ok && /หัวหน้ารายวิชา/.test(byTeacher.error), byTeacher);
+  const byHead = await commit(U.HEAD, `select restore_self_assessments($1::jsonb) as n`, [JSON.stringify([saRow])]);
+  check('หัวหน้ารายวิชากู้แถวที่หายได้', byHead.ok && byHead.rows[0].n === 1, byHead);
+  const kept = (await db.query<{ status: string; s: string; c: string }>(
+    `select status, submitted_at::text as s, created_at::text as c from self_assessments where id = 'sa-sA-2569'`)).rows[0];
+  check('คงสถานะ/เวลาส่ง/เวลาสร้างตามสำเนา ไม่ถูกประทับใหม่', kept?.status === 'submitted' && kept.s.startsWith('2026-08-31') && kept.c.startsWith('2026-08-30'), kept);
+  const again = await commit(U.HEAD, `select restore_self_assessments($1::jsonb) as n`, [JSON.stringify([{ ...saRow, answers: { q1: 0 } }])]);
+  const ans = (await db.query<{ a: { q1: number } }>(`select answers as a from self_assessments where id = 'sa-sA-2569'`)).rows[0].a;
+  check('ค่าเริ่มต้น = เติมเฉพาะที่หาย — แถวที่มีอยู่ไม่ถูกทับ', again.ok && again.rows[0].n === 0 && ans.q1 === 3, { again, ans });
+  const over = await commit(U.HEAD, `select restore_self_assessments($1::jsonb, true) as n`, [JSON.stringify([{ ...saRow, answers: { q1: 2 } }])]);
+  const ans2 = (await db.query<{ a: { q1: number } }>(`select answers as a from self_assessments where id = 'sa-sA-2569'`)).rows[0].a;
+  check('สั่งทับตามสำเนาได้เมื่อระบุ', over.ok && ans2.q1 === 2, { over, ans2 });
+  const auditN = (await db.query<{ n: number }>(`select count(*)::int as n from audit where id like 'a-restore-sa-%'`)).rows[0].n;
+  check('ทุกครั้งที่กู้มีแถว audit', auditN === 3, auditN);
+  const stillGuarded = await commit(U.T1, `update self_assessments set answers = '{"q1":1}'::jsonb where id = 'sa-sA-2569'`);
+  check('ยามเดิมยังทำงาน: อาจารย์แก้คำตอบของ นศ. ไม่ได้', !stillGuarded.ok, stillGuarded);
 }
 
 await db.close();

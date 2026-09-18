@@ -100,5 +100,10 @@ from (
                 where table_schema = 'public' and table_name = 'link_requests' and column_name = 'attempts')
     and exists (select 1 from pg_policies where tablename = 'teachers' and policyname = 'teachers_read'
                 and qual like '%my_role()%')
+
+  -- 0028 ดูสองร่องรอย (ตัวกู้แบบประเมินตนเอง · ยามที่ปรึกษากลุ่ม)
+  union all select '0028 กู้แบบประเมินตนเองได้ · ที่ปรึกษากลุ่มแก้ผ่านฟังก์ชันเท่านั้น',
+    exists (select 1 from pg_proc where proname = 'restore_self_assessments')
+    and exists (select 1 from pg_trigger where tgname = 'groups_guard_advisors')
 ) x
 order by x.label;

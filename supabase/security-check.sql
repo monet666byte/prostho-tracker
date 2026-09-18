@@ -140,7 +140,8 @@ with findings as (
     ('sect3_records', 'zz_zz_strip_patient_name', '0026', 'ชื่อผู้ป่วยในใบ Section III ลงได้ทั้งที่สวิตช์ปิด'),
     ('audit',         'audit_no_change',          '0009', 'audit log แก้/ลบได้'),
     ('checkins',      'checkin_scoring_guard',    '0017', 'นักศึกษาให้คะแนนตัวเองผ่าน API ได้'),
-    ('checkins',      'checkin_delete_guard',     '0027', 'นักศึกษาลบคาบที่ประเมินแล้วได้')
+    ('checkins',      'checkin_delete_guard',     '0027', 'นักศึกษาลบคาบที่ประเมินแล้วได้'),
+    ('groups',        'groups_guard_advisors',    '0028', 'อาจารย์ตั้งตัวเองเป็นที่ปรึกษากลุ่มไหนก็ได้ด้วยการเขียนตรง')
   ) as x(tbl, trg, src, why)
   where to_regclass('public.' || x.tbl) is not null
     and not exists (select 1 from pg_trigger g

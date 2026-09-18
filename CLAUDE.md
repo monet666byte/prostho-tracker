@@ -166,7 +166,9 @@ PWA ติดตามความคืบหน้าเคสทันตก�
   SQL ที่ไม่เคยรันจริงห้ามส่งให้ผู้ใช้ (เคยจับได้: `check-migrations.sql` ตอบว่า 0020 "ยังไม่ได้รัน" ทั้งที่รันแล้ว เพราะ `like` ไม่ยอมให้เว้นวรรคหลายช่อง)
   ของ Supabase ที่ Postgres เปล่าไม่มี (role / auth / storage) จำลองใน `pg-supabase.mts` — ใช้เพิ่มเมื่อไหร่ต้องเติมที่นั่น · migration ใหม่ต้องเพิ่มร่องรอยใน
   `check-migrations.sql` + `audit.sql` ด้วย · **ลำดับส่ง:** `test:rls` ผ่าน → ผู้ใช้วางไฟล์ใน SQL Editor → `check-migrations.sql` → `security-check.sql`
-  **`0027_handoff_hardening.sql` อยู่ในลำดับนี้เหมือนไฟล์อื่น** (รันหรือยัง ดู `docs/status.md`)
+  **`0027_handoff_hardening.sql` · `0028_restore_and_advisor_guard.sql` อยู่ในลำดับนี้เหมือนไฟล์อื่น** (รันหรือยัง ดู `docs/status.md`)
+  · **ที่ปรึกษากลุ่มเขียนผ่านฟังก์ชันเท่านั้น** (0028 `groups_guard_advisors`) — เขียน `groups.advisor_ids` ตรงๆ ด้วยบัญชีที่ไม่ใช่หัวหน้ารายวิชา ค่าเดิมคงอยู่เงียบๆ
+  · **แบบประเมินตนเองกู้ได้ทางเดียว** คือ rpc `restore_self_assessments` (0028 · หัวหน้ารายวิชา) — `restore.ts` ใช้ทางนี้แล้ว
 - **ไม่มีกฎ UPDATE/DELETE = RLS กรองแถวทิ้งเงียบๆ (0 แถว) ไม่ขึ้น error** — ตรวจสิทธิ์ให้ตรวจที่ "ผล" ไม่ใช่รูปแบบของการปฏิเสธ
   · **RLS กัน update ไม่ได้แปลว่ากัน delete** — คาบที่ประเมินแล้วเคยถูกนักศึกษาลบผ่าน API ได้ (0027 `checkin_delete_guard`) ตารางที่มี "หลักฐาน" ต้องคิดทั้งคู่
 - **กฎที่ "ตั้งใจให้อาจารย์" ต้องมี `is_teacher()` อยู่ในกฎจริงๆ** — `my_group()` ของนักศึกษาคืนกลุ่มตัวเอง และ `is_my_student()` เป็น security definer
