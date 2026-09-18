@@ -178,7 +178,17 @@ export function pgSupabase(
       select(columns = '*', selOpts?: { count?: string; head?: boolean }) {
         let orderBy: { col: string; asc: boolean } | null = null;
         let gte: { col: string; val: string } | null = null;
+        let inList: { col: string; ids: unknown[] } | null = null;
         const rowsOf = async (limit: number | null, offset: number) => {
+          if (inList) {
+            // select('*').in(pk, ids) — cloudSync ใช้ดึงแถวที่ตู้ไม่ยอมให้ลบกลับลงเครื่อง
+            const known = await columnTypes(db, table, types);
+            const res = await run((tx) => tx.query<{ r: Record<string, unknown> }>(
+              `select to_jsonb(t.*) as r from "${table}" t where t."${inList!.col}" = any($1::${castOf(known.get(inList!.col) ?? 'text')}[])`,
+              [inList!.ids]));
+            if (res.error) return { data: null, error: res.error };
+            return { data: (res.value as { rows: { r: Record<string, unknown> }[] }).rows.map((x) => x.r), error: null };
+          }
           const cols = columns === '*' ? 't.*' : columns.split(',').map((c) => `t."${c.trim()}"`).join(', ');
           const order = orderBy ? `order by t."${orderBy.col}" ${orderBy.asc ? 'asc' : 'desc'}` : '';
           const lim = limit === null ? '' : `limit ${limit} offset ${offset}`;
@@ -197,6 +207,7 @@ export function pgSupabase(
         const builder = {
           order(col: string, o?: { ascending?: boolean }) { orderBy = { col, asc: o?.ascending !== false }; return builder; },
           gte(col: string, val: string) { gte = { col, val }; return builder; },
+          in(col: string, ids: unknown[]) { inList = { col, ids }; return builder; },
           limit: (n: number) => rowsOf(n, 0),
           range: (fromIdx: number, toIdx: number) => rowsOf(toIdx - fromIdx + 1, fromIdx),
           // select('*', { count: 'exact', head: true }) — initCloudSync ใช้เช็คว่าตู้กลางว่างไหม

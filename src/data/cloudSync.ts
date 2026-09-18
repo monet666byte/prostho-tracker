@@ -322,7 +322,19 @@ export async function persistOutboxNow(): Promise<void> {
   }
 }
 
+/**
+ * หน้าจอที่โชว์ "ค้างส่งกี่รายการ" ฟังจากตรงนี้ — คิวขยับทุกครั้ง (โตหรือหด) ผ่าน persistOutboxSoon เสมอ
+ * เดิมหน้าตั้งค่าของนักศึกษานับจากตาราง queue ซึ่งมีของเฉพาะตอนเปิดสวิตช์ออฟไลน์เอง
+ * เน็ตหลุดเฉยๆ จึงขึ้นว่า "0 รายการ · ส่งขึ้นเซิร์ฟเวอร์แล้ว" ทั้งที่คิวจริงยังค้าง
+ */
+const outboxListeners = new Set<() => void>();
+export function onOutboxChange(fn: () => void): () => void {
+  outboxListeners.add(fn);
+  return () => outboxListeners.delete(fn);
+}
+
 function persistOutboxSoon(): void {
+  outboxListeners.forEach((fn) => fn());
   if (persistTimer || !outboxRestored) return;
   persistTimer = setTimeout(() => { persistTimer = null; void persistOutboxNow(); }, 0);
 }
@@ -361,12 +373,14 @@ export async function restoreOutbox(): Promise<void> {
     /* อ่านไม่ได้ = เริ่มด้วยคิวว่าง ซึ่งเป็นสภาพเดิมก่อนมีไฟล์นี้ */
   }
   outboxRestored = true;
+  outboxListeners.forEach((fn) => fn()); // คิวของเซสชันก่อนเพิ่งกลับมา — หน้าจอต้องเห็นเลขจริงทันที
 }
 
 /** ล้างคิวทั้งในหน่วยความจำและในเครื่อง — ใช้ตอนผูกบัญชีใหม่/รีเซ็ต ที่ลิ้นชักถูกล้างไปด้วย */
 async function clearOutbox(): Promise<void> {
   dirty.clear();
   pendingDeletes.clear();
+  outboxListeners.forEach((fn) => fn());
   if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
   try {
     await kvSet(OUTBOX_KEY, { dirty: [], deletes: [] });
@@ -387,6 +401,8 @@ const MAX_PUSH_RETRY = 3;
  * ทางใหม่ต้องได้กติกาเดียวกัน
  */
 const patchFail = new Map<string, number>();
+/** ตัวนับของทางลบ — รายตาราง เหมือนก้อน "ทั้งแถว" (ครบโควตาแล้วแยกลบทีละแถวหาตัวที่ถูกปฏิเสธ) */
+const deleteFail = new Map<string, number>();
 
 /**
  * ตู้กลาง "ตอบกลับมาแล้วปฏิเสธ" จริงไหม — ต่างจาก "เน็ตหลุดส่งไม่ถึง" โดยสิ้นเชิง
@@ -425,6 +441,12 @@ export interface SyncProblem {
   key: unknown;
   reason: string;
   at: string;
+  /**
+   * 'delete' = ตู้กลางไม่ยอมให้ลบ และแถวถูกดึงกลับลงเครื่องแล้ว
+   * ต่างจากแถวที่ถูกกักตรงที่ฉบับในเครื่อง **คือฉบับของตู้** ไม่มีงานค้างให้ปกป้อง
+   * → pull / realtime ห้ามข้ามแถวนี้ และ "ลองส่งใหม่" ไม่มีอะไรให้ส่ง
+   */
+  kind?: 'delete';
 }
 const quarantine = new Map<string, SyncProblem>();
 const problemListeners = new Set<() => void>();
@@ -454,10 +476,16 @@ export function onSyncProblems(fn: () => void): () => void {
   return () => problemListeners.delete(fn);
 }
 
-function quarantineRow(local: string, key: unknown, reason: string) {
-  quarantine.set(keyOf(local, key), { table: local, key, reason, at: new Date().toISOString() });
+function quarantineRow(local: string, key: unknown, reason: string, kind?: 'delete') {
+  quarantine.set(keyOf(local, key), { table: local, key, reason, at: new Date().toISOString(), ...(kind ? { kind } : {}) });
   problemListeners.forEach((fn) => fn());
 }
+
+/** แถวที่ถูกกักเพราะ "ยังไม่เคยขึ้นตู้" — ของพวกนี้ pull / realtime ห้ามทับ (การลบที่ถูกปฏิเสธไม่นับ) */
+const heldBack = (local: string, key: unknown): boolean => {
+  const q = quarantine.get(keyOf(local, key));
+  return !!q && q.kind !== 'delete';
+};
 
 /**
  * ให้โมดูลอื่นแจ้ง "ของชิ้นนี้ส่งขึ้นไม่ได้จริงๆ" เข้ารายการเดียวกับที่หน้า sync แสดงอยู่แล้ว
@@ -476,10 +504,12 @@ export function retryQuarantined(): void {
   quarantine.clear();
   failCount.clear();
   patchFail.clear(); // ไม่ล้าง = กด "ลองส่งใหม่" แล้วถูกกักกลับทันทีในรอบแรก
+  deleteFail.clear();
   problemListeners.forEach((fn) => fn());
   /* ของที่ถูกกักไว้ไม่รู้แล้วว่าตอนนั้นแก้ช่องไหน — ส่งทั้งแถว (null)
-     ปลอดภัยกว่าเดาช่อง และของที่ถูกกักมีไม่กี่แถวอยู่แล้ว */
-  for (const it of items) markDirty(it.table, [[it.key, null]]);
+     ปลอดภัยกว่าเดาช่อง และของที่ถูกกักมีไม่กี่แถวอยู่แล้ว
+     การลบที่ถูกปฏิเสธไม่เข้าคิว — แถวในเครื่องคือฉบับของตู้อยู่แล้ว ส่งกลับขึ้นไปมีแต่เสี่ยงทับของคนอื่น */
+  for (const it of items) if (it.kind !== 'delete') markDirty(it.table, [[it.key, null]]);
   // ของที่ไม่ได้ขึ้นทางคิวแถว (ไฟล์รูป) ต้องถูกปลุกด้วย ไม่งั้นปุ่มนี้โกหกครึ่งเดียว
   retryListeners.forEach((fn) => fn());
 }
@@ -588,8 +618,29 @@ async function flushOnce(): Promise<void> {
     const def = byLocal.get(local)!;
     const ids = [...keys];
     if (!ids.length) { pendingDeletes.delete(local); continue; }
-    const { error } = await supabase.from(def.remote).delete().in(def.rename?.[def.pk] ?? toSnake(def.pk), ids);
-    if (!error) clearSent(pendingDeletes, local, keys, ids);
+    const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
+    const { error } = await supabase.from(def.remote).delete().in(remotePk, ids);
+    if (!error) {
+      deleteFail.delete(local);
+      clearSent(pendingDeletes, local, keys, ids);
+      continue;
+    }
+    /* กติกาเดียวกับทางส่ง: เน็ตหลุด → รอต่อไม่นับรอบ · ตู้ปฏิเสธจริง → ครบโควตาแล้วต้องบอกผู้ใช้
+       เดิมตรงนี้มีแค่ "ไม่ error ก็ล้างคิว" — การลบที่ตู้ไม่ยอม (เช่นคาบที่ประเมินแล้ว) วนทุก 15 วิ ตลอดกาล
+       ป้ายค้างส่งไม่เคยเป็น 0 · ออกจากระบบแบบล้างเครื่องไม่ได้ · และแถวเดียวที่ถูกปฏิเสธ
+       ทำให้การลบแถวอื่นในก้อนเดียวกันไม่ขึ้นตู้ไปด้วย (`test:sync-pg` ⑦ข) */
+    if (!isRefusal(error)) continue;
+    const n = (deleteFail.get(local) ?? 0) + 1;
+    if (n < MAX_PUSH_RETRY) { deleteFail.set(local, n); continue; }
+    deleteFail.delete(local);
+    const settled: unknown[] = [];
+    for (const id of ids) {
+      const one = await supabase.from(def.remote).delete().in(remotePk, [id]);
+      if (!one.error) { settled.push(id); continue; }
+      if (!isRefusal(one.error)) continue; // เน็ตหลุดกลางทาง — แถวนี้รอรอบหน้า
+      if (await restoreRefusedDelete(def, id, one.error.message ?? 'ปฏิเสธโดยไม่บอกเหตุผล')) settled.push(id);
+    }
+    if (settled.length) clearSent(pendingDeletes, local, keys, settled);
   }
   // แล้วค่อยส่งแถวที่แก้ (อ่านสถานะล่าสุดจาก dexie ตอนส่งจริง)
   for (const [local, fieldMap] of [...dirty]) {
@@ -686,6 +737,29 @@ async function flushOnce(): Promise<void> {
     }
     clearSentFields(local, fieldMap, asSent(sent));
   }
+}
+
+/**
+ * ตู้กลางไม่ยอมให้ลบแถวนี้ = แถวยังอยู่บนตู้ → ต้องกลับมาอยู่ในเครื่องด้วย แล้วบอกผู้ใช้
+ *
+ * ไม่ดึงกลับ = หน้าจอนักศึกษาแสดงว่าคาบหายไปแล้ว ทั้งที่อาจารย์ยังเห็นอยู่ และ pull แบบ
+ * "เฉพาะแถวที่ขยับ" จะไม่มีวันเอามันกลับมาเอง (ตราเวลาบนตู้ไม่ได้ขยับ)
+ *
+ * คืน false = ยังดึงกลับไม่ได้เพราะเน็ต → คาไว้ในคิวลบ รอบหน้าลองใหม่ (ห้ามบอกว่าเรียบร้อยก่อนรู้ผล)
+ */
+async function restoreRefusedDelete(def: TableDef, pk: unknown, why: string): Promise<boolean> {
+  if (!supabase) return false;
+  const remotePk = def.rename?.[def.pk] ?? toSnake(def.pk);
+  const got = await supabase.from(def.remote).select('*').in(remotePk, [pk]);
+  if (got.error && !isRefusal(got.error)) return false;
+  const row = (got.data as Record<string, unknown>[] | null)?.[0];
+  if (row) {
+    await applyRemote(def.local, [pk], async () => {
+      await db.table(def.local).put(fromRow(def, row) as never);
+    });
+  }
+  quarantineRow(def.local, pk, why, 'delete');
+  return true;
 }
 
 /**
@@ -836,7 +910,7 @@ async function pullAllOnce(): Promise<void> {
       /* แถวที่ถูกกัก = ฉบับในเครื่องที่ยังไม่เคยขึ้นตู้ · ถ้า pull ทับ ผู้ใช้กด
          "ลองส่งใหม่" แล้วจะส่งฉบับบนตู้กลับขึ้นไปแทนงานของตัวเอง
          ยอมให้แถวนั้นไม่ได้ของใหม่จนกว่าจะแก้ปัญหา ดีกว่าลบงานทิ้งเงียบๆ */
-      ...[...quarantine.values()].filter((q) => q.table === def.local).map((q) => q.key),
+      ...[...quarantine.values()].filter((q) => q.table === def.local && heldBack(q.table, q.key)).map((q) => q.key),
     ]);
     const rows = data.filter((r) => !skip.has(r[remotePkCol]));
     await applyRemote(def.local, rows.map((r) => r[remotePkCol]), async () => {
@@ -921,7 +995,7 @@ function subscribeRealtime() {
        */
       if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;
       // แถวที่ถูกกักคือฉบับในเครื่องที่ยังไม่ได้ขึ้นตู้ — เหตุผลเดียวกับตัวกัน skip ของ pullAll
-      if (quarantine.has(keyOf(def.local, key))) return;
+      if (heldBack(def.local, key)) return;
       void applyRemote(def.local, [key], async () => {
         if (payload.eventType === 'DELETE') await db.table(def.local).delete(key as never);
         else await db.table(def.local).put(fromRow(def, payload.new as Record<string, unknown>) as never);
@@ -997,6 +1071,7 @@ async function bindToUser(uid: string): Promise<boolean> {
     serverKeys.clear();
     quarantine.clear(); // ของที่กักไว้เป็นของบัญชีก่อนหน้า ไม่ใช่ของคนที่เพิ่งล็อกอิน
     patchFail.clear();  // ตัวนับชี้ไปแถวของบัญชีก่อนหน้าเหมือนกัน
+    deleteFail.clear();
   } finally {
     setSyncPaused(false);
   }
@@ -1126,7 +1201,9 @@ export function stopCloudSync(): void {
   serverKeys.clear();
   quarantine.clear();
   patchFail.clear();
+  deleteFail.clear();
   problemListeners.forEach((fn) => fn());
+  outboxListeners.forEach((fn) => fn());
   supabase?.removeAllChannels();
 }
 

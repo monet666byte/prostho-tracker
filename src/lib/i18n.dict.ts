@@ -953,6 +953,9 @@ export const DICT: Record<string, string> = {
   '{n} รายการส่งขึ้นเซิร์ฟเวอร์ไม่ได้': '{n} items could not be sent to the server',
   'ยังอยู่ในเครื่องนี้ครบ แต่คนอื่นยังไม่เห็น — ถ้ากดลองใหม่แล้วยังไม่ขึ้น ให้แจ้งผู้ดูแลระบบ':
     'All still saved on this device, but nobody else can see them yet — if retrying does not help, tell the system admin',
+  'ยังอยู่ในเครื่องนี้ ยังไม่ถึงเซิร์ฟเวอร์ — ระบบจะลองส่งให้เองเมื่อต่อเน็ตได้':
+    'Still on this device, not on the server yet — the app will keep retrying once you are back online',
+  'เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง': 'The server refused the delete, so the item was put back',
   'ลองส่งใหม่': 'Retry',
   'มีคำตัดสินของท่านอื่น': 'another decision exists',
   'คอมเมนต์': 'comment',
@@ -1134,7 +1137,7 @@ export const DICT: Record<string, string> = {
   /* ── ค่าตั้งของภาคขึ้นเครื่องกลาง (settingsSync.ts) ── */
   'กำลังส่งขึ้นเครื่องกลาง…': 'Sending to the shared server…',
   'ส่งขึ้นเครื่องกลางแล้ว — ทุกเครื่องเห็นค่านี้': 'Saved to the shared server — every device sees this',
-  'ส่งขึ้นเครื่องกลางไม่สำเร็จ — เครื่องอื่นยังเห็นค่าเดิม จะลองใหม่เมื่อเน็ตกลับมา': 'Could not reach the shared server — other devices still see the old value; will retry when the connection returns',
+  'เซิร์ฟเวอร์ไม่รับค่านี้ — เครื่องอื่นยังเห็นค่าเดิม ลองกดตั้งค่าอีกครั้ง ถ้ายังไม่ผ่านให้แจ้งผู้ดูแลระบบ': 'The server refused this setting — other devices still see the old value. Try setting it again; if it still fails, tell the system admin',
   'แผนรักษา': 'Tx. plan',
   /* ── การสอบ (OSCE + สอบ RPD design) ── */
   'การสอบ': 'Examinations',

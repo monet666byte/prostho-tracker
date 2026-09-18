@@ -5,7 +5,7 @@ import { PlainShell } from '../../components/student/Shell';
 import { syncNow } from '../../data/repo';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { onSyncProblems, retryQuarantined, syncProblems, type SyncProblem } from '../../data/cloudSync';
-import { useQueue } from '../../hooks/data';
+import { usePendingPushCount, useQueue } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
@@ -19,6 +19,10 @@ export default function Sync() {
   const navigate = useNavigate();
   const { offline, setOffline, showToast, touch, switchRole, resetDemo, signOut } = useApp();
   const queue = useQueue();
+  /* ตัวเลข "รอส่ง" ต้องมาจากคิวจริงของตัวส่ง ไม่ใช่แค่รายการที่จดไว้ตอนเปิดสวิตช์ออฟไลน์
+     (ตาราง queue ว่างเสมอเมื่อเน็ตหลุดเอง — เดิมจึงขึ้น "ส่งขึ้นเซิร์ฟเวอร์แล้ว" ทั้งที่ยังค้าง) */
+  const unsent = usePendingPushCount();
+  const waiting = queue.length || unsent;
   // ธีมเก็บใน localStorage (ไม่ใช่ store) — ถือ state ไว้ให้ปุ่มที่เลือกอยู่รีเฟรชทันทีที่กด
   const [theme, setTheme] = useState(currentTheme());
   /**
@@ -99,7 +103,7 @@ export default function Sync() {
               </span>
               {problems.slice(0, 5).map((p) => (
                 <span key={p.table + String(p.key)} style={{ font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
-                  {p.table} · {String(p.key)} — {p.reason}
+                  {p.table} · {String(p.key)} — {p.kind === 'delete' ? t('เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง') + ' · ' : ''}{p.reason}
                 </span>
               ))}
               <button className="textlink textlink--left" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>
@@ -111,14 +115,19 @@ export default function Sync() {
           <div className="formrow">
             <span className="formrow__main">
               <b>{t('รอส่งขึ้นระบบ')}</b>
-              {queue.length === 0 && (
+              {waiting === 0 && (
                 <span className="formrow__sub">
                   {cloudEnabled ? t('ข้อมูลทั้งหมดถูกส่งขึ้นเซิร์ฟเวอร์แล้ว') : t('บันทึกครบแล้วในเครื่องนี้')}
                 </span>
               )}
+              {queue.length === 0 && unsent > 0 && (
+                <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
+                  {t('ยังอยู่ในเครื่องนี้ ยังไม่ถึงเซิร์ฟเวอร์ — ระบบจะลองส่งให้เองเมื่อต่อเน็ตได้')}
+                </span>
+              )}
             </span>
-            <span className="formrow__value" style={queue.length ? { color: 'var(--warning-dark)' } : undefined}>
-              {t('{n} รายการ', { n: queue.length })}
+            <span className="formrow__value" style={waiting ? { color: 'var(--warning-dark)' } : undefined}>
+              {t('{n} รายการ', { n: waiting })}
             </span>
           </div>
           {queue.map((q) => (

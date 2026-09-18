@@ -38,7 +38,7 @@ const M: Mutant[] = [
   { id: 'M05', what: 'ของที่กำลังรับจากตู้ถูกส่งกลับขึ้นไป (echo)', find: 'if (k === undefined || applyingKeys.has(keyOf(local, k))) continue;', replace: 'if (k === undefined) continue;' },
   { id: 'M06', what: 'อ่านฉบับเดิมไม่ได้ → ถือว่าไม่มีอะไรแก้', find: 'before = keys.map(() => undefined);', replace: 'before = values;' },
   { id: 'M07', what: 'การลบในเครื่องไม่เข้าคิว', find: '                markDelete(name, req.keys as unknown[]);', replace: '' },
-  { id: 'M08', what: 'ตัวลบ: ส่งไม่ผ่านก็ล้างคิวทิ้ง', find: 'if (!error) clearSent(pendingDeletes, local, keys, ids);', replace: 'clearSent(pendingDeletes, local, keys, ids);' },
+  { id: 'M08', what: 'ตัวลบ: ส่งไม่ผ่านก็ล้างคิวทิ้ง', find: '    if (!error) {\n      deleteFail.delete(local);', replace: '    {\n      deleteFail.delete(local);' },
   { id: 'M09', what: 'ตัวลบ: ล้างทั้งชุด รวมคีย์ที่เพิ่งเข้าคิวระหว่างรอเน็ต', find: 'sent.forEach((k) => keys.delete(k));', replace: 'keys.clear();' },
   { id: 'M10', what: 'ส่งรายช่องเสร็จ → ลบทั้งแถว (ช่องที่แก้ระหว่างรอเน็ตหาย)', find: '      for (const f of sentFields) now.delete(f);\n      if (now.size === 0) m.delete(pk);', replace: '      m.delete(pk);' },
   { id: 'M11', what: 'PATCH: เน็ตหลุดนับเป็นการปฏิเสธ (ถูกกัก)', find: '        if (!isRefusal(res.error)) continue;\n        const fk', replace: '        const fk' },
@@ -71,6 +71,10 @@ const M: Mutant[] = [
   { id: 'M39', what: 'เชื่อตราเวลาอนาคตในการดึงเฉพาะที่ขยับ', find: 'const incremental = !!(stampIsSane && known &&', replace: 'const incremental = !!(known &&' },
   { id: 'M40', what: 'pullAll วิ่งซ้อนกันได้', find: 'export function pullAll(): Promise<void> {\n  if (pullQueued) return pullQueued;', replace: 'export function pullAll(): Promise<void> {\n  if (Math.random() < 2) return pullAllOnce();' },
   { id: 'M41', what: 'แถวที่ดึงแบบเฉพาะที่ขยับ ไม่ถูกจำว่าอยู่บนตู้', find: 'if (incremental) data.forEach((r) => known!.add(r[remotePkCol]));', replace: '' },
+  { id: 'M42', what: 'ตัวลบ: ตู้ปฏิเสธแล้ววนลบตลอดกาล ไม่บอกผู้ใช้', find: '    if (n < MAX_PUSH_RETRY) { deleteFail.set(local, n); continue; }', replace: '    deleteFail.set(local, n); continue;' },
+  { id: 'M43', what: 'ตัวลบ: เน็ตหลุดนับเป็นการปฏิเสธ', find: '    if (!isRefusal(error)) continue;\n    const n = (deleteFail', replace: '    const n = (deleteFail', layered: 'ครบโควตาแล้วแยกลบทีละแถว ซึ่งเช็ค isRefusal ของตัวเอง → เน็ตหลุดยังคาอยู่ในคิว ไม่ถูกแจ้งเป็นปัญหา' },
+  { id: 'M44', what: 'ตัวลบ: แถวที่ตู้ไม่ยอมให้ลบ ไม่ถูกดึงกลับลงเครื่อง', find: '  if (row) {\n    await applyRemote(def.local, [pk], async () => {', replace: '  if (row && Math.random() > 2) {\n    await applyRemote(def.local, [pk], async () => {' },
+  { id: 'M45', what: 'แถวที่ดึงกลับหลังลบไม่ผ่าน ถูกแช่แข็งเหมือนแถวที่ถูกกัก', find: "return !!q && q.kind !== 'delete';", replace: 'return !!q;' },
   { id: 'M36', what: 'realtime ทับแถวที่ยังค้างส่ง', find: '      if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;', replace: '' },
 ];
 

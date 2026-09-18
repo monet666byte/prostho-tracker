@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { onOutboxChange, pendingPushCount } from '../data/cloudSync';
 import { onPdpaPolicy, patientNamesOn, pdpaPolicy } from '../data/pdpaSync';
 import { identityLevelFor, type IdentityLevel, type IdentitySurface } from '../lib/privacy';
 import { useEffect, useState } from 'react';
@@ -90,6 +91,11 @@ export function usePending() {
 
 export function useQueue() {
   return useLiveQuery(() => listQueue(), [], []) ?? [];
+}
+
+/** จำนวนแถวที่ยังไม่ถึงเซิร์ฟเวอร์จริง ณ ตอนนี้ (คิวของ cloudSync) — โหมดไม่ต่อ cloud ได้ 0 เสมอ */
+export function usePendingPushCount(): number {
+  return useSyncExternalStore(onOutboxChange, pendingPushCount);
 }
 
 export function usePhotos(studentId: string | undefined) {

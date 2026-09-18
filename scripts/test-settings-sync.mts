@@ -24,6 +24,9 @@ export const cloudEnabled = true;
 export const log: string[] = [];
 let failNext = 0;
 export function setFailNext(n: number) { failNext = n; }
+/* 'refuse' = ตู้ตอบรหัสปฏิเสธ (RLS 42501) · 'network' = ส่งไม่ถึง (supabase-js ห่อ fetch ที่ล้มเป็น error ไม่มี code) */
+let failKind: 'refuse' | 'network' = 'refuse';
+export function setFailKind(k: 'refuse' | 'network') { failKind = k; }
 let remote: { value: unknown; updated_at: string } | null = null;
 export function setRemote(r: typeof remote) { remote = r; }
 let clock = 0;
@@ -35,7 +38,7 @@ export const supabase = {
           select: () => self,
           async maybeSingle() {
             await new Promise((r) => setTimeout(r, 5));
-            if (failNext > 0) { failNext--; log.push('FAIL ' + JSON.stringify(row.value)); return { data: null, error: { message: 'denied' } }; }
+            if (failNext > 0) { failNext--; log.push('FAIL ' + JSON.stringify(row.value)); return { data: null, error: failKind === 'refuse' ? { message: 'denied', code: '42501' } : { message: 'TypeError: Failed to fetch' } }; }
             log.push('OK ' + JSON.stringify(row.value));
             return { data: { updated_at: 't' + (++clock) }, error: null };
           },
@@ -67,7 +70,7 @@ writeFileSync(mod, FAKE + real);
 
 const m = await import(mod);
 const { pushSettings, flushSettings, pullSettings, settingsSyncState, onRemoteSettings,
-        store, log, setFailNext, setRemote } = m;
+        store, log, setFailNext, setFailKind, setRemote } = m;
 
 let failures = 0;
 function check(name: string, ok: boolean, extra = '') {
@@ -107,6 +110,21 @@ check('ปล่อยแล้วจริง (flush ไม่ส่งซ้�
 check('จำ updated_at ของฝั่งเซิร์ฟเวอร์', typeof store.settingsSyncedAt === 'string', String(store.settingsSyncedAt));
 
 /* ── ② ดึงค่าลงเครื่อง ──────────────────────────────────────────────────── */
+/* ไวไฟห้องคลินิกหลุด ~45 วิ = ล้ม 3 รอบ · เดิมนับทุก error รวมกัน → คิวถูกทิ้ง ค่าที่อาจารย์ตั้งไม่ขึ้นตู้เลย
+   ทั้งที่หน้าจอเขียนว่า "จะลองใหม่เมื่อเน็ตกลับมา" (กติกาเดียวกับ isRefusal ใน cloudSync.ts) */
+console.log('\nเน็ตหลุดนานกว่าโควตา แล้วกลับมา');
+log.length = 0;
+setFailKind('network');
+setFailNext(99);
+await pushSettings({ stale: 28 }, 'อ. ทดสอบ');
+for (let i = 0; i < 5; i++) await flushSettings();
+check('เน็ตหลุด 6 รอบ → ยังค้างคิว ไม่ถูกทิ้ง', settingsSyncState() === 'pending', settingsSyncState());
+setFailNext(0);
+await flushSettings();
+check('เน็ตกลับมา → ค่าที่ตั้งไว้ขึ้นตู้จริง', log.at(-1) === 'OK {"stale":28}', JSON.stringify(log.slice(-2)));
+check('สถานะขึ้นว่าส่งแล้ว', settingsSyncState() === 'synced', settingsSyncState());
+setFailKind('refuse');
+
 console.log('\nดึงค่าตั้งลงเครื่อง');
 let heard = 0;
 onRemoteSettings(() => heard++);

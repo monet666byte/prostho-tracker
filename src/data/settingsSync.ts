@@ -67,6 +67,11 @@ async function persistPending(): Promise<void> {
  */
 let failCount = 0;
 const MAX_PUSH_RETRY = 3;
+/** ตู้ "ตอบกลับมาแล้วปฏิเสธ" จริงไหม — สำเนาของ isRefusal ใน cloudSync.ts (ไฟล์นั้น import ไฟล์นี้ จึง import กลับไม่ได้) */
+const isRefusal = (err: { code?: string | null } | null | undefined): boolean => {
+  const c = err?.code ?? '';
+  return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\d+$/.test(c);
+};
 
 /* ── สถานะการส่ง: หน้าตั้งค่าต้องบอกให้เห็น ────────────────────────────────────
    ถ้าอาจารย์กด "เปิดฟอร์มปี 5" แล้วส่งไม่ขึ้น (เน็ตหลุด/ไม่มีสิทธิ์) หน้าจอตัวเอง
@@ -189,6 +194,10 @@ async function sendOne(job: { value: Bag; by?: string }, track = true): Promise<
     .maybeSingle();
   if (error) {
     if (!track) return; // ตั้งต้นไม่สำเร็จก็ช่างมัน ห้ามไปแตะคิวของผู้ใช้
+    /* เน็ตหลุด (error ไม่มีรหัส) → รอส่งต่อ ไม่นับรอบ · กติกาเดียวกับ isRefusal ใน cloudSync.ts
+       เดิมนับทุก error: ไวไฟหลุด ~45 วิ = ครบโควตา = ค่าที่อาจารย์ตั้งถูกทิ้ง ทั้งที่หน้าจอบอกว่าจะลองใหม่
+       ค้างคิวตอนเน็ตหลุดไม่ล็อก pullSettings ให้ใครเสียหาย — ดึงก็ไม่ถึงตู้อยู่แล้ว */
+    if (!isRefusal(error)) return;
     // ครบโควตาแล้วยังไม่ผ่าน = เขียนไม่ได้จริงๆ ปล่อยคิวทิ้ง (ค่าในเครื่องยังอยู่ครบ)
     // ต้องปล่อย ไม่งั้น pullSettings ถูกล็อกถาวรตามคอมเมนต์ที่ failCount
     if (++failCount >= MAX_PUSH_RETRY) {

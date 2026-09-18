@@ -116,6 +116,7 @@ interface Device {
   kvSet: (k: string, v: unknown) => Promise<void>;
   seedLocal: (n: string, rows: unknown[]) => void;
   syncProblems: () => { table: string; key: unknown; reason: string }[];
+  onOutboxChange: (fn: () => void) => () => void;
 }
 
 let nth = 0;
@@ -408,6 +409,56 @@ console.log('\n⑦ เซิร์ฟเวอร์ปฏิเสธจริ�
   await S.db.close();
 }
 
+/* ══ ⑦ข เซิร์ฟเวอร์ปฏิเสธ "การลบ" — ต้องบอกผู้ใช้ เอาแถวกลับมา และเลิกวน ═══════
+ *
+ * นักศึกษาลบคาบที่อาจารย์ประเมินแล้ว → trigger checkin_delete_guard (0027) raise ทุกครั้ง
+ * ทางลบเดิมเขียนแค่ `if (!error) clearSent(...)` — ไม่นับรอบ ไม่กัก ไม่บอกใคร
+ * ผล: วนลบทุก 15 วิ ตลอดกาล · ป้ายค้างส่งไม่เคยเป็น 0 · ออกจากระบบแบบล้างเครื่องไม่ได้
+ * และหน้าจอของนักศึกษาแสดงว่าคาบหายไปแล้ว ทั้งที่บนเซิร์ฟเวอร์ (และหน้าอาจารย์) ยังอยู่ */
+console.log('\n⑦ข เซิร์ฟเวอร์ปฏิเสธการลบ (checkin_delete_guard)');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phone = await device('phone-st6', 'st6');
+  const teacher = await device('ipad-t1-del', 't1');
+  await phone.db.table('checkins').put(checkinOf('st6'));
+  await phone.db.table('checkins').put(checkinOf('st6', { id: 'ci-st6-b', date: '2026-09-12' }));
+  await settle(); await phone.flushNow();
+
+  await teacher.pullAll();
+  await teacher.db.table('checkins').put({
+    ...teacher.peek('checkins', 'ci-st6')!, status: 'evaluated',
+    scores: { knowledge: 3 }, evaluatedBy: 'อ. หนึ่ง', evaluatedAt: '2026-09-13T05:00:00.000Z',
+  });
+  await settle(); await teacher.flushNow();
+  await phone.pullAll();
+
+  // ลบสองคาบพร้อมกัน: คาบที่ประเมินแล้ว (ต้องถูกปฏิเสธ) กับคาบที่ยังไม่ประเมิน (ต้องลบได้)
+  await phone.db.table('checkins').delete('ci-st6');
+  await phone.db.table('checkins').delete('ci-st6-b');
+  await settle();
+  for (let i = 0; i < 5; i++) await phone.flushNow();
+
+  check('คาบที่ประเมินแล้วยังอยู่บนเซิร์ฟเวอร์',
+    (await server(S.db, `select 1 from checkins where id = 'ci-st6'`)).length === 1);
+  check('คาบที่ยังไม่ประเมินถูกลบจริง ไม่ติดร่างแหไปด้วย',
+    (await server(S.db, `select 1 from checkins where id = 'ci-st6-b'`)).length === 0);
+  check('ไม่วนลบตลอดกาล', phone.pendingPushCount() === 0, phone.pendingPushCount());
+  const prob = phone.syncProblems().find((p) => p.key === 'ci-st6') as { kind?: string } | undefined;
+  check('ขึ้นรายการปัญหาให้ผู้ใช้เห็น และบอกว่าเป็นการลบ', prob?.kind === 'delete', phone.syncProblems());
+  check('คาบกลับมาอยู่ในเครื่อง พร้อมคะแนนของอาจารย์',
+    phone.peek('checkins', 'ci-st6')?.status === 'evaluated', phone.peek('checkins', 'ci-st6'));
+  check('คาบที่ลบสำเร็จไม่ฟื้น', phone.peek('checkins', 'ci-st6-b') === undefined);
+
+  // แถวที่เอากลับมาต้องไม่ถูกแช่แข็ง — อาจารย์แก้คะแนนทีหลัง เครื่องนักศึกษาต้องได้ของใหม่
+  await teacher.db.table('checkins').put({ ...teacher.peek('checkins', 'ci-st6')!, scores: { knowledge: 4 } });
+  await settle(); await teacher.flushNow();
+  await phone.pullAll();
+  check('แถวที่เอากลับมายังรับของใหม่จากเซิร์ฟเวอร์ได้',
+    (phone.peek('checkins', 'ci-st6')?.scores as { knowledge?: number } | undefined)?.knowledge === 4,
+    phone.peek('checkins', 'ci-st6'));
+  await S.db.close();
+}
+
 /* ══ ⑧ เน็ตหลุดนานเกินโควตา แล้วกลับมา ══════════════════════════════════════ */
 console.log('\n⑧ เน็ตหลุดนานเกินโควตา แล้วกลับมา');
 {
@@ -418,15 +469,22 @@ console.log('\n⑧ เน็ตหลุดนานเกินโควตา 
   await settle(); await phone.flushNow();
 
   S.netDown.add('phone-st9');
+  // หน้าตั้งค่าของนักศึกษาฟังตัวนี้ — เลข "รอส่ง" ต้องขยับตามคิวจริง ไม่ใช่ขึ้น 0 ตอนเน็ตหลุด
+  const seen: number[] = [];
+  const stopWatching = phone.onOutboxChange(() => seen.push(phone.pendingPushCount()));
   await phone.db.table('workpieces').put({ ...phone.peek('workpieces', 'w-st9')!, procIndex: 5 });
   await phone.db.table('checkins').put(checkinOf('st9'));
   await settle();
   for (let i = 0; i < 6; i++) await phone.flushNow();
   check('เน็ตหลุดไม่ถูกกักเป็นปัญหา', phone.syncProblems().length === 0, phone.syncProblems());
+  check('เน็ตหลุด: หน้าจอได้รับแจ้งว่ามีของค้างส่ง 2 รายการ',
+    seen.at(-1) === 2 && phone.pendingPushCount() === 2, { seen, now: phone.pendingPushCount() });
 
   S.netDown.delete('phone-st9');
   await phone.pullAll();
   await phone.flushNow();
+  check('เน็ตกลับมา: หน้าจอได้รับแจ้งว่าเหลือ 0', seen.at(-1) === 0, seen);
+  stopWatching();
   const [w] = await server(S.db, `select proc_index from workpieces where id = 'w-st9'`);
   check('step ที่กดตอนเน็ตหลุดขึ้นเซิร์ฟเวอร์', w.proc_index === 5, w.proc_index);
   check('คาบที่เช็คอินตอนเน็ตหลุดขึ้นเซิร์ฟเวอร์',
