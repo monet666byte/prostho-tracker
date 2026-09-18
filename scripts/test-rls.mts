@@ -832,6 +832,20 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   check('check-migrations.sql ตอบว่า 0027 รันแล้ว', !!row && row['สถานะ'].startsWith('✓'), row);
   const row28 = checker.rows.find((r) => r.migration.startsWith('0028'));
   check('check-migrations.sql ตอบว่า 0028 รันแล้ว', !!row28 && row28['สถานะ'].startsWith('✓'), row28);
+  const row29 = checker.rows.find((r) => r.migration.startsWith('0029'));
+  check('check-migrations.sql ตอบว่า 0029 รันแล้ว', !!row29 && row29['สถานะ'].startsWith('✓'), row29);
+
+  // ── ⑰ เช็คอินหนึ่งคนหนึ่งวันได้แถวเดียว (0029) ──
+  console.log('\n⑰ เช็คอินหนึ่งคนหนึ่งวันได้แถวเดียว (0029)');
+  const first = await commit(U.A, `insert into checkins (id, student_id, date, created_at) values ('cDay-1', 'sA', '2026-09-17', '2026-09-17T02:00:00Z') returning id`);
+  check('เช็คอินครั้งแรกของวันผ่าน', first.ok, first);
+  const second = await commit(U.A, `insert into checkins (id, student_id, date, created_at) values ('cDay-2', 'sA', '2026-09-17', '2026-09-17T02:05:00Z') returning id`);
+  check('เครื่องที่สองเช็คอินวันเดียวกัน (id คนละตัว) ถูกปฏิเสธ', !second.ok && /checkins_student_date_uidx/.test(second.error ?? ''), second);
+  const resend = await commit(U.A, `insert into checkins (id, student_id, date, note, created_at) values ('cDay-1', 'sA', '2026-09-17', 'ส่งซ้ำ', '2026-09-17T02:00:00Z')
+    on conflict (id) do update set note = excluded.note returning id`);
+  check('ส่งแถวเดิมซ้ำ (upsert id เดิม) ยังผ่าน — sync ปกติไม่ถูกกัก', resend.ok, resend);
+  const nextDay = await commit(U.A, `insert into checkins (id, student_id, date, created_at) values ('cDay-3', 'sA', '2026-09-18', '2026-09-18T02:00:00Z') returning id`);
+  check('วันถัดไปเช็คอินได้ตามปกติ', nextDay.ok, nextDay);
 
   // ── ⑯ กู้แบบประเมินตนเอง (0028) ──
   console.log('\n⑯ กู้แบบประเมินตนเองจากสำเนา (0028)');

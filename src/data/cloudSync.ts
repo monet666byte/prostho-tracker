@@ -253,6 +253,11 @@ function markDelete(local: string, keys: unknown[]) {
   let set = pendingDeletes.get(local);
   if (!set) pendingDeletes.set(local, (set = new Set()));
   keys.forEach((k) => !applyingKeys.has(keyOf(local, k)) && set!.add(k));
+  /* ผู้ใช้ลบแถวที่เคยขึ้นรายการ "ส่งไม่ได้" ทิ้งเอง (เช่นคาบที่เช็คอินซ้ำจากอีกเครื่อง · 0029)
+     = ปัญหานั้นจบแล้ว การ์ดเตือนต้องหายตาม ไม่งั้นค้างอยู่จนกว่าจะออกจากระบบ */
+  let cleared = false;
+  keys.forEach((k) => { if (!applyingKeys.has(keyOf(local, k)) && quarantine.delete(keyOf(local, k))) cleared = true; });
+  if (cleared) problemListeners.forEach((fn) => fn());
   persistOutboxSoon();
   if (set.size && !flushTimer) flushTimer = setTimeout(() => void flush(), 1500);
 }

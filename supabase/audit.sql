@@ -234,6 +234,11 @@ findings as (
                   where table_schema = 'public' and table_name = 'link_requests' and column_name = 'attempts')
       and exists (select 1 from pg_policies where tablename = 'teachers' and policyname = 'teachers_read'
                   and qual like '%my_role()%')
+    union all select '0028 กู้แบบประเมินตนเองได้ · ที่ปรึกษากลุ่มแก้ผ่านฟังก์ชันเท่านั้น',
+      exists (select 1 from pg_proc where proname = 'restore_self_assessments')
+      and exists (select 1 from pg_trigger where tgname = 'groups_guard_advisors')
+    union all select '0029 เช็คอินหนึ่งคนหนึ่งวันได้แถวเดียว (บังคับที่ฐานข้อมูล)',
+      exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'checkins_student_date_uidx')
     /* 0009 ไม่มีตารางใหม่ให้ดู — ดูสามร่องรอยที่ต้องมีพร้อมกัน
        (คอลัมน์ของ 0009 · trigger ที่ห้ามแก้ audit · trigger ที่ประทับผู้กระทำ) */
     union all select '0009 ปิดช่องโหว่ (entry_year + audit แก้ไม่ได้)',

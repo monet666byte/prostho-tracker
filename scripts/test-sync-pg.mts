@@ -459,6 +459,42 @@ console.log('\n⑦ข เซิร์ฟเวอร์ปฏิเสธกา�
   await S.db.close();
 }
 
+/* ══ ⑦ค คนเดียวสองเครื่อง ออฟไลน์ทั้งคู่ เช็คอินวันเดียวกัน (0029) ═══════════════
+ *
+ * กติกา "วันละหนึ่งเช็คอิน" ของแอปมองเห็นแค่ลิ้นชักของเครื่องตัวเอง — สองเครื่องจึงได้ id คนละตัว
+ * ก่อน 0029 ทั้งสองแถวขึ้นเซิร์ฟเวอร์ อาจารย์เห็นชื่อคนเดียวสองแถวในหน้าประเมินรายคาบ */
+console.log('\n⑦ค คนเดียวสองเครื่อง เช็คอินวันเดียวกันตอนออฟไลน์ (0029)');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phone = await device('phone-st5', 'st5');
+  const ipad = await device('ipad-st5', 'st5');
+  S.netDown.add('phone-st5'); S.netDown.add('ipad-st5');
+  await phone.db.table('checkins').put(checkinOf('st5', { id: 'ci-st5-phone' }));
+  await ipad.db.table('checkins').put(checkinOf('st5', { id: 'ci-st5-ipad', note: 'จดจากไอแพด' }));
+  await settle();
+  S.netDown.clear();
+  await phone.flushNow();
+  for (let i = 0; i < 5; i++) await ipad.flushNow();
+
+  const rows = await server(S.db, `select id from checkins where student_id = 'st5' and date = '2026-09-13'`);
+  check('เซิร์ฟเวอร์มีคาบของวันนั้นแถวเดียว', rows.length === 1 && rows[0].id === 'ci-st5-phone', rows);
+  check('เครื่องที่ขึ้นทีหลัง: งานยังอยู่ในเครื่องครบ ไม่หายเงียบ',
+    ipad.peek('checkins', 'ci-st5-ipad')?.note === 'จดจากไอแพด', ipad.peek('checkins', 'ci-st5-ipad'));
+  const dupe = ipad.syncProblems().find((p) => p.key === 'ci-st5-ipad');
+  check('ขึ้นรายการปัญหาพร้อมชื่อกฎ ให้หน้าจอแปลเป็นคำอธิบายได้',
+    !!dupe && dupe.reason.includes('checkins_student_date_uidx'), ipad.syncProblems());
+  check('ไม่วนส่งตลอดกาล', ipad.pendingPushCount() === 0, ipad.pendingPushCount());
+
+  // นักศึกษาลบคาบที่ซ้ำทิ้ง → การ์ดเตือนต้องหาย และคาบจริงบนเซิร์ฟเวอร์ต้องไม่โดนลูกหลง
+  await ipad.db.table('checkins').delete('ci-st5-ipad');
+  await settle(); await ipad.flushNow();
+  check('ลบคาบที่ซ้ำแล้ว รายการปัญหาหาย', ipad.syncProblems().length === 0, ipad.syncProblems());
+  check('คาบจริงบนเซิร์ฟเวอร์ยังอยู่',
+    (await server(S.db, `select 1 from checkins where id = 'ci-st5-phone'`)).length === 1);
+  check('ไม่มีของค้างส่ง', ipad.pendingPushCount() === 0, ipad.pendingPushCount());
+  await S.db.close();
+}
+
 /* ══ ⑧ เน็ตหลุดนานเกินโควตา แล้วกลับมา ══════════════════════════════════════ */
 console.log('\n⑧ เน็ตหลุดนานเกินโควตา แล้วกลับมา');
 {
@@ -598,7 +634,7 @@ console.log('\n⑪ เปิดแอปบนเครื่องอาจา�
     (await server(S.db, `select 1 from workpieces where id = 'w-st1'`)).length === 0);
 
   // แถวที่เครื่องมีแต่เซิร์ฟเวอร์ไม่เคยเห็น ยังต้องถูกส่ง (หน้าที่เดิมของ pushAll)
-  (t1 as unknown as { seedLocal: (n: string, r: unknown[]) => void }).seedLocal('checkins', [checkinOf('st2', { id: 'ci-only-local' })]);
+  (t1 as unknown as { seedLocal: (n: string, r: unknown[]) => void }).seedLocal('checkins', [checkinOf('st2', { id: 'ci-only-local', date: '2026-09-11' })]); // คนละวันกับคาบที่ st2 มีอยู่แล้ว (0029: วันละแถว)
   S.upserted.set('ipad-t1', 0);
   await t1.pushAll();
   check('แถวที่มีแค่ในเครื่อง ยังถูกส่งขึ้นไป — และส่งแค่แถวนั้น',
@@ -743,7 +779,7 @@ console.log('\n⑭ ตารางเกิน 1,000 แถว — ต้อง�
 {
   const S = await stage(); G.__STAGE__ = S;
   await S.db.query(`insert into checkins (id, student_id, date, activities, created_at)
-    select 'bulk-' || g, 'st' || (1 + g % 12), '2026-0' || (6 + g % 3) || '-' || lpad((1 + g % 28)::text, 2, '0'), '{}', '2026-06-01T00:00:00Z'
+    select 'bulk-' || g, 'st' || (1 + g % 12), to_char(date '2026-01-01' + (g / 12), 'YYYY-MM-DD'), '{}', '2026-06-01T00:00:00Z'
     from generate_series(1, 1215) g`);
   const t1 = await device('ipad-t1', 't1');
   await t1.pullAll();

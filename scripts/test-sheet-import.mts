@@ -14,6 +14,7 @@
  */
 import { detectType, importGroupCsv, importSheetCsv, parseCsv, parseIntro, parseStudentList, sheetIdFromUrl } from '../src/lib/sheetImport.ts';
 import { isComplete, maxProgression, progression } from '../src/domain/rules.ts';
+import { toISODate } from '../src/lib/date.ts';
 
 let bad = 0;
 const ok = (name: string, cond: boolean, extra: unknown = '') => {
@@ -347,7 +348,8 @@ console.log('\nparseStudentList / parseIntro / sheetIdFromUrl');
    (คนละเรื่องกับ "กรอกมาแล้วอ่านไม่ออก" ที่รายงานอยู่แล้วตั้งแต่แรก) */
 console.log('\nช่องวันที่ที่ปล่อยว่าง');
 {
-  const today = new Date().toISOString().slice(0, 10);
+  // วันท้องถิ่นแบบเดียวกับตัวนำเข้า — toISOString() เป็น UTC ทำให้ข้อนี้ตกเองทุกวันช่วงเที่ยงคืน–7 โมงเช้า
+  const today = toISODate(new Date());
   const r = importSheetCsv(sheet(
     `1,นาย ก,66-1,CD/- (Upper),,Yes,,${ticks(3)},ชำระแล้ว,,`,
     `2,นาย ข,66-2,46 Crown (PFM),,Yes,,${ticks(2)},ชำระแล้ว,,`,

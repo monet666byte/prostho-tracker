@@ -105,5 +105,9 @@ from (
   union all select '0028 กู้แบบประเมินตนเองได้ · ที่ปรึกษากลุ่มแก้ผ่านฟังก์ชันเท่านั้น',
     exists (select 1 from pg_proc where proname = 'restore_self_assessments')
     and exists (select 1 from pg_trigger where tgname = 'groups_guard_advisors')
+
+  -- 0029 ดูร่องรอยเดียว (unique index ของเช็คอิน)
+  union all select '0029 เช็คอินหนึ่งคนหนึ่งวันได้แถวเดียว (บังคับที่ฐานข้อมูล)',
+    exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'checkins_student_date_uidx')
 ) x
 order by x.label;

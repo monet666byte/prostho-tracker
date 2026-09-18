@@ -15,6 +15,16 @@ import {
   onPersistState, persistState, requestPersistentStorage, type PersistState,
 } from '../../lib/storagePersist';
 
+/** เหตุผลที่ผู้ใช้อ่านรู้เรื่อง — รหัสที่รู้จักแปลให้ ที่เหลือแสดงข้อความของเซิร์ฟเวอร์ตามจริง */
+function problemText(p: SyncProblem): string {
+  if (p.kind === 'delete') return t('เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง') + ' · ' + p.reason;
+  // 0029: นักศึกษาคนเดียวเช็คอินวันเดียวกันจากสองเครื่อง — แถวของเครื่องที่ขึ้นทีหลังถูกปฏิเสธ
+  if (p.reason.includes('checkins_student_date_uidx')) {
+    return t('วันนั้นเช็คอินจากอีกเครื่องไปแล้ว — คาบนี้ซ้ำ ย้ายโน้ตที่ต้องการไปคาบเดิม แล้วลบคาบนี้ได้');
+  }
+  return p.reason;
+}
+
 export default function Sync() {
   const navigate = useNavigate();
   const { offline, setOffline, showToast, touch, switchRole, resetDemo, signOut } = useApp();
@@ -103,7 +113,7 @@ export default function Sync() {
               </span>
               {problems.slice(0, 5).map((p) => (
                 <span key={p.table + String(p.key)} style={{ font: '400 11px var(--font-mono)', color: 'var(--warning-dark)' }}>
-                  {p.table} · {String(p.key)} — {p.kind === 'delete' ? t('เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง') + ' · ' : ''}{p.reason}
+                  {p.table} · {String(p.key)} — {problemText(p)}
                 </span>
               ))}
               <button className="textlink textlink--left" onClick={() => { retryQuarantined(); showToast({ message: t('ใส่กลับเข้าคิวแล้ว'), tone: 'default' }); }}>

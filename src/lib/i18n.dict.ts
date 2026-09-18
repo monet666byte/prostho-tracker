@@ -955,6 +955,8 @@ export const DICT: Record<string, string> = {
     'All still saved on this device, but nobody else can see them yet — if retrying does not help, tell the system admin',
   'ยังอยู่ในเครื่องนี้ ยังไม่ถึงเซิร์ฟเวอร์ — ระบบจะลองส่งให้เองเมื่อต่อเน็ตได้':
     'Still on this device, not on the server yet — the app will keep retrying once you are back online',
+  'วันนั้นเช็คอินจากอีกเครื่องไปแล้ว — คาบนี้ซ้ำ ย้ายโน้ตที่ต้องการไปคาบเดิม แล้วลบคาบนี้ได้':
+    'You already checked in that day from another device — this one is a duplicate. Move any notes you need to the original, then delete this one',
   'เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง': 'The server refused the delete, so the item was put back',
   'ลองส่งใหม่': 'Retry',
   'มีคำตัดสินของท่านอื่น': 'another decision exists',
