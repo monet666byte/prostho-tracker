@@ -68,8 +68,10 @@ async function persistPending(): Promise<void> {
 let failCount = 0;
 const MAX_PUSH_RETRY = 3;
 /** ตู้ "ตอบกลับมาแล้วปฏิเสธ" จริงไหม — สำเนาของ isRefusal ใน cloudSync.ts (ไฟล์นั้น import ไฟล์นี้ จึง import กลับไม่ได้) */
-const isRefusal = (err: { code?: string | null } | null | undefined): boolean => {
+const isRefusal = (err: { code?: string | null; message?: string | null } | null | undefined): boolean => {
   const c = err?.code ?? '';
+  // หมดเวลาเข้าสู่ระบบ (PGRST301) ≠ เซิร์ฟเวอร์ไม่รับค่านี้ — คาไว้ในคิว รอผู้ใช้ล็อกอินใหม่ (กติกาเดียวกับ cloudSync.ts)
+  if (c === 'PGRST301' || /jwt (is )?expired|invalid jwt/i.test(err?.message ?? '')) return false;
   return /^[0-9A-Z]{5}$/.test(c) || /^PGRST\d+$/.test(c);
 };
 

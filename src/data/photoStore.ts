@@ -108,13 +108,18 @@ async function bytesFor(photo: Photo): Promise<{ blob: Blob; fromDataUrl: boolea
  * เน็ตสะดุดกับโควตาเต็มต้องปฏิบัติต่างกัน — อันแรกลองใหม่เงียบๆ ได้
  * อันหลังลองกี่รอบก็ไม่ผ่านจนกว่าจะมีคนไปแก้ ต้องบอกผู้ใช้ทันที ไม่ใช่วนรบกวนเน็ตทุก 15 วิ
  */
-function classifyUploadError(err: unknown): { permanent: boolean; reason: string } {
+function classifyUploadError(err: unknown): { permanent: boolean; reason: string; authLost?: boolean } {
   const e = err as { message?: string; status?: number; statusCode?: string | number; error?: string };
   const msg = String(e?.message ?? e?.error ?? err ?? '').trim();
   const code = Number(e?.status ?? e?.statusCode ?? 0);
   const low = msg.toLowerCase();
 
-  // 401 ไม่นับถาวร — supabase-js ต่ออายุ token ให้เองอยู่ รอบหน้ามักผ่าน
+  /* หมดเวลาเข้าสู่ระบบ ≠ ไม่มีสิทธิ์ — Storage ตอบ 403 "Unauthorized" พร้อมข้อความ "jwt expired"
+     เดิมคำว่า unauthorized พาไปเข้ากฎข้างล่าง → ถาวร → เลิกลอง ทั้งที่ล็อกอินใหม่แล้วขึ้นได้ทุกใบ
+     ต้องเช็คก่อนกฎ 403 เสมอ · ไม่นับรอบ (กติกาเดียวกับ isAuthLost ใน cloudSync.ts) */
+  if (code === 401 || /jwt|token (is |has )?expired/.test(low)) {
+    return { permanent: false, authLost: true, reason: msg };
+  }
   if (code === 403 || low.includes('row-level security') || low.includes('unauthorized')) {
     return { permanent: true, reason: t('ไม่มีสิทธิ์อัปโหลดรูปนี้') };
   }
@@ -167,9 +172,11 @@ async function uploadOne(photo: Photo): Promise<UploadResult> {
     .upload(path, src.blob, { contentType: 'image/jpeg', upsert: true });
 
   if (error) {
+    const { permanent, reason, authLost } = classifyUploadError(error);
+    // รอผู้ใช้ล็อกอินใหม่ — รูปคาอยู่ในคิว ไม่นับรอบ ไม่ขึ้นการ์ดเตือน (ทางส่งแถวเป็นคนชวนเข้าสู่ระบบ)
+    if (authLost) return 'retry';
     const n = (attempts.get(photo.id) ?? 0) + 1;
     attempts.set(photo.id, n);
-    const { permanent, reason } = classifyUploadError(error);
     if (!permanent && n < MAX_ATTEMPTS) return 'retry';
 
     attempts.delete(photo.id);

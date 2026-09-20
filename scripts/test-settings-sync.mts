@@ -25,8 +25,8 @@ export const log: string[] = [];
 let failNext = 0;
 export function setFailNext(n: number) { failNext = n; }
 /* 'refuse' = ตู้ตอบรหัสปฏิเสธ (RLS 42501) · 'network' = ส่งไม่ถึง (supabase-js ห่อ fetch ที่ล้มเป็น error ไม่มี code) */
-let failKind: 'refuse' | 'network' = 'refuse';
-export function setFailKind(k: 'refuse' | 'network') { failKind = k; }
+let failKind: 'refuse' | 'network' | 'auth' = 'refuse';
+export function setFailKind(k: 'refuse' | 'network' | 'auth') { failKind = k; }
 let remote: { value: unknown; updated_at: string } | null = null;
 export function setRemote(r: typeof remote) { remote = r; }
 let clock = 0;
@@ -38,7 +38,7 @@ export const supabase = {
           select: () => self,
           async maybeSingle() {
             await new Promise((r) => setTimeout(r, 5));
-            if (failNext > 0) { failNext--; log.push('FAIL ' + JSON.stringify(row.value)); return { data: null, error: failKind === 'refuse' ? { message: 'denied', code: '42501' } : { message: 'TypeError: Failed to fetch' } }; }
+            if (failNext > 0) { failNext--; log.push('FAIL ' + JSON.stringify(row.value)); return { data: null, error: failKind === 'refuse' ? { message: 'denied', code: '42501' } : failKind === 'auth' ? { message: 'JWT expired', code: 'PGRST301' } : { message: 'TypeError: Failed to fetch' } }; }
             log.push('OK ' + JSON.stringify(row.value));
             return { data: { updated_at: 't' + (++clock) }, error: null };
           },
@@ -123,6 +123,18 @@ setFailNext(0);
 await flushSettings();
 check('เน็ตกลับมา → ค่าที่ตั้งไว้ขึ้นตู้จริง', log.at(-1) === 'OK {"stale":28}', JSON.stringify(log.slice(-2)));
 check('สถานะขึ้นว่าส่งแล้ว', settingsSyncState() === 'synced', settingsSyncState());
+setFailKind('refuse');
+
+console.log('\nหมดเวลาเข้าสู่ระบบตอนอาจารย์ตั้งค่า');
+log.length = 0;
+setFailKind('auth');
+setFailNext(99);
+await pushSettings({ stale: 35 }, 'อ. ทดสอบ');
+for (let i = 0; i < 5; i++) await flushSettings();
+check('session หมดอายุ 6 รอบ → ค่าที่ตั้งยังค้างคิว ไม่ถูกทิ้ง', settingsSyncState() === 'pending', settingsSyncState());
+setFailNext(0);
+await flushSettings();
+check('ล็อกอินใหม่แล้วค่าที่ตั้งไว้ขึ้นตู้เอง', log.at(-1) === 'OK {"stale":35}', JSON.stringify(log.slice(-2)));
 setFailKind('refuse');
 
 console.log('\nดึงค่าตั้งลงเครื่อง');

@@ -157,6 +157,10 @@ export async function savePdpaPolicy(patch: Partial<PdpaPolicy>, by: string): Pr
   if ('maskByDefault' in patch) cols.mask_by_default = patch.maskByDefault;
   if ('patientNames' in patch) cols.patient_names = patch.patientNames;
   const { data, error } = await supabase.from('pdpa_policy').update(cols).eq('id', 'app').select('id');
+  // หมดเวลาเข้าสู่ระบบ — บอกเป็นภาษาคน ไม่ใช่ "JWT expired" (นโยบายไม่มีคิวรอส่ง ต้องกดบันทึกใหม่หลังล็อกอิน)
+  if (error && (error.code === 'PGRST301' || /jwt (is )?expired|invalid jwt/i.test(error.message))) {
+    return { error: 'หมดเวลาเข้าสู่ระบบ — เข้าสู่ระบบใหม่แล้วบันทึกอีกครั้ง' };
+  }
   if (error) return { error: error.message };
   // ไม่มีแถวไหนถูกแก้ = ไม่มีสิทธิ์/ไม่มีแถว — ห้ามทำเหมือนสำเร็จ
   if (!data?.length) return { error: 'เซิร์ฟเวอร์ไม่ได้บันทึก (ไม่มีสิทธิ์หรือไม่พบนโยบาย)' };

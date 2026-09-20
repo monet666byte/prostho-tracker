@@ -281,6 +281,42 @@ console.log('\nเน็ตคลินิกสะดุด (ล้มแบบ
   check('กดลองใหม่แล้วขึ้นได้จริง', p.status === 'ok' && ENV.bucket.size === 1, String(p.status));
 }
 
+console.log('\nหมดเวลาเข้าสู่ระบบระหว่างรูปยังค้างส่ง');
+{
+  /* Storage ตอบ 403 "Unauthorized" + ข้อความ "jwt expired" เมื่อ session หมดอายุ
+     เดิมคำว่า unauthorized ถูกตีเป็น "ไม่มีสิทธิ์อัปโหลดรูปนี้" = ถาวร → เลิกลองตั้งแต่รอบแรก
+     ทั้งที่ล็อกอินใหม่แล้วขึ้นได้ทุกใบ */
+  resetEnv();
+  const m = await store(true);
+  await m.db.workpieces.put(WORK);
+  await m.db.photos.put(photoRow());
+  await m.db.blobs.put({ photoId: 'ph1', blob: jpeg(), bytes: 2048, at: '2026-09-10T02:00:00.000Z' });
+  ENV.fail = { message: 'jwt expired', statusCode: '403', error: 'Unauthorized' } as never;
+
+  m.initPhotoSync('st1');
+  await settle();
+  for (let i = 0; i < 5; i++) await m.uploadPendingPhotos();
+  let p = (await m.db.photos.get('ph1'))!;
+  check('ไม่ถูกตีเป็น "ส่งไม่สำเร็จ" — ยังรออัปโหลด', p.status === 'queue', String(p.status));
+  check('ไม่ขึ้นการ์ด "ไม่มีสิทธิ์อัปโหลดรูปนี้"', ENV.problems.length === 0, JSON.stringify(ENV.problems));
+
+  ENV.fail = null; // ล็อกอินใหม่แล้ว
+  await m.uploadPendingPhotos();
+  p = (await m.db.photos.get('ph1'))!;
+  check('ล็อกอินใหม่แล้วรูปขึ้นเองโดยไม่ต้องกดลองใหม่', p.status === 'ok' && ENV.bucket.size === 1, String(p.status));
+
+  // ไม่มีสิทธิ์จริงๆ (RLS) ต้องยังถาวรเหมือนเดิม
+  resetEnv();
+  const m2 = await store(true);
+  await m2.db.workpieces.put(WORK);
+  await m2.db.photos.put(photoRow());
+  await m2.db.blobs.put({ photoId: 'ph1', blob: jpeg(), bytes: 2048, at: '2026-09-10T02:00:00.000Z' });
+  ENV.fail = { message: 'new row violates row-level security policy', statusCode: '403' };
+  m2.initPhotoSync('st1');
+  await settle();
+  check('ไม่มีสิทธิ์จริง (RLS) ยังบอกผู้ใช้ทันทีเหมือนเดิม', ENV.problems.length === 1 && ENV.uploads === 1, JSON.stringify(ENV.problems));
+}
+
 /* ══ ⑤ โควตาเต็ม / ไม่มีสิทธิ์ — ลองใหม่ไปก็เท่านั้น ต้องบอกทันที ══════════ */
 console.log('\nพื้นที่เก็บไฟล์บนเซิร์ฟเวอร์เต็ม');
 {
