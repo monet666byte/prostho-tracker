@@ -15,7 +15,7 @@ import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushNow, pendingPushCount } from './cloudSync';
 import { clampPerformedAt, toISODate } from '../lib/date';
-import { isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
+import { hasTeacherEvidence, isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
   CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
@@ -572,9 +572,19 @@ export async function listReviewConflicts(): Promise<Map<string, Review[]>> {
  * ลบชิ้นงาน — ลบประวัติ step, รูป, คิว sync และผลตรวจของชิ้นนั้นทั้งหมด
  * ถ้าผู้ป่วยไม่เหลือชิ้นงานเลย ลบผู้ป่วยออกด้วย · การลบถูกบันทึกใน audit log เสมอ
  */
-export async function deleteWorkpiece(workpieceId: string, actor: string): Promise<void> {
+export async function deleteWorkpiece(workpieceId: string, actor: string): Promise<{ ok: true } | { ok: false; reason: 'evaluated' }> {
   const w = await db.workpieces.get(workpieceId);
-  if (!w) return;
+  if (!w) return { ok: true };
+
+  /* เคสที่อาจารย์ประเมินแล้วลบไม่ได้ (0030) — ต้องปฏิเสธ **ก่อน** แตะอะไรทั้งนั้น
+     เซิร์ฟเวอร์กันเคส/ประวัติ/ผู้ป่วยไว้ แต่ไม่กันรูป: ถ้าปล่อยให้ลบในเครื่องไปก่อนแล้วรอเซิร์ฟเวอร์ปฏิเสธ
+     เคสจะถูกดึงกลับมาโดยรูปงานหายถาวร */
+  const [sect2, sect3, reviews] = await Promise.all([
+    db.sect2.where('studentId').equals(w.studentId).toArray(),
+    db.sect3.where('studentId').equals(w.studentId).toArray(),
+    db.reviews.where('workpieceId').equals(workpieceId).toArray(),
+  ]);
+  if (hasTeacherEvidence(workpieceId, { sect2, sect3, reviews })) return { ok: false, reason: 'evaluated' };
 
   // เก็บรายชื่อไฟล์ไว้ก่อนลบแถว — พอแถวหายแล้วจะไม่มีทางรู้ว่าไฟล์ไหนเป็นของชิ้นงานนี้
   // (ไฟล์ที่ค้างในบักเก็ตคือรูปในปากคนไข้ที่ไม่มีใครเป็นเจ้าของแล้ว ลบยากกว่าปล่อยไว้)
@@ -605,6 +615,7 @@ export async function deleteWorkpiece(workpieceId: string, actor: string): Promi
   // นอก transaction — ยิงเน็ตระหว่างถือ transaction ค้างทำให้การเขียนอื่นทั้งแอปรอตาม
   await dropLocalBlobs(doomedPhotos.map((p) => p.id));
   await removePhotoFiles(doomedPhotos.flatMap((p) => (p.storagePath ? [p.storagePath] : [])));
+  return { ok: true };
 }
 
 // ── เช็คอินรายคาบ + ประเมิน ──────────────────────────────────

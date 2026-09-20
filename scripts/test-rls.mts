@@ -847,6 +847,59 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const nextDay = await commit(U.A, `insert into checkins (id, student_id, date, created_at) values ('cDay-3', 'sA', '2026-09-18', '2026-09-18T02:00:00Z') returning id`);
   check('วันถัดไปเช็คอินได้ตามปกติ', nextDay.ok, nextDay);
 
+  const row30 = checker.rows.find((r) => r.migration.startsWith('0030'));
+  check('check-migrations.sql ตอบว่า 0030 รันแล้ว', !!row30 && row30['สถานะ'].startsWith('✓'), row30);
+
+  // ── ⑱ ของที่อาจารย์ตรวจแล้ว ลบ/แก้ย้อนหลังไม่ได้ (0030) ──
+  console.log('\n⑱ ของที่อาจารย์ตรวจแล้ว ลบ/แก้ย้อนหลังไม่ได้ (0030)');
+  await db.exec(`
+    insert into patients (id, name, hn, owner_student_id) values ('pL', 'ผู้ป่วยล็อก', 'HN-L', 'sA'), ('pF', 'ผู้ป่วยอิสระ', 'HN-F', 'sA');
+    insert into workpieces (id, patient_id, student_id, type, accepted_date, last_updated_at) values
+      ('wL', 'pL', 'sA', 'CD', '2026-06-03', '2026-09-01'), ('wF', 'pF', 'sA', 'CD', '2026-06-03', '2026-09-01');
+    insert into updates (id, workpiece_id, proc_index, progression, performed_at, created_by, created_at) values
+      ('uL1', 'wL', 1, 1, '2026-09-01', 'นศ. เอ', '2026-09-01T02:00:00Z'), ('uF1', 'wF', 1, 1, '2026-09-01', 'นศ. เอ', '2026-09-01T02:00:00Z');
+  `);
+  const ev = await commit(U.T1, `insert into sect3_records (id, student_id, form_key, academic_year, class_year, workpiece_id, by_who, at_when)
+    values ('s3-lock', 'sA', 'cd', 2569, 5, 'wL', 'อ. หนึ่ง', '2026-09-18') returning id`);
+  check('เตรียมเคสที่อาจารย์ประเมิน Section III แล้ว', ev.ok, ev);
+
+  const delLocked = await commit(U.A, `delete from workpieces where id = 'wL' returning id`);
+  check('นักศึกษาลบเคสที่มีใบประเมินผูกอยู่ไม่ได้ + ข้อความบอกให้คืนเคส', !delLocked.ok && /คืนเคส/.test(delLocked.error ?? ''), delLocked);
+  const delHist = await commit(U.A, `delete from updates where id = 'uL1' returning id`);
+  check('ประวัติ step ของเคสนั้นก็ลบไม่ได้ (ไม่งั้นได้เคสที่ไม่มีประวัติ)', !delHist.ok, delHist);
+  const delPt = await commit(U.A, `delete from patients where id = 'pL' returning id`);
+  check('ผู้ป่วยของเคสนั้นก็ลบไม่ได้ (ไม่งั้นได้เคสกำพร้า)', !delPt.ok, delPt);
+
+  const delFreeHist = await commit(U.A, `delete from updates where id = 'uF1' returning id`);
+  const delFree = await commit(U.A, `delete from workpieces where id = 'wF' returning id`);
+  const delFreePt = await commit(U.A, `delete from patients where id = 'pF' returning id`);
+  check('เคสที่ยังไม่มีผลประเมิน ลบได้ครบชุดตามปกติ (เปิดเคสผิดต้องลบได้)',
+    delFreeHist.ok && delFree.ok && delFreePt.ok && delFree.rows.length === 1, { delFreeHist, delFree, delFreePt });
+
+  const forge = await commit(U.A, `update updates set performed_at = '2026-01-01' where id = 'uL1' returning id`);
+  check('แก้วันที่ทำของประวัติย้อนหลังไม่ได้', !forge.ok && /เลิกทำ/.test(forge.error ?? ''), forge);
+  const forgeWho = await commit(U.A, `update updates set created_by = 'อ. หนึ่ง' where id = 'uL1' returning id`);
+  check('แก้ชื่อคนทำย้อนหลังไม่ได้', !forgeWho.ok, forgeWho);
+  const attach = await commit(U.A, `update updates set photo_ids = array['ph-x'], note = 'แนบรูปทีหลัง', synced_at = '2026-09-18' where id = 'uL1' returning id`);
+  check('แนบรูป/โน้ตให้ประวัติเดิมยังทำได้ (แอปทำจริง)', attach.ok && attach.rows.length === 1, attach);
+  const resendHist = await commit(U.A, `insert into updates (id, workpiece_id, proc_index, progression, performed_at, created_by, created_at, note)
+    values ('uL1', 'wL', 1, 1, '2026-09-01', 'นศ. เอ', '2026-09-01T02:00:00Z', 'ส่งทั้งแถวซ้ำ')
+    on conflict (id) do update set workpiece_id = excluded.workpiece_id, proc_index = excluded.proc_index, progression = excluded.progression,
+      performed_at = excluded.performed_at, created_by = excluded.created_by, created_at = excluded.created_at, note = excluded.note returning id`);
+  check('ส่งทั้งแถวซ้ำด้วยค่าเดิม (sync ลองใหม่) ไม่ถูกปฏิเสธ', resendHist.ok, resendHist);
+
+  const tDel = await commit(U.T1, `delete from updates where id = 'uL1' returning id`);
+  check('อาจารย์ยังลบได้ตามหน้าที่', tDel.ok && tDel.rows.length === 1, tDel);
+  const srvDel = await db.query(`delete from workpieces where id = 'wL' returning id`).then((r) => r.rows.length, (e: Error) => e.message);
+  check('คำสั่งที่ไม่มีคนล็อกอิน (ตัวลบตามกำหนดเก็บ / SQL Editor) ยังลบได้', srvDel === 1, srvDel);
+
+  const subS = await commit(U.A, `insert into submissions (id, student_id, round_id, status, approved_by) values ('sub-x', 'sA', 'r1', 'approved', 'อ. ปลอม') returning id`);
+  check('นักศึกษาเขียน submissions (อนุมัติให้ตัวเอง) ไม่ได้', !subS.ok, subS);
+  const subT = await commit(U.T1, `insert into submissions (id, student_id, round_id, status) values ('sub-t', 'sA', 'r1', 'none') returning id`);
+  check('อาจารย์ยังเขียน submissions ได้', subT.ok, subT);
+  const issS = await commit(U.A, `insert into issues (student_id, text) values ('sA', 'x') returning student_id`);
+  check('นักศึกษาเขียน issues ไม่ได้', !issS.ok, issS);
+
   // ── ⑯ กู้แบบประเมินตนเอง (0028) ──
   console.log('\n⑯ กู้แบบประเมินตนเองจากสำเนา (0028)');
   const saRow = {

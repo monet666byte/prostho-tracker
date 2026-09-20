@@ -120,7 +120,7 @@ src/
   styles/          tokens.css = ค่าสี/ฟอนต์ · ไฟล์ CSS แยกตามฝั่ง
 vite/              ปลั๊กอินเล็ก ๆ: csp.ts · font-subsets.ts · phosphor-weights.ts · woff2-only.ts
 scripts/           backup/restore · local-supabase (Supabase จำลอง) · test-*.mts ทั้ง 22 ชุด + เครื่องมือช้า
-supabase/          migrations/0001–0029 · SQL ตรวจสอบ (check-migrations · security-check · audit · audit-data) · add-teacher.sql
+supabase/          migrations/0001–0030 · SQL ตรวจสอบ (check-migrations · security-check · audit · audit-data) · add-teacher.sql
 ```
 
 ### แผนที่หน้าจอ ↔ handoff

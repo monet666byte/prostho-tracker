@@ -986,6 +986,7 @@ export const DICT: Record<string, string> = {
   'เครื่องนี้อาจลบข้อมูลของแอปเองถ้าไม่ได้เปิด 7 วัน — งาน {n} รายการนี้ยังไม่มีสำเนาที่อื่น': "This device may clear the app's data if it isn't opened for 7 days — these {n} items have no other copy yet",
   'ใบประเมิน Section II': 'Section II form',
   'ใบประเมิน Section III': 'Section III form',
+  'เคสนี้มีผลประเมินของอาจารย์แล้ว ลบไม่ได้ — ใช้ "คืนเคส" แทน': 'This case already has a teacher evaluation and cannot be deleted — use "Return case" instead',
   'เซิร์ฟเวอร์ไม่ให้ลบ จึงนำรายการกลับมาแสดง': 'The server refused the delete, so the item was put back',
   'ลองส่งใหม่': 'Retry',
   'มีคำตัดสินของท่านอื่น': 'another decision exists',

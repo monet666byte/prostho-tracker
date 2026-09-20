@@ -78,6 +78,23 @@ export function isReturned(w: Pick<Workpiece, 'returned'>): boolean {
 }
 
 /** งานที่ "กำลังทำอยู่จริง" — ยังไม่จบ และไม่ได้คืนเคส (ใช้แทน !isComplete ทุกที่ที่นับภาระงาน) */
+/**
+ * เคสนี้มี "หลักฐานของอาจารย์" ผูกอยู่ไหม — มีแล้วลบไม่ได้ (ให้คืนเคสแทน)
+ *
+ * หลักฐาน = ใบประเมิน Section II/III ที่อ้างเคสนี้ หรือผลตรวจงานที่มีชื่อผู้ตรวจ
+ * ⚠️ ต้องตรงกับ `workpiece_has_teacher_evidence()` ใน `supabase/migrations/0030` — เซิร์ฟเวอร์เป็นคนบังคับจริง
+ * ฝั่งแอปเช็คก่อนเพื่อ **ไม่เริ่มลบเลย**: deleteWorkpiece ลบเคส + ประวัติ + รูป + ผู้ป่วยในคราวเดียว
+ * ถ้าปล่อยให้เซิร์ฟเวอร์ปฏิเสธทีหลัง รูปงานที่ลบไปแล้วเอากลับมาไม่ได้
+ */
+export function hasTeacherEvidence(
+  workpieceId: string,
+  records: { sect2: Array<{ workpieceId?: string }>; sect3: Array<{ workpieceId?: string }>; reviews: Array<{ workpieceId: string; by?: string }> },
+): boolean {
+  return records.sect2.some((r) => r.workpieceId === workpieceId)
+    || records.sect3.some((r) => r.workpieceId === workpieceId)
+    || records.reviews.some((r) => r.workpieceId === workpieceId && !!r.by?.trim());
+}
+
 export function isActiveWork(w: Workpiece): boolean {
   return !isComplete(w) && !isReturned(w);
 }

@@ -100,8 +100,13 @@ export default function Patients() {
 
   async function confirmDelete() {
     if (!target) return;
-    await deleteWorkpiece(target.id, currentActor());
+    const res = await deleteWorkpiece(target.id, currentActor());
     setTarget(null);
+    if (!res.ok) {
+      // เคสที่อาจารย์ประเมินแล้วเป็นหลักฐาน ลบไม่ได้ (เซิร์ฟเวอร์ก็ปฏิเสธเหมือนกัน — 0030) · ทางที่ถูกคือคืนเคส
+      showToast({ message: t('เคสนี้มีผลประเมินของอาจารย์แล้ว ลบไม่ได้ — ใช้ "คืนเคส" แทน'), tone: 'warning' });
+      return;
+    }
     showToast({ message: t('ลบ {d} แล้ว', { d: target.detail }), tone: 'warning' });
   }
 

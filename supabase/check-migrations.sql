@@ -109,5 +109,11 @@ from (
   -- 0029 ดูร่องรอยเดียว (unique index ของเช็คอิน)
   union all select '0029 เช็คอินหนึ่งคนหนึ่งวันได้แถวเดียว (บังคับที่ฐานข้อมูล)',
     exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'checkins_student_date_uidx')
+
+  -- 0030 ดูสามร่องรอย (ยามลบเคส · ยามประวัติ step · submissions เขียนได้เฉพาะอาจารย์)
+  union all select '0030 ของที่อาจารย์ตรวจแล้ว ลบ/แก้ย้อนหลังไม่ได้',
+    exists (select 1 from pg_trigger where tgname = 'workpiece_delete_guard')
+    and exists (select 1 from pg_trigger where tgname = 'update_row_guard')
+    and exists (select 1 from pg_policies where tablename = 'submissions' and policyname = 'submissions_write')
 ) x
 order by x.label;

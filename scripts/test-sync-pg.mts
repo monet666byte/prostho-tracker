@@ -461,6 +461,41 @@ console.log('\n⑦ข เซิร์ฟเวอร์ปฏิเสธกา�
   await S.db.close();
 }
 
+/* ══ ⑦ง แอปรุ่นเก่าลบเคสที่อาจารย์ประเมินแล้ว (0030) ═══════════════════════════
+ * แอปรุ่นใหม่ปฏิเสธตั้งแต่ตอนกดปุ่ม · ข้อนี้จำลองแอปรุ่นเก่า/การลบตรงในลิ้นชัก: ลบเคส + ประวัติ + ผู้ป่วย พร้อมกัน
+ * เซิร์ฟเวอร์ต้องปฏิเสธทั้งชุด และเครื่องต้องได้ทั้งชุดกลับมา — ห้ามจบที่ "เคสกลับมาแต่ประวัติหาย" */
+console.log('\n⑦ง แอปรุ่นเก่าลบเคสที่อาจารย์ประเมินแล้ว (0030)');
+{
+  const S = await stage(); G.__STAGE__ = S;
+  const phone = await device('phone-st4', 'st4');
+  await phone.db.table('patients').put(patientOf('st4'));
+  await phone.db.table('workpieces').put(workpieceOf('st4', { procIndex: 2 }));
+  await phone.db.table('updates').put({
+    id: 'u-st4-1', workpieceId: 'w-st4', procIndex: 2, progression: 2, performedAt: '2026-09-10',
+    selfPerformed: true, photoIds: [], reversal: false, createdBy: 'นศ. คนที่ 4', createdAt: '2026-09-10T02:00:00.000Z',
+  });
+  await settle(); await phone.flushNow();
+  await S.db.query(`insert into sect3_records (id, student_id, form_key, academic_year, class_year, workpiece_id, by_who, at_when)
+    values ('s3-st4', 'st4', 'cd', 2569, 5, 'w-st4', 'อ. หนึ่ง', '2026-09-12')`);
+
+  await phone.db.table('workpieces').delete('w-st4');
+  await phone.db.table('updates').delete('u-st4-1');
+  await phone.db.table('patients').delete('p-st4');
+  await settle();
+  for (let i = 0; i < 5; i++) await phone.flushNow();
+
+  const left = await server(S.db, `select (select count(*)::int from workpieces where id = 'w-st4') as w,
+    (select count(*)::int from updates where id = 'u-st4-1') as u, (select count(*)::int from patients where id = 'p-st4') as p`);
+  check('เซิร์ฟเวอร์ยังมีครบทั้งเคส ประวัติ และผู้ป่วย', left[0].w === 1 && left[0].u === 1 && left[0].p === 1, left[0]);
+  check('เครื่องได้ทั้งชุดกลับมา ไม่ใช่กลับมาครึ่งเดียว',
+    !!phone.peek('workpieces', 'w-st4') && !!phone.peek('updates', 'u-st4-1') && !!phone.peek('patients', 'p-st4'),
+    { w: !!phone.peek('workpieces', 'w-st4'), u: !!phone.peek('updates', 'u-st4-1'), p: !!phone.peek('patients', 'p-st4') });
+  const kinds = phone.syncProblems().map((x) => (x as { kind?: string }).kind);
+  check('บอกผู้ใช้ว่าลบไม่ได้ (3 รายการ แบบ "ลบไม่ผ่าน")', kinds.length === 3 && kinds.every((k) => k === 'delete'), phone.syncProblems());
+  check('ไม่วนลบตลอดกาล', phone.pendingPushCount() === 0, phone.pendingPushCount());
+  await S.db.close();
+}
+
 /* ══ ⑦ค คนเดียวสองเครื่อง ออฟไลน์ทั้งคู่ เช็คอินวันเดียวกัน (0029) ═══════════════
  *
  * กติกา "วันละหนึ่งเช็คอิน" ของแอปมองเห็นแค่ลิ้นชักของเครื่องตัวเอง — สองเครื่องจึงได้ id คนละตัว

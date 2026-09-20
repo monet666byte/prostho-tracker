@@ -26,7 +26,7 @@ import {
   supersededBy, supersededTitle, totalScore,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
-import { procList } from '../src/domain/rules.ts';
+import { hasTeacherEvidence, procList } from '../src/domain/rules.ts';
 import { homeSyncNotice, STUCK_AFTER_MS } from '../src/domain/syncNotice.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, Patient, Settings, WorkpieceView, WorkType } from '../src/domain/types.ts';
@@ -340,6 +340,17 @@ console.log('\nสวิตช์ "ใช้ชื่อผู้ป่วย" (
   const near = view('CD', 9, { patient: patient('pA', 'ผู้ป่วย A') });
   const line = cheerLine([near], [], S, NOW, false);
   ok('ข้อความหน้าแรกตอนปิดชื่อ ไม่เอ่ยชื่อผู้ป่วย', !line.includes('ผู้ป่วย A') && line.includes('HN'), line);
+}
+
+console.log('\nhasTeacherEvidence — เคสที่อาจารย์ประเมินแล้วลบไม่ได้ (คู่กับ 0030)');
+{
+  const none = { sect2: [], sect3: [], reviews: [] };
+  ok('เคสเปล่า → ลบได้', hasTeacherEvidence('w1', none) === false);
+  ok('มีใบ Section II อ้างเคสนี้ → ลบไม่ได้', hasTeacherEvidence('w1', { ...none, sect2: [{ workpieceId: 'w1' }] }));
+  ok('มีใบ Section III อ้างเคสนี้ → ลบไม่ได้', hasTeacherEvidence('w1', { ...none, sect3: [{ workpieceId: 'w1' }] }));
+  ok('ใบประเมินของเคสอื่น / ใบที่ไม่ผูกเคส → ไม่เกี่ยว', !hasTeacherEvidence('w1', { ...none, sect2: [{ workpieceId: 'w2' }, {}] }));
+  ok('ผลตรวจงานที่มีชื่อผู้ตรวจ → ลบไม่ได้', hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1', by: 'อ. หนึ่ง' }] }));
+  ok('แถวผลตรวจเปล่า (ยังไม่มีใครตรวจ) → ยังลบได้', !hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1' }, { workpieceId: 'w1', by: '  ' }] }));
 }
 
 console.log('\nsyncNotice.ts — แถบเตือนหน้าแรกของนักศึกษา');
