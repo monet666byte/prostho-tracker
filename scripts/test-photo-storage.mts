@@ -251,30 +251,52 @@ console.log('\nชื่อไฟล์ในบักเก็ต (ข้อม
 }
 
 /* ══ ④ เน็ตสะดุด — ลองใหม่ก่อน แล้วค่อยยอมแพ้แบบมีเสียง ═══════════════════ */
-console.log('\nเน็ตคลินิกสะดุด (ล้มแบบชั่วคราว)');
+console.log('\nเน็ตคลินิกสะดุด — ส่งไม่ถึงเซิร์ฟเวอร์ (ไม่มีรหัสตอบกลับ)');
+{
+  /* กติกาเดียวกับทางส่งข้อมูล (isRefusal ใน cloudSync.ts): ส่งไม่ถึง = รอส่งต่อ ไม่นับรอบ ไม่ขึ้นการ์ด
+     เดิมนับ 3 รอบแล้วตีเป็น "ส่งไม่สำเร็จ" — บนไวไฟคลินิกที่หลุดบ่อย นักศึกษาต้องกดลองใหม่เองทีละใบ */
+  resetEnv();
+  const m = await store(true);
+  await m.db.workpieces.put(WORK);
+  await m.db.photos.put(photoRow());
+  await m.db.blobs.put({ photoId: 'ph1', blob: jpeg(), bytes: 2048, at: '2026-09-10T02:00:00.000Z' });
+  ENV.fail = { message: 'TypeError: Failed to fetch' };
+
+  m.initPhotoSync('st1');
+  await settle();
+  for (let i = 0; i < 6; i++) await m.uploadPendingPhotos();
+  let p = (await m.db.photos.get('ph1'))!;
+  check('เน็ตหลุด 7 รอบ → ยังเป็น "รออัปโหลด" ไม่ถูกตีว่าล้ม', p.status === 'queue', String(p.status));
+  check('ไม่รบกวนผู้ใช้ด้วยการ์ดเตือน', ENV.problems.length === 0, JSON.stringify(ENV.problems));
+  check('ไม่มี storagePath ปลอม', p.storagePath === undefined);
+  check('⚠️ รูปในเครื่องยังอยู่ครบ', !!(await m.db.blobs.get('ph1')));
+
+  ENV.fail = null; // เน็ตกลับมา
+  await m.uploadPendingPhotos();
+  p = (await m.db.photos.get('ph1'))!;
+  check('เน็ตกลับมาแล้วขึ้นเอง ไม่ต้องกดอะไร', p.status === 'ok' && ENV.bucket.size === 1, String(p.status));
+}
+
+console.log('\nเซิร์ฟเวอร์ตอบว่าพัง (5xx) ซ้ำๆ — อันนี้ต้องบอกผู้ใช้');
 {
   resetEnv();
   const m = await store(true);
   await m.db.workpieces.put(WORK);
   await m.db.photos.put(photoRow());
   await m.db.blobs.put({ photoId: 'ph1', blob: jpeg(), bytes: 2048, at: '2026-09-10T02:00:00.000Z' });
-  ENV.fail = { message: 'network error' };
+  ENV.fail = { message: 'Internal Server Error', statusCode: '500' };
 
   m.initPhotoSync('st1');
   await settle();
   let p = (await m.db.photos.get('ph1'))!;
-  check('รอบแรกยังไม่ประกาศว่าล้ม (เน็ตสะดุดเป็นเรื่องปกติ)', p.status === 'queue', String(p.status));
-  check('รอบแรกยังไม่รบกวนผู้ใช้', ENV.problems.length === 0);
-
+  check('รอบแรกยังไม่ประกาศว่าล้ม', p.status === 'queue' && ENV.problems.length === 0, String(p.status));
   await m.uploadPendingPhotos();
   await m.uploadPendingPhotos();
   p = (await m.db.photos.get('ph1'))!;
   check('ครบโควตาแล้วขึ้นว่าส่งไม่สำเร็จ', p.status === 'fail', String(p.status));
   check('โผล่ในการ์ดเตือนหน้า sync — ไม่เงียบ', ENV.problems.length === 1, JSON.stringify(ENV.problems));
-  check('ไม่มี storagePath ปลอม', p.storagePath === undefined);
   check('⚠️ รูปในเครื่องยังอยู่ครบ ไม่ถูกลบตอนล้ม', !!(await m.db.blobs.get('ph1')));
 
-  // ผู้ใช้แตะปุ่มลองใหม่หลังเน็ตกลับมา
   ENV.fail = null;
   await m.retryPhotoUpload('ph1');
   p = (await m.db.photos.get('ph1'))!;

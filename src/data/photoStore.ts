@@ -108,7 +108,7 @@ async function bytesFor(photo: Photo): Promise<{ blob: Blob; fromDataUrl: boolea
  * เน็ตสะดุดกับโควตาเต็มต้องปฏิบัติต่างกัน — อันแรกลองใหม่เงียบๆ ได้
  * อันหลังลองกี่รอบก็ไม่ผ่านจนกว่าจะมีคนไปแก้ ต้องบอกผู้ใช้ทันที ไม่ใช่วนรบกวนเน็ตทุก 15 วิ
  */
-function classifyUploadError(err: unknown): { permanent: boolean; reason: string; authLost?: boolean } {
+function classifyUploadError(err: unknown): { permanent: boolean; reason: string; waitForever?: boolean } {
   const e = err as { message?: string; status?: number; statusCode?: string | number; error?: string };
   const msg = String(e?.message ?? e?.error ?? err ?? '').trim();
   const code = Number(e?.status ?? e?.statusCode ?? 0);
@@ -118,7 +118,7 @@ function classifyUploadError(err: unknown): { permanent: boolean; reason: string
      เดิมคำว่า unauthorized พาไปเข้ากฎข้างล่าง → ถาวร → เลิกลอง ทั้งที่ล็อกอินใหม่แล้วขึ้นได้ทุกใบ
      ต้องเช็คก่อนกฎ 403 เสมอ · ไม่นับรอบ (กติกาเดียวกับ isAuthLost ใน cloudSync.ts) */
   if (code === 401 || /jwt|token (is |has )?expired/.test(low)) {
-    return { permanent: false, authLost: true, reason: msg };
+    return { permanent: false, waitForever: true, reason: msg };
   }
   if (code === 403 || low.includes('row-level security') || low.includes('unauthorized')) {
     return { permanent: true, reason: t('ไม่มีสิทธิ์อัปโหลดรูปนี้') };
@@ -132,6 +132,10 @@ function classifyUploadError(err: unknown): { permanent: boolean; reason: string
   if (low.includes('bucket not found') || low.includes('bucket_not_found')) {
     return { permanent: true, reason: t('ยังไม่ได้สร้างที่เก็บรูปบนเซิร์ฟเวอร์') };
   }
+  /* ส่งไม่ถึงเซิร์ฟเวอร์เลย (fetch ล้ม — ไม่มีรหัสตอบกลับ) = เน็ตหลุด → รอส่งต่อ ไม่นับรอบ ไม่ขึ้นการ์ด
+     กติกาเดียวกับ isRefusal ใน cloudSync.ts · เดิมนับ 3 รอบแล้วตีเป็น "ส่งไม่สำเร็จ" บนไวไฟคลินิกที่หลุดบ่อย
+     นักศึกษาต้องกดลองใหม่เองทีละใบ · เซิร์ฟเวอร์ที่ตอบกลับมาว่าพัง (5xx) ยังนับรอบตามเดิม */
+  if (!code) return { permanent: false, waitForever: true, reason: msg };
   return { permanent: false, reason: msg || t('ส่งรูปขึ้นเซิร์ฟเวอร์ไม่สำเร็จ') };
 }
 
@@ -172,9 +176,9 @@ async function uploadOne(photo: Photo): Promise<UploadResult> {
     .upload(path, src.blob, { contentType: 'image/jpeg', upsert: true });
 
   if (error) {
-    const { permanent, reason, authLost } = classifyUploadError(error);
-    // รอผู้ใช้ล็อกอินใหม่ — รูปคาอยู่ในคิว ไม่นับรอบ ไม่ขึ้นการ์ดเตือน (ทางส่งแถวเป็นคนชวนเข้าสู่ระบบ)
-    if (authLost) return 'retry';
+    const { permanent, reason, waitForever } = classifyUploadError(error);
+    // เน็ตหลุด หรือรอผู้ใช้ล็อกอินใหม่ — รูปคาอยู่ในคิว ไม่นับรอบ ไม่ขึ้นการ์ดเตือน (ทางส่งแถวเป็นคนบอกสถานะการเชื่อมต่อ)
+    if (waitForever) return 'retry';
     const n = (attempts.get(photo.id) ?? 0) + 1;
     attempts.set(photo.id, n);
     if (!permanent && n < MAX_ATTEMPTS) return 'retry';
