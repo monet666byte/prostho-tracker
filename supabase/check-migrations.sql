@@ -115,5 +115,10 @@ from (
     exists (select 1 from pg_trigger where tgname = 'workpiece_delete_guard')
     and exists (select 1 from pg_trigger where tgname = 'update_row_guard')
     and exists (select 1 from pg_policies where tablename = 'submissions' and policyname = 'submissions_write')
+
+  -- 0031 ดูสองร่องรอย (ตารางรอย · trigger ที่จด)
+  union all select '0031 รอยทางเลขขั้นของเคสฝั่งเซิร์ฟเวอร์ (จดอย่างเดียว ไม่บล็อก)',
+    exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'workpiece_step_log')
+    and exists (select 1 from pg_trigger where tgname = 'workpiece_step_log_trg')
 ) x
 order by x.label;

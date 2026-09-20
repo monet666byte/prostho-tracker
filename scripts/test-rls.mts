@@ -847,6 +847,14 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const nextDay = await commit(U.A, `insert into checkins (id, student_id, date, created_at) values ('cDay-3', 'sA', '2026-09-18', '2026-09-18T02:00:00Z') returning id`);
   check('วันถัดไปเช็คอินได้ตามปกติ', nextDay.ok, nextDay);
 
+  // check-privileged-accounts.sql — ต้องรันได้จริงบน Postgres และชี้บัญชีนอกโดเมนมหาวิทยาลัยให้คนดู
+  const priv = await db.query<Record<string, string>>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-privileged-accounts.sql', import.meta.url), 'utf8'));
+  check('check-privileged-accounts.sql รันได้ และเห็นบัญชีอาจารย์', priv.rows.length > 0 && priv.rows.every((r) => 'อีเมล' in r), priv.rows.slice(0, 2));
+  check('บัญชีที่ไม่ใช่โดเมนมหาวิทยาลัยถูกชี้ให้ดู · บัญชีนักศึกษาล้วนไม่โผล่',
+    priv.rows.some((r) => r['ควรดู'].startsWith('⚠️')) && priv.rows.every((r) => r['บทบาท'] === 'teacher' || r['สิทธิ์พิเศษ'] !== '' || r['teacher_id'] !== ''),
+    priv.rows.map((r) => `${r['อีเมล']}|${r['บทบาท']}|${r['ควรดู']}`).slice(0, 6));
+
   const row30 = checker.rows.find((r) => r.migration.startsWith('0030'));
   check('check-migrations.sql ตอบว่า 0030 รันแล้ว', !!row30 && row30['สถานะ'].startsWith('✓'), row30);
 
@@ -899,6 +907,38 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   check('อาจารย์ยังเขียน submissions ได้', subT.ok, subT);
   const issS = await commit(U.A, `insert into issues (student_id, text) values ('sA', 'x') returning student_id`);
   check('นักศึกษาเขียน issues ไม่ได้', !issS.ok, issS);
+
+  const row31 = checker.rows.find((r) => r.migration.startsWith('0031'));
+  check('check-migrations.sql ตอบว่า 0031 รันแล้ว', !!row31 && row31['สถานะ'].startsWith('✓'), row31);
+
+  // ── ⑲ รอยทางเลขขั้นของเคส (0031) — จดอย่างเดียว ไม่บล็อก ──
+  console.log('\n⑲ รอยทางเลขขั้นของเคส (0031)');
+  await db.exec(`
+    insert into patients (id, name, hn, owner_student_id) values ('pS', 'ผู้ป่วยรอย', 'HN-S', 'sA');
+    insert into workpieces (id, patient_id, student_id, type, accepted_date, last_updated_at, proc_index) values
+      ('wS', 'pS', 'sA', 'CD', '2026-06-03', '2026-09-01', 2);
+  `);
+  const jump = await commit(U.A, `update workpieces set proc_index = 9, completed_at = '2026-09-19' where id = 'wS' returning proc_index`);
+  check('นักศึกษายังขยับเลขขั้นได้ตามปกติ (ไม่บล็อก — งานออฟไลน์ส่งเป็นก้อนเดียวได้)', jump.ok && jump.rows[0]?.proc_index === 9, jump);
+  const undo = await commit(U.A, `update workpieces set proc_index = 8, completed_at = null where id = 'wS' returning proc_index`);
+  check('ปุ่มเลิกทำ (ลดเลขขั้น) ยังทำได้', undo.ok && undo.rows[0]?.proc_index === 8, undo);
+  await commit(U.A, `update workpieces set detail = 'แก้แค่คำอธิบาย' where id = 'wS' returning id`);
+  const trail = (await db.query<{ o: number; n: number; uid: string | null }>(
+    `select old_proc_index as o, new_proc_index as n, actor_uid::text as uid from workpiece_step_log where workpiece_id = 'wS' order by id`)).rows;
+  check('เซิร์ฟเวอร์จดรอยครบสองครั้ง (2→9, 9→8) · แก้ช่องอื่นไม่จด',
+    trail.length === 2 && trail[0].o === 2 && trail[0].n === 9 && trail[1].o === 9 && trail[1].n === 8, trail);
+  check('ใครทำ มาจากเซิร์ฟเวอร์ ไม่ใช่ค่าที่เครื่องส่งมา', trail.every((r) => r.uid === U.A.uid), trail);
+  const peekS = await as(db, U.A, async (tx) => (await tx.query(`select 1 from workpiece_step_log`)).rows.length);
+  check('นักศึกษาอ่านรอยไม่ได้', peekS.ok && peekS.value === 0, peekS);
+  const forgeLog = await commit(U.A, `insert into workpiece_step_log (workpiece_id, student_id, new_proc_index) values ('wS', 'sA', 1) returning id`);
+  check('นักศึกษาเขียนรอยเองไม่ได้', !forgeLog.ok, forgeLog);
+  const wipeLog = await as(db, U.A, async (tx) => (await tx.query(`delete from workpiece_step_log returning id`)).rows.length);
+  check('นักศึกษาลบรอยไม่ได้', wipeLog.ok && wipeLog.value === 0, wipeLog);
+  const peekT = await as(db, U.T1, async (tx) => (await tx.query(`select 1 from workpiece_step_log where workpiece_id = 'wS'`)).rows.length);
+  check('อาจารย์อ่านรอยได้', peekT.ok && peekT.value === 2, peekT);
+  const delS = await commit(U.A, `delete from workpieces where id = 'wS' returning id`);
+  const leftLog = (await db.query(`select 1 from workpiece_step_log where workpiece_id = 'wS'`)).rows.length;
+  check('ลบเคสแล้วรอยของเคสนั้นไปด้วย (ไม่ค้างข้อมูลของเคสที่ถูกลบ)', delS.ok && leftLog === 0, { delS, leftLog });
 
   // ── ⑯ กู้แบบประเมินตนเอง (0028) ──
   console.log('\n⑯ กู้แบบประเมินตนเองจากสำเนา (0028)');

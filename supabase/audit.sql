@@ -243,6 +243,9 @@ findings as (
       exists (select 1 from pg_trigger where tgname = 'workpiece_delete_guard')
       and exists (select 1 from pg_trigger where tgname = 'update_row_guard')
       and exists (select 1 from pg_policies where tablename = 'submissions' and policyname = 'submissions_write')
+    union all select '0031 รอยทางเลขขั้นของเคสฝั่งเซิร์ฟเวอร์ (จดอย่างเดียว ไม่บล็อก)',
+      exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'workpiece_step_log')
+      and exists (select 1 from pg_trigger where tgname = 'workpiece_step_log_trg')
     /* 0009 ไม่มีตารางใหม่ให้ดู — ดูสามร่องรอยที่ต้องมีพร้อมกัน
        (คอลัมน์ของ 0009 · trigger ที่ห้ามแก้ audit · trigger ที่ประทับผู้กระทำ) */
     union all select '0009 ปิดช่องโหว่ (entry_year + audit แก้ไม่ได้)',
