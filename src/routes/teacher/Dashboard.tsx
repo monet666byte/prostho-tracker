@@ -1,5 +1,5 @@
 import { BellRinging, Check } from '@phosphor-icons/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
@@ -22,6 +22,7 @@ import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { signOutToReLogin, useApp } from '../../store/app';
+import { onUpdateReady, updateReady } from '../../lib/appUpdate';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const link = useSyncStatus();
   const unsentCount = usePendingPushCount();
   const syncProblemList = useSyncProblems();
+  const hasUpdate = useSyncExternalStore(onUpdateReady, updateReady);
 
   const allStudents = useAllStudents();
   const allWorks = useAllWorkpieces();
@@ -281,7 +283,18 @@ export default function Dashboard() {
           go: { label: t('ดูรายการ'), onClick: () => navigate('/teacher/settings') },
         });
   }
-  if (!today.needsAttention && !todayLines.some((l) => l.key === 'unsent' || l.key === 'auth')) {
+  /* แอปรุ่นที่เปิดค้างอยู่เก่ากว่าที่ขึ้นเว็บแล้ว — เครื่องอาจารย์มักเปิดแท็บค้างทั้งวัน · ไม่บังคับโหลดใหม่เอง (อาจกำลังกรอกใบประเมินค้าง)
+     อยู่ใต้เรื่องการส่งข้อมูล (เร่งน้อยกว่า) · ฝั่งนักศึกษาคือแถบสีฟ้าบนหน้าแรก (components/student/SyncBanner) */
+  if (hasUpdate) {
+    const line: TodayLine = {
+      key: 'update', tone: 'do', icon: 'sync',
+      text: <>{t('มีแอปรุ่นใหม่')} · {t('งานที่ค้างไม่หาย')}</>,
+      go: { label: t('อัปเดตเลย'), onClick: () => window.location.reload() },
+    };
+    const at = todayLines.findIndex((l) => l.key !== 'unsent' && l.key !== 'auth');
+    todayLines.splice(at === -1 ? todayLines.length : at, 0, line);
+  }
+  if (!today.needsAttention && !todayLines.some((l) => l.key === 'unsent' || l.key === 'auth' || l.key === 'update')) {
     todayLines.unshift({ key: 'calm', tone: 'good', icon: 'good', text: t('วันนี้ไม่มีอะไรน่าห่วง') });
   }
   if (today.doneThisWeek > 0 && todayLines.length < 3) {
