@@ -511,9 +511,15 @@ console.log('\n⑧ เน็ตหลุดนานเกินโควตา 
   const seen: number[] = [];
   const stopWatching = phone.onOutboxChange(() => seen.push(phone.pendingPushCount()));
   await phone.db.table('workpieces').put({ ...phone.peek('workpieces', 'w-st9')!, procIndex: 5 });
+  const firstPendingAt = phone.syncStatus().pendingSince;
+  await new Promise((r) => setTimeout(r, 30));
   await phone.db.table('checkins').put(checkinOf('st9'));
   await settle();
   for (let i = 0; i < 6; i++) await phone.flushNow();
+  // แถบ "ค้างเกิน 1 วัน" พึ่งค่านี้ — ถ้าเริ่มนับใหม่ทุกครั้งที่กดบันทึก คนที่ทำงานต่อเนื่องจะไม่มีวันถูกเตือน
+  check('อายุของค้างส่งนับจากงานชิ้นแรก ไม่เริ่มใหม่เมื่อมีงานเพิ่ม',
+    firstPendingAt !== null && phone.syncStatus().pendingSince === firstPendingAt,
+    { first: firstPendingAt, now: phone.syncStatus().pendingSince });
   check('เน็ตหลุดไม่ถูกกักเป็นปัญหา', phone.syncProblems().length === 0, phone.syncProblems());
   check('เน็ตหลุด: สถานะเป็น "ต่อเซิร์ฟเวอร์ไม่ได้" และเริ่มนับอายุของค้าง',
     phone.syncStatus().link === 'down' && typeof phone.syncStatus().pendingSince === 'number', phone.syncStatus());

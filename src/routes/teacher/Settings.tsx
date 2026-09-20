@@ -22,6 +22,7 @@ import { currentActor, currentPdpaRole, useApp } from '../../store/app';
 import { onPdpaPolicy, pdpaPolicy, savePdpaPolicy, type PdpaPolicy, type PdpaRole } from '../../data/pdpaSync';
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
 import { cloudEnabled } from '../../lib/cloud';
+import { onPersistState, persistState } from '../../lib/storagePersist';
 
 /* คำอธิบายเหลือเฉพาะข้อที่อ่านชื่อแล้วไม่รู้ */
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
@@ -399,6 +400,8 @@ function TeacherSyncNotice() {
   const unsent = usePendingPushCount();
   const problems = useSyncProblems();
   const waiting = cloudEnabled && link.link === 'down' && unsent > 0;
+  // เบราว์เซอร์รับปากว่าจะไม่ลบข้อมูลของแอปเองไหม — เครื่องอาจารย์ที่เปิดผ่าน Safari เสี่ยงเท่าเครื่องนักศึกษา
+  const persist = useSyncExternalStore(onPersistState, persistState);
   if (!cloudEnabled || (!problems.length && !waiting)) return null;
   return (
     <section className="panel" style={{ padding: 0, overflow: 'hidden', maxWidth: 620, marginBottom: 16 }} aria-label={t('งานที่ยังไม่ถึงเซิร์ฟเวอร์')}>
@@ -408,6 +411,11 @@ function TeacherSyncNotice() {
           <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
             {t('งาน {n} รายการอยู่ในเครื่องนี้ครบ ระบบลองส่งให้เองเรื่อยๆ — ระหว่างนี้คนอื่นยังไม่เห็น', { n: unsent })}
           </span>
+          {persist !== 'persisted' && (
+            <span className="formrow__sub" style={{ color: 'var(--warning-dark)' }}>
+              {t('เครื่องนี้อาจลบข้อมูลของแอปเองถ้าไม่ได้เปิด 7 วัน — งาน {n} รายการนี้ยังไม่มีสำเนาที่อื่น', { n: unsent })}
+            </span>
+          )}
         </div>
       )}
       <SyncProblemsCard />

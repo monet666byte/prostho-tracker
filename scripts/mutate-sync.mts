@@ -77,7 +77,7 @@ const M: Mutant[] = [
   { id: 'M45', what: 'แถวที่ดึงกลับหลังลบไม่ผ่าน ถูกแช่แข็งเหมือนแถวที่ถูกกัก', find: "return !!q && q.kind !== 'delete';", replace: 'return !!q;' },
   { id: 'M46', what: 'หมดเวลาเข้าสู่ระบบถูกนับเป็นการปฏิเสธ (งานถูกกักพร้อม "JWT expired")', find: "  if (isAuthLost(err)) { setStatus({ link: 'auth' }); return false; }\n", replace: '' },
   { id: 'M47', what: 'ต่อเซิร์ฟเวอร์ไม่ได้แต่สถานะยังบอกว่าปกติ (จุดเขียวหลอก)', find: "else if (err && status.link !== 'auth') setStatus({ link: 'down' });", replace: ';' },
-  { id: 'M48', what: 'อายุของค้างส่งเริ่มนับใหม่ทุกครั้งที่คิวขยับ', find: '  if (n > 0 && status.pendingSince === null) setStatus({ pendingSince: Date.now() });', replace: '  if (n > 0) setStatus({ pendingSince: Date.now() });', layered: 'ยังไม่มีเทสต์ที่วัดอายุข้ามเวลา — แถบ "ค้างเกิน 1 วัน" หน้าแรกพึ่งค่านี้ ถ้าจะเข้มขึ้นให้เพิ่มเทสต์ที่ปลอมนาฬิกา' },
+  { id: 'M48', what: 'อายุของค้างส่งเริ่มนับใหม่ทุกครั้งที่คิวขยับ', find: '  if (n > 0 && status.pendingSince === null) setStatus({ pendingSince: Date.now() });', replace: '  if (n > 0) setStatus({ pendingSince: Date.now() });' },
   { id: 'M36', what: 'realtime ทับแถวที่ยังค้างส่ง', find: '      if (dirty.get(def.local)?.has(key) || pendingDeletes.get(def.local)?.has(key)) return;', replace: '' },
 ];
 

@@ -1,22 +1,17 @@
 import { useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { homeSyncNotice } from '../../domain/syncNotice';
 import { usePendingPushCount, useSyncStatus } from '../../hooks/data';
 import { onUpdateReady, updateReady } from '../../lib/appUpdate';
 import { cloudEnabled } from '../../lib/cloud';
 import { t } from '../../lib/i18n';
 import { signOutToReLogin } from '../../store/app';
 
-/** ของค้างส่งนานเท่านี้แล้วยังต่อเซิร์ฟเวอร์ไม่ได้ = ไม่ใช่ไวไฟสะดุดแล้ว ต้องให้เจ้าตัวรู้ */
-const STUCK_AFTER_MS = 24 * 60 * 60 * 1000;
-
 /**
  * แถบเตือนเหนือการ์ดเช็คอินหน้าแรก — **ครั้งละแถบเดียว และวันปกติไม่มีเลย**
  *
- * ขึ้นเฉพาะเรื่องที่ระบบแก้เองไม่ได้ ต้องให้นักศึกษาลงมือ (เรียงตามความเร่ง):
- *   ① หมดเวลาเข้าสู่ระบบ — งานส่งต่อไม่ได้จนกว่าจะล็อกอินใหม่
- *   ② ของค้างส่งเกิน 1 วันและยังต่อเซิร์ฟเวอร์ไม่ได้ — ไวไฟคลินิกหลุดสั้นๆ ไม่นับ (ขึ้นบ่อย = เลิกอ่าน)
- *   ③ มีแอปรุ่นใหม่
- * รายละเอียดทั้งหมดอยู่ในหน้าตั้งค่า — ตรงนี้แค่พาไป
+ * เรื่องไหนขึ้น/ไม่ขึ้น ตัดสินที่ `domain/syncNotice.ts` ที่เดียว (มีเทสต์) — ตรงนี้แค่วาด
+ * รายละเอียดทั้งหมดอยู่ในหน้าตั้งค่า แถบนี้แค่พาไป
  */
 export function SyncBanner() {
   const navigate = useNavigate();
@@ -24,7 +19,11 @@ export function SyncBanner() {
   const unsent = usePendingPushCount();
   const hasUpdate = useSyncExternalStore(onUpdateReady, updateReady);
 
-  if (cloudEnabled && link.link === 'auth') {
+  const notice = homeSyncNotice({
+    cloud: cloudEnabled, link: link.link, unsent, pendingSince: link.pendingSince, hasUpdate, now: Date.now(),
+  });
+
+  if (notice === 'auth') {
     return (
       <button className="homebanner homebanner--danger" onClick={async () => { await signOutToReLogin(); navigate('/login'); }}>
         <span className="homebanner__main">
@@ -35,9 +34,7 @@ export function SyncBanner() {
       </button>
     );
   }
-  const stuck = cloudEnabled && link.link === 'down' && unsent > 0
-    && link.pendingSince !== null && Date.now() - link.pendingSince >= STUCK_AFTER_MS;
-  if (stuck) {
+  if (notice === 'stuck') {
     return (
       <button className="homebanner homebanner--warn" onClick={() => navigate('/app/sync')}>
         <span className="homebanner__main">
@@ -48,7 +45,7 @@ export function SyncBanner() {
       </button>
     );
   }
-  if (hasUpdate) {
+  if (notice === 'update') {
     return (
       <button className="homebanner homebanner--info" onClick={() => window.location.reload()}>
         <span className="homebanner__main">

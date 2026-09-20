@@ -27,6 +27,7 @@ import {
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
 import { procList } from '../src/domain/rules.ts';
+import { homeSyncNotice, STUCK_AFTER_MS } from '../src/domain/syncNotice.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, Patient, Settings, WorkpieceView, WorkType } from '../src/domain/types.ts';
 
@@ -339,6 +340,30 @@ console.log('\nสวิตช์ "ใช้ชื่อผู้ป่วย" (
   const near = view('CD', 9, { patient: patient('pA', 'ผู้ป่วย A') });
   const line = cheerLine([near], [], S, NOW, false);
   ok('ข้อความหน้าแรกตอนปิดชื่อ ไม่เอ่ยชื่อผู้ป่วย', !line.includes('ผู้ป่วย A') && line.includes('HN'), line);
+}
+
+console.log('\nsyncNotice.ts — แถบเตือนหน้าแรกของนักศึกษา');
+{
+  const T0 = Date.UTC(2026, 8, 18, 2, 0, 0);
+  const HOUR = 3_600_000;
+  const base = { cloud: true, link: 'ok' as const, unsent: 0, pendingSince: null, hasUpdate: false, now: T0 };
+  ok('วันปกติ → ไม่มีแถบ', homeSyncNotice(base) === null);
+  ok('ไวไฟหลุด มีงานค้าง 5 นาที → ไม่ขึ้น (ขึ้นบ่อย = เลิกอ่าน)',
+    homeSyncNotice({ ...base, link: 'down', unsent: 2, pendingSince: T0 - 5 * 60_000 }) === null);
+  ok('ค้าง 23 ชม. ยังไม่ขึ้น', homeSyncNotice({ ...base, link: 'down', unsent: 2, pendingSince: T0 - 23 * HOUR }) === null);
+  ok('ค้างครบ 24 ชม. และยังต่อไม่ติด → ขึ้น', homeSyncNotice({ ...base, link: 'down', unsent: 2, pendingSince: T0 - STUCK_AFTER_MS }) === 'stuck');
+  ok('ค้างเกิน 1 วันแต่ตอนนี้ต่อเซิร์ฟเวอร์ได้แล้ว → ไม่ขึ้น (กำลังจะส่งเอง)',
+    homeSyncNotice({ ...base, link: 'ok', unsent: 2, pendingSince: T0 - 30 * HOUR }) === null);
+  ok('ต่อไม่ติดมาทั้งวันแต่ไม่มีงานค้าง → ไม่ขึ้น (ไม่มีอะไรเสี่ยงหาย)',
+    homeSyncNotice({ ...base, link: 'down', unsent: 0, pendingSince: null }) === null);
+  ok('หมดเวลาเข้าสู่ระบบ → ขึ้นทันที ไม่ต้องรอ', homeSyncNotice({ ...base, link: 'auth' }) === 'auth');
+  ok('หลายเรื่องพร้อมกัน → ขึ้นเรื่องเดียว และเป็นเรื่องที่เร่งที่สุด',
+    homeSyncNotice({ ...base, link: 'auth', unsent: 3, pendingSince: T0 - 48 * HOUR, hasUpdate: true }) === 'auth'
+    && homeSyncNotice({ ...base, link: 'down', unsent: 3, pendingSince: T0 - 48 * HOUR, hasUpdate: true }) === 'stuck');
+  ok('มีแอปรุ่นใหม่อย่างเดียว → ขึ้น', homeSyncNotice({ ...base, hasUpdate: true }) === 'update');
+  ok('โหมดไม่ต่อเซิร์ฟเวอร์ (เดโม) → ไม่มีแถบเรื่องเซิร์ฟเวอร์ แต่ยังบอกรุ่นใหม่ได้',
+    homeSyncNotice({ ...base, cloud: false, link: 'auth' }) === null
+    && homeSyncNotice({ ...base, cloud: false, hasUpdate: true }) === 'update');
 }
 
 console.log(bad ? `\n❌ ไม่ผ่าน ${bad} ข้อ` : '\n✅ ผ่านหมด');
