@@ -7,6 +7,7 @@ import { useApp } from '../../store/app';
 import { clock } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { ToastView } from '../ToastView';
+import { SandboxStrip } from '../SandboxStrip';
 import { DemoBar } from '../DemoBar';
 import { RoleFab } from '../RoleFab';
 
@@ -141,6 +142,7 @@ export function Shell({ children, footer, overlay }: { children: ReactNode; foot
       <DemoBar />
       <PhoneFrame rail>
         <StatusBar />
+        <SandboxStrip />
         <SideRail />
         <div className="screen" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}
@@ -161,6 +163,7 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
       {/* หน้าย่อย (รายละเอียดเคส ฯลฯ) มีแถบซ้ายด้วยบน iPad — ไม่งั้นเมนูหายๆ โผล่ๆ ทุกครั้งที่กดเข้าเคส */}
       <PhoneFrame rail>
         <StatusBar />
+        <SandboxStrip />
         <SideRail />
         <div className="screen screen--plain" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
         {footer}

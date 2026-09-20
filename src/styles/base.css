@@ -319,3 +319,22 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; line-height
   white-space: nowrap;
   border: 0;
 }
+
+/* ── แถบ "โหมดลองเล่น" (components/SandboxStrip) — ขึ้นเฉพาะเว็บที่ไม่ต่อเซิร์ฟเวอร์ ──
+   ค้างบนสุดทุกหน้า · สีกรมท่าเข้ม ไม่ชนกับสีสถานะใดในแอป · ความสูงเก็บใน --sbx-h ให้หัวเรื่องที่ตรึงไว้ขยับตาม */
+html.sandbox { --sbx-h: 32px; }
+.sbx {
+  position: sticky; top: 0; z-index: 70; flex: none; align-self: stretch;
+  display: flex; align-items: center; gap: 8px; min-height: var(--sbx-h);
+  padding: env(safe-area-inset-top, 0px) 14px 0; background: #1d2433; color: #fff; box-sizing: content-box;
+  font: 400 12.5px/1.3 var(--font-body);
+}
+.sbx b { font: 600 12.5px var(--font-head); }
+.sbx__t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deskwrap > .sbx { width: 100%; justify-content: center; border-radius: 10px; }
+.deskwrap > .sbx .sbx__t { flex: none; }
+/* บนมือถือจริง แถบนี้อยู่บนสุดแทนหัวเรื่อง จึงเป็นคนรับพื้นที่รอยบาก — หัวเรื่องไม่ต้องเผื่อซ้ำ (student.css เผื่อไว้ให้กรณีไม่มีแถบ) */
+@media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
+  html.sandbox .s-header { padding-top: 12px; }
+  html.sandbox .screen[data-scrolled='true'] .s-header { padding-top: 7px; }
+}

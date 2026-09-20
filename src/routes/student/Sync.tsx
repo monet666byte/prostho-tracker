@@ -9,6 +9,7 @@ import { usePendingPushCount, useQueue, useSyncStatus } from '../../hooks/data';
 import { relative } from '../../lib/date';
 import { lang, setLang, t } from '../../lib/i18n';
 import { cloudEnabled } from '../../lib/cloud';
+import { SANDBOX_URL } from '../../lib/links';
 import { onUpdateReady, updateReady } from '../../lib/appUpdate';
 import { applyTheme, currentTheme, THEMES } from '../../lib/theme';
 import { currentActor, signOutToReLogin, useApp } from '../../store/app';
@@ -244,6 +245,21 @@ export default function Sync() {
             </div>
           ))}
         </div>
+
+        {/* ทางเข้าโหมดลองเล่น — เฉพาะบนเว็บที่ต่อเซิร์ฟเวอร์จริง (ในเว็บลองเล่นเองมีแถบบนสุดบอกอยู่แล้ว) */}
+        {cloudEnabled && (
+          <>
+            <div className="homelabel">{t('ช่วยเหลือ')}</div>
+            <div className="card formcard">
+              <a className="formrow" href={SANDBOX_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <span className="formrow__main">
+                  <b style={{ color: 'var(--accent)' }}>{t('เปิดโหมดลองเล่น')} ↗</b>
+                  <span className="formrow__sub">{t('แอปชุดเดียวกันที่ใช้ข้อมูลสมมติ ลองกดได้ทุกปุ่ม สิ่งที่ทำในนั้นไม่ถูกบันทึกที่ไหน และไม่กระทบข้อมูลจริง')}</span>
+                </span>
+              </a>
+            </div>
+          </>
+        )}
 
         <div className="homelabel">{t('บัญชี')}</div>
         <div className="card formcard">

@@ -2,6 +2,7 @@ import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
+import { SandboxStrip } from '../SandboxStrip';
 import { RoleFab } from '../RoleFab';
 import { ToastView } from '../ToastView';
 import { useAllCheckIns, useAllStudents, useGroups, useTeacher } from '../../hooks/data';
@@ -149,6 +150,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
 
   return (
     <div className="deskwrap">
+      <SandboxStrip />
       <DemoBar />
       <div className="window">
         <aside className={`side${rail ? ' side--rail' : ''}`}>

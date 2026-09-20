@@ -22,6 +22,7 @@ import { currentActor, currentPdpaRole, useApp } from '../../store/app';
 import { onPdpaPolicy, pdpaPolicy, savePdpaPolicy, type PdpaPolicy, type PdpaRole } from '../../data/pdpaSync';
 import { onSettingsSyncState, settingsSyncState } from '../../data/settingsSync';
 import { cloudEnabled } from '../../lib/cloud';
+import { SANDBOX_URL } from '../../lib/links';
 import { onPersistState, persistState } from '../../lib/storagePersist';
 
 /* คำอธิบายเหลือเฉพาะข้อที่อ่านชื่อแล้วไม่รู้ */
@@ -120,6 +121,18 @@ export default function Settings() {
             <h1>{t('ตั้งค่า')}</h1>
             <p>{t('มีผลทั้งระบบทันที')}</p>
           </div>
+          {/* ทางเข้าโหมดลองเล่น — เฉพาะบนเว็บที่ต่อเซิร์ฟเวอร์จริง */}
+          {cloudEnabled && (
+            <a
+              className="textlink"
+              href={SANDBOX_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t('แอปชุดเดียวกันที่ใช้ข้อมูลสมมติ ลองกดได้ทุกปุ่ม สิ่งที่ทำในนั้นไม่ถูกบันทึกที่ไหน และไม่กระทบข้อมูลจริง')}
+            >
+              {t('เปิดโหมดลองเล่น')} ↗
+            </a>
+          )}
         </div>
 
         <TeacherSyncNotice />

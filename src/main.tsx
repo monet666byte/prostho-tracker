@@ -22,12 +22,15 @@ import { initTextSize } from './components/TextSize';
 import { initTheme } from './lib/theme';
 import { initInstall } from './lib/install';
 import { watchAppUpdate } from './lib/appUpdate';
+import { cloudEnabled } from './lib/cloud';
 
 initTextSize();
 initTheme();
 // ต้องดักก่อน React เริ่มวาด — เบราว์เซอร์ยิง beforeinstallprompt เร็วมาก ช้าไปคือหลุด
 initInstall();
 watchAppUpdate();
+// เว็บเดโม = โหมดลองเล่น: ให้ CSS รู้ เพื่อขยับหัวเรื่องที่ตรึงไว้ลงมาใต้แถบ (components/SandboxStrip)
+if (!cloudEnabled) document.documentElement.classList.add('sandbox');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
