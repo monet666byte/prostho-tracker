@@ -130,6 +130,13 @@ npm run restore -- --student=6604048 --yes   # กู้รายคน เต�
 ```
 
 โฟลเดอร์ `backups/` อยู่ใน `.gitignore` — มีข้อมูลผู้ป่วย ห้ามขึ้น GitHub · เก็บไว้ในที่ที่ภาคเข้าถึงได้ ไม่ใช่เครื่องคนเดียว
+
+**สำรองอัตโนมัติบน Mac ของคนดูแล (ตั้งแล้วบนเครื่องเจ้าของ 22 ก.ย. 2569)** — ทุกวันจันทร์ 08:00 (เครื่องปิดอยู่ = รันตอนเปิดครั้งถัดไป)
+- ไฟล์ตั้งเวลา: `~/Library/LaunchAgents/th.ac.mahidol.prostho-tracker.backup.plist`
+- สคริปต์: `~/Library/Application Support/prostho-tracker/backup-weekly.command` → เปิดหน้าต่าง Terminal แล้วรัน `npm run backup` (ต้องผ่าน Terminal
+  เพราะ macOS ไม่ให้งานเบื้องหลังอ่านโฟลเดอร์ Desktop) · ผลต่อท้ายใน `backups/logs/backup.log`
+- ย้ายเครื่อง: ก๊อปสองไฟล์นี้ไปที่เดียวกันบนเครื่องใหม่ แก้ path โปรเจกต์ใน `.command` แล้ว `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/th.ac.mahidol.prostho-tracker.backup.plist`
+- ยกเลิก: `launchctl bootout gui/$(id -u)/th.ac.mahidol.prostho-tracker.backup` แล้วลบไฟล์ plist
 กฎที่ห้ามลืม 6 ข้อ (ห้ามกู้ด้วย service key ฯลฯ) อยู่ใน `CLAUDE.md` หัวข้อ "ข้อมูลหาย" และหัวไฟล์ `scripts/restore.ts`
 
 ## 7. ปล่อยรุ่น (release)
