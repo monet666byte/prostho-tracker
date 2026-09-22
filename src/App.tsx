@@ -16,8 +16,36 @@ const loadStudent = () => import('./routes/student');
 const loadTeacher = () => import('./routes/teacher');
 const loadPrint = () => import('./routes/print');
 
+/**
+ * ก้อนโค้ดของหน้าโหลดไม่ขึ้น ("Importing a module script failed" / ChunkLoadError)
+ * เกิดตอนเว็บเพิ่ง deploy รุ่นใหม่: แท็บที่เปิดค้างยังถือ index รุ่นเก่า ซึ่งชี้ไปไฟล์ .js ที่ไม่มีแล้ว
+ * ไม่ใช่ข้อมูลในเครื่องพัง — โหลดหน้าใหม่ครั้งเดียวก็หาย จึงทำให้เอง ไม่ปล่อยไปถึงหน้า "แอปพัง"
+ * (ซึ่งมีปุ่มล้างข้อมูลในเครื่อง — ผู้ใช้กดผิดแล้วงานที่ยังไม่ขึ้นเซิร์ฟเวอร์หาย)
+ * กันวนไม่รู้จบ: โหลดใหม่ให้ครั้งเดียวต่อรุ่น ถ้ายังพังซ้ำค่อยปล่อยให้เห็นหน้าพัง
+ */
+const RELOAD_KEY = 'pt-chunk-reloaded';
+function isStaleChunkError(e: unknown): boolean {
+  const msg = String((e as { message?: string })?.message ?? e);
+  return /importing a module script failed|failed to fetch dynamically imported module|ChunkLoadError|Loading chunk/i.test(msg);
+}
 function page<M, K extends keyof M>(load: () => Promise<M>, key: K) {
-  return lazy(() => load().then((m) => ({ default: m[key] as React.ComponentType })));
+  return lazy(() => load().then((m) => {
+    try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* private mode */ }
+    return { default: m[key] as React.ComponentType };
+  }).catch((e) => {
+    if (isStaleChunkError(e)) {
+      let already = false;
+      try {
+        already = sessionStorage.getItem(RELOAD_KEY) === '1';
+        if (!already) sessionStorage.setItem(RELOAD_KEY, '1');
+      } catch { /* private mode */ }
+      if (!already) {
+        window.location.reload();
+        return new Promise<never>(() => { /* รอหน้าโหลดใหม่ */ });
+      }
+    }
+    throw e;
+  }));
 }
 
 const Home = page(loadStudent, 'Home');
