@@ -59,6 +59,11 @@
   --bezel: #14161c;
   --toast-bg: #101828;
 
+  /* แผง "งานถัดไป" บนหน้าแรก นศ. — น้ำเงินหม่น ตัวขาวบนพื้นนี้ ≈ 7.5:1
+     panel-hi = ตัวเลข "/ 10" กับหมุดตำแหน่งปัจจุบันบนพื้นแผง */
+  --panel: #34509c;
+  --panel-hi: #c3d2ff;
+
   /* type */
   --font-head: 'Anuphan', 'Noto Sans Thai', system-ui, sans-serif;
   --font-body: 'Noto Sans Thai', 'Anuphan', system-ui, sans-serif;
@@ -97,6 +102,8 @@ html.theme-plum {
   --bg-subtle: #fbfafd;
   --shadow-accent: 0 6px 18px rgba(109, 63, 212, 0.26);
   --toast-bg: #221540;
+  --panel: #4e3a86;
+  --panel-hi: #d6c6ff;
 }
 
 /* เทาหมึก: มินิมอล เป็นกลาง เหมือนเอกสาร */
@@ -112,6 +119,8 @@ html.theme-ink {
   --bg-subtle: #fafafb;
   --shadow-accent: 0 6px 18px rgba(70, 83, 110, 0.24);
   --toast-bg: #1a212c;
+  --panel: #3e4a60;
+  --panel-hi: #c9d3e2;
 }
 
 /* สีประจำประเภทงาน — ต้องตรงกับ TYPES ใน src/domain/catalog.ts */

@@ -1,5 +1,5 @@
-import { Bell, CaretRight, Check, CheckCircle, CheckSquare, HandTap, MagnifyingGlass, Medal, Square } from '@phosphor-icons/react';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
@@ -9,14 +9,14 @@ import { Shell } from '../../components/student/Shell';
 import { SyncBanner } from '../../components/student/SyncBanner';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
-import { daysUntil, relative, toISODate, weekMonday } from '../../lib/date';
+import { daysUntil, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
 import { typeMeta } from '../../domain/catalog';
-import type { WorkpieceView } from '../../domain/types';
+import type { Settings, WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
-import { caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procAt, procLabel, progression, isActiveWork, stepsPassed } from '../../domain/rules';
+import { activeStepGroup, caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { NO_PATIENT_ACTIVITY } from '../../domain/checkin';
@@ -31,25 +31,34 @@ import { studentYear } from '../../domain/cohort';
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน
 const SHOW_ACHIEVEMENT_CARD = false;
 
-/** วงแหวนความคืบหน้ารวมของเคส — ผู้ใช้ขอคืนมาคู่กับเส้นทางด่าน เลยย่อไซซ์ลงไปอยู่มุมหัวการ์ด */
-function Ring({ value, max }: { value: number; max: number }) {
-  const R = 22;
+/** วงแหวนขั้นย่อยที่เสร็จใน step ที่กำลังทำ — ตัวเลขวางซ้อนเป็น HTML ไม่ใส่ใน <text> ของ svg ให้ฟอนต์ตรงกับทั้งหน้า */
+function SubRing({ done, total }: { done: number; total: number }) {
+  const R = 24;
   const C = 2 * Math.PI * R;
-  const f = Math.max(0, Math.min(1, value / max));
   return (
-    <svg width="56" height="56" viewBox="0 0 56 56" style={{ flex: 'none' }} aria-hidden>
-      <circle cx="28" cy="28" r={R} fill="none" stroke="var(--accent-ring)" strokeWidth="6" />
-      <circle
-        cx="28" cy="28" r={R} fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinecap="round"
-        strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 28 28)"
-      />
-      <text x="28" y="27" textAnchor="middle" style={{ font: '700 15px var(--font-head)', fill: 'var(--text)' }}>{value}</text>
-      <text x="28" y="38.5" textAnchor="middle" style={{ font: '400 9px var(--font-mono)', fill: 'var(--text-faint)' }}>/ {max}</text>
-    </svg>
+    <span className="hp__ring">
+      <span className="hp__ringbox">
+        <svg width="58" height="58" viewBox="0 0 60 60" aria-hidden>
+          <circle cx="30" cy="30" r={R} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="6" />
+          <circle
+            cx="30" cy="30" r={R} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${(C * done) / Math.max(1, total)} ${C}`} transform="rotate(-90 30 30)"
+            style={{ transition: 'stroke-dasharray .45s cubic-bezier(.2,.8,.2,1)' }}
+          />
+        </svg>
+        <span className="hp__ringnum">{done}/{total}</span>
+      </span>
+      <span className="hp__ringcap">{t('ขั้นย่อยที่เสร็จ')}</span>
+    </span>
   );
 }
 
-function HeroCard({
+/**
+ * แผง "งานถัดไป" หนึ่งเคส (หนึ่งหน้าในแผงที่ปัดได้)
+ * เส้น step มีหมุดแค่สามตัว: เริ่ม · ตอนนี้ · ปิดเคส — แตะหมุดหัว/ท้ายเพื่อดูว่าขั้นนั้นคืออะไร
+ * ส่วนกลาง: "กำลังทำ" + ชื่อขั้น + วงแหวนขั้นย่อย · แถบกางรายการขั้นย่อยทั้ง step · ปุ่มบอกชื่องานที่จะบันทึก
+ */
+function PanelSlide({
   w, pending, stale, onPass,
 }: {
   w: WorkpieceView;
@@ -58,89 +67,251 @@ function HeroCard({
   onPass: () => void;
 }) {
   const namesOn = usePatientNamesOn();
-  const cur = currentProc(w);
+  const [peek, setPeek] = useState<'start' | 'end' | null>(null);
+  const [open, setOpen] = useState(false);
   const next = nextProc(w);
-  const prog = Math.max(progression(w), 0);
   const max = maxProgression(w);
-  // เส้นทางด่านหน้าต่างแคบ "หน้า 1 หลัง 1":
-  // ขั้นล่าสุดที่เสร็จ = cur อยู่แล้ว · ขั้นถัดจากปัจจุบันดึงตรงๆ ข้ามขอบกลุ่มได้เลย
-  const upcoming = next ? procAt(w, w.procIndex + 2) : undefined;
+  const groups = stepGroups(w);
+  const active = activeStepGroup(w);
+  const startG = groups[0];
+  const endG = groups[groups.length - 1];
+  const nowProg = active ? active.progression : Math.max(progression(w), 0);
+  const at = (prog: number) => `${(prog / Math.max(1, max)) * 100}%`;
+  // หมุดหัว/ท้ายอยู่ชิดหมุด "ตอนนี้" เกินไป ป้ายจะทับกัน → ซ่อนแค่ป้าย หมุดยังแตะได้
+  const tight = (prog: number) => Math.abs(prog - nowProg) / Math.max(1, max) < 0.2;
+  const where = w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : '';
+  // ชื่อสั้นบนปุ่ม: "Anterior teeth : Try in" → "Try in" · ยาวเกินก็ใช้ข้อความกลาง
+  const short = next ? (next.name.includes(':') ? next.name.split(':').pop()!.trim() : next.name) : '';
+  const btnLabel = short && short.length <= 22 ? t('บันทึก {name} เสร็จ', { name: short }) : t('ทำขั้นนี้เสร็จแล้ว');
+
   return (
-    <article className={`herocase t-${w.type}`}>
-      {/* บรรทัดเทาบรรทัดเดียวแทนชิป · HN กึ่งหนาตัวอ้วน อ่านเจอเร็วแต่ไม่แย่งชื่อผู้ป่วย */}
-      <div className="herocase__top">
-        <span className="dot" style={{ background: typeMeta(w.type).color }} />
-        <span className="herocase__line">
-          {typeMeta(w.type).short}{w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''} · {namesOn
-            ? <b className="herocase__hn">HN {w.patient.hn}</b>
-            /* ไม่ใช้ชื่อ (นำร่อง) = HN ขึ้นเป็นหัวเรื่องแล้ว บรรทัดนี้บอกเพศ/อายุแทน ช่วยแยกคนไข้ */
-            : tSexAge(w.patient.sexAge)}
+    <div className={`hp__slide t-${w.type}`}>
+      <div className="hp__top">
+        <span className="hp__who">
+          <b>{patientTitle(w.patient, namesOn, t)}</b> · {typeMeta(w.type).short}{where}
+          {/* ไม่ใช้ชื่อ (นำร่อง) = HN เป็นหัวเรื่อง · เพศ/อายุช่วยแยกคนไข้ที่ HN คล้ายกัน */}
+          {!namesOn && w.patient.sexAge ? ` · ${tSexAge(w.patient.sexAge)}` : ''}
         </span>
-        <span className="herocase__meta">{relative(w.lastUpdatedAt)}</span>
+        <Link to={`/app/work/${w.id}`} className="hp__open" aria-label={t('เปิดรายละเอียดเคส')}>
+          <CaretRight size={20} weight="bold" />
+        </Link>
+      </div>
+      <div className="hp__step">
+        Step {nowProg} <span className="hp__of">/ {max}</span>
       </div>
       {(pending || stale) && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
           {pending && <PendingBadge />}
           {stale && <StaleBadge days={daysSinceUpdate(w)} />}
         </div>
       )}
 
-      {/* โซนหัว "เคสไหน": ชื่อคนไข้เป็นหัวเรื่อง + บรรทัดรอง ชิดซ้าย · วงแหวนรวมทั้งเคสชิดขวา
-          เดิมซ้ายมีบรรทัด mono จางบรรทัดเดียว สูงไม่ถึงครึ่งวงแหวน เลยเหลือช่องโหวงข้างวงแหวน
-          บรรทัดรองทำสองหน้าที่: บอก HN และกำกับว่าเลขในวงแหวนคือ "ขั้นที่ n จาก m" ไม่ใช่คะแนน
-          (จึงไม่ต้องมีป้าย steps ใต้วงแหวนอีก) */}
-      <div className="herocase__lead">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* ป้ายประเภทงาน (CD/APD) กับ Upper/Lower อยู่บนชิปด้านบนแล้ว ไม่ต้องซ้ำในบรรทัดนี้ */}
-          <Link to={`/app/work/${w.id}`} className="herocase__name">{patientTitle(w.patient, namesOn, t)}</Link>
-        </div>
-        {next && <Ring value={prog} max={max} />}
+      <div className="hp__track">
+        <span className="hp__rail" />
+        <span className="hp__fill" style={{ width: `${stepFraction(w) * 100}%` }} />
+        {startG && startG.progression !== nowProg && (
+          <button
+            className={`hp__node hp__node--done${peek === 'start' ? ' is-sel' : ''}${tight(startG.progression) ? ' is-tight' : ''}`}
+            style={{ left: at(startG.progression) }}
+            onClick={() => setPeek(peek === 'start' ? null : 'start')}
+            aria-label={t('ดู step {n}', { n: startG.progression })}
+          >
+            <span className="hp__dot" /><span className="hp__lbl">{t('เริ่ม')}</span>
+          </button>
+        )}
+        <button
+          className={`hp__node hp__node--now${peek === null ? ' is-sel' : ''}`}
+          style={{ left: at(nowProg) }}
+          onClick={() => setPeek(null)}
+          aria-label={t('ดู step ที่กำลังทำ')}
+        >
+          <span className="hp__dot" /><span className="hp__lbl">{t('ตอนนี้')}</span>
+        </button>
+        {endG && endG.progression !== nowProg && (
+          <button
+            className={`hp__node hp__node--todo${peek === 'end' ? ' is-sel' : ''}${tight(endG.progression) ? ' is-tight' : ''}`}
+            style={{ left: at(endG.progression) }}
+            onClick={() => setPeek(peek === 'end' ? null : 'end')}
+            aria-label={t('ดู step {n}', { n: endG.progression })}
+          >
+            <span className="hp__dot" /><span className="hp__lbl">{t('ปิดเคส')}</span>
+          </button>
+        )}
       </div>
 
-      {next ? (
-        <>
-          {/* เส้นคั่นแบ่งโซน "เคสไหน" ออกจากโซน "ต้องทำอะไรต่อ" — ไม่งั้นทุกแถวลอยกองรวมกัน */}
-          {/* เส้นทางวิ่งต่อเนื่องไม่มีปุ่มคั่น — ปุ่มเดียวรออยู่ท้ายการ์ด */}
-          <div className="heropath">
-            {cur && (
-              <div className="heropath__row">
-                <span className="heropath__node heropath__node--done"><Check size={12} weight="bold" /></span>
-                <span className="heropath__name heropath__name--done">{cur.name}</span>
-              </div>
-            )}
-            <div className="heropath__row heropath__row--now">
-              <span className="heropath__node heropath__node--now">{next.progression}</span>
-              {/* กดชื่อขั้นเพื่อเปิดหน้าขั้นตอนเต็ม */}
-              <Link to={`/app/work/${w.id}`} className="heropath__name heropath__name--now">
-                {next.name}
-              </Link>
-            </div>
-            {upcoming && (
-              <div className="heropath__row">
-                <span className="heropath__node heropath__node--todo"></span>
-                <span className="heropath__name">{upcoming.name}</span>
-                {upcoming.selfPerformed && <SelfBadge compact />}
-              </div>
-            )}
+      {peek === 'start' && startG && (
+        <div className="hp__info">
+          <div className="hp__kicker">Step {startG.progression} · {t('ผ่านแล้ว')} ✓</div>
+          <div className="hp__name">{startG.procs.map((p) => p.name).join(' · ')}</div>
+          <button className="hp__ghost" onClick={() => setPeek(null)}>{t('กลับไป step ปัจจุบัน')}</button>
+        </div>
+      )}
+      {peek === 'end' && endG && (
+        <div className="hp__info">
+          <div className="hp__kicker">Step {endG.progression} · {t('ยังไม่ถึง')}</div>
+          <div className="hp__name">{endG.procs.map((p) => p.name).join(' · ')}</div>
+          <div className="hp__lock">
+            <Lock size={15} weight="bold" />
+            {t('อีก {n} step จะถึงขั้นนี้', { n: endG.progression - nowProg })}
           </div>
-          <button className="herocase__btn" onClick={onPass}>
-            <CheckCircle size={19} weight="fill" />
-            {t('ทำขั้นนี้เสร็จแล้ว')}
-          </button>
-        </>
+        </div>
+      )}
+      {peek === null && (next && active ? (
+        <div className="hp__info">
+          <div className="hp__now">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="hp__kicker hp__kicker--hi">{t('กำลังทำ')}</div>
+              <Link to={`/app/work/${w.id}`} className="hp__name">{next.name}</Link>
+            </div>
+            {active.procs.length > 1 && <SubRing done={active.done} total={active.procs.length} />}
+          </div>
+          {next.selfPerformed && (
+            <div className="hp__self">
+              <HandTap size={15} weight="fill" />
+              {t('step นี้ต้องทำเอง (self-performed)')}
+            </div>
+          )}
+          {active.procs.length > 1 && (
+            <>
+              <button className="hp__expand" onClick={() => setOpen(!open)} aria-expanded={open}>
+                <span style={{ flex: 1 }}>
+                  {t('ขั้นย่อยทั้งหมดใน step {n}', { n: active.progression })}
+                  <span className="hp__muted"> · {t('{n} ขั้น', { n: active.procs.length })}</span>
+                </span>
+                <CaretRight size={16} weight="bold" className="hp__chev" data-open={open} />
+              </button>
+              <div className="hp__subs" data-open={open}>
+                <div>
+                  <ol className="hp__sublist">
+                    {active.procs.map((p, k) => {
+                      const state = p.index <= w.procIndex ? 'done' : p.index === next.index ? 'now' : 'todo';
+                      return (
+                        <li key={p.index} className={`hp__sub hp__sub--${state}`}>
+                          <span className="hp__subnum">{state === 'done' ? <Check size={12} weight="bold" /> : k + 1}</span>
+                          <span className="hp__subname">{p.name}</span>
+                          {p.selfPerformed && <SelfBadge compact />}
+                          {state === 'now' && <span className="hp__subtag">{t('กำลังทำ')}</span>}
+                          {state === 'todo' && p.index === next.index + 1 && <span className="hp__subtag">{t('ถัดไป')}</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+            </>
+          )}
+          <button className="hp__btn" onClick={onPass}>{btnLabel}</button>
+        </div>
       ) : (
-        <div style={{ marginTop: 12 }}>
-          <div className="herocase__caption">{t('สถานะ')}</div>
-          <div className="herocase__step">{cur ? procLabel(w.type, cur) : t('ยังไม่เริ่ม')}</div>
+        <div className="hp__info">
+          <div className="hp__kicker">{t('สถานะ')}</div>
+          <div className="hp__name">{currentProc(w) ? procLabel(w.type, currentProc(w)!) : t('ยังไม่เริ่ม')}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** แผงงานถัดไปแบบปัดซ้าย-ขวาเปลี่ยนเคส (จุดใต้แผงกดได้) */
+function CasePanel({
+  cases, index, onIndex, pending, settings, onPass,
+}: {
+  cases: WorkpieceView[];
+  index: number;
+  onIndex: (i: number) => void;
+  pending: Set<string>;
+  settings: Settings;
+  onPass: (id: string) => void;
+}) {
+  const [dx, setDx] = useState(0);
+  const drag = useRef<{ x: number; y: number; moved: boolean; horizontal: boolean | null } | null>(null);
+  const last = cases.length - 1;
+  // แผงสูงเท่าเคสที่โชว์อยู่ — ไม่งั้นเคสสั้นเหลือที่ว่างเท่าเคสที่สูงที่สุด (กางรายการขั้นย่อยแล้วสูงขึ้นตาม)
+  const pages = useRef<(HTMLDivElement | null)[]>([]);
+  const [height, setHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const el = pages.current[index];
+    if (!el) return;
+    const fit = () => setHeight(el.offsetHeight);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [index, cases.length]);
+
+  function down(e: React.PointerEvent) {
+    drag.current = { x: e.clientX, y: e.clientY, moved: false, horizontal: null };
+  }
+  function move(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    const mx = e.clientX - d.x;
+    const my = e.clientY - d.y;
+    if (d.horizontal === null && Math.abs(mx) + Math.abs(my) > 8) d.horizontal = Math.abs(mx) > Math.abs(my);
+    if (!d.horizontal) return;
+    d.moved = true;
+    // ขอบซ้ายสุด/ขวาสุดลากได้หนืดๆ ให้รู้ว่าสุดแล้ว
+    setDx((index === 0 && mx > 0) || (index === last && mx < 0) ? mx / 3 : mx);
+  }
+  function up() {
+    const d = drag.current;
+    if (d?.moved) {
+      if (dx < -50 && index < last) onIndex(index + 1);
+      else if (dx > 50 && index > 0) onIndex(index - 1);
+    }
+    setDx(0);
+    // ปล่อยนิ้วหลังลาก = ห้ามนับเป็นการแตะลิงก์/ปุ่มในแผง (onClickCapture ด้านล่างอ่านค่านี้)
+    setTimeout(() => { drag.current = null; }, 0);
+  }
+
+  return (
+    <section className="hp" aria-roledescription="carousel" aria-label={t('งานถัดไป')}>
+      <div
+        className="hp__viewport"
+        style={{ height }}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        onPointerLeave={() => drag.current && up()}
+        onClickCapture={(e) => { if (drag.current?.moved) { e.preventDefault(); e.stopPropagation(); } }}
+        // ตาข่ายสำหรับเบราว์เซอร์ที่ไม่รู้จัก overflow: clip — โฟกัสปุ่มในแผงห้ามเลื่อนแผงเอง
+        onScroll={(e) => { e.currentTarget.scrollLeft = 0; }}
+      >
+        <div
+          className="hp__row"
+          style={{
+            transform: `translateX(calc(${-index * 100}% + ${dx}px))`,
+            transition: dx ? 'none' : undefined,
+          }}
+        >
+          {cases.map((w, i) => (
+            <div
+              key={w.id} ref={(el) => { pages.current[i] = el; }}
+              className="hp__page" aria-hidden={i !== index} inert={i !== index ? true : undefined}
+            >
+              <PanelSlide w={w} pending={pending.has(w.id)} stale={isStale(w, settings)} onPass={() => onPass(w.id)} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {cases.length > 1 && (
+        <div className="hp__dots">
+          {cases.map((w, i) => (
+            <button
+              key={w.id}
+              className="hp__pager"
+              data-on={i === index}
+              onClick={() => onIndex(i)}
+              aria-label={t('ดูเคสที่ {n} จาก {m}', { n: i + 1, m: cases.length })}
+              aria-current={i === index}
+            >
+              <span />
+            </button>
+          ))}
         </div>
       )}
-      {next?.selfPerformed && (
-        <div className="selfrow">
-          <HandTap size={15} weight="fill" />
-          {t('step นี้ต้องทำเอง (self-performed)')}
-        </div>
-      )}
-    </article>
+    </section>
   );
 }
 
@@ -192,9 +363,11 @@ export default function Home() {
 
   const active = works.filter(isActiveWork);
   const recent = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt));
-  // การ์ดเต็มเฉพาะเคสที่แตะล่าสุด — ที่เหลือเป็นแถวย่อ กดชื่อเข้าไปดูเต็ม กดปุ่มขวาเพื่อผ่าน step ได้เลย
-  const hero = recent[0];
-  const rest = recent.slice(1, 5);
+  // แผงงานถัดไปปัดดูได้ทีละเคส (5 เคสล่าสุด) · เคสที่ไม่ได้อยู่บนแผงตอนนี้เป็นแถวย่อด้านล่าง กดปุ่มขวาผ่าน step ได้เลย
+  const panelCases = recent.slice(0, 5);
+  const [slideAt, setSlideAt] = useState(0);
+  const slide = Math.min(slideAt, Math.max(0, panelCases.length - 1));
+  const rest = panelCases.filter((_, i) => i !== slide);
   const totals = caseCountTotals(works, settings);
   const checkins = useCheckIns(session?.studentId);
   const today = toISODate(new Date());
@@ -317,18 +490,12 @@ export default function Home() {
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* หน้าแรกแบบ "ตัดของซ้ำ": ชิปกลุ่ม + ป้าย BETA ข้างชื่อ → กลุ่มอยู่ในบรรทัดทักทาย */}
-          <div style={{ font: '400 12px var(--font-body)', color: 'var(--text-faint)' }}>
-            {greeting()}{student?.group ? ` · ${groupShort(student.group)}` : ''}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-            {/* ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — หน้านี้เอาแค่ "นศ. <ชื่อต้น>"
-                ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
-            {/* หัวเรื่องของหน้าแรก = ชื่อเจ้าของหน้า · ต้องเป็น h1 หนึ่งตัวต่อหน้า (WCAG 1.3.1) */}
-            <h1 style={{ margin: 0, font: '700 19px var(--font-head)' }}>
-              {t('นศ.')} {firstNameOnly(personName(student, 'นักศึกษา'))}
-            </h1>
-          </div>
+          {/* หัวเรื่องของหน้าแรก = คำทักทาย + ชื่อต้น ตัวใหญ่บรรทัดเดียว · ต้องเป็น h1 หนึ่งตัวต่อหน้า (WCAG 1.3.1)
+              ชื่อจริงเต็มยาวจนขึ้นสองบรรทัด — ชื่อเต็มยังอยู่ครบทุกที่ฝั่งอาจารย์และหน้าอื่น */}
+          <h1 className="homehello">
+            {greeting()}, {firstNameOnly(personName(student, 'นักศึกษา'))}
+          </h1>
+          {student?.group && <div className="homehello__group">{groupShort(student.group)}</div>}
         </div>
         <Link to="/app/search" className="iconbtn iconbtn--plain" aria-label={t('ค้นหา')}>
           <MagnifyingGlass size={18} />
@@ -350,44 +517,67 @@ export default function Home() {
         const inner = (
           <>
             {checkedInToday ? (
-              <CheckSquare size={26} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
+              <span className="homecheck__ok"><Check size={13} weight="bold" /></span>
             ) : (
-              <Square size={24} weight="bold" color="var(--accent)" style={{ flex: 'none' }} />
+              <MapPin size={21} color="var(--text-secondary)" style={{ flex: 'none' }} />
             )}
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', font: '600 14px/1.4 var(--font-head)' }}>
+              <span className="homecheck__title">
                 {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
               </span>
               {checkedInToday && (
-                <span style={{ display: 'block', font: '400 11.5px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>
+                <span className="homecheck__sub">
                   {(todayCheckIn?.activities.length ?? 0) > 0
                     ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
                     : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })}
                 </span>
               )}
-              {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก ผู้ใช้ทัก 555) */}
+              {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก) */}
               {checkedInToday && (
-                <span style={{ display: 'block', font: '500 10.5px/1.5 var(--font-body)', color: 'var(--accent-hover)', marginTop: 3 }}>
-                  {cheerLine(works, checkins, settings, undefined, namesOn)}
-                </span>
+                <span className="homecheck__cheer">{cheerLine(works, checkins, settings, undefined, namesOn)}</span>
               )}
             </span>
             {checkedInToday
               ? <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
-              : <span className="homecheckin__go">{t('เช็คอิน')}</span>}
+              : <span className="homecheck__go">{t('เช็คอิน')}</span>}
           </>
         );
-        const cardStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 11, padding: '11px 12px 11px 14px', borderRadius: 16, width: '100%', textAlign: 'left' };
         // ยังไม่เช็คอิน = แตะเดียวเช็คอินทันที · เช็คอินแล้ว = พาไปหน้าคาบ (เติมกิจกรรม/ดูประวัติ)
         return checkedInToday ? (
-          <Link to="/app/checkin" className="card" style={cardStyle}>{inner}</Link>
+          <Link to="/app/checkin" className="homecheck">{inner}</Link>
         ) : (
-          <button className="card" style={cardStyle} onClick={quickCheckIn}>{inner}</button>
+          <button className="homecheck" onClick={quickCheckIn}>{inner}</button>
         );
       })()}
 
-      {hero && <div className="homelabel">{t('งานถัดไป')}</div>}
-      {hero && <HeroCard w={hero} pending={pending.has(hero.id)} stale={isStale(hero, settings)} onPass={() => openSheet(hero.id)} />}
+      {/* ทางลัด 4 วง — แบบประเมินตนเองโผล่เฉพาะช่วงที่ภาคเปิด (เหมือนแถวในกล่อง "ของฉัน") */}
+      <nav className="homeqa" aria-label={t('ทางลัด')}>
+        <Link to="/app/new" className="homeqa__item">
+          <span className="homeqa__ic"><Plus size={24} /></span>{t('เพิ่มชิ้นงาน')}
+        </Link>
+        <Link to="/app/photos" className="homeqa__item">
+          <span className="homeqa__ic"><Camera size={24} /></span>{t('คลังรูปงาน')}
+        </Link>
+        <Link to="/app/portfolio" className="homeqa__item">
+          <span className="homeqa__ic"><BookOpen size={24} /></span>{t('สมุดของฉัน')}
+        </Link>
+        {(saOpen || saDone) && (
+          <Link to="/app/self-assessment" className="homeqa__item">
+            <span className="homeqa__ic">
+              <PencilSimple size={24} />
+              {saNew && <span className="homeqa__new" aria-label={t('ใหม่')} />}
+            </span>
+            {t('ประเมินตนเอง')}
+          </Link>
+        )}
+      </nav>
+
+      {panelCases.length > 0 && (
+        <CasePanel
+          cases={panelCases} index={slide} onIndex={setSlideAt}
+          pending={pending} settings={settings} onPass={(id) => openSheet(id)}
+        />
+      )}
 
       {rest.map((w) => {
         const next = nextProc(w);
@@ -430,7 +620,7 @@ export default function Home() {
           <span style={statLabel}>{t('ชิ้นงานที่กำลังทำ')}</span>
         </button>
         <button className="card" style={statBox} onClick={() => navigate('/app/criteria')}>
-          <span style={{ ...statNum, color: totals.allComplete ? 'var(--success)' : 'var(--accent)' }}>
+          <span style={{ ...statNum, color: totals.allComplete ? 'var(--success)' : 'var(--panel)' }}>
             {totals.done}/{totals.required}
           </span>
           <span style={statLabel}>{t('เกณฑ์สะสม 2 ปี')}</span>
@@ -525,5 +715,5 @@ export default function Home() {
 const statBox: React.CSSProperties = {
   flex: 1, padding: '13px 14px', display: 'grid', gap: 3, textAlign: 'left', borderRadius: 14,
 };
-const statNum: React.CSSProperties = { font: '700 22px var(--font-head)', color: 'var(--accent)' };
+const statNum: React.CSSProperties = { font: '700 22px var(--font-head)', color: 'var(--panel)' };
 const statLabel: React.CSSProperties = { font: '400 11px var(--font-body)', color: 'var(--text-muted)' };

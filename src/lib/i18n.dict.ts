@@ -3,6 +3,22 @@
  * คีย์ = ข้อความไทยเป๊ะๆ ตามที่เขียนในโค้ด (มีตัวแปรใช้ {ชื่อ})
  */
 export const DICT: Record<string, string> = {
+  // ── หน้าแรก นศ.: แผงงานถัดไปแบบปัดได้ + ทางลัด ──
+  'ทางลัด': 'Shortcuts',
+  'เพิ่มชิ้นงาน': 'Add case',
+  'เปิดรายละเอียดเคส': 'Open case details',
+  'เริ่ม': 'Start',
+  'ตอนนี้': 'Now',
+  'ดู step {n}': 'View step {n}',
+  'ดู step ที่กำลังทำ': 'View the current step',
+  'กลับไป step ปัจจุบัน': 'Back to the current step',
+  'ยังไม่ถึง': 'Not reached yet',
+  'อีก {n} step จะถึงขั้นนี้': '{n} more step(s) to reach this',
+  'ขั้นย่อยที่เสร็จ': 'sub-steps done',
+  'ขั้นย่อยทั้งหมดใน step {n}': 'All sub-steps in step {n}',
+  '{n} ขั้น': '{n} steps',
+  'บันทึก {name} เสร็จ': 'Mark {name} done',
+  'ดูเคสที่ {n} จาก {m}': 'Show case {n} of {m}',
   // ── ฟอร์มเปิดชิ้นงาน: บอกว่าขาดช่องไหน ──
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล ──

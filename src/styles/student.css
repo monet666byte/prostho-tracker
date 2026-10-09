@@ -981,3 +981,141 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .sadone { display: flex; align-items: center; gap: 10px; margin: 6px 4px 0; font: 600 13.5px var(--font-head); color: var(--success-dark); }
 .sadone small { display: block; font: 400 12px var(--font-body); color: var(--text-faint); }
 .sascore { font: 600 13.5px var(--font-head); color: var(--text); white-space: nowrap; flex: none; max-width: 45%; text-align: right; white-space: normal; }
+
+/* ══ หน้าแรก นศ. แบบแผงงานถัดไป (โครงแบบแอปร้านกาแฟ ปรับเข้ากับแอปเรา) ══
+   ผู้ใช้เคาะจาก mock: แผงน้ำเงินหม่น (--panel) เต็มความกว้าง · ปัดซ้าย-ขวาเปลี่ยนเคส · เส้น step หมุดสามตัว
+   วงแหวนขั้นย่อย + แถบกางรายการขั้นย่อย · วงทางลัดพื้นเทาอ่อนไอคอนสีแผง · ของเดิมใต้แผงอยู่ครบ */
+.phone { --font-head: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif; --font-body: 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif; font-family: var(--font-body); }
+
+.homehello { margin: 0; font: 700 24px/1.25 var(--font-head); color: var(--text); overflow-wrap: anywhere; }
+.homehello__group { font: 400 12px var(--font-body); color: var(--text-faint); margin-top: 1px; }
+
+.homecheck {
+  display: flex; align-items: center; gap: 11px; width: 100%; min-height: 48px;
+  padding: 4px 4px 14px; border: 0; border-bottom: 1px solid var(--border);
+  background: transparent; text-align: left; color: inherit; font: inherit;
+}
+.homecheck__title { display: block; font: 500 15px/1.4 var(--font-body); color: var(--text); }
+.homecheck__sub { display: block; font: 400 12px/1.5 var(--font-body); color: var(--text-muted); margin-top: 2px; }
+.homecheck__cheer { display: block; font: 500 11.5px/1.5 var(--font-body); color: var(--panel); margin-top: 2px; }
+.homecheck__go { flex: none; font: 600 14.5px var(--font-head); color: var(--panel); padding: 6px 2px; }
+.homecheck__ok {
+  width: 21px; height: 21px; border-radius: 50%; background: var(--success); color: #fff;
+  display: grid; place-items: center; flex: none;
+}
+
+.homeqa { display: flex; justify-content: space-around; padding: 6px 0 12px; }
+.homeqa__item {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 72px;
+  font: 500 12.5px/1.3 var(--font-head); color: var(--text); text-align: center;
+}
+.homeqa__ic {
+  position: relative; width: 54px; height: 54px; border-radius: 50%;
+  background: var(--fill); color: var(--panel); display: grid; place-items: center;
+  transition: transform 0.12s ease;
+}
+.homeqa__item:active .homeqa__ic { transform: scale(0.92); }
+.homeqa__new {
+  position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--danger); border: 2px solid var(--surface);
+}
+
+/* แผงเต็มความกว้างจอมือถือ: ดึงออกนอกช่องไฟ 16px ของ homegrid (iPad กลับเป็นการ์ดมุมมน — student-tablet.css) */
+.hp { margin-inline: -16px; background: var(--panel); color: #fff; }
+/* clip ไม่ใช่ hidden: hidden ยังเลื่อนด้วยโปรแกรมได้ — แตะหมุดใกล้ขอบแล้วเบราว์เซอร์เลื่อนแผงไปโชว์ครึ่งเคสสองเคส */
+.hp__viewport { overflow: hidden; overflow: clip; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.hp__viewport { transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hp__row { display: flex; align-items: flex-start; transition: transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hp__page { flex: 0 0 100%; min-width: 0; }
+.hp__slide { padding: 18px 18px 6px; }
+.hp__top { display: flex; align-items: flex-start; gap: 8px; }
+.hp__who { flex: 1; min-width: 0; font: 400 13px/1.45 var(--font-body); color: rgba(255, 255, 255, 0.75); overflow-wrap: anywhere; }
+.hp__who b { font: 600 13.5px var(--font-head); color: #fff; }
+.hp__open { width: 44px; height: 44px; margin: -10px -12px 0 0; display: grid; place-items: center; color: #fff; flex: none; }
+.hp__step { font: 700 36px/1.15 var(--font-head); }
+.hp__of { font-size: 21px; color: var(--panel-hi); }
+
+.hp__track { position: relative; height: 50px; margin: 14px 12px 0; }
+.hp__rail, .hp__fill { position: absolute; left: 0; top: 14px; height: 5px; border-radius: 3px; }
+.hp__rail { right: 0; background: rgba(255, 255, 255, 0.22); }
+.hp__fill { background: #fff; transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hp__node {
+  position: absolute; top: 0; width: 56px; height: 50px; margin-left: -28px; padding: 0;
+  border: 0; background: transparent; color: inherit; display: flex; flex-direction: column; align-items: center;
+}
+.hp__dot { width: 12px; height: 12px; margin-top: 10.5px; border-radius: 50%; transition: all 0.2s ease; }
+.hp__node--done .hp__dot { background: #fff; }
+.hp__node--now .hp__dot { background: var(--panel-hi); }
+.hp__node--todo .hp__dot { background: rgba(255, 255, 255, 0.3); }
+.hp__node.is-sel .hp__dot { width: 20px; height: 20px; margin-top: 6.5px; box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.25); }
+.hp__lbl { margin-top: auto; padding-bottom: 2px; font: 500 12px/1 var(--font-head); color: rgba(255, 255, 255, 0.62); white-space: nowrap; }
+.hp__node.is-sel .hp__lbl { color: #fff; font-weight: 700; }
+.hp__node.is-tight .hp__lbl { visibility: hidden; }
+
+.hp__info { padding-top: 8px; }
+.hp__now { display: flex; gap: 14px; align-items: center; }
+.hp__kicker { font: 500 12.5px var(--font-body); color: rgba(255, 255, 255, 0.7); }
+.hp__kicker--hi { font: 600 12.5px var(--font-head); color: var(--panel-hi); }
+.hp__name { display: block; font: 600 19px/1.35 var(--font-head); color: #fff; overflow-wrap: anywhere; }
+.hp__ring { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: none; }
+.hp__ringbox { position: relative; width: 58px; height: 58px; }
+.hp__ringbox svg { display: block; }
+.hp__ringnum { position: absolute; inset: 0; display: grid; place-items: center; font: 700 15px var(--font-head); color: #fff; }
+.hp__ringcap { font: 500 11px var(--font-head); color: rgba(255, 255, 255, 0.72); }
+.hp__self { display: flex; align-items: center; gap: 6px; margin-top: 8px; font: 500 12.5px var(--font-body); color: var(--panel-hi); }
+
+.hp__expand {
+  display: flex; width: 100%; min-height: 44px; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px;
+  border: 0; border-radius: 12px; background: rgba(0, 0, 0, 0.16); color: #fff; text-align: left; font: 400 13px var(--font-body);
+}
+.hp__muted { color: rgba(255, 255, 255, 0.65); }
+.hp__chev { flex: none; transition: transform 0.25s ease; }
+.hp__chev[data-open='true'] { transform: rotate(90deg); }
+/* กาง/พับนุ่มๆ ด้วย grid-template-rows 0fr → 1fr (ไม่ต้องรู้ความสูงจริงของรายการ) */
+.hp__subs { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hp__subs[data-open='true'] { grid-template-rows: 1fr; }
+.hp__subs > div { overflow: hidden; min-height: 0; }
+.hp__sublist { list-style: none; margin: 0; padding: 8px 2px 2px; display: grid; gap: 2px; }
+.hp__sub {
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px;
+  font: 400 13.5px/1.4 var(--font-body); color: rgba(255, 255, 255, 0.82);
+}
+.hp__sub--now { background: rgba(255, 255, 255, 0.12); color: #fff; font-weight: 600; }
+.hp__sub--done { color: rgba(255, 255, 255, 0.55); }
+.hp__subnum {
+  width: 22px; height: 22px; border-radius: 50%; box-sizing: border-box; flex: none; display: grid; place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.4); font: 700 11.5px var(--font-head); color: rgba(255, 255, 255, 0.85);
+}
+.hp__sub--done .hp__subnum { border: 0; background: rgba(255, 255, 255, 0.28); color: #fff; }
+.hp__sub--now .hp__subnum { border: 0; background: var(--panel-hi); color: var(--panel); }
+.hp__subname { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hp__subtag { flex: none; font: 600 11px var(--font-head); color: var(--panel-hi); }
+
+.hp__btn {
+  margin-top: 14px; min-height: 46px; padding: 12px 24px; border: 0; border-radius: 999px;
+  background: #fff; color: var(--panel); font: 600 15px var(--font-head);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.18); transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.hp__btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18); }
+.hp__ghost {
+  margin-top: 14px; min-height: 44px; padding: 10px 22px; border: 1.5px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px; background: transparent; color: #fff; font: 600 14.5px var(--font-head);
+}
+.hp__lock {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 12px;
+  border-radius: 10px; background: rgba(0, 0, 0, 0.18); font: 400 13px var(--font-body); color: #fff;
+}
+.hp__lock svg { color: var(--panel-hi); }
+.hp__dots { display: flex; justify-content: center; gap: 2px; padding-bottom: 6px; }
+.hp__pager { border: 0; background: transparent; padding: 12px 4px; display: grid; place-items: center; }
+.hp__pager span { display: block; width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.38); transition: all 0.25s ease; }
+.hp__pager[data-on='true'] span { width: 20px; background: #fff; }
+
+/* ปุ่มติ๊กของเคสอื่น: สีเดียวกับแผง ไม่มีเงาแข็ง (ผู้ใช้ขอให้เข้าชุดกับแผง) */
+.phone .minirow__pass { background: var(--panel); box-shadow: none; }
+@media (hover: hover) { .phone .minirow__pass:hover { background: var(--panel); filter: brightness(1.08); } }
+.phone .minirow__pass:active { transform: scale(0.94); box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hp__viewport, .hp__row, .hp__fill, .hp__subs, .hp__chev, .hp__dot, .hp__pager span { transition: none; }
+}

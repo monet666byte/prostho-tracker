@@ -11,7 +11,7 @@
  *   3. ขอบที่ทำให้ "ครบเกณฑ์" ผิด — เพราะกระทบการจบของนักศึกษาโดยตรง
  */
 import {
-  caseCount, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
+  activeStepGroup, caseCount, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
   daysSinceUpdate, isActiveWork, isStale, maxProgression, meetsAllRequirements,
   overallPercent, percentCompleted, procList, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
@@ -221,6 +221,25 @@ console.log('\nลำดับรายการ');
   ok('CD มาก่อน Crown/Bridge', order.indexOf('upper') < order.indexOf('cb'));
   ok('คู่เดียวกัน upper มาก่อน lower', order.indexOf('upper') < order.indexOf('lower'));
   ok('ไม่แก้ลิสต์เดิม (คืนอาร์เรย์ใหม่)', list[0].id === 'cb');
+}
+
+/* ── 10. ขั้นย่อยของ step ที่กำลังทำ (วงแหวนบนหน้าแรก นศ.) ─────────────────── */
+console.log('\nขั้นย่อยของ step ที่กำลังทำ');
+{
+  const list = procList(wp('CD'));
+  const firstOf5 = list.findIndex((p) => p[0] === 5);
+  const total5 = list.filter((p) => p[0] === 5).length;
+  // ผ่านขั้นย่อยแรกของ step 5 แล้ว → กำลังทำ step 5 · เสร็จ 1 ขั้น
+  const mid = activeStepGroup(wp('CD', { procIndex: firstOf5 }));
+  ok('กลาง step 5: กลุ่มคือ step 5', mid?.progression === 5, mid?.progression);
+  ok('กลาง step 5: เสร็จ 1 ขั้นย่อย', mid?.done === 1, mid?.done);
+  ok('กลาง step 5: จำนวนขั้นย่อยตรงกับ catalog', mid?.procs.length === total5, mid?.procs.length);
+  // ผ่านขั้นย่อยสุดท้ายของ step 4 → กลุ่มที่ทำต่อคือ step 5 ยังไม่เสร็จสักขั้น
+  const edge = activeStepGroup(wp('CD', { procIndex: firstOf5 - 1 }));
+  ok('ขอบ step 4→5: กลุ่มคือ step 5 เสร็จ 0', edge?.progression === 5 && edge?.done === 0, `${edge?.progression} ${edge?.done}`);
+  ok('ยังไม่เริ่ม: กลุ่มแรกเสร็จ 0', activeStepGroup(wp('CD'))?.done === 0);
+  ok('จบเคส: ไม่มีกลุ่มที่กำลังทำ', activeStepGroup(finished('CD')) === null);
+  ok('Recall: กลุ่มไม่เกินขั้น 3', (activeStepGroup(wp('RRM'))?.progression ?? 99) <= maxProgression(wp('RRM')));
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

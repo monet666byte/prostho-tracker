@@ -76,6 +76,11 @@
   .homegrid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) !important; gap: 18px !important; padding-inline: 20px !important; }
 }
 
+/* iPad: แผงงานถัดไปอยู่ในคอลัมน์ ไม่ดึงเต็มความกว้างแบบมือถือ — เป็นการ์ดมุมมนแทน */
+@media (min-width: 768px) and (max-width: 1400px) and (pointer: coarse) {
+  .hp { margin-inline: 0; border-radius: 20px; overflow: hidden; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .siderail a, .siderail svg { transition: none; }
 }

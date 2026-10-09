@@ -7,6 +7,14 @@ import '@fontsource/anuphan/700.css';
 import '@fontsource/noto-sans-thai/400.css';
 import '@fontsource/noto-sans-thai/500.css';
 import '@fontsource/noto-sans-thai/600.css';
+// ฝั่งนักศึกษา: หัวข้อ Prompt + เนื้อความ Sarabun (ตั้งใต้ .phone ใน student.css) — หน้าอาจารย์ยังใช้ชุดเดิม
+import '@fontsource/prompt/400.css';
+import '@fontsource/prompt/500.css';
+import '@fontsource/prompt/600.css';
+import '@fontsource/prompt/700.css';
+import '@fontsource/sarabun/400.css';
+import '@fontsource/sarabun/500.css';
+import '@fontsource/sarabun/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/600.css';

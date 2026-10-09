@@ -137,6 +137,12 @@ export function stepGroups(w: Workpiece): StepGroup[] {
     });
 }
 
+/** กลุ่ม step ที่กำลังทำ + จำนวนขั้นย่อยที่เสร็จในกลุ่มนั้น (วงแหวนขั้นย่อยบนหน้าแรก) — null เมื่อจบเคสแล้ว */
+export function activeStepGroup(w: Workpiece): (StepGroup & { done: number }) | null {
+  const g = stepGroups(w).find((x) => x.state === 'active');
+  return g ? { ...g, done: g.procs.filter((p) => p.index <= w.procIndex).length } : null;
+}
+
 /** จำนวนวันตั้งแต่อัปเดตล่าสุด */
 export function daysSinceUpdate(w: Workpiece, now = new Date()): number {
   const then = new Date(w.lastUpdatedAt).getTime();
