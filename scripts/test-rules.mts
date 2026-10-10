@@ -13,7 +13,7 @@
 import {
   activeStepGroup, caseCount, completionImpact, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
   daysSinceUpdate, isActiveWork, isStale, maxProgression, meetsAllRequirements,
-  overallPercent, percentCompleted, procList, sortWorkpieces, yearlyRows,
+  overallPercent, percentCompleted, procList, requirementFlag, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { Settings, Workpiece, WorkType } from '../src/domain/types.ts';
@@ -93,6 +93,17 @@ ok('อาจารย์ยังไม่ตรวจรับ (pendingQualifi
 ok('ไม่ได้ติดธง minimumRequirement → ไม่นับ',
   !countsTowardRequirement(finished('CD', { minimumRequirement: false })));
 ok('Simple APD ไม่อยู่ในชุดที่นับเข้าเกณฑ์สะสม → ไม่นับ', !countsTowardRequirement(finished('APD')));
+/* ป้ายบนหน้าเคส (requirementFlag) ต้องตรงกับตัวนับ — เดิม Simple APD ที่ติ๊กไว้ขึ้นป้าย "นับ" ทั้งที่ไม่เคยนับจริง */
+{
+  const all: WorkType[] = ['CD', 'RPD', 'APD', 'PC', 'CB', 'RRM', 'RFX'];
+  const mismatch = all.flatMap((ty) => [true, false].flatMap((flag) => {
+    const w = finished(ty, { minimumRequirement: flag });
+    return (requirementFlag(w) === 'on') === countsTowardRequirement(w) ? [] : [`${ty}/${flag}`];
+  }));
+  ok('ป้าย "นับ" บนหน้าเคส = จบแล้วนับจริง ทุกประเภท', mismatch.length === 0, mismatch.join(' '));
+  ok('Simple APD ไม่ขึ้นป้ายนับหรือไม่นับ', requirementFlag(wp('APD')) === 'never');
+  ok('ปิดสวิตช์ → ป้าย "ไม่นับ"', requirementFlag(wp('CD', { minimumRequirement: false })) === 'off');
+}
 /* Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 (ผู้ใช้เพิ่ม: งานถอดได้ 1 · งานติดแน่น 1)
    แต่ยัง **ไม่** เข้าเกณฑ์รายปี — สองชุดนี้ต่างกัน ดู CUM_REQ_TYPES กับ REQ_TYPES ใน catalog.ts
    (ข้อที่ยืนยันว่ารายปีไม่นับ อยู่ในหัวข้อ "เกณฑ์รายปี" ข้างล่าง) */
@@ -175,6 +186,14 @@ console.log('\nเกณฑ์รายปี — ทุกปีต้องจ
   ok('นับเฉพาะ 4 ประเภทหลัก (ค่าเริ่มต้น): Recall ไม่นับ', completedInYear([recall], 2569, S).length === 0);
   ok('สลับเป็นนับทุกประเภท: Recall นับ',
     completedInYear([recall], 2569, withReq({ perYearCountsAllTypes: true })).length === 1);
+
+  /* ภาคยืนยัน: เคสที่ไม่นับเกณฑ์สะสม ไม่นับเข้าเกณฑ์รายปีด้วย — เดิมรายปีไม่เช็คสวิตช์ เลขสองชุดจึงขัดกัน */
+  const unticked = finished('CD', { completedAt: '2026-09-01', minimumRequirement: false });
+  ok('ปิดสวิตช์นับเกณฑ์ → ไม่นับรายปี', completedInYear([unticked], 2569, S).length === 0);
+  ok('ปิดสวิตช์นับเกณฑ์ → ไม่นับรายปีแม้เปิดนับทุกประเภท',
+    completedInYear([unticked], 2569, withReq({ perYearCountsAllTypes: true })).length === 0);
+  const waiting = finished('CD', { completedAt: '2026-09-01', pendingQualification: true });
+  ok('รอตรวจรับ → ไม่นับรายปี', completedInYear([waiting], 2569, S).length === 0);
 }
 {
   /* เคยพัง: รายชื่อปีสร้างจากปีที่มี completedAt เท่านั้น ปีที่จบ 0 ชิ้นจึงหายไป

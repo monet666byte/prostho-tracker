@@ -189,6 +189,18 @@ export function countsTowardRequirement(w: Workpiece): boolean {
 }
 
 /**
+ * ป้าย "นับเข้าเกณฑ์" บนหน้าเคส — บอกว่าเคสนี้ตั้งให้นับไหม ไม่ได้บอกว่านับแล้ว (ต้องจบเคสก่อน)
+ *   'on'    ติ๊กนับ
+ *   'off'   ติ๊กไม่นับ — จบแล้วก็ไม่ขึ้นในช่องเกณฑ์สะสม
+ *   'never' ประเภทนี้ไม่เข้าเกณฑ์สะสมอยู่แล้ว (Simple APD) ติ๊กหรือไม่ก็ไม่นับ
+ * อ่านชุดเดียวกับ countsTowardRequirement — ป้ายกับตัวเลขในช่องเกณฑ์จึงไม่ขัดกัน
+ */
+export function requirementFlag(w: Pick<Workpiece, 'type' | 'minimumRequirement'>): 'on' | 'off' | 'never' {
+  if (!(CUM_REQ_TYPES as readonly string[]).includes(w.type)) return 'never';
+  return w.minimumRequirement ? 'on' : 'off';
+}
+
+/**
  * Count CDA — ตามคอลัมน์ในชีต tab "Case CD"
  * นับจำนวน arch ของผู้ป่วยรายนั้นที่เป็น CD หรืองาน Complicated (APD/RPD)
  */
@@ -310,11 +322,16 @@ export function caseCountTotals(list: Workpiece[], settings: Settings) {
 }
 
 /**
- * ประเภทนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
+ * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
+ * เคสที่ปิดสวิตช์ "นับเข้าเกณฑ์" หรือรอตรวจรับ ไม่นับรายปีเหมือนเกณฑ์สะสม (ภาคยืนยัน)
  * เป็นกติกาเดียวที่ completedInYear · กราฟ burn-up · ตัวประเมินความเสี่ยงใช้ร่วมกัน (ห้ามเขียนซ้ำที่อื่น)
  */
-export const countsForYearlyReq = (w: Pick<Workpiece, 'type'>, settings: Settings): boolean =>
-  settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type);
+export const countsForYearlyReq = (
+  w: Pick<Workpiece, 'type' | 'minimumRequirement' | 'pendingQualification'>,
+  settings: Settings,
+): boolean =>
+  w.minimumRequirement && !w.pendingQualification
+  && (settings.perYearCountsAllTypes || (REQ_TYPES as readonly string[]).includes(w.type));
 
 /** ชิ้นงานที่จบเคสในปีการศึกษาที่กำหนด (เกณฑ์รายปี — นับรายชิ้นงาน ไม่ยุบคู่) */
 export function completedInYear(list: Workpiece[], year: number, settings: Settings): Workpiece[] {

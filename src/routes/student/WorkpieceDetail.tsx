@@ -1,4 +1,4 @@
-import { ArrowLeft, CameraPlus, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
+import { ArrowLeft, CameraPlus, Check, CheckCircle, Circle, CircleDashed, Images, MinusCircle, SealCheck } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PendingBadge, PhotoSlot, SelfBadge } from '../../components/ui/Bits';
@@ -8,10 +8,10 @@ import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { typeMeta } from '../../domain/catalog';
 import {
-  activeStepGroup, maxProgression, nextProc, progression, stepGroups, isReturned, stepFraction } from '../../domain/rules';
+  activeStepGroup, maxProgression, nextProc, progression, requirementFlag, stepGroups, isReturned, stepFraction } from '../../domain/rules';
 import { useLastStepDate, usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
-import { setWorkpieceReturned } from '../../data/repo';
+import { setMinimumRequirement, setWorkpieceReturned } from '../../data/repo';
 import { thaiShort } from '../../lib/date';
 import { t, tSexAge } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -58,6 +58,15 @@ export default function WorkpieceDetail() {
 
 
 
+  /* นับ/ไม่นับเข้าเกณฑ์ — ภาคให้ทั้งนักศึกษาและอาจารย์เปลี่ยนได้ · ทุกครั้งลง audit (setMinimumRequirement) */
+  async function toggleRequirement() {
+    if (!w) return;
+    const on = !w.minimumRequirement;
+    await setMinimumRequirement(w.id, on, currentActor());
+    touch();
+    showToast({ message: on ? t('ตั้งให้นับเข้าเกณฑ์แล้ว') : t('ตั้งให้ไม่นับเข้าเกณฑ์แล้ว'), tone: 'success' });
+  }
+
   const meta = typeMeta(w.type);
   const groups = stepGroups(w);
   const prog = progression(w);
@@ -97,7 +106,8 @@ export default function WorkpieceDetail() {
           }}
         >
           <SealCheck size={19} weight="fill" />
-          {t('จบเคสแล้ว · นับเข้าเกณฑ์')}
+          {/* เดิมขึ้น "นับเข้าเกณฑ์" ทุกเคสที่จบ รวมเคสที่ปิดสวิตช์และ Simple APD */}
+          {requirementFlag(w) === 'on' ? t('จบเคสแล้ว · นับเข้าเกณฑ์') : t('จบเคสแล้ว')}
         </div>
       )}
       <div style={{ display: 'flex', gap: 9, marginTop: 8 }}>
@@ -111,13 +121,24 @@ export default function WorkpieceDetail() {
           <Images size={16} /> {t('คลังรูปงาน')}
         </button>
       </div>
-      <button
-        className="btn btn--ghost"
-        style={{ marginTop: 6, height: 40, fontSize: 12, color: isReturned(w) ? 'var(--success-dark)' : 'var(--danger)' }}
-        onClick={() => (isReturned(w) ? void confirmReturn(false) : setAskReturn(true))}
-      >
-        {isReturned(w) ? t('เอาเคสกลับมาทำต่อ') : t('คืนเคสนี้')}
-      </button>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        {requirementFlag(w) !== 'never' && !isReturned(w) && (
+          <button
+            className="btn btn--ghost"
+            style={{ flex: 1, height: 40, fontSize: 12, color: 'var(--text-muted)' }}
+            onClick={() => void toggleRequirement()}
+          >
+            {w.minimumRequirement ? t('ไม่นับเคสนี้เข้าเกณฑ์') : t('นับเคสนี้เข้าเกณฑ์')}
+          </button>
+        )}
+        <button
+          className="btn btn--ghost"
+          style={{ flex: 1, height: 40, fontSize: 12, color: isReturned(w) ? 'var(--success-dark)' : 'var(--danger)' }}
+          onClick={() => (isReturned(w) ? void confirmReturn(false) : setAskReturn(true))}
+        >
+          {isReturned(w) ? t('เอาเคสกลับมาทำต่อ') : t('คืนเคสนี้')}
+        </button>
+      </div>
     </div>
   );
 
@@ -177,11 +198,18 @@ export default function WorkpieceDetail() {
           {namesOn ? <>{' · '}<b>HN {w.patient.hn}</b></> : <>{' · '}{tSexAge(w.patient.sexAge)}</>}
           {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
         </div>
-        {(w.minimumRequirement || pending.has(w.id)) && (
+        {/* ป้ายอ่านจาก requirementFlag ตัวเดียวกับที่นับช่องเกณฑ์ — Simple APD ไม่ขึ้นป้าย "นับ" เพราะไม่เคยนับจริง
+            ป้าย "ไม่นับ" ต้องเห็นชัด: เดิมปิดสวิตช์ตอนเปิดเคสแล้วไม่มีอะไรบอก จบเคสแล้วเลขเกณฑ์ไม่ขึ้นโดยไม่รู้ว่าทำไม */}
+        {(requirementFlag(w) !== 'never' || pending.has(w.id)) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
-            {w.minimumRequirement && (
+            {requirementFlag(w) === 'on' && (
               <span className="detailpanel__req">
                 <SealCheck size={13} weight="fill" /> {t('นับ minimum requirement')}
+              </span>
+            )}
+            {requirementFlag(w) === 'off' && (
+              <span className="detailpanel__req detailpanel__req--off">
+                <MinusCircle size={13} weight="bold" /> {t('ไม่นับเข้าเกณฑ์')}
               </span>
             )}
             {pending.has(w.id) && <PendingBadge />}

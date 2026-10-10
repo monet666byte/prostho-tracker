@@ -5,10 +5,10 @@ import { Bar, PhotoSlot } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
-import { setReview, setStudentGate } from '../../data/repo';
+import { setMinimumRequirement, setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
-  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction } from '../../domain/rules';
+  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction, requirementFlag } from '../../domain/rules';
 import { patientWithHn } from '../../lib/privacy';
 import { useAllStudents, usePatientNamesOn, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -214,8 +214,12 @@ export default function Review() {
                     <span className="rvtype" style={{ color: meta.ink }}>{meta.short}</span>
                     <span style={{ font: '600 14.5px var(--font-head)' }}>{tText(w.detail)}</span>
                     {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
-                    {w.minimumRequirement && !isReturned(w) && (
+                    {/* อ่านจาก requirementFlag ตัวเดียวกับตัวนับเกณฑ์ — Simple APD ไม่ขึ้น "นับเกณฑ์" เพราะไม่เคยนับจริง */}
+                    {requirementFlag(w) === 'on' && !isReturned(w) && (
                       <span className="rvtag" style={{ color: 'var(--success-dark)' }}>✓ {t('นับเกณฑ์')}</span>
+                    )}
+                    {requirementFlag(w) === 'off' && !isReturned(w) && (
+                      <span className="rvtag" style={{ color: 'var(--warning-dark)' }}>{t('ไม่นับเกณฑ์')}</span>
                     )}
                     {isStale(w, settings) && (
                       <span className="rvtag" style={{ color: 'var(--danger)' }}>{t('ค้าง {d} วัน', { d: daysSinceUpdate(w) })}</span>
@@ -298,6 +302,24 @@ export default function Review() {
                             <div style={{ marginTop: 7, padding: '7px 10px', borderRadius: 9, background: 'var(--warning-tint)', font: '400 11px/1.6 var(--font-body)', color: 'var(--warning-dark)' }}>
                               {t('หมายเหตุ/สถานะผู้ป่วยจากชีต')}: {w.patient.note}
                             </div>
+                          )}
+                          {/* ภาคให้ทั้งนักศึกษาและอาจารย์เปลี่ยนได้ — นักศึกษาเปลี่ยนจากหน้าเคสของตัวเอง */}
+                          {requirementFlag(w) !== 'never' && (
+                            <label className="rvreq">
+                              <input
+                                type="checkbox"
+                                checked={w.minimumRequirement}
+                                onChange={async (e) => {
+                                  const on = e.target.checked;
+                                  await setMinimumRequirement(w.id, on, teacher?.name ?? currentActor());
+                                  showToast({ message: on ? t('ตั้งให้นับเข้าเกณฑ์แล้ว') : t('ตั้งให้ไม่นับเข้าเกณฑ์แล้ว'), tone: 'success' });
+                                }}
+                              />
+                              <span>
+                                <b>{t('นับเข้าเกณฑ์สะสม')}</b>
+                                <small>{t('นักศึกษาหรืออาจารย์เปลี่ยนได้ · ทุกครั้งจดลงประวัติการแก้ไข')}</small>
+                              </span>
+                            </label>
                           )}
                         </div>
                       );

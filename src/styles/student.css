@@ -1172,6 +1172,7 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
 /* จุดสีประเภทงานบนพื้นน้ำเงิน — ใส่ขอบขาวบาง ไม่งั้น CD (น้ำเงิน) จมหาย */
 .pagepanel .dot { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75); }
 .detailpanel__req { display: inline-flex; align-items: center; gap: 4px; font: 500 12.5px var(--font-body); color: #8ee6c2; }
+.detailpanel__req--off { color: #ffd59a; }
 /* ผู้ใช้ขอให้เลข step เล็กลง — ตาต้องไปที่ขั้นย่อยในไทม์ไลน์ก่อน ไม่ใช่ตัวเลข */
 .detailpanel__step { margin-top: 8px; font: 700 21px/1.2 var(--font-head); }
 .detailpanel__step span { font-size: 15px; color: var(--panel-hi); }

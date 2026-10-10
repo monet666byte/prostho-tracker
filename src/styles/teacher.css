@@ -1066,6 +1066,11 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 /* การ์ดตรวจงานรายคน — ป้ายเป็นตัวอักษรสี ไม่มีพื้นไม่มีกรอบ */
 .rvtype { font: 700 12px var(--font-head); flex: none; }
 .rvtag { font: 600 12px var(--font-head); flex: none; white-space: nowrap; }
+/* สวิตช์ "นับเข้าเกณฑ์สะสม" ในการ์ดที่กางแล้ว — อาจารย์แก้ค่าที่นักศึกษาตั้งไว้ตอนเปิดเคส */
+.rvreq { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; cursor: pointer; }
+.rvreq input { margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--accent); flex: none; cursor: pointer; }
+.rvreq b { font: 600 12px var(--font-body); color: var(--text-secondary); }
+.rvreq small { display: block; font: 400 10.5px/1.5 var(--font-body); color: var(--text-faint); }
 
 /* ══ รายชื่อซ้าย + ใบประเมินเป็นแถว — Section II/III · ประเมินตนเอง ══
    เดิมการ์ดทีละคนมีไอคอน + การ์ดซ้อนในการ์ดทีละใบ → รายการเดียวคั่นเส้น */

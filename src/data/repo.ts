@@ -1368,6 +1368,21 @@ export async function setWorkpieceReturned(
   );
 }
 
+/** เปลี่ยนว่าเคสนี้นับเข้าเกณฑ์ไหม (ทั้งสะสมและรายปี) — ภาคให้ทั้งนักศึกษาและอาจารย์เปลี่ยนได้
+ *  เดิมตั้งได้ครั้งเดียวตอนเปิดเคส ตั้งผิดแล้วแก้ในแอปไม่ได้
+ *  ไม่แตะ lastUpdatedAt: ค่านั้นคือ "งานขยับล่าสุด" ที่ตัวนับงานค้างใช้ · เปลี่ยนป้ายเกณฑ์ไม่ใช่งานขยับ
+ *  ลง audit ทุกครั้ง เพราะกระทบตัวเลขเกณฑ์ */
+export async function setMinimumRequirement(workpieceId: string, counts: boolean, actor: string): Promise<void> {
+  const w = await db.workpieces.get(workpieceId);
+  if (!w || w.minimumRequirement === counts) return;
+  await db.workpieces.update(workpieceId, { minimumRequirement: counts });
+  await logAudit(
+    `${counts ? 'ตั้งให้นับเข้าเกณฑ์' : 'ตั้งให้ไม่นับเข้าเกณฑ์'} ${w.detail} (${caseCode(w.patientId)})`,
+    actor,
+    { studentId: w.studentId },
+  );
+}
+
 // ── แบบประเมินตนเอง (Self-assessment) — คีย์คงที่ต่อคนต่อปี (saId ใน domain/selfAssessment) ──
 
 export async function getSelfAssessment(

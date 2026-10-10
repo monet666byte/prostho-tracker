@@ -215,7 +215,10 @@ export default function NewWorkpiece() {
           )}
 
           <button className="formrow" role="switch" aria-checked={min} onClick={() => setMin(!min)}>
-            <span className="formrow__main"><b>{t('นับเข้าเกณฑ์')}</b></span>
+            <span className="formrow__main">
+              <b>{t('นับเข้าเกณฑ์')}</b>
+              <span className="formrow__sub">{min ? t('จบเคสแล้วนับเข้าเกณฑ์สะสมและเกณฑ์รายปี') : t('จบเคสแล้วไม่นับเข้าเกณฑ์ · เปลี่ยนทีหลังได้ที่หน้าเคส')}</span>
+            </span>
             <span className="toggle" data-on={min}><i /></span>
           </button>
         </div>
