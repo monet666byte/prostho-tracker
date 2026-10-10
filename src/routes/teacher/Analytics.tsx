@@ -1,4 +1,5 @@
-import { ChartLineUp, Info } from '@phosphor-icons/react';
+import { ChartLineUp, Info, Printer } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
@@ -22,6 +23,7 @@ import { isActiveStudent, isAlumni, studentYear } from '../../domain/cohort';
 /** วิเคราะห์รวมทั้งชั้นปี — มุมมองภาควิชา (ของรายกลุ่มอยู่หน้า "กลุ่มของฉัน") */
 export default function Analytics() {
   const { settings } = useApp();
+  const navigate = useNavigate();
   const allStudents = useAllStudents();
   const allWorks = useAllWorkpieces();
   const everyCheckIn = useAllCheckIns();
@@ -85,7 +87,18 @@ export default function Analytics() {
           icon={ChartLineUp}
           title={yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}
           sub={t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })}
-          right={<YearSeg view={yearView} onChange={setYearView} />}
+          right={(
+            <>
+              {/* รายงานประจำเดือนทั้งชั้นปี — แท็บ "รวมปี"/รุ่นที่จบ เปิดที่ปี 5 แล้วเลือกปีในหน้ารายงาน */}
+              <button
+                className="btn btn--sec scopehead__btn"
+                onClick={() => navigate(`/teacher/report?scope=year${/^\d+$/.test(yearView) ? `&year=${yearView}` : ''}`)}
+              >
+                <Printer size={15} /> {t('รายงานประจำเดือน')}
+              </button>
+              <YearSeg view={yearView} onChange={setYearView} />
+            </>
+          )}
         />
 
         {/* สรุปสิ่งที่ต้องทำอะไรต่อ */}

@@ -43,7 +43,7 @@ const PERIODS_PER_STEP = 1.5;
  * เพราะชีตไม่มีคอลัมน์วันจบ ตัวเลขไหนที่คำนวณจากวันจบจึงต้องไม่เอางานนำเข้ามาปน
  * (เส้น burn-up แยกงานนำเข้าออกเป็น "ยอดยกมา" ด้วยเหตุผลเดียวกัน — ดู carriedOverCount)
  */
-const hasRealCompletionDate = (w: Workpiece) => !!w.completedAt && !w.fromSheet;
+export const hasRealCompletionDate = (w: Workpiece) => !!w.completedAt && !w.fromSheet;
 
 export interface RiskRow {
   student: Student;

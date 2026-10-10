@@ -1613,6 +1613,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 }
 .cmdk__row[data-on='true'] .cmdk__av { background: var(--surface); }
 .cmdk__av--grp { background: var(--accent); color: #fff; }
+.cmdk__av--case { background: var(--fill); color: var(--text-secondary); }
 .cmdk__row[data-on='true'] .cmdk__av--grp { background: var(--accent); }
 .cmdk__av--page { background: var(--fill); color: var(--text-secondary); }
 .cmdk__tx { flex: 1; min-width: 0; }
@@ -1698,3 +1699,68 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .caseboard__tag { font: 600 10.5px/18px var(--font-body); border-radius: 5px; padding: 0 6px; }
 .caseboard__tag--stale { background: var(--danger-tint); color: var(--danger-dark); }
 .caseboard__tag--eval { background: var(--accent-tint); color: var(--accent); }
+
+/* ── ปุ่มเปิดรายงานประจำเดือนบนหัวหน้า (วิเคราะห์รวม · สรุปกลุ่ม) ── */
+.scopehead__btn { width: auto; height: 36px; padding: 0 14px; border-radius: 10px; font: 600 13px var(--font-body); white-space: nowrap; }
+
+/* ── รายงานประจำเดือน (/teacher/report) ──────────────────────────────────────
+   แถบตัวเลือกบนจอ (noprint) + กระดาษ A4 หนึ่งแผ่น · กราฟเป็น div ล้วน พิมพ์ขาวดำแล้วยังอ่านออก */
+.rp-page { min-height: 100vh; padding: 18px 16px 40px; background: var(--bg-app); }
+.rp-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; max-width: 960px; margin: 0 auto 8px; }
+.rp-tools .btn { width: auto; height: 38px; padding: 0 14px; border-radius: 10px; font: 600 13px var(--font-body); }
+.rp-tools__gap { flex: 1; }
+.rp-select { height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border-2); background: var(--surface); font: 500 13px var(--font-body); color: var(--text); }
+.rp-hint { max-width: 960px; margin: 0 auto 12px; font: 400 11.5px/1.6 var(--font-body); color: var(--text-faint); }
+.rp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rp {
+  --rp-ink: #101828; --rp-mute: #525c6e; --rp-line: #d0d5dd;
+  --brick: #c46b57; --brick-dark: #8f2f22;
+  width: 794px; min-height: 1123px; margin: 0 auto; padding: 44px 52px; background: #fff; color: var(--rp-ink);
+  box-shadow: 0 18px 50px rgba(16, 24, 40, 0.16); display: flex; flex-direction: column; gap: 16px;
+  font: 400 12.5px/1.5 var(--font-body);
+}
+.rp__mast { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 3px double var(--rp-ink); padding-bottom: 8px; }
+.rp__mast b { font: 700 16px var(--font-head); }
+.rp__mast span { font-size: 11.5px; color: var(--rp-mute); text-align: right; }
+.rp__hd { margin: 0; font: 700 24px/1.35 var(--font-head); }
+.rp__dek { margin: -8px 0 0; font-size: 13px; color: #344054; }
+.rp__stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rp-ink); border-bottom: 1px solid var(--rp-line); }
+.rp__stats > div { padding: 10px 12px; border-left: 1px solid #eaecf0; }
+.rp__stats > div:first-child { border-left: 0; padding-left: 0; }
+.rp__stats b { display: block; font: 700 28px/1.1 var(--font-head); }
+.rp__stats span { font-size: 11px; color: var(--rp-mute); }
+.rp__two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.rp__fig { margin: 0; break-inside: avoid; }
+.rp__fig figcaption, .rp h3 { margin: 0 0 6px; font: 700 11.5px var(--font-body); letter-spacing: 0.02em; color: var(--rp-mute); }
+.rp__bars { display: flex; align-items: flex-end; gap: 4px; height: 100px; border-bottom: 1px solid var(--rp-ink); }
+.rp__bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+.rp__bar em { font: 600 9.5px var(--font-mono); font-style: normal; color: var(--rp-mute); margin-bottom: 2px; }
+.rp__bar i { display: block; width: 100%; background: #b8c2d6; border-radius: 2px 2px 0 0; }
+.rp__bar i[data-tone='plain'] { background: #2c50ba; }
+.rp__bar i[data-tone='max'] { background: var(--brick); }
+.rp__bar i[data-tone='follow'] { background: var(--brick); }
+.rp__bar i[data-tone='pick'] { background: var(--rp-ink); }
+.rp__bars--months .rp__bar i[data-tone='plain'] { background: #98a2b3; }
+.rp__bars--months { height: 70px; gap: 8px; }
+.rp__axis { display: flex; gap: 4px; margin-top: 3px; }
+.rp__axis span { flex: 1; text-align: center; font-size: 9.5px; color: #667085; min-width: 0; }
+.rp__axis--months { gap: 8px; }
+.rp__cap { margin: 6px 0 0; font-size: 10.5px; color: #667085; font-style: italic; }
+.rp__people { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 11.5px; }
+.rp__people li { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp__people i { width: 8px; height: 8px; border-radius: 99px; background: #12b76a; flex: none; }
+.rp__people li[data-tone='follow'] i { background: var(--brick); }
+.rp__people li[data-tone='follow'] { color: var(--brick-dark); font-weight: 600; }
+.rp__tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.rp__tbl th { text-align: left; font: 600 10.5px var(--font-body); color: var(--rp-mute); border-bottom: 1px solid var(--rp-ink); padding: 4px; }
+.rp__tbl td { border-bottom: 1px solid #eaecf0; padding: 4px; vertical-align: top; }
+.rp__tbl .nw { white-space: nowrap; }
+.rp__tbl .n { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.rp__foot { margin-top: auto; border-top: 1px solid var(--rp-line); padding-top: 6px; font-size: 10px; color: #667085; }
+@media print {
+  .rp-page { padding: 0; background: #fff; min-height: 0; }
+  .rp-wrap { overflow: visible; }
+  .rp { width: auto; min-height: 0; padding: 0; box-shadow: none; }
+  .rp__bar i, .rp__people i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4; margin: 14mm; }
+}

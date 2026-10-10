@@ -75,6 +75,14 @@ export default function Review() {
   const [filter, setFilter] = useState<Filter>('all');
   const [comments, setComments] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  /* มาจากช่องค้นหา ⌘K ด้วย HN (?work=) — กางเคสของผู้ป่วยรายนั้นแล้วเลื่อนไปหา */
+  useEffect(() => {
+    const w = params.get('work');
+    if (!w) return;
+    setExpanded(w);
+    const id = window.setTimeout(() => document.querySelector(`[data-work="${CSS.escape(w)}"]`)?.scrollIntoView({ block: 'center' }), 250);
+    return () => window.clearTimeout(id);
+  }, [params]);
   // กันกดรัวปุ่มบันทึกคอมเมนต์ — useRef เพราะ setState ตามคลิกรัวไม่ทัน
   const savingComment = useRef(false);
   // แผงสรุปเกณฑ์พับไว้เป็นค่าเริ่มต้น — สรุปย่ออยู่ในหัวการ์ดแล้ว กดดูเต็มเมื่อต้องใช้
@@ -195,7 +203,7 @@ export default function Review() {
                   <span>{t('ไม่นับเป็นงานที่กำลังทำ')}</span>
                 </div>
               )}
-              <article className={`reviewcard${isReturned(w) ? ' returned' : ''}`} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
+              <article className={`reviewcard${isReturned(w) ? ' returned' : ''}`} data-work={w.id} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
                 {/* หัวแถว = ปุ่มเปิด/ปิดทั้งแถบ กดง่ายสำหรับผู้ใช้สูงอายุ */}
                 <button
                   onClick={() => setExpanded(opened ? null : w.id)}

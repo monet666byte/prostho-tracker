@@ -75,6 +75,7 @@ const Exams = page(loadTeacher, 'Exams');
 
 const PortfolioPrint = page(loadPrint, 'PortfolioPrint');
 const SaPrint = page(loadPrint, 'SaPrint');
+const ReportPrint = page(loadPrint, 'ReportPrint');
 
 function Guard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
   const session = useApp((s) => s.session);
@@ -246,6 +247,7 @@ export default function App() {
         <Route path="/teacher/portfolio" element={<Navigate to="/teacher/sect2" replace />} />
         <Route path="/teacher/portfolio/:studentId/print" element={<Guard role="teacher"><PortfolioPrint /></Guard>} />
         <Route path="/teacher/sa/:studentId/print" element={<Guard role="teacher"><SaPrint /></Guard>} />
+        <Route path="/teacher/report" element={<Guard role="teacher"><ReportPrint /></Guard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

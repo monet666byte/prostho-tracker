@@ -16,6 +16,7 @@ import {
 } from '../src/domain/aggregate.ts';
 import { procList } from '../src/domain/rules.ts';
 import { isFollowUpGroup, todaySummary } from '../src/domain/today.ts';
+import { monthlyReport, reportMonths } from '../src/domain/report.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, Student, WorkType, Workpiece } from '../src/domain/types.ts';
 
@@ -333,6 +334,37 @@ console.log('\ntodaySummary');
   const s = todaySummary({ students: [st], works: [wp('CD', { studentId: 'calm' })], checkins: [], settings: S, risk: [{ studentId: 'calm', risk: 'ok' }] });
   ok('ไม่มีอะไรค้าง → ไม่มีเรื่องน่าห่วง', !s.needsAttention && s.stale === 0 && s.staleTop === null);
   ok('ลิสต์ว่างไม่พัง', todaySummary({ students: [], works: [], checkins: [], settings: S, risk: [] }).pendingPeople === 0);
+}
+
+
+console.log('\nmonthlyReport — รายงานประจำเดือน');
+{
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const inMonth = new Date(y, m, 1, 12).toISOString();
+  const lastMonth = new Date(y, m - 1, 15, 12).toISOString();
+  const a = student({ id: 'ra' }), b = student({ id: 'rb' }), out = student({ id: 'rout' });
+  const works = [
+    finished('CD', { studentId: 'ra', completedAt: inMonth }),
+    finished('RPD', { studentId: 'rb', completedAt: inMonth, fromSheet: true }), // งานชีตไม่นับ
+    finished('CB', { studentId: 'rb', completedAt: lastMonth }),
+    finished('CD', { studentId: 'rout', completedAt: inMonth }), // นอกขอบเขต
+    wp('CD', { studentId: 'ra', procIndex: 4, lastUpdatedAt: daysAgo(40) }),
+    wp('CD', { studentId: 'rb', procIndex: 4, lastUpdatedAt: daysAgo(20) }),
+    wp('RPD', { studentId: 'rb', lastUpdatedAt: daysAgo(0) }),
+  ];
+  const risk = [{ studentId: 'ra', risk: 'high' as const }, { studentId: 'rout', risk: 'high' as const }];
+  const r = monthlyReport({ students: [a, b], works, checkins: [], settings: S, risk, year: y, month: m, now });
+  ok('จบเคสเดือนนี้นับเฉพาะในขอบเขต + ไม่นับงานจากชีต', r.completedInMonth === 1, r.completedInMonth);
+  ok('เดือนก่อนได้เลขของเดือนก่อน', monthlyReport({ students: [a, b], works, checkins: [], settings: S, risk, year: new Date(y, m - 1).getFullYear(), month: new Date(y, m - 1).getMonth(), now }).completedInMonth === 1);
+  ok('งานที่กำลังทำ = 3', r.active === 3, r.active);
+  ok('ต้องตามตรงกับ todaySummary (คนนอกขอบเขตไม่นับ)', r.today.followUp === 1);
+  ok('กราฟคงค้างใช้ประเภทที่ค้างกองมากสุด', r.bottleneckType === 'CD' && r.bottleneck.reduce((n, x) => n + x.count, 0) === 2, r.bottleneckType);
+  ok('ค้างนานสุดเรียงวันมากก่อน · ไม่มีข้อมูลผู้ป่วย', r.longest.length === 2 && r.longest[0].days >= r.longest[1].days && !('patientId' in r.longest[0]), JSON.stringify(r.longest));
+  ok('แกนเดือนมี 10 ช่อง และมีเดือนที่เลือกถ้าอยู่ในช่วงเปิดเรียน', r.months.length === 10 && (m >= 3 && m <= 4 ? true : r.months.some((p) => p.key === r.monthKey)));
+  ok('ตัวเลือกเดือน 12 เดือน ใหม่สุดก่อน', reportMonths(now).length === 12 && reportMonths(now)[0].month === m);
+  const empty = monthlyReport({ students: [], works: [], checkins: [], settings: S, risk: [], year: y, month: m, now });
+  ok('ขอบเขตว่างไม่พัง', empty.completedInMonth === 0 && empty.bottleneckType === null && empty.bottleneck.length === 0);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

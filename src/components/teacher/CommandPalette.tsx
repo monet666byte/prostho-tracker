@@ -1,11 +1,13 @@
-import { ArrowRight, MagnifyingGlass, Users } from '@phosphor-icons/react';
+import { ArrowRight, FirstAidKit, MagnifyingGlass, Users } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, studentCohortLabel, studentYear } from '../../domain/cohort';
+import { typeChipLabel } from '../../domain/catalog';
 import { groupShort, sortGroupCodes } from '../../domain/group';
-import type { Student } from '../../domain/types';
-import { useAllStudents } from '../../hooks/data';
+import type { Patient, Student, Workpiece } from '../../domain/types';
+import { useAllPatients, useAllStudents, useAllWorkpieces, usePatientNamesOn } from '../../hooks/data';
+import { HN_SEARCH_MIN, patientWithHn } from '../../lib/privacy';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 
@@ -14,10 +16,12 @@ export interface PalettePage { key: string; label: string; to: string; Icon: Ico
 type Row =
   | { kind: 'student'; id: string; student: Student }
   | { kind: 'group'; id: string; code: string; count: number; year: string }
+  | { kind: 'case'; id: string; patient: Patient; student: Student; works: Workpiece[] }
   | { kind: 'page'; id: string; page: PalettePage };
 
 const MAX_STUDENTS = 6;
 const MAX_GROUPS = 4;
+const MAX_CASES = 5;
 
 /** ป้ายชั้นปี — กติกาเดียวกับตัวเลือกกลุ่มในแถบซ้าย (รุ่นที่จบ/ยังไม่เริ่มไม่มี "ปี 7" หรือ "ปี 4") */
 function yearLabel(s: Student): string {
@@ -30,15 +34,19 @@ function yearLabel(s: Student): string {
 /**
  * ค้นหาได้ทุกอย่างฝั่งอาจารย์ — ⌘K / Ctrl+K จากหน้าไหนก็ได้ หรือปุ่ม "ค้นหา" ในแถบซ้าย
  *
- * ค้นได้: ชื่อ/ชื่ออังกฤษ/รหัสนักศึกษา · รหัสกลุ่ม · ชื่อหน้า
- * ไม่ค้น HN/ชื่อผู้ป่วย — ระดับปิดบังตัวตนกำหนดรายหน้าที่ identityLevelFor() ช่องค้นหารวมไม่ใช่หน้าที่ภาคเคาะไว้
+ * ค้นได้: ชื่อ/ชื่ออังกฤษ/รหัสนักศึกษา · HN (ตั้งแต่ HN_SEARCH_MIN ตัว) · ชื่อผู้ป่วย (เฉพาะเมื่อภาคเปิดใช้ชื่อ) · รหัสกลุ่ม · ชื่อหน้า
+ * ผลผู้ป่วยพาไปหน้าตรวจงาน ซึ่งเห็นชื่อ+HN เต็มอยู่แล้ว ป้ายในช่องค้นหาจึงใช้ระดับเดียวกัน (patientWithHn)
  * เลือกนักศึกษา = เปลี่ยนกลุ่มที่ดูเป็นกลุ่มของคนนั้นแล้วเปิดตรวจงานรายคน (แบบเดียวกับกดชื่อในตาราง)
+ * เลือกผู้ป่วย = แบบเดียวกัน แล้วกางเคสของผู้ป่วยรายนั้นไว้
  */
 export function CommandPalette({ open, onClose, pages }: { open: boolean; onClose: () => void; pages: PalettePage[] }) {
   const navigate = useNavigate();
   const setTeacherGroup = useApp((st) => st.setTeacherGroup);
   const teacherGroup = useApp((st) => st.teacherGroup);
   const students = useAllStudents();
+  const patients = useAllPatients();
+  const works = useAllWorkpieces();
+  const namesOn = usePatientNamesOn();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,8 +89,22 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
       .map((s) => ({ kind: 'student', id: `s-${s.id}`, student: s }));
     const codes = sortGroupCodes([...groupInfo.keys()].filter((c) => groupShort(c).toLowerCase().includes(needle) || c.toLowerCase().includes(needle)), students);
     const groupRows: Row[] = codes.slice(0, MAX_GROUPS).map((c) => ({ kind: 'group', id: `g-${c}`, code: c, count: groupInfo.get(c)?.count ?? 0, year: groupInfo.get(c)?.year ?? '' }));
-    return [...studentRows, ...groupRows, ...pageRows];
-  }, [q, pages, students, groupInfo, teacherGroup]);
+    /* ผู้ป่วย: HN ต้องพิมพ์ครบขั้นต่ำ (ไม่สนช่องว่าง/ขีด) · ชื่อค้นได้เฉพาะเมื่อภาคเปิดใช้ชื่อผู้ป่วย */
+    const hnNeedle = needle.replace(/[\s-]/g, '');
+    const caseRows: Row[] = [];
+    if (hnNeedle.length >= HN_SEARCH_MIN || (namesOn && needle.length >= 2)) {
+      const stuById = new Map(students.map((st) => [st.id, st]));
+      for (const p of patients) {
+        if (caseRows.length >= MAX_CASES) break;
+        const hnHit = hnNeedle.length >= HN_SEARCH_MIN && !!p.hn && p.hn.toLowerCase().replace(/[\s-]/g, '').includes(hnNeedle);
+        const nameHit = namesOn && needle.length >= 2 && !!p.name?.trim() && p.name.toLowerCase().includes(needle);
+        const st = stuById.get(p.ownerStudentId);
+        if (!(hnHit || nameHit) || !st) continue;
+        caseRows.push({ kind: 'case', id: `c-${p.id}`, patient: p, student: st, works: works.filter((w) => w.patientId === p.id) });
+      }
+    }
+    return [...studentRows, ...caseRows, ...groupRows, ...pageRows];
+  }, [q, pages, students, groupInfo, teacherGroup, patients, works, namesOn]);
 
   useEffect(() => { setSel(0); }, [q]);
   useEffect(() => {
@@ -97,6 +119,9 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
     if (r.kind === 'student') {
       setTeacherGroup(r.student.group);
       navigate(`/teacher/review?student=${r.student.id}`);
+    } else if (r.kind === 'case') {
+      setTeacherGroup(r.student.group);
+      navigate(`/teacher/review?student=${r.student.id}${r.works[0] ? `&work=${r.works[0].id}` : ''}`);
     } else if (r.kind === 'group') {
       setTeacherGroup(r.code);
       navigate('/teacher/group');
@@ -112,7 +137,7 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
     else if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); run(rows[sel]); }
   };
 
-  const heading = (kind: Row['kind']) => (kind === 'student' ? t('นักศึกษา') : kind === 'group' ? t('กลุ่ม') : t('หน้า'));
+  const heading = (kind: Row['kind']) => (kind === 'student' ? t('นักศึกษา') : kind === 'case' ? t('ผู้ป่วย') : kind === 'group' ? t('กลุ่ม') : t('หน้า'));
 
   return (
     <div className="cmdk" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -123,7 +148,7 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={t('ค้นชื่อหรือรหัสนักศึกษา · กลุ่ม · ชื่อหน้า')}
+            placeholder={t('ค้นชื่อ/รหัสนักศึกษา · HN · กลุ่ม · ชื่อหน้า')}
             aria-label={t('ค้นหา')}
             role="combobox"
             aria-expanded="true"
@@ -154,6 +179,19 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
                       <span className="cmdk__tx">
                         <b>{personName(r.student)}</b>
                         <small>{r.student.code} · {groupShort(r.student.group)} · {yearLabel(r.student)}</small>
+                      </span>
+                      <span className="cmdk__go">{t('ตรวจงานรายคน')}</span>
+                    </>
+                  )}
+                  {r.kind === 'case' && (
+                    <>
+                      <span className="cmdk__av cmdk__av--case" aria-hidden><FirstAidKit size={15} /></span>
+                      <span className="cmdk__tx">
+                        <b>{patientWithHn(r.patient, namesOn, t)}</b>
+                        <small>
+                          {personName(r.student)} · {groupShort(r.student.group)}
+                          {r.works.length > 0 && ` · ${[...new Set(r.works.map((w) => typeChipLabel(w.type)))].join(', ')}`}
+                        </small>
                       </span>
                       <span className="cmdk__go">{t('ตรวจงานรายคน')}</span>
                     </>

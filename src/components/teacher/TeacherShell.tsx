@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, House, IdentificationCard, ListChecks, MagnifyingGlass, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, House, IdentificationCard, ListChecks, MagnifyingGlass, Printer, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -320,7 +320,10 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        pages={[HOME_NAV, ...GROUP_NAV, ...COHORT_NAV.filter((n) => n.key !== 'roster' || canSeeRoster)].map(({ key, label, to, Icon }) => ({ key, label, to, Icon }))}
+        pages={[
+          ...[HOME_NAV, ...GROUP_NAV, ...COHORT_NAV.filter((n) => n.key !== 'roster' || canSeeRoster)].map(({ key, label, to, Icon }) => ({ key, label, to, Icon })),
+          { key: 'report', label: t('รายงานประจำเดือน'), to: '/teacher/report', Icon: Printer },
+        ]}
       />
       <ToastView variant="desk" />
       <RoleFab low />

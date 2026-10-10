@@ -150,6 +150,8 @@ export interface ExportRequest {
   groupCode?: string;
   /** ชื่อคนกด — ใช้ตอนไม่มีเซิร์ฟเวอร์ (โหมด local) เท่านั้น */
   actor: string;
+  /** จำนวนแถวที่จดลง audit เมื่อสิ่งที่ออกไปไม่ใช่รายการชิ้นงาน (รายงานสรุป) — ไม่ใส่ = works.length */
+  rowCount?: number;
 }
 
 export type ExportResult =
@@ -182,7 +184,7 @@ export async function authorizeExport(req: ExportRequest): Promise<ExportResult>
   if (cloudEnabled && supabase) {
     const { error } = await supabase.rpc('log_export', {
       p_scope: req.scope,
-      p_row_count: req.works.length,
+      p_row_count: req.rowCount ?? req.works.length,
       p_identified: identified,
       p_student_id: req.studentId ?? null,
       p_group_code: req.groupCode ?? null,
@@ -193,7 +195,7 @@ export async function authorizeExport(req: ExportRequest): Promise<ExportResult>
   } else {
     // โหมด local/เดโม: ไม่มีเซิร์ฟเวอร์ให้จด ก็จดในเครื่อง (ข้อมูลเป็นของสมมติทั้งหมด)
     await logAudit(
-      `ส่งออกข้อมูล (${req.scope}) ${req.works.length} แถว${identified ? ' · มีชื่อและ HN' : ' · ปิดบังชื่อและ HN'}`,
+      `ส่งออกข้อมูล (${req.scope}) ${req.rowCount ?? req.works.length} แถว${identified ? ' · มีชื่อและ HN' : ' · ปิดบังชื่อและ HN'}`,
       req.actor,
       { studentId: req.studentId },
     );

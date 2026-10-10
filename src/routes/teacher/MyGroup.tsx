@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Kanban, Table, Users } from '@phosphor-icons/react';
+import { Kanban, Printer, Table, Users } from '@phosphor-icons/react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { CaseBoard } from '../../components/teacher/CaseBoard';
@@ -109,6 +109,11 @@ export default function MyGroup() {
           icon={Users}
           title={t('สรุปกลุ่ม')}
           sub={advisors ? `${t('อาจารย์ที่ปรึกษา')} ${advisors}` : undefined}
+          right={group ? (
+            <button className="btn btn--sec scopehead__btn" onClick={() => navigate(`/teacher/report?scope=group&group=${encodeURIComponent(group)}`)}>
+              <Printer size={15} /> {t('รายงานประจำเดือน')}
+            </button>
+          ) : undefined}
         />
 
         {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
