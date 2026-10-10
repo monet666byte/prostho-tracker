@@ -986,6 +986,15 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
    ผู้ใช้เคาะจาก mock: แผงน้ำเงินหม่น (--panel) เต็มความกว้าง · ปัดซ้าย-ขวาเปลี่ยนเคส · เส้น step หมุดสามตัว
    วงแหวนขั้นย่อย + แถบกางรายการขั้นย่อย · วงทางลัดพื้นเทาอ่อนไอคอนสีแผง · ของเดิมใต้แผงอยู่ครบ */
 .phone { --font-head: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif; --font-body: 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif; font-family: var(--font-body); }
+/* ทั้งฝั่ง นศ. ใช้น้ำเงินหม่นชุดเดียวกับแผง — ปุ่ม ลิงก์ ชิป แถบล่าง (กระจกเดิม แค่เปลี่ยนสี · ผู้ใช้เลือกแบบ 2)
+   หน้าอาจารย์ไม่อยู่ใต้ .phone จึงยังเป็นน้ำเงินเดิม */
+.phone {
+  --accent: var(--panel);
+  --accent-hover: var(--panel-hover);
+  --accent-tint: var(--panel-tint);
+  --accent-ring: var(--panel-ring);
+  --accent-on-dark: var(--panel-hi);
+}
 
 .homehello { margin: 0; font: 700 24px/1.25 var(--font-head); color: var(--text); overflow-wrap: anywhere; }
 .homehello__group { font: 400 12px var(--font-body); color: var(--text-faint); margin-top: 1px; }

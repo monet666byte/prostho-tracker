@@ -63,6 +63,10 @@
      panel-hi = ตัวเลข "/ 10" กับหมุดตำแหน่งปัจจุบันบนพื้นแผง */
   --panel: #34509c;
   --panel-hi: #c3d2ff;
+  /* ชุดเดียวกับแผง สำหรับปุ่ม/ลิงก์/แท็บฝั่ง นศ. (student.css ผูกเข้ากับ --accent ใต้ .phone) */
+  --panel-hover: #283f7e;
+  --panel-tint: #e7ecf6;
+  --panel-ring: #d3dcef;
 
   /* type */
   --font-head: 'Anuphan', 'Noto Sans Thai', system-ui, sans-serif;
@@ -104,6 +108,9 @@ html.theme-plum {
   --toast-bg: #221540;
   --panel: #4e3a86;
   --panel-hi: #d6c6ff;
+  --panel-hover: #3e2d6c;
+  --panel-tint: #efebf7;
+  --panel-ring: #ddd5ee;
 }
 
 /* เทาหมึก: มินิมอล เป็นกลาง เหมือนเอกสาร */
@@ -121,6 +128,9 @@ html.theme-ink {
   --toast-bg: #1a212c;
   --panel: #3e4a60;
   --panel-hi: #c9d3e2;
+  --panel-hover: #2f394b;
+  --panel-tint: #eceff3;
+  --panel-ring: #dce1e8;
 }
 
 /* สีประจำประเภทงาน — ต้องตรงกับ TYPES ใน src/domain/catalog.ts */
