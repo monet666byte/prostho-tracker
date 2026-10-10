@@ -331,7 +331,8 @@ html.sandbox { --sbx-h: 32px; }
 }
 .sbx b { font: 600 12.5px var(--font-head); }
 .sbx__t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.deskwrap > .sbx { width: 100%; justify-content: center; border-radius: 10px; }
+/* border-box: .sbx เป็น content-box (ให้ระยะรอยบากบวกเพิ่มบนมือถือ) — width 100% + ขอบข้างละ 14px เคยล้นจอ 28px ทุกหน้าบนจอคอม */
+.deskwrap > .sbx { width: 100%; box-sizing: border-box; justify-content: center; border-radius: 10px; }
 .deskwrap > .sbx .sbx__t { flex: none; }
 /* บนมือถือจริง แถบนี้อยู่บนสุดแทนหัวเรื่อง จึงเป็นคนรับพื้นที่รอยบาก — หัวเรื่องไม่ต้องเผื่อซ้ำ (student.css เผื่อไว้ให้กรณีไม่มีแถบ) */
 @media (max-width: 780px), (max-width: 1400px) and (pointer: coarse) {
