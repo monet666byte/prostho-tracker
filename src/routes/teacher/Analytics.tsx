@@ -1,6 +1,7 @@
-import { Info } from '@phosphor-icons/react';
+import { ChartLineUp, Info } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
@@ -79,15 +80,13 @@ export default function Analytics() {
   return (
     <TeacherShell active="cohort">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}</h1>
-            <p>
-              {t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })}
-            </p>
-          </div>
-          <YearSeg view={yearView} onChange={setYearView} />
-        </div>
+        <ScopeHead
+          scope="year"
+          icon={ChartLineUp}
+          title={yearView === 'all' ? t('วิเคราะห์รวมทุกชั้นปี') : `${t('วิเคราะห์รวมชั้นปีที่')} ${yearView}`}
+          sub={t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้ายของปี', { n: head.monthsLeft })}
+          right={<YearSeg view={yearView} onChange={setYearView} />}
+        />
 
         {/* สรุปสิ่งที่ต้องทำอะไรต่อ */}
         {/* 4. แผนที่เคสทั้งชั้นปี */}

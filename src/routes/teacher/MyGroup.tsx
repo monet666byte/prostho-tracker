@@ -1,6 +1,9 @@
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Kanban, Table, Users } from '@phosphor-icons/react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
+import { CaseBoard } from '../../components/teacher/CaseBoard';
 import { DivergingBars } from '../../components/charts/Diverging';
 import { Heatmap } from '../../components/charts/Heatmap';
 import { averageProfile, heatmapRows, riskRows } from '../../domain/analytics';
@@ -18,6 +21,8 @@ import { groupShort, splitPersonName } from '../../domain/group';
 /** หน้า "กลุ่มของฉัน" — งานประจำวันของอาจารย์ที่ปรึกษา ทุกอย่างในหน้านี้เป็นของกลุ่มเดียว */
 /* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
 const EMPTY_TEACHERS: Teacher[] = [];
+/* มุมมองนักศึกษาในกลุ่ม (ตาราง / กระดานเคสตาม step) — จำไว้ในเครื่อง */
+const GROUP_VIEW_KEY = 'pt-group-view';
 
 export default function MyGroup() {
   const { settings } = useApp();
@@ -28,6 +33,14 @@ export default function MyGroup() {
   const updatesAll = useAllProgressUpdates();
   const navigate = useNavigate();
   const [openRow, setOpenRow] = useState<string | null>(null);
+  const [view, setViewState] = useState<'table' | 'board'>(() => {
+    try { return localStorage.getItem(GROUP_VIEW_KEY) === 'board' ? 'board' : 'table'; } catch { return 'table'; }
+  });
+  const setView = (v: 'table' | 'board') => {
+    setViewState(v);
+    setPeek(null);
+    try { localStorage.setItem(GROUP_VIEW_KEY, v); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
+  };
   /* การ์ดงานในมือตอนชี้แถว — แถวไม่ขยับ มีแค่พื้นขาว + การ์ดโผล่
      จอสัมผัสไม่มี hover จึงไม่ขึ้นการ์ด — ใช้ ▾ กางแถวแทนเหมือนเดิม */
   const panelRef = useRef<HTMLDivElement>(null);
@@ -83,17 +96,20 @@ export default function MyGroup() {
   const groupProfile = useMemo(() => averageProfile(groupStudents, works, settings), [groupStudents, works, settings]);
   const cohortProfile = useMemo(() => averageProfile(students, works, settings), [students, works, settings]);
   const heat = useMemo(() => heatmapRows(groupStudents, works, settings), [groupStudents, works, settings]);
+  const groupIds = useMemo(() => new Set(groupStudents.map((st) => st.id)), [groupStudents]);
+  const groupWorks = useMemo(() => works.filter((w) => groupIds.has(w.studentId)), [works, groupIds]);
+  const groupCheckins = useMemo(() => checkinsAll.filter((c) => groupIds.has(c.studentId)), [checkinsAll, groupIds]);
 
   return (
     <TeacherShell active="mygroup">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('กลุ่ม')} {groupShort(group)}</h1>
-            {/* เหลือชื่อที่ปรึกษา · ตัดจำนวนคนและคำอธิบาย step */}
-            {advisors && <p>{t('อาจารย์ที่ปรึกษา')} {advisors}</p>}
-          </div>
-        </div>
+        {/* ชื่อกลุ่ม/ปี/จำนวนคนอยู่ในบรรทัดรองของหัว (ScopeHead) · ต่อท้ายชื่อที่ปรึกษา */}
+        <ScopeHead
+          scope="group"
+          icon={Users}
+          title={t('สรุปกลุ่ม')}
+          sub={advisors ? `${t('อาจารย์ที่ปรึกษา')} ${advisors}` : undefined}
+        />
 
         {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
         <div className="kpis kpis--strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
@@ -134,7 +150,26 @@ export default function MyGroup() {
         </div>
 
         <div className="panel grppanel" ref={panelRef} style={{ marginTop: 18 }} onMouseLeave={() => setPeek(null)}>
-          <h3>{t('นักศึกษาในกลุ่ม')}</h3>
+          <div className="grphead">
+            <h3>{t('นักศึกษาในกลุ่ม')}</h3>
+            <div className="seg seg--sm" role="group" aria-label={t('มุมมอง')}>
+              <button data-on={view === 'table'} aria-pressed={view === 'table'} onClick={() => setView('table')}>
+                <Table size={14} weight="bold" />{t('ตาราง')}
+              </button>
+              <button data-on={view === 'board'} aria-pressed={view === 'board'} onClick={() => setView('board')}>
+                <Kanban size={14} weight="bold" />{t('กระดาน')}
+              </button>
+            </div>
+          </div>
+          {view === 'board' ? (
+            <CaseBoard
+              works={groupWorks}
+              students={groupStudents}
+              checkins={groupCheckins}
+              settings={settings}
+              onOpen={(st) => navigate(`/teacher/review?student=${st.id}`)}
+            />
+          ) : (<>
           {/* ไม่มีบรรทัดอธิบายแล้ว — ชื่อขีดเส้นใต้สีฟ้าบอกว่ากดได้อยู่แล้ว และลำดับการเรียง
              เห็นได้จากจุดสีในตาราง · รายละเอียดสีอยู่หลังปุ่ม ⓘ */}
           <p className="sub">{t('สีจุด: เขียว = ตามแผน · แดง = ต้องตาม')}</p>
@@ -292,7 +327,8 @@ export default function MyGroup() {
               })}
             </tbody>
           </table>
-          {(() => {
+          </>)}
+          {view === 'table' && (() => {
             const r = peek && groupRisks.find((x) => x.student.id === peek.id);
             if (!peek || !r) return null;
             return (

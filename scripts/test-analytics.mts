@@ -13,7 +13,7 @@
  *   3. บั๊กที่เคยเจอมาแล้ว — มีคอมเมนต์กำกับว่าเคยพังยังไง ใครเห็นเลขผิด
  */
 import {
-  bottleneckByStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
+  bottleneckByStep, boardByStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
   headline, periodsLeftNow, profile, averageProfile, heatmapRows, riskRows, riskByGroup,
   selfPerformedRows, throughputByMonth,
 } from '../src/domain/analytics.ts';
@@ -233,6 +233,28 @@ console.log('\nbottleneckByStep — ชิ้นงานกองอยู่�
   ok('จำนวนเคสค้างไม่มีทางมากกว่าจำนวนในถัง', buckets.every((b) => b.stale <= b.count));
   ok('ทุกถังมีชื่อขั้นตอนกำกับ (ไม่งั้นผู้ใช้กดดูแล้วเจอช่องว่าง)',
     buckets.every((b) => b.label.length > 0));
+
+  /* กระดานเคสตาม step (หน้าสรุปกลุ่ม) ต้องนับตรงกับแท่งกราฟทุกช่อง */
+  const ws = [
+    wp('CD', { lastUpdatedAt: freshByWallClock }),
+    at('CD', 6, { lastUpdatedAt: freshByWallClock, patientId: 'pX', studentId: 's1' }),
+    at('CD', 6, { lastUpdatedAt: staleByWallClock }),
+    finished('CD'),
+    at('CD', 6, { returned: true }),
+    at('RPD', 3, { lastUpdatedAt: freshByWallClock }),
+  ];
+  const board = boardByStep(ws, S, 'CD', [
+    { id: 'c1', studentId: 's1', patientId: 'pX', status: 'pending', date: '2026-01-01', punctual: true, noPatient: false, activities: [] } as unknown as CheckIn,
+  ]);
+  const bars = bottleneckByStep(ws, S, 'CD');
+  ok('กระดาน: จำนวนคอลัมน์ = จำนวนแท่ง', board.length === bars.length);
+  ok('กระดาน: จำนวนการ์ดทุกคอลัมน์ = ความสูงแท่ง', board.every((c, i) => c.cards.length === bars[i].count),
+    board.map((c) => c.cards.length).join(','));
+  ok('กระดาน: การ์ดค้างทุกคอลัมน์ = ส่วนค้างของแท่ง', board.every((c, i) => c.cards.filter((k) => k.stale).length === bars[i].stale));
+  ok('กระดาน: ค้างขึ้นก่อนในคอลัมน์', board[6].cards[0].stale === true);
+  ok('กระดาน: ชิ้นที่มีคาบรอประเมินกับผู้ป่วยรายเดียวกันถูกติดป้าย', board[6].cards.some((k) => k.pendingEval) && board[6].cards.filter((k) => k.pendingEval).length === 1);
+  ok('กระดาน: ไม่ปนประเภทอื่น', board.every((c) => c.cards.every((k) => k.work.type === 'CD')));
+  ok('กระดาน Recall มีแค่ 4 คอลัมน์', boardByStep([], S, 'RRM').length === 4);
 }
 {
   const rr = bottleneckByStep([at('RRM', 2)], S, 'RRM');

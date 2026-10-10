@@ -1,8 +1,9 @@
-import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, X } from '@phosphor-icons/react';
+import { ArrowLeft, CaretDown, ChatCircleText, SquaresFour, UserFocus, X } from '@phosphor-icons/react';
 import { Fragment,useEffect, useMemo, useState, useRef  } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bar, PhotoSlot } from '../../components/ui/Bits';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
@@ -15,7 +16,6 @@ import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
-import { groupShort } from '../../domain/group';
 import type { Photo } from '../../domain/types';
 
 type Filter = 'all' | 'stale' | 'done';
@@ -108,13 +108,13 @@ export default function Review() {
         >
           <ArrowLeft size={14} weight="bold" /> {t('กลับสรุปกลุ่ม')}
         </button>
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('ตรวจงานรายคน')}</h1>
-            {/* เหลือกลุ่ม + ที่ปรึกษา · ตัดจำนวนคนและคำอธิบายว่าใช้ตอนไหน */}
-            <p>{t('กลุ่ม')} {groupShort(groupCode)}{advisors && ` · ${t('อาจารย์ที่ปรึกษา')} ${advisors}`}</p>
-          </div>
-        </div>
+        {/* ชื่อกลุ่มอยู่ในบรรทัดรองของหัว (ScopeHead) · ต่อท้ายชื่อที่ปรึกษา */}
+        <ScopeHead
+          scope="group"
+          icon={UserFocus}
+          title={t('ตรวจงานรายคน')}
+          sub={advisors ? `${t('อาจารย์ที่ปรึกษา')} ${advisors}` : undefined}
+        />
 
         {/* ห่อบรรทัดบนจอแคบ — ไม่งั้นข้อความสรุปเหลือ 67px แล้วตกบรรทัดทีละคำ
  */}

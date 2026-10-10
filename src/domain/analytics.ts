@@ -6,7 +6,7 @@
 import { lang, personName } from '../lib/i18n';
 import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
-  caseCount, completedInYear, countsForYearlyReq, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
+  caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { isUpcoming } from './cohort';
@@ -376,6 +376,44 @@ export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: 
     b.label = list.find((p) => p[0] === b.progression)?.[1] ?? '';
   });
   return buckets;
+}
+
+/** หนึ่งการ์ดบนกระดานเคส — ชิ้นงานที่กำลังทำหนึ่งชิ้น */
+export interface BoardCard {
+  work: Workpiece;
+  /** วันที่ไม่มีการอัปเดต (ตัวเดียวกับรายการค้างนานสุด) */
+  days: number;
+  stale: boolean;
+  /** มีคาบรอประเมินของนักศึกษาคนนี้ที่ทำกับผู้ป่วยรายเดียวกัน */
+  pendingEval: boolean;
+}
+export interface BoardColumn { progression: number; label: string; cards: BoardCard[] }
+
+/**
+ * กระดานเคสตาม step (หน้าสรุปกลุ่ม) — แตกกราฟคอขวดออกเป็นรายชิ้น
+ * ใช้ขอบเขต/ช่อง/ชื่อขั้นจาก bottleneckByStep ตัวเดียวกัน จำนวนการ์ดในคอลัมน์จึงเท่ากับแท่งในกราฟเสมอ
+ * เรียงในคอลัมน์: ค้างก่อน แล้วค้างนานก่อน
+ */
+export function boardByStep(
+  works: Workpiece[], settings: Settings, type: WorkType, checkins: CheckIn[] = [], now = new Date(),
+): BoardColumn[] {
+  const buckets = bottleneckByStep(works, settings, type);
+  const cols: BoardColumn[] = buckets.map((b) => ({ progression: b.progression, label: b.label, cards: [] }));
+  const pendingKey = new Set(
+    checkins.filter((c) => c.status === 'pending' && c.patientId).map((c) => `${c.studentId}|${c.patientId}`),
+  );
+  works.filter((w) => isActiveWork(w) && w.type === type).forEach((w) => {
+    const p = Math.max(0, progression(w));
+    if (p >= cols.length) return;
+    cols[p].cards.push({
+      work: w,
+      days: daysSinceUpdate(w, now),
+      stale: isStale(w, settings, now),
+      pendingEval: pendingKey.has(`${w.studentId}|${w.patientId}`),
+    });
+  });
+  cols.forEach((c) => c.cards.sort((a, b) => Number(b.stale) - Number(a.stale) || b.days - a.days || a.work.id.localeCompare(b.work.id)));
+  return cols;
 }
 
 // ── 5. funnel ต่อประเภทงาน ─────────────────────────────────

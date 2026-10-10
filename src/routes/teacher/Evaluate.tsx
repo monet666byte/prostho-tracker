@@ -1,6 +1,7 @@
-import { ArrowClockwise, CheckCircle, PencilSimple, Signature, WarningCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
@@ -68,6 +69,8 @@ function ScoreTrend({
   );
 }
 
+const EVAL_MODE_KEY = 'pt-eval-mode';
+
 /** หน้าประเมินรายคาบ — แทนการเซ็นสมุด Clinical rotation logbook ทีละแถว */
 export default function Evaluate() {
   const { session, showToast } = useApp();
@@ -123,6 +126,17 @@ export default function Evaluate() {
   // แก้คะแนนที่ลงไปแล้ว — คาบที่กำลังแก้ และคะแนนชุดใหม่ที่กำลังกรอก
   const [reviseId, setReviseId] = useState<string | null>(null);
   const [reviseDraft, setReviseDraft] = useState<Record<string, number>>({});
+  /* โหมด "ทีละคน" — โชว์การ์ดเดียว มีคิวด้านข้าง + ปุ่มลัดคีย์บอร์ด · จำไว้ในเครื่อง
+     ขั้นตอนบันทึกเหมือนโหมดรายการทุกอย่าง (ค่าเริ่ม 3 · กล่องยืนยันชื่อก่อนลงนาม) */
+  const [mode, setModeState] = useState<'list' | 'focus'>(() => {
+    try { return localStorage.getItem(EVAL_MODE_KEY) === 'focus' ? 'focus' : 'list'; } catch { return 'list'; }
+  });
+  const setMode = (m: 'list' | 'focus') => {
+    setModeState(m);
+    try { localStorage.setItem(EVAL_MODE_KEY, m); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
+  };
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [activeCrit, setActiveCrit] = useState(0);
 
   /**
    * ⚠️ ความปลอดภัย: กันอาจารย์ "ประเมินผิดคน"
@@ -211,10 +225,15 @@ export default function Evaluate() {
   async function sign(id: string) {
     if (signing.current) return;
     signing.current = true;
+    // โหมดทีละคน: เซ็นเสร็จแล้วไปคนถัดไปในคิว (คิดไว้ก่อนรายการจะหดลง)
+    const at = pending.findIndex((c) => c.id === id);
+    const nextId = pending[at + 1]?.id ?? pending[at - 1]?.id ?? null;
     try {
       const res = await evaluateCheckIn(id, draftFor(id), teacher?.name ?? currentActor());
       setConfirmId(null);
       if (res.ok) {
+        setFocusId(nextId);
+        setActiveCrit(0);
         // ปล่อย draft ของคาบที่เซ็นแล้ว — ถ้าไม่เหลือใครค้าง รายการจะกลับมาอัปเดตเองตามปกติ
         setDrafts((d) => {
           const next = { ...d };
@@ -274,21 +293,202 @@ export default function Evaluate() {
     }
   }
 
+  const current = mode === 'focus' ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
+  const currentIndex = current ? pending.findIndex((c) => c.id === current.id) : -1;
+  const goFocus = (step: number) => {
+    const next = pending[currentIndex + step];
+    if (next) { setFocusId(next.id); setActiveCrit(0); }
+  };
+
+  /* ปุ่มลัดของโหมดทีละคน — ใช้ e.code ให้ทำงานแม้แป้นพิมพ์เป็นภาษาไทย (เลข 1 บนแป้นไทยคือ "ๅ")
+     ไม่ทำงานตอนพิมพ์ในช่องกรอก หรือมีกล่องแก้ป้ายตรงเวลา/แก้คะแนนเปิดอยู่
+     กล่องยืนยันลงนามเปิดอยู่: Enter = ยืนยัน · Esc = ยกเลิก (กล่องนี้ยังบอกชื่อ นศ. ทุกครั้งเหมือนเดิม) */
+  useEffect(() => {
+    if (mode !== 'focus') return;
+    const onKey = (e: KeyboardEvent) => {
+      const tg = e.target as HTMLElement | null;
+      if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (punctualId || reviseId) return;
+      if (confirmRow) {
+        if (e.key === 'Enter') { e.preventDefault(); void sign(confirmRow.id); }
+        else if (e.key === 'Escape') { e.preventDefault(); setConfirmId(null); }
+        return;
+      }
+      if (!current) return;
+      const st = studentById.get(current.studentId);
+      const locked = st ? isAlumni(st) : false;
+      const digit = ({ Digit0: 0, Numpad0: 0, Digit1: 1, Numpad1: 1, Digit3: 3, Numpad3: 3 } as Record<string, number>)[e.code];
+      if (digit !== undefined) {
+        if (locked) return;
+        e.preventDefault();
+        const d = draftFor(current.id);
+        const cr = CRITERIA[activeCrit];
+        setDrafts((prev) => ({ ...prev, [current.id]: { ...d, [cr.key]: digit } }));
+        setActiveCrit((i) => Math.min(CRITERIA.length - 1, i + 1));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault(); setActiveCrit((i) => Math.min(CRITERIA.length - 1, i + 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault(); setActiveCrit((i) => Math.max(0, i - 1));
+      } else if (e.key === 'Enter') {
+        // กันปุ่มที่โฟกัสค้างอยู่ (เช่นปุ่มคะแนนที่เพิ่งกด) โดนกดซ้ำแทนการเปิดกล่องยืนยัน
+        e.preventDefault();
+        if (!locked) setConfirmId(current.id);
+      } else if (e.code === 'KeyJ') {
+        e.preventDefault(); goFocus(1);
+      } else if (e.code === 'KeyK') {
+        e.preventDefault(); goFocus(-1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  /** การ์ดประเมินหนึ่งคาบ — ใช้ทั้งโหมดรายการและโหมดทีละคน (focus = มีแถวหัวข้อที่เลือกไว้สำหรับคีย์บอร์ด) */
+  const renderEvalCard = (c: CheckIn, focus = false) => {
+    const student = studentById.get(c.studentId);
+    const patient = c.patientId ? patientById.get(c.patientId) : undefined;
+    const draft = draftFor(c.id);
+    const total = totalScore(draft) ?? 0;
+    // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง
+    const locked = student ? isAlumni(student) : false;
+    return (
+      <div key={c.id} className="evalcard evalcard--calm">
+        {/* การ์ดประเมินแบบ "ตัดของซ้ำ"
+            ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · ค่าตั้งต้น 3 เป็นปุ่มเรียบ
+            ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
+        <div className="evalcard__info">
+          <div className="evalwho">
+            <b>{personName(student, '')}</b>
+            <span className="mono">{student?.code}</span>
+          </div>
+          <div className="evalline">
+            {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}{' · '}
+            {/* ป้ายตรงต่อเวลา — กดเพื่อแก้ได้ทั้งสองทาง
+                `punctual` คิดครั้งเดียวตอนกดเช็คอินจากเวลาเครื่อง แล้วเดิมแก้ไม่ได้เลย
+                คนที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนเย็นจะถูกบันทึกว่าสายถาวร
+                แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน
+                ต้องกดได้ทั้งสองสถานะ — ทางเดียวแปลว่าแก้พลาดแล้วแก้กลับไม่ได้ */}
+            <button
+              className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`}
+              title={t('อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log')}
+              onClick={() => setPunctualId(c.id)}
+            >
+              {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
+            </button>
+            {c.noPatient && <> · {t('ไม่มีผู้ป่วย')}</>}
+            {/* นักศึกษาแก้บันทึกหลังเช็คอิน — โชว์ให้อาจารย์เห็นตรงๆ ว่ามีการแก้และเมื่อไหร่ (รายละเอียดเต็มอยู่ audit log) */}
+            {c.editedAt && <> · {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</>}
+          </div>
+          <div className="evalact">
+            {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
+            {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
+                ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
+            {patient && (() => {
+              const lb = patientLabel(patient, idLevel, namesOn);
+              return (
+                <span className="mono evalpatient">
+                  {' · '}{t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}
+                </span>
+              );
+            })()}
+          </div>
+          {c.note && (
+            <div className="evalsteps" style={{ overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
+          )}
+          {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น
+              ไม่มี = บรรทัดเล็กบรรทัดเดียว (เดิมเป็นกล่องเทาว่างทั้งกล่อง) */}
+          {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? (
+            <div className="evalsteps evalsteps--done">
+              <CheckCircle size={13} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+              {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).join(' · ')}
+            </div>
+          ) : (
+            <div className="evalsteps">{t('ไม่มีบันทึก step เสร็จวันนั้น')}</div>
+          )}
+        </div>
+
+        <div className="evalcard__scores">
+          {CRITERIA.map((cr, ci) => (
+            <div key={cr.key} className="scorerow" data-changed={draft[cr.key] !== 3} data-cur={focus && ci === activeCrit} onClick={focus ? () => setActiveCrit(ci) : undefined}>
+              <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
+              <span className="scorerow__btns" role="radiogroup" aria-label={cr.label}>
+                {SCORE_OPTIONS.map((n) => (
+                  <button
+                    key={n}
+                    title={focus ? t('กด {n} บนคีย์บอร์ด', { n }) : undefined}
+                    data-on={draft[cr.key] === n}
+                    data-v={n}
+                    aria-pressed={draft[cr.key] === n}
+                    disabled={locked}
+                    onClick={(e) => {
+                      setDrafts({ ...drafts, [c.id]: { ...draft, [cr.key]: n } });
+                      if (focus) { e.stopPropagation(); setActiveCrit(Math.min(CRITERIA.length - 1, ci + 1)); }
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </span>
+            </div>
+          ))}
+          {(() => {
+            const changed = CRITERIA.filter((cr) => draft[cr.key] !== 3).length;
+            return (
+              <div className="evalfoot">
+                <span className="evalfoot__total">{total}<small> / {MAX_TOTAL}</small></span>
+                <span className="evalfoot__note">
+                  {changed > 0 ? (
+                    <>
+                      {t('ปรับ {n} ข้อ', { n: changed })}{' · '}
+                      <button
+                        className="textbtn"
+                        disabled={locked}
+                        onClick={() => { const next = { ...drafts }; delete next[c.id]; setDrafts(next); }}
+                      >
+                        {t('คืนเป็น 3 ทุกข้อ')}
+                      </button>
+                    </>
+                  ) : t('ได้ 3 ทุกข้อ')}
+                </span>
+                <button
+                  className="btn"
+                  style={{ width: 'auto', height: 40, fontSize: 13, padding: '0 16px' }}
+                  disabled={locked}
+                  title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
+                  onClick={() => setConfirmId(c.id)}
+                >
+                  <Signature size={16} weight="bold" />
+                  {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <TeacherShell active="evaluate">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('ประเมินรายคาบ')}</h1>
-          </div>
-        </div>
+        <ScopeHead scope="group" icon={Table} title={t('ประเมินรายคาบ')} />
 
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h3>
-            {t('รอประเมิน')} · {t('{n} คน', { n: new Set(pending.map((c) => c.studentId)).size })}
-            {pending.length > new Set(pending.map((c) => c.studentId)).size && ` (${t('{n} รายการ', { n: pending.length })})`}
-          </h3>
-          
+          <div className="evalhead">
+            <h3>
+              {t('รอประเมิน')} · {t('{n} คน', { n: new Set(pending.map((c) => c.studentId)).size })}
+              {pending.length > new Set(pending.map((c) => c.studentId)).size && ` (${t('{n} รายการ', { n: pending.length })})`}
+            </h3>
+            <div className="seg seg--sm" role="group" aria-label={t('มุมมอง')}>
+              <button data-on={mode === 'list'} aria-pressed={mode === 'list'} onClick={() => setMode('list')}>
+                <ListBullets size={14} weight="bold" />{t('ทั้งหมด')}
+              </button>
+              <button data-on={mode === 'focus'} aria-pressed={mode === 'focus'} onClick={() => setMode('focus')}>
+                <UserFocus size={14} weight="bold" />{t('ทีละคน')}
+              </button>
+            </div>
+          </div>
 
           {pending.length === 0 && (
             <div className="dashed" style={{ marginTop: 12, padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
@@ -313,127 +513,45 @@ export default function Evaluate() {
             </button>
           )}
 
-          <div style={{ display: 'grid', gap: 13, marginTop: 12 }}>
-            {pending.map((c) => {
-              const student = studentById.get(c.studentId);
-              const patient = c.patientId ? patientById.get(c.patientId) : undefined;
-              const draft = draftFor(c.id);
-              const total = totalScore(draft) ?? 0;
-              // รุ่นที่เรียนจบแล้ว = ประวัติที่ปิดจบ ห้ามให้คะแนนย้อนหลัง
-              const locked = student ? isAlumni(student) : false;
-              return (
-                <div key={c.id} className="evalcard evalcard--calm">
-                  {/* การ์ดประเมินแบบ "ตัดของซ้ำ"
-                      ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · ค่าตั้งต้น 3 เป็นปุ่มเรียบ
-                      ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
-                  <div className="evalcard__info">
-                    <div className="evalwho">
-                      <b>{personName(student, '')}</b>
-                      <span className="mono">{student?.code}</span>
-                    </div>
-                    <div className="evalline">
-                      {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}{' · '}
-                      {/* ป้ายตรงต่อเวลา — กดเพื่อแก้ได้ทั้งสองทาง
-                          `punctual` คิดครั้งเดียวตอนกดเช็คอินจากเวลาเครื่อง แล้วเดิมแก้ไม่ได้เลย
-                          คนที่มาคาบบ่ายจริงแต่ลืมเช็คอินจนเย็นจะถูกบันทึกว่าสายถาวร
-                          แล้วหน้าประเมินตนเองขึ้น "มาสายบ่อยกว่าที่คิด" ให้อาจารย์อ่าน
-                          ต้องกดได้ทั้งสองสถานะ — ทางเดียวแปลว่าแก้พลาดแล้วแก้กลับไม่ได้ */}
-                      <button
-                        className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`}
-                        title={t('อาจารย์แก้ป้ายนี้ได้ — ทุกครั้งบันทึกใน audit log')}
-                        onClick={() => setPunctualId(c.id)}
-                      >
-                        {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
-                      </button>
-                      {c.noPatient && <> · {t('ไม่มีผู้ป่วย')}</>}
-                      {/* นักศึกษาแก้บันทึกหลังเช็คอิน — โชว์ให้อาจารย์เห็นตรงๆ ว่ามีการแก้และเมื่อไหร่ (รายละเอียดเต็มอยู่ audit log) */}
-                      {c.editedAt && <> · {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</>}
-                    </div>
-                    <div className="evalact">
-                      {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
-                      {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
-                          ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
-                      {patient && (() => {
-                        const lb = patientLabel(patient, idLevel, namesOn);
-                        return (
-                          <span className="mono evalpatient">
-                            {' · '}{t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    {c.note && (
-                      <div className="evalsteps" style={{ overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
-                    )}
-                    {/* หลักฐานจริงประกอบการให้คะแนน — step ที่นักศึกษาบันทึกว่าทำเสร็จในวันนั้น
-                        ไม่มี = บรรทัดเล็กบรรทัดเดียว (เดิมเป็นกล่องเทาว่างทั้งกล่อง) */}
-                    {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? (
-                      <div className="evalsteps evalsteps--done">
-                        <CheckCircle size={13} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-                        {(stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).join(' · ')}
-                      </div>
-                    ) : (
-                      <div className="evalsteps">{t('ไม่มีบันทึก step เสร็จวันนั้น')}</div>
-                    )}
-                  </div>
-
-                  <div className="evalcard__scores">
-                    {CRITERIA.map((cr) => (
-                      <div key={cr.key} className="scorerow" data-changed={draft[cr.key] !== 3}>
-                        <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
-                        <span className="scorerow__btns" role="radiogroup" aria-label={cr.label}>
-                          {SCORE_OPTIONS.map((n) => (
-                            <button
-                              key={n}
-                              data-on={draft[cr.key] === n}
-                              data-v={n}
-                              aria-pressed={draft[cr.key] === n}
-                              disabled={locked}
-                              onClick={() => setDrafts({ ...drafts, [c.id]: { ...draft, [cr.key]: n } })}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </span>
-                      </div>
-                    ))}
-                    {(() => {
-                      const changed = CRITERIA.filter((cr) => draft[cr.key] !== 3).length;
-                      return (
-                        <div className="evalfoot">
-                          <span className="evalfoot__total">{total}<small> / {MAX_TOTAL}</small></span>
-                          <span className="evalfoot__note">
-                            {changed > 0 ? (
-                              <>
-                                {t('ปรับ {n} ข้อ', { n: changed })}{' · '}
-                                <button
-                                  className="textbtn"
-                                  disabled={locked}
-                                  onClick={() => { const next = { ...drafts }; delete next[c.id]; setDrafts(next); }}
-                                >
-                                  {t('คืนเป็น 3 ทุกข้อ')}
-                                </button>
-                              </>
-                            ) : t('ได้ 3 ทุกข้อ')}
-                          </span>
-                          <button
-                            className="btn"
-                            style={{ width: 'auto', height: 40, fontSize: 13, padding: '0 16px' }}
-                            disabled={locked}
-                            title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
-                            onClick={() => setConfirmId(c.id)}
-                          >
-                            <Signature size={16} weight="bold" />
-                            {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
+          {mode === 'focus' && current ? (
+            <div className="evalfocus">
+              {/* คิวด้านข้าง — ลำดับเดียวกับโหมดรายการ (ตามรหัสนักศึกษา) · จุดฟ้า = แตะคะแนนไปแล้ว */}
+              <div className="evalfocus__queue">
+                {pending.map((c, i) => {
+                  const st = studentById.get(c.studentId);
+                  const on = c.id === current.id;
+                  return (
+                    <button key={c.id} className="evalq" data-on={on} aria-current={on ? 'true' : undefined} onClick={() => { setFocusId(c.id); setActiveCrit(0); }}>
+                      <span className="evalq__n">{i + 1}</span>
+                      <span className="evalq__who">
+                        <b>{personName(st, '')}</b>
+                        <small>{thaiShort(c.date)}</small>
+                      </span>
+                      {drafts[c.id] && <span className="evalq__dot" title={t('แตะคะแนนไปแล้ว')} />}
+                    </button>
+                  );
+                })}
+                <div className="evalfocus__keys" aria-hidden>
+                  <div><kbd>0</kbd><kbd>1</kbd><kbd>3</kbd>{t('ให้คะแนนหัวข้อที่เลือก')}</div>
+                  <div><kbd>↑</kbd><kbd>↓</kbd>{t('เลื่อนหัวข้อ')}</div>
+                  <div><kbd>↵</kbd>{t('บันทึก (มีกล่องยืนยันชื่อ)')}</div>
+                  <div><kbd>J</kbd><kbd>K</kbd>{t('คนถัดไป / ก่อนหน้า')}</div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+              <div className="evalfocus__main">
+                <div className="evalfocus__bar">
+                  <span>{t('คนที่ {i} จาก {n}', { i: currentIndex + 1, n: pending.length })}</span>
+                  <button className="evalfocus__nav" onClick={() => goFocus(-1)} disabled={currentIndex <= 0} aria-label={t('คนก่อนหน้า')}><CaretLeft size={15} weight="bold" /></button>
+                  <button className="evalfocus__nav" onClick={() => goFocus(1)} disabled={currentIndex >= pending.length - 1} aria-label={t('คนถัดไป')}><CaretRight size={15} weight="bold" /></button>
+                </div>
+                {renderEvalCard(current, true)}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 13, marginTop: 12 }}>
+              {pending.map((c) => renderEvalCard(c))}
+            </div>
+          )}
         </div>
 
         <div className="panel">

@@ -6,9 +6,10 @@
  *
  * เดิมต้องพิมพ์ SQL ทุกครั้งที่เพิ่มคน — หน้านี้ทำให้ภาคทำเองได้
  */
-import { CheckCircle, Clock, Trash } from '@phosphor-icons/react';
+import { CheckCircle, Clock, IdentificationCard, Trash } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { AdvisorEditor } from '../../components/teacher/AdvisorGroups';
@@ -201,7 +202,7 @@ export default function Roster() {
     return (
       <TeacherShell active="roster">
         <main className="main">
-          <div className="main__head"><div style={{ flex: 1 }}><h1>{t('จัดการรายชื่อ')}</h1></div></div>
+          <ScopeHead scope="setup" icon={IdentificationCard} title={t('จัดการรายชื่อ')} />
           <div className="dashed" style={{ padding: '28px 20px', textAlign: 'center', font: '500 12.5px var(--font-body)', color: 'var(--text-muted)' }}>
             {t('หน้านี้สำหรับหัวหน้ารายวิชาเท่านั้น')}
           </div>
@@ -213,11 +214,7 @@ export default function Roster() {
   return (
     <TeacherShell active="roster">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('รายชื่อ & นำเข้าข้อมูล')}</h1>
-          </div>
-        </div>
+        <ScopeHead scope="setup" icon={IdentificationCard} title={t('รายชื่อ & นำเข้าข้อมูล')} />
 
         {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก
             ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}

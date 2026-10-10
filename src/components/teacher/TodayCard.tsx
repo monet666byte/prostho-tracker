@@ -9,14 +9,8 @@ export interface TodayLine {
   icon: 'eval' | 'warn' | 'stale' | 'good' | 'sync' | 'offline';
   text: ReactNode;
   go?: { label: string; onClick: () => void };
-}
-
-export interface TodayScope {
-  key: string;
-  label: string;
-  on: boolean;
-  /** ไม่มี = ป้ายเฉยๆ (มีขอบเขตเดียว ไม่ต้องสลับ) */
-  onPick?: () => void;
+  /** รายคนใต้บรรทัด (ชื่อ + ปุ่มทำงานนั้นได้เลย) — ไม่มี = บรรทัดเดียวแบบเดิม */
+  items?: ReactNode;
 }
 
 const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise, offline: CloudSlash } as const;
@@ -28,25 +22,10 @@ export function greeting(now = new Date()): string {
   return t('สวัสดี{d}', { d: day });
 }
 
-/**
- * กล่อง "สรุปวันนี้" หน้าภาพรวมอาจารย์
- * ขอบรุ้งแบบ Siri หมุนช้าๆ เฉพาะตอนมีเรื่องต้องทำ/ต้องดู · ไม่มีอะไรน่าห่วง = ขอบนิ่ง
- * ไอคอนแบบ 3 (วงกลมสีอ่อน) — สีบอกความหมาย ฟ้า = ต้องทำ · ส้ม = ต้องดู · เขียว = ข่าวดี
- */
-export function TodayCard({ name, summary, lines, scopes }: { name: string; summary: TodaySummary; lines: TodayLine[]; scopes: TodayScope[] }) {
+/** บรรทัดในกล่องสรุปวันนี้ — ใช้ซ้ำในกล่อง "ต้องดูในชั้นปี" ของโซนทั้งชั้นปี */
+export function TodayLines({ lines }: { lines: TodayLine[] }) {
   return (
-    <section className={`panel todaycard${summary.needsAttention ? ' todaycard--live' : ''}`} aria-label={t('สรุปวันนี้')}>
-      <div className="todaycard__top">
-        <h3 className="todaycard__head">
-          <span className="todaycard__orb" aria-hidden />
-          <span>{greeting()}{name && ` ${name}`}</span>
-        </h3>
-        <div className="todaycard__scope" role="group" aria-label={t('สรุปของ')}>
-          {scopes.map((sc) => sc.onPick
-            ? <button key={sc.key} aria-pressed={sc.on} onClick={sc.onPick}>{sc.label}</button>
-            : <span key={sc.key} aria-current="true">{sc.label}</span>)}
-        </div>
-      </div>
+    <>
       {lines.map((l) => {
         const Icon = ICONS[l.icon];
         const inner = (
@@ -56,10 +35,35 @@ export function TodayCard({ name, summary, lines, scopes }: { name: string; summ
             {l.go && <span className="todaycard__go">{l.go.label} ›</span>}
           </>
         );
-        return l.go
-          ? <button key={l.key} className="todaycard__line" onClick={l.go.onClick}>{inner}</button>
-          : <div key={l.key} className="todaycard__line todaycard__line--still">{inner}</div>;
+        const line = l.go
+          ? <button className="todaycard__line" onClick={l.go.onClick}>{inner}</button>
+          : <div className="todaycard__line todaycard__line--still">{inner}</div>;
+        return (
+          <div key={l.key} className={l.items ? 'todaycard__group' : undefined}>
+            {line}
+            {l.items && <div className="todaycard__kids">{l.items}</div>}
+          </div>
+        );
       })}
+    </>
+  );
+}
+
+/**
+ * กล่อง "สรุปวันนี้" หน้าแรกอาจารย์ (อยู่ในโซนกลุ่ม · นับเฉพาะกลุ่มนั้น)
+ * ขอบรุ้งแบบ Siri หมุนช้าๆ เฉพาะตอนมีเรื่องต้องทำ/ต้องดู · ไม่มีอะไรน่าห่วง = ขอบนิ่ง
+ * ไอคอนแบบ 3 (วงกลมสีอ่อน) — สีบอกความหมาย ฟ้า = ต้องทำ · ส้ม = ต้องดู · เขียว = ข่าวดี
+ */
+export function TodayCard({ name, summary, lines }: { name: string; summary: TodaySummary; lines: TodayLine[] }) {
+  return (
+    <section className={`panel todaycard${summary.needsAttention ? ' todaycard--live' : ''}`} aria-label={t('สรุปวันนี้')}>
+      <div className="todaycard__top">
+        <h3 className="todaycard__head">
+          <span className="todaycard__orb" aria-hidden />
+          <span>{greeting()}{name && ` ${name}`}</span>
+        </h3>
+      </div>
+      <TodayLines lines={lines} />
     </section>
   );
 }

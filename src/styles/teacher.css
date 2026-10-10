@@ -945,6 +945,8 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .kpi__of { font: 500 14px var(--font-body); color: var(--text-faint); }
 .kpi__link { border: 0; background: none; padding: 0; cursor: pointer; font: 600 12px var(--font-body); color: var(--accent); }
 
+/* แดงอิฐอิ่มต่ำ — กลุ่มที่ต้องตามตั้งแต่ ⅓ (isFollowUpGroup) + กล่อง "ต้องดูในชั้นปี" ให้เข้าชุดกัน */
+.groupstrip, .yearalert { --brick: #c46b57; --brick-dark: #8f2f22; --brick-tint: #f9eeeb; --brick-border: #ecc9c1; }
 .panel.groupstrip { border-bottom-width: 2px; padding: 4px 16px; margin-bottom: 6px; }
 .grouprow { display: grid; grid-template-columns: 84px repeat(12, minmax(0, 1fr)); gap: 6px; align-items: center; padding: 16px 0 10px; }
 .grouprow + .grouprow { border-top: 1px solid var(--border); }
@@ -957,7 +959,7 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 }
 @media (hover: hover) { .groupcell:hover { background: var(--fill); } }
 .groupcell__code { font: 500 11px var(--font-mono); color: var(--text-faint); }
-.groupcell--low { background: var(--warning-tint); }
+.groupcell--follow { background: var(--brick-tint); }
 .groupcell--on { box-shadow: inset 0 0 0 1.5px var(--border-2); }
 /* กลุ่มที่อาจารย์ดูแล — กรอบฟ้าเข้ม + พื้นฟ้าอ่อน + ป้ายลอย (ต้องชัดกว่ากลุ่มที่แค่เลือกดู) */
 .groupcell--mine { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -1199,13 +1201,13 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
   transform-origin: left center; animation: groupbarIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
   transition: width 0.4s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.2s;
 }
-.groupcell--low .groupcell__bar i { background: var(--warning); }
-.groupcell--low .groupcell__code { color: var(--warning-dark); }
+.groupcell--follow .groupcell__bar i { background: var(--brick); }
+.groupcell--follow .groupcell__code { color: var(--brick-dark); }
 .groupcell--mine .groupcell__bar i { background: var(--accent); }
 @keyframes groupbarIn { from { transform: scaleX(0); } }
 @media (hover: hover) {
   .groupcell--bar:hover .groupcell__bar i { background: var(--accent); }
-  .groupcell--low.groupcell--bar:hover .groupcell__bar i { background: var(--warning-dark); }
+  .groupcell--follow.groupcell--bar:hover .groupcell__bar i { background: var(--brick-dark); }
 }
 /* กล่องตัวเลข */
 .groupcell__tip {
@@ -1254,14 +1256,14 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
   position: absolute; inset: 0; display: grid; place-items: center; font: 700 10px/1 var(--font-head); font-style: normal;
   color: #1a2a55; opacity: 0; transition: opacity 0.15s;
 }
-.groupcell--low .groupcell__bar em { color: var(--warning-dark); }
+.groupcell--follow .groupcell__bar em { color: var(--brick-dark); }
 @media (hover: hover) {
   .groupcell--bar:hover { transform: translateY(-3px); background: var(--surface); box-shadow: 0 10px 22px rgba(16, 24, 40, 0.12); }
   .groupcell--mine.groupcell--bar:hover { box-shadow: inset 0 0 0 2px var(--accent), 0 10px 22px rgba(43, 92, 230, 0.2); }
   .groupcell--bar:hover .groupcell__bar { height: 16px; max-width: 64px; }
   .groupcell--bar:hover .groupcell__bar em { opacity: 1; transition-delay: 0.08s; }
   .groupcell--bar:hover .groupcell__bar i { background: color-mix(in srgb, var(--accent) 45%, #fff); }
-  .groupcell--low.groupcell--bar:hover .groupcell__bar i { background: color-mix(in srgb, var(--warning) 55%, #fff); }
+  .groupcell--follow.groupcell--bar:hover .groupcell__bar i { background: color-mix(in srgb, var(--brick) 55%, #fff); }
   .groupstrip:has(.groupcell--bar:hover) .groupcell--bar:not(:hover) { opacity: 0.5; filter: saturate(0.7); }
 }
 .groupcell--peek { transform: translateY(-3px); background: var(--surface); box-shadow: 0 10px 22px rgba(16, 24, 40, 0.12); }
@@ -1269,7 +1271,7 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .groupcell--peek .groupcell__bar { height: 16px; max-width: 64px; }
 .groupcell--peek .groupcell__bar em { opacity: 1; }
 .groupcell--peek .groupcell__bar i { background: color-mix(in srgb, var(--accent) 45%, #fff); }
-.groupcell--low.groupcell--peek .groupcell__bar i { background: color-mix(in srgb, var(--warning) 55%, #fff); }
+.groupcell--follow.groupcell--peek .groupcell__bar i { background: color-mix(in srgb, var(--brick) 55%, #fff); }
 .groupstrip:has(.groupcell--peek) .groupcell--bar:not(.groupcell--peek) { opacity: 0.5; filter: saturate(0.7); }
 /* จุดคนในกล่อง — เด้งขึ้นทีละจุดตอนกล่องโผล่ */
 .groupcell__tip { min-width: 150px; }
@@ -1389,13 +1391,6 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 .todaycard__top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 6px; }
 .todaycard__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
 .todaycard__orb { align-self: center; }
-.todaycard__scope { margin-left: auto; display: flex; background: var(--fill); border-radius: 99px; padding: 2px; }
-.todaycard__scope button, .todaycard__scope span {
-  border: 0; background: none; border-radius: 99px; padding: 3px 12px; font: 600 12px var(--font-body); color: var(--text-secondary);
-}
-.todaycard__scope button { cursor: pointer; }
-.todaycard__scope button[aria-pressed='true'], .todaycard__scope span { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
-.todaycard__scope button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .todaycard__orb { width: 12px; height: 12px; border-radius: 50%; flex: none; background: conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff); }
 .todaycard__line {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 8px; border: 0; border-radius: 10px;
@@ -1487,3 +1482,219 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .staledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); margin-left: 6px; vertical-align: 1px; }
 .textbtn--icon { padding: 5px; border-radius: 8px; }
 .textsize--compact { display: flex; gap: 6px; align-items: center; }
+
+/* ── หน้าแรกอาจารย์: สองโซน — กลุ่มที่ดูอยู่ (ซ้าย) / ทั้งชั้นปี (ขวา) ──
+   พื้นสองโซนใช้สีเดียวกับสองหมวดในแถบเมนูซ้าย (กล่องกลุ่มสีฟ้าอ่อน · กล่องทั้งชั้นปีสีกลาง) */
+.homezones { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .homezones { grid-template-columns: minmax(0, 1fr); } }
+.zone { display: grid; gap: 12px; align-content: start; min-width: 0; padding: 12px; border-radius: 18px; }
+/* LinkRequestsPanel ใส่ margin ไว้ในตัว (ใช้ที่หน้าอื่นด้วย) — ในโซนให้ gap คุมระยะแทน */
+.zone > .panel { margin-bottom: 0 !important; }
+.zone--group { background: color-mix(in srgb, var(--accent-tint) 45%, #fff); border: 1px solid var(--accent-ring); }
+.zone--year { background: var(--fill); border: 1px solid var(--border); }
+.zone__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 4px; }
+.zone__ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+.zone--group .zone__ic { background: var(--accent); color: #fff; }
+.zone--year .zone__ic { background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border-2); }
+.zone__title { flex: 1; min-width: 150px; }
+.zone__title h2 { margin: 0; font: 700 16px/1.25 var(--font-head); color: var(--text); }
+.zone__title small { display: block; font: 400 12px var(--font-body); color: var(--text-faint); }
+.zone__select {
+  font: 600 12.5px var(--font-body); color: var(--accent); background: var(--surface);
+  border: 1px solid var(--accent-ring); border-radius: 10px; padding: 6px 8px; min-height: 36px; cursor: pointer;
+}
+/* โซนทั้งชั้นปีแคบ — ช่องกลุ่มแถวละ 6 ป้ายปีขึ้นบรรทัดของตัวเอง (กลับเป็นแถวละ 12 เมื่อโซนกว้างเต็มจอ) */
+.zone--year .panel.groupstrip { padding: 4px 12px; margin-bottom: 0; }
+.zone--year .grouprow, .zone--year .grouprow--single { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 14px; padding-top: 14px; }
+.zone--year .grouprow__label { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; }
+.zone--year .grouprow__label small { display: inline; }
+@media (min-width: 900px) and (max-width: 1100px) {
+  .zone--year .grouprow, .zone--year .grouprow--single { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+}
+
+/* ── คิวงานใต้บรรทัดในกล่องสรุปวันนี้ — รายคน + ปุ่มทำงานนั้นได้เลย ── */
+.todaycard__group { display: grid; gap: 2px; }
+/* เส้นคั่นหลังบรรทัดที่กางรายคน — ให้บรรทัดถัดไปไม่ดูเป็นคนสุดท้ายในรายการ */
+.todaycard__group + div { border-top: 1px solid var(--border); padding-top: 4px; }
+.todaycard__kids { display: grid; gap: 6px; margin: 0 0 8px 48px; }
+.todaykid {
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 10px;
+  border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border);
+}
+.todaykid__av {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--accent-tint); color: var(--accent); font: 700 12.5px var(--font-head);
+}
+.todaykid__av--warn { background: var(--warning-tint); color: var(--warning-dark); }
+.todaykid__who { flex: 1; min-width: 0; }
+.todaykid__name { border: 0; background: none; padding: 0; cursor: pointer; font: 600 13px var(--font-body); color: var(--text); text-align: left; }
+@media (hover: hover) { .todaykid__name:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; } }
+.todaykid__name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.todaykid__meta {
+  display: flex; align-items: center; gap: 4px; min-width: 0;
+  font: 400 11.5px var(--font-body); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.todaykid__age { font: 400 11.5px var(--font-body); color: var(--text-faint); white-space: nowrap; }
+.todaykid__btn {
+  border: 0; border-radius: 10px; padding: 6px 14px; min-height: 34px; cursor: pointer; white-space: nowrap;
+  font: 700 12.5px var(--font-body); background: var(--accent); color: #fff; box-shadow: 0 3px 0 var(--accent-hover);
+}
+.todaykid__btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-hover); }
+.todaykid--more { justify-content: center; cursor: pointer; background: transparent; border-style: dashed; font: 600 12px var(--font-body); color: var(--accent); }
+@media (max-width: 560px) {
+  .todaycard__kids { margin-left: 0; }
+  .todaykid__age { display: none; }
+}
+/* แถวละ 6 ช่อง: ช่องขวาสุดของทุกแถวต้องเปิดกล่องตัวเลขชิดขวา ไม่งั้นล้นขอบจอ (แถวมีป้ายปีเป็นลูกตัวแรก) */
+.zone--year .grouprow:not(.grouprow--single) > .groupcell--bar:nth-child(6n+1) .groupcell__tip,
+.zone--year .grouprow--single > .groupcell--bar:nth-child(6n) .groupcell__tip { left: auto; right: 0; transform: translate(0, 4px) scale(0.96); transform-origin: calc(100% - 20px) 100%; }
+.zone--year .grouprow:not(.grouprow--single) > .groupcell--bar:nth-child(6n+1) .groupcell__tip::after,
+.zone--year .grouprow--single > .groupcell--bar:nth-child(6n) .groupcell__tip::after { left: auto; right: 15px; }
+.zone--year .grouprow:not(.grouprow--single) > .groupcell--bar:nth-child(6n+1):is(:hover, :focus-within, .groupcell--peek) .groupcell__tip,
+.zone--year .grouprow--single > .groupcell--bar:nth-child(6n):is(:hover, :focus-within, .groupcell--peek) .groupcell__tip { transform: translate(0, 0) scale(1); }
+@media (max-width: 560px) { .zone { padding: 8px; border-radius: 14px; } .zone__head { padding: 4px; } }
+
+/* ── หัวหน้าทุกหน้าฝั่งอาจารย์ (ScopeHead) — สีตรงกับโซนในหน้าแรกและหมวดในแถบเมนูซ้าย ── */
+.scopehead { align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; }
+.scopehead__ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+.scopehead__title { flex: 1; min-width: 180px; }
+.scopehead--group { background: color-mix(in srgb, var(--accent-tint) 45%, #fff); border: 1px solid var(--accent-ring); }
+.scopehead--group .scopehead__ic { background: var(--accent); color: #fff; }
+.scopehead--year { background: var(--fill); border: 1px solid var(--border); }
+.scopehead--year .scopehead__ic { background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border-2); }
+.scopehead--setup { padding: 0 2px; }
+.scopehead--setup .scopehead__ic { background: var(--fill); color: var(--text-secondary); }
+@media (max-width: 560px) { .scopehead { padding: 10px; border-radius: 14px; } }
+/* กล่อง "ต้องดูในชั้นปี" บนสุดของโซนทั้งชั้นปี — ขอบส้มอ่อนบอกว่าเป็นเรื่องที่ต้องดู */
+.yearalert { border-color: var(--brick-border); padding: 12px 12px 6px; display: grid; gap: 2px; }
+.yearalert h3 { margin: 0 4px 4px; font: 600 13px var(--font-head); color: var(--brick-dark); }
+.yearalert .todaycard__ic--warn { background: var(--brick-tint); color: var(--brick-dark); }
+.yearalert__more { color: var(--text-faint); }
+.yearalert .todaycard__line { font-size: 13px; padding: 6px; gap: 10px; }
+.yearalert .todaycard__ic { width: 26px; height: 26px; }
+/* ตารางย่อบนหน้าแรก — ป้ายบอกลำดับ + ปุ่มไปตารางเต็มในสรุปกลุ่ม */
+.tblhead__hint { font: 500 11px var(--font-body); color: var(--text-faint); white-space: nowrap; }
+.homemore {
+  display: block; width: 100%; margin-top: 10px; padding: 8px; min-height: 38px; cursor: pointer;
+  border: 1px dashed var(--accent-ring); border-radius: 10px; background: transparent;
+  font: 600 12.5px var(--font-body); color: var(--accent);
+}
+@media (hover: hover) { .homemore:hover { background: var(--accent-tint); } }
+
+/* ── ค้นหาได้ทุกอย่าง (⌘K) ── */
+.side__search {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; cursor: pointer;
+  background: none; text-align: left; font: 500 12.5px var(--font-body); color: var(--text-faint);
+}
+@media (hover: hover) { .side__search:hover { background: var(--fill); color: var(--text-body); } }
+.side__search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.side__search .navlabel { flex: 1; }
+.side__kbd { font: 600 10px var(--font-mono); color: var(--text-faint); background: var(--fill); border: 1px solid var(--border-2); border-radius: 5px; padding: 0 5px; }
+.side--rail .side__kbd { display: none; }
+@media (max-width: 780px) { .side__kbd { display: none; } }
+.cmdk {
+  position: fixed; inset: 0; z-index: 90; display: grid; justify-items: center; align-items: start;
+  padding: 12vh 16px 16px; background: rgba(16, 24, 40, 0.38);
+}
+.cmdk__box {
+  width: min(640px, 100%); max-height: 72vh; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border-radius: 16px; box-shadow: 0 24px 60px rgba(16, 24, 40, 0.35);
+}
+.cmdk__in { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-faint); }
+.cmdk__in input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 500 16px var(--font-body); color: var(--text); padding: 4px 0; }
+.cmdk kbd { font: 600 10.5px var(--font-mono); color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border-2); border-radius: 5px; padding: 0 5px; margin-right: 3px; }
+.cmdk__list { overflow-y: auto; padding: 6px 8px; }
+.cmdk__head { font: 600 11px var(--font-body); color: var(--text-faint); padding: 8px 10px 4px; }
+.cmdk__row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.cmdk__row[data-on='true'] { background: var(--accent-tint); }
+.cmdk__av {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none;
+  background: var(--accent-tint); color: var(--accent); font: 700 13px var(--font-head);
+}
+.cmdk__row[data-on='true'] .cmdk__av { background: var(--surface); }
+.cmdk__av--grp { background: var(--accent); color: #fff; }
+.cmdk__row[data-on='true'] .cmdk__av--grp { background: var(--accent); }
+.cmdk__av--page { background: var(--fill); color: var(--text-secondary); }
+.cmdk__tx { flex: 1; min-width: 0; }
+.cmdk__tx b { display: block; font: 600 13.5px var(--font-body); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdk__tx small { display: block; font: 400 11.5px var(--font-body); color: var(--text-faint); }
+.cmdk__go { font: 600 12px var(--font-body); color: var(--accent); white-space: nowrap; visibility: hidden; }
+.cmdk__row[data-on='true'] .cmdk__go { visibility: visible; }
+.cmdk__arrow { color: var(--text-faint); }
+.cmdk__empty { padding: 22px 12px; text-align: center; font: 400 13px var(--font-body); color: var(--text-faint); }
+.cmdk__foot { display: flex; gap: 16px; padding: 9px 16px; border-top: 1px solid var(--border); background: var(--bg-subtle); font: 400 11.5px var(--font-body); color: var(--text-faint); }
+@media (max-width: 560px) { .cmdk { padding-top: 8vh; } .cmdk__foot { display: none; } }
+
+/* ── ประเมินรายคาบ: โหมด "ทีละคน" ── */
+.evalhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.evalhead h3 { flex: 1; margin: 0; }
+.evalhead .seg button { display: inline-flex; align-items: center; gap: 5px; }
+.evalfocus { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; margin-top: 12px; align-items: start; }
+.evalfocus__queue { display: grid; gap: 4px; }
+.evalq {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; cursor: pointer; text-align: left;
+  border: 1px solid transparent; border-radius: 10px; background: none; font: inherit; color: inherit;
+}
+@media (hover: hover) { .evalq:hover { background: var(--fill); } }
+.evalq[data-on='true'] { background: var(--accent-tint); border-color: var(--accent-ring); }
+.evalq__n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--fill); font: 600 11px var(--font-mono); color: var(--text-faint); }
+.evalq[data-on='true'] .evalq__n { background: var(--accent); color: #fff; }
+.evalq__who { flex: 1; min-width: 0; }
+.evalq__who b { display: block; font: 600 12.5px var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evalq__who small { font: 400 11px var(--font-body); color: var(--text-faint); }
+.evalq__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.evalfocus__keys { margin-top: 8px; padding: 10px; border: 1px dashed var(--border-2); border-radius: 12px; display: grid; gap: 6px; font: 400 11.5px var(--font-body); color: var(--text-muted); }
+.evalfocus__keys div { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.evalfocus__keys kbd { font: 600 10.5px var(--font-mono); background: var(--surface); border: 1px solid var(--border-2); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; min-width: 18px; text-align: center; color: var(--text-secondary); }
+.evalfocus__main { min-width: 0; display: grid; gap: 8px; }
+.evalfocus__bar { display: flex; align-items: center; gap: 6px; font: 600 12.5px var(--font-body); color: var(--text-muted); }
+.evalfocus__bar span { flex: 1; }
+.evalfocus__nav { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border-2); background: var(--surface); display: grid; place-items: center; cursor: pointer; color: var(--text-secondary); }
+.evalfocus__nav:disabled { opacity: .4; cursor: default; }
+/* แถวหัวข้อที่ปุ่มตัวเลขจะลงคะแนน */
+.scorerow[data-cur='true'] { background: var(--accent-tint); border-radius: 8px; box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
+@media (max-width: 860px) {
+  .evalfocus { grid-template-columns: minmax(0, 1fr); }
+  .evalfocus__queue { grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); overflow-x: auto; }
+  .evalfocus__keys { display: none; }
+}
+@media (hover: none) { .evalfocus__keys { display: none; } }
+
+/* ── สรุปกลุ่ม: มุมมองกระดานเคสตาม step ── */
+.grphead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.grphead h3 { flex: 1; margin: 0; }
+.grphead .seg button { display: inline-flex; align-items: center; gap: 5px; }
+.caseboard { display: grid; gap: 10px; margin-top: 8px; min-width: 0; }
+.caseboard__bar { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.caseboard__bar .seg button { display: inline-flex; align-items: center; gap: 5px; }
+.caseboard__dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.caseboard__legend { display: flex; gap: 12px; flex-wrap: wrap; font: 400 11.5px var(--font-body); color: var(--text-muted); margin-left: auto; }
+.caseboard__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.caseboard__sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.caseboard__sw--stale { background: var(--danger-tint); box-shadow: inset 0 0 0 1px var(--danger-border); }
+.caseboard__sw--eval { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent-ring); }
+.caseboard__sw--hot { background: #fdeee5; box-shadow: inset 0 0 0 1px #f4c7b0; }
+.caseboard__cols { display: flex; gap: 8px; align-items: flex-start; overflow-x: auto; padding-bottom: 6px; }
+.caseboard__col { flex: none; width: 160px; background: var(--fill); border-radius: 12px; padding: 7px; display: grid; gap: 6px; }
+.caseboard__col--empty { width: 44px; justify-items: center; }
+.caseboard__col--hot { background: #fdeee5; box-shadow: inset 0 0 0 1px #f4c7b0; }
+.caseboard__head { display: flex; align-items: baseline; gap: 6px; padding: 2px 3px 3px; min-width: 0; }
+.caseboard__head b { font: 700 12px var(--font-head); background: var(--surface); border-radius: 6px; padding: 0 6px; }
+.caseboard__head span { flex: 1; min-width: 0; font: 400 11px/1.25 var(--font-body); color: var(--text-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.caseboard__head em { font: 700 12px var(--font-mono); font-style: normal; color: var(--text-muted); }
+.caseboard__col--hot .caseboard__head em { color: var(--danger); }
+.caseboard__col--empty .caseboard__head { flex-direction: column; align-items: center; }
+.caseboard__col--empty .caseboard__head span { writing-mode: vertical-rl; -webkit-line-clamp: unset; display: block; max-height: 160px; color: var(--text-disabled); }
+.caseboard__card {
+  display: grid; gap: 2px; text-align: left; cursor: pointer; padding: 7px 8px;
+  border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font: inherit; color: inherit;
+}
+@media (hover: hover) { .caseboard__card:hover { border-color: var(--accent-ring); box-shadow: 0 2px 8px rgba(43, 92, 230, .12); } }
+.caseboard__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.caseboard__card b { font: 600 12.5px var(--font-body); }
+.caseboard__card small { font: 400 11px var(--font-body); color: var(--text-faint); }
+.caseboard__detail { color: var(--text-secondary) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caseboard__tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.caseboard__tag { font: 600 10.5px/18px var(--font-body); border-radius: 5px; padding: 0 6px; }
+.caseboard__tag--stale { background: var(--danger-tint); color: var(--danger-dark); }
+.caseboard__tag--eval { background: var(--accent-tint); color: var(--accent); }

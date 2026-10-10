@@ -11,6 +11,7 @@
 import { CheckCircle, Circle, SealCheck } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { studentYear } from '../../domain/cohort';
 import { groupShort } from '../../domain/group';
 import { EXAM_GATE_KEYS, GATE_LABELS } from '../../domain/rules';
@@ -81,11 +82,7 @@ export default function Exams() {
   return (
     <TeacherShell active="exams">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('การสอบ')} · {groupShort(teacherGroup)}</h1>
-          </div>
-        </div>
+        <ScopeHead scope="group" icon={SealCheck} title={t('การสอบ')} />
 
         <div className="panel">
           <h3>{t('กลุ่ม')} {groupShort(teacherGroup)} · {roster.length} {t('คน')}</h3>

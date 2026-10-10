@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, IdentificationCard, ListChecks, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, House, IdentificationCard, ListChecks, MagnifyingGlass, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -11,6 +11,7 @@ import { useApp } from '../../store/app';
 import { noteSignOutOutcome, wipeLocalDataOnSignOut } from '../../data/localWipe';
 import { cloudEnabled } from '../../lib/cloud';
 import { AdvisorGroupsDialog, useAdvisorPrompt } from './AdvisorGroups';
+import { CommandPalette } from './CommandPalette';
 import { resetAdvisorsIfNewYear } from '../../lib/advisors';
 import { currentAdvisorIds } from '../../domain/group';
 import { groupShort, sortGroupCodes } from '../../domain/group';
@@ -55,9 +56,11 @@ const GROUP_NAV: NavItem[] = [
 /** เมนูตั้งค่าและจัดการข้อมูล — แยกหมวดของตัวเองในแถบซ้าย (ไม่ปนกับงานดูข้อมูลทั้งชั้นปี) */
 const SETUP_KEYS: TeacherNav[] = ['settings', 'roster'];
 
+/* หน้าแรกอยู่บนสุดของแถบ แยกจากสองหมวด — หน้านี้มีทั้งโซนกลุ่มและโซนทั้งชั้นปี จึงไม่ใช่ของหมวดไหน */
+const HOME_NAV: NavItem = { key: 'overview', label: t('หน้าแรก'), to: '/teacher', Icon: House };
+
 /** ระดับชั้นปี */
 const COHORT_NAV: NavItem[] = [
-  { key: 'overview', label: t('ภาพรวม'), to: '/teacher', Icon: SquaresFour },
   { key: 'cohort', label: t('วิเคราะห์รวม'), short: t('วิเคราะห์'), to: '/teacher/analytics', Icon: ChartLineUp },
   { key: 'alumni', label: t('รุ่นที่จบแล้ว'), short: t('จบแล้ว'), to: '/teacher/alumni', Icon: Archive },
   /* ชื่อเมนู/หัวหน้าเป็น "ตั้งค่า" — หน้านี้มีทั้งเกณฑ์ · ระบบ · สำรองข้อมูล · PDPA แล้ว */
@@ -95,6 +98,19 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
   const needAdvisorPrompt = useAdvisorPrompt();
   const [advisorDialog, setAdvisorDialog] = useState<null | 'prompt' | 'manage'>(null);
   const [rail, setRail] = useState(readRail);
+  /* ค้นหาได้ทุกอย่าง — ⌘K / Ctrl+K จากหน้าไหนก็ได้ · เชลล์ถูกสร้างใหม่ทุกหน้า สถานะเปิดจึงไม่ค้างข้ามหน้า */
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const toggleRail = () => setRail((r) => {
     try { localStorage.setItem(RAIL_KEY, r ? '0' : '1'); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
     return !r;
@@ -175,6 +191,20 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             >
               <CaretDoubleLeft size={14} weight="bold" />
             </button>
+          </div>
+
+          <div className="sidebox sidebox--home">
+            <button className="side__search" onClick={() => setPaletteOpen(true)} title={rail ? t('ค้นหา') : undefined} aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}>
+              <MagnifyingGlass size={17} />
+              <span className="navlabel">{t('ค้นหา')}</span>
+              <span className="navlabel--short">{t('ค้นหา')}</span>
+              <kbd className="side__kbd">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+            </button>
+            <NavLink to={HOME_NAV.to} end className={active === HOME_NAV.key ? 'on' : undefined} title={rail ? HOME_NAV.label : undefined}>
+              <HOME_NAV.Icon size={17} weight={active === HOME_NAV.key ? 'fill' : 'regular'} />
+              <span className="navlabel">{HOME_NAV.label}</span>
+              <span className="navlabel--short">{HOME_NAV.label}</span>
+            </NavLink>
           </div>
 
           {/* แถบซ้ายแบบ B
@@ -287,6 +317,11 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
       {advisorDialog && (
         <AdvisorGroupsDialog mode={advisorDialog} onClose={() => setAdvisorDialog(null)} />
       )}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        pages={[HOME_NAV, ...GROUP_NAV, ...COHORT_NAV.filter((n) => n.key !== 'roster' || canSeeRoster)].map(({ key, label, to, Icon }) => ({ key, label, to, Icon }))}
+      />
       <ToastView variant="desk" />
       <RoleFab low />
     </div>

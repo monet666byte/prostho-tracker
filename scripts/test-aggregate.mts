@@ -15,7 +15,7 @@ import {
   staleRows, summarizeAll, summarizeGroups, summarizeStudent, alumniOverview,
 } from '../src/domain/aggregate.ts';
 import { procList } from '../src/domain/rules.ts';
-import { todaySummary } from '../src/domain/today.ts';
+import { isFollowUpGroup, todaySummary } from '../src/domain/today.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, Student, WorkType, Workpiece } from '../src/domain/types.ts';
 
@@ -286,12 +286,47 @@ console.log('\ntodaySummary');
   ok('จบเคสสัปดาห์นี้ไม่นับงานจากชีต และไม่นับที่จบเกิน 7 วัน', s.doneThisWeek === 1, s.doneThisWeek);
   ok('มีเรื่องต้องดู', s.needsAttention);
   ok('step ที่งานค้างกองมากสุดมีค่า', s.staleTop !== null && s.staleTop.progression === 0, JSON.stringify(s.staleTop));
+  // รายชื่อในคิวงานหน้าแรก ต้องตรงกับตัวเลขบนหัวข้อเสมอ
+  ok('รายชื่อรอประเมินยาวเท่าเลขรอประเมิน', s.pendingList.length === s.pendingPeople, s.pendingList.length);
+  ok('รายชื่อรอประเมินเรียงคาบเก่าสุดก่อน · นับคาบต่อคน', s.pendingList[0]?.studentId === 'ta' && s.pendingList[0].count === 2 && s.pendingList[0].oldestDays === 3, JSON.stringify(s.pendingList));
+  ok('รายชื่อต้องตามยาวเท่าเลขต้องตาม · เสี่ยงสูงขึ้นก่อน', s.followUpList.length === s.followUp && s.followUpList[0]?.studentId === 'ta', JSON.stringify(s.followUpList.map((x) => x.studentId)));
+  ok('งานค้างในแถวต้องตามรวมกันเท่าจำนวนงานค้างของคนที่ต้องตาม (เคสคืนแล้วไม่นับ)', s.followUpList.reduce((n, x) => n + x.stale.length, 0) === 2);
+  ok('งานค้างในแถวต้องตามมีจำนวนวันจริง', s.followUpList[0]?.stale[0]?.days === 40, JSON.stringify(s.followUpList[0]?.stale));
 }
 {
-  const g = [{ code: 'A', percent: 70, year: 5 }, { code: 'B', percent: 40, year: 6 }, { code: 'C', percent: 54, year: 5 }, { code: 'D', percent: 55, year: 5 }];
-  const s = todaySummary({ students: [], works: [], checkins: [], settings: S, risk: [], groups: g });
-  ok('กลุ่มต่ำกว่า 55% เรียงจากต่ำสุด · 55 พอดีไม่นับ', s.lowGroups.map((x) => x.code).join(',') === 'B,C', s.lowGroups.map((x) => x.code).join(','));
-  ok('มีกลุ่มต่ำกว่าเกณฑ์ = มีเรื่องต้องดู', s.needsAttention);
+  // เหตุผลจาก riskRows ส่งต่อถึงแถว · คนเดียวโผล่สองแถวต้องนับครั้งเดียว เอาระดับที่สูงกว่า
+  const a = student({ id: 'dup' });
+  const s = todaySummary({
+    students: [a], works: [], checkins: [], settings: S,
+    risk: [{ studentId: 'dup', risk: 'medium', reason: 'ช้ากว่าแผน' }, { studentId: 'dup', risk: 'high', reason: 'ไม่ขยับ 3 คาบ' }],
+  });
+  ok('คนเดียวนับครั้งเดียว', s.followUp === 1 && s.followUpList.length === 1);
+  ok('เอาระดับที่สูงกว่าพร้อมเหตุผลของมัน', s.followUpList[0].risk === 'high' && s.followUpList[0].reason === 'ไม่ขยับ 3 คาบ', JSON.stringify(s.followUpList[0]));
+  ok('เสี่ยงโดยไม่มีงานค้าง = แถวไม่มีรายการงาน (ไม่พัง)', s.followUpList[0].stale.length === 0);
+}
+{
+  // กลุ่ม A 3 คน ต้องตาม 1 (= ⅓ พอดี นับ) · B 6 คน ต้องตาม 3 · C 6 คน ต้องตาม 1 (ไม่ถึง ⅓) · D ต้องตามแต่อยู่นอกขอบเขต
+  const mk = (code: string, n: number, year = 5) => {
+    const list = Array.from({ length: n }, (_, i) => student({ id: `${code}${i}`, group: code }));
+    return { list, g: { code, year, students: list.map((st) => ({ student: st })) } };
+  };
+  const A = mk('A', 3), B = mk('B', 6, 6), C = mk('C', 6), D = mk('D', 3);
+  const risk = [
+    { studentId: 'A0', risk: 'medium' as const },
+    { studentId: 'B0', risk: 'high' as const }, { studentId: 'B1', risk: 'medium' as const }, { studentId: 'B2', risk: 'high' as const }, { studentId: 'B3', risk: 'ok' as const },
+    { studentId: 'C0', risk: 'high' as const },
+    { studentId: 'D0', risk: 'high' as const }, { studentId: 'D1', risk: 'high' as const },
+  ];
+  const s = todaySummary({
+    students: [...A.list, ...B.list, ...C.list], works: [], checkins: [], settings: S, risk,
+    groups: [A.g, B.g, C.g, D.g],
+  });
+  const got = s.followUpGroups.map((x) => `${x.code}:${x.followUp}/${x.size}`).join(',');
+  ok('กลุ่มต้องตามตั้งแต่ ⅓ · ⅓ พอดีนับ · ไม่ถึงไม่นับ · มากสุดก่อน', got === 'B:3/6,A:1/3', got);
+  ok('นับคนต้องตามในกลุ่มจากชุดเดียวกับเลขต้องตามรวม', s.followUpGroups.reduce((n, x) => n + x.followUp, 0) <= s.followUp && s.followUp === 5, s.followUp);
+  ok('คนนอกขอบเขตไม่ทำให้กลุ่มขึ้น', !s.followUpGroups.some((x) => x.code === 'D'));
+  ok('มีกลุ่มต้องตาม = มีเรื่องต้องดู', s.needsAttention);
+  ok('isFollowUpGroup: 3 ใน 8 นับ · 2 ใน 8 ไม่นับ · กลุ่มว่างไม่นับ', isFollowUpGroup(3, 8) && !isFollowUpGroup(2, 8) && !isFollowUpGroup(0, 0));
 }
 {
   const st = student({ id: 'calm' });

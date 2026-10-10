@@ -9,14 +9,15 @@
  * ⚠️ ชั้น ② เห็นเฉพาะที่นี่ ว่านักศึกษาไม่ต้องเห็นสรุป
  *    เป็นเครื่องมือเตรียมตัวของอาจารย์ก่อนนัดคุย ไม่ใช่ผลป้อนกลับที่ส่งถึงนักศึกษา
  */
-import { Printer, Student as StudentIcon } from '@phosphor-icons/react';
+import { ClipboardText, Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { SaSummary } from '../../components/SaSummary';
 import { Radar } from '../../components/charts/Radar';
 import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
-import { firstNameOnly, groupShort } from '../../domain/group';
+import { firstNameOnly } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, readableAnswer, saColLabel, saLabel, saSectionLabel, saSectionsFor, saSub,
@@ -110,14 +111,12 @@ export default function SelfAssessments() {
   return (
     <TeacherShell active="sa">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('ประเมินตนเอง')} · {groupShort(group)}</h1>
-            <p>
-              {t('ปีการศึกษา {y} · ส่งแล้ว {a}/{b} คน', { y: year, a: sent.length, b: groupStudents.length })}
-            </p>
-          </div>
-          {years.length > 1 && (
+        <ScopeHead
+          scope="group"
+          icon={ClipboardText}
+          title={t('ประเมินตนเอง')}
+          sub={t('ปีการศึกษา {y} · ส่งแล้ว {a}/{b} คน', { y: year, a: sent.length, b: groupStudents.length })}
+          right={years.length > 1 && (
             <div className="seg seg--sm">
               {years.map((y) => (
                 <button key={y} data-on={y === year} onClick={() => { setYear(y); setOpenId(null); }}>
@@ -126,7 +125,7 @@ export default function SelfAssessments() {
               ))}
             </div>
           )}
-        </div>
+        />
 
         {/* สองคอลัมน์บนจอกว้าง · จอแคบ (อาจารย์เปิดจากมือถือ) ซ้อนเป็นคอลัมน์เดียว — กฎอยู่ท้าย teacher.css */}
         <div className="salayout">

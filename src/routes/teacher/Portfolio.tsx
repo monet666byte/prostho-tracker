@@ -8,13 +8,15 @@
  * ทุกใบมีลายเซ็นอาจารย์บนกระดาษ → หน้านี้ทำหน้าที่ "คีย์ครั้งเดียวแล้วพิมพ์ไปเซ็น"
  * ไม่ได้ตั้งใจแทนลายเซ็น
  */
+import { ClipboardText, ListChecks } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { RpdDesignSheet, Sect2ScoreSheet, sect2Status } from '../../components/teacher/Sect2Sheet';
 import { Sect3FormGroup, Sect3Sheet, latestByForm } from '../../components/teacher/Sect3Sheet';
 import { studentYear } from '../../domain/cohort';
-import { firstNameOnly, groupShort } from '../../domain/group';
+import { firstNameOnly } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import { SECT2_FORMS, sect2Form } from '../../domain/sect2';
 import { S3_FULL_SCORE, sect3Form, sect3FormsFor } from '../../domain/sect3';
@@ -60,14 +62,12 @@ export default function Portfolio() {
   return (
     <TeacherShell active={tab}>
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            {/* ชื่อหัวข้อภาษาอังกฤษตามที่พิมพ์บนหัวกระดาษจริง — อาจารย์เทียบกับเล่มได้ทันที */}
-            <h1>
-              {tab === 'sect2' ? t('ตรวจและวางแผนการรักษา') : t('ความรู้และทักษะ')} · {groupShort(teacherGroup)}
-            </h1>
-          </div>
-        </div>
+        {/* ชื่อกลุ่มอยู่ในบรรทัดรองของหัว (ScopeHead) */}
+        <ScopeHead
+          scope="group"
+          icon={tab === 'sect2' ? ClipboardText : ListChecks}
+          title={tab === 'sect2' ? t('ตรวจและวางแผนการรักษา') : t('ความรู้และทักษะ')}
+        />
 
         <div className="salayout">
           {/* รายการเดียวคั่นเส้น — เดิมการ์ดทีละคน + ไอคอนหมวก */}

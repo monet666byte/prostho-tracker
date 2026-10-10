@@ -1,6 +1,7 @@
-import { Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
+import { GearSix, Minus, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
+import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { SyncProblemsCard } from '../../components/SyncProblemsCard';
 import { TextSizeControl } from '../../components/TextSize';
 import { ConfirmBox } from '../../components/ui/ConfirmBox';
@@ -116,13 +117,13 @@ export default function Settings() {
   return (
     <TeacherShell active="settings">
       <main className="main">
-        <div className="main__head">
-          <div style={{ flex: 1 }}>
-            <h1>{t('ตั้งค่า')}</h1>
-            <p>{t('มีผลทั้งระบบทันที')}</p>
-          </div>
-          {/* ทางเข้าโหมดลองเล่น — เฉพาะบนเว็บที่ต่อเซิร์ฟเวอร์จริง */}
-          {cloudEnabled && (
+        <ScopeHead
+          scope="setup"
+          icon={GearSix}
+          title={t('ตั้งค่า')}
+          sub={t('มีผลทั้งระบบทันที')}
+          right={cloudEnabled && (
+            /* ทางเข้าโหมดลองเล่น — เฉพาะบนเว็บที่ต่อเซิร์ฟเวอร์จริง */
             <a
               className="textlink"
               href={SANDBOX_URL}
@@ -133,7 +134,7 @@ export default function Settings() {
               {t('เปิดโหมดลองเล่น')} ↗
             </a>
           )}
-        </div>
+        />
 
         <TeacherSyncNotice />
 
