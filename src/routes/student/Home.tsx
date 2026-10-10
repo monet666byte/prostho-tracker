@@ -5,6 +5,7 @@ import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
+import { recordStepLabel } from '../../components/student/stepLabel';
 import { Shell } from '../../components/student/Shell';
 import { SyncBanner } from '../../components/student/SyncBanner';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
@@ -80,9 +81,7 @@ function PanelSlide({
   // หมุดหัว/ท้ายอยู่ชิดหมุด "ตอนนี้" เกินไป ป้ายจะทับกัน → ซ่อนแค่ป้าย หมุดยังแตะได้
   const tight = (prog: number) => Math.abs(prog - nowProg) / Math.max(1, max) < 0.2;
   const where = w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : '';
-  // ชื่อสั้นบนปุ่ม: "Anterior teeth : Try in" → "Try in" · ยาวเกินก็ใช้ข้อความกลาง
-  const short = next ? (next.name.includes(':') ? next.name.split(':').pop()!.trim() : next.name) : '';
-  const btnLabel = short && short.length <= 22 ? t('บันทึก {name} เสร็จ', { name: short }) : t('ทำขั้นนี้เสร็จแล้ว');
+  const btnLabel = next ? recordStepLabel(next.name) : '';
 
   return (
     <div className={`hp__slide t-${w.type}`}>

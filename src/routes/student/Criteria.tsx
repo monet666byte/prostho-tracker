@@ -16,32 +16,40 @@ export default function Criteria() {
   const totals = caseCountTotals(works, settings);
   const rows = caseCount(works, settings);
   const years = yearlyRows(works, settings);
+  // yearlyRows ไล่ปีเรียงจนถึงปีปัจจุบันเสมอ — ตัวท้ายคือปีนี้
+  const thisYear = years[years.length - 1];
 
   return (
     <Shell>
-      <header className="s-header">
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          <span style={{ font: '700 40px/1 var(--font-head)', color: 'var(--accent)' }}>{totals.done}</span>
-          <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-muted)' }}>
-            / {totals.required} {t('เคสตามเกณฑ์สะสม {y} ปี', { y: settings.req.years })}
-          </span>
-        </div>
-        {/* หัวเรื่องของหน้าคือคำว่า "เกณฑ์สะสม…" ไม่ใช่ตัวเลขใหญ่ข้างบน (ตัวเลขคือค่า)
-            ทำเป็น h1 โดยคงหน้าตาเดิมไว้ทุกอย่าง (WCAG 1.3.1) */}
-        {/* ซ้ำกับหัวข้อ "เกณฑ์สะสม · ปี 5–6" ที่อยู่ถัดลงไป — ซ่อนจากจอ แต่ยังเป็นหัวเรื่องให้โปรแกรมอ่านหน้าจอ */}
+      {/* หัวหน้าเป็นแผงแบบการ์ดสะสมแต้ม: เลขรวมตัวใหญ่ + แถบทีละชิ้น + วงต่อประเภท + เกณฑ์รายปีของปีนี้
+          ตัวเลขทุกตัวมาจาก caseCount / caseCountTotals / yearlyRows ชุดเดียวกับรายการด้านล่าง */}
+      <header className="s-header pagepanel">
+        <div className="critpanel__kicker">{t('เกณฑ์สะสม {y} ปี', { y: settings.req.years })} · {t('ปี 5–6')}</div>
+        {/* หัวเรื่องของหน้าคือคำ ไม่ใช่ตัวเลขใหญ่ (WCAG 1.3.1) — ซ่อนจากตา โปรแกรมอ่านหน้าจออ่านได้ */}
         <h1 className="sronly">{t('เกณฑ์สะสมปี 5–6')}</h1>
-        <span className="bar" style={{ height: 10, display: 'block' }}>
-          <i
-            style={{
-              width: `${(totals.done / Math.max(1, totals.required)) * 100}%`,
-              background: 'linear-gradient(90deg,#2B5CE6,#5B82F5)',
-              transition: 'width .6s cubic-bezier(.4,0,.2,1)',
-              display: 'block',
-              height: '100%',
-              borderRadius: 99,
-            }}
-          />
-        </span>
+        <div className="critpanel__big">
+          {totals.done} <span>/ {totals.required} {t('เคส')}</span>
+        </div>
+        <div className="critpanel__segs" style={{ gridTemplateColumns: `repeat(${Math.max(1, totals.required)}, minmax(0, 1fr))` }} aria-hidden>
+          {Array.from({ length: totals.required }, (_, i) => <i key={i} data-on={i < totals.done} />)}
+        </div>
+        <div className="critpanel__types">
+          {rows.map((r) => (
+            <div key={r.group} className="critpanel__type">
+              <PanelRing done={r.done} total={r.required} />
+              <span className="critpanel__name">
+                <span className="dot" style={{ background: r.color }} />
+                {t(r.short)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {thisYear && (
+          <div className="critpanel__year">
+            <span style={{ flex: 1 }}>{t('ปีการศึกษา')} {thisYear.year} · {t('เกณฑ์รายปี')}</span>
+            <b>{thisYear.done} <span>/ {thisYear.required}</span></b>
+          </div>
+        )}
       </header>
 
       {/* หน้าเกณฑ์แบบ "ตัดของซ้ำ"
@@ -128,5 +136,24 @@ function Segs({ n, done, color }: { n: number; done: number; color: string }) {
         <i key={i} style={{ background: i < done ? color : undefined }} />
       ))}
     </div>
+  );
+}
+
+/** วงความคืบหน้าของเกณฑ์หนึ่งประเภทบนแผง — ตัวเลขซ้อนเป็น HTML ให้ฟอนต์ตรงกับทั้งหน้า */
+function PanelRing({ done, total }: { done: number; total: number }) {
+  const R = 20;
+  const C = 2 * Math.PI * R;
+  const f = Math.min(1, done / Math.max(1, total));
+  return (
+    <span className="critpanel__ring">
+      <svg width="50" height="50" viewBox="0 0 50 50" aria-hidden>
+        <circle cx="25" cy="25" r={R} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="5" />
+        {f > 0 && (
+          <circle cx="25" cy="25" r={R} fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round"
+            strokeDasharray={`${C * f} ${C}`} transform="rotate(-90 25 25)" />
+        )}
+      </svg>
+      <b>{done}/{total}</b>
+    </span>
   );
 }

@@ -1128,3 +1128,106 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
 @media (prefers-reduced-motion: reduce) {
   .hp__viewport, .hp__row, .hp__fill, .hp__subs, .hp__chev, .hp__dot, .hp__pager span { transition: none; }
 }
+
+/* ══ ข้อเสนอเพิ่ม 5 ข้อ (ผู้ใช้เอาหมด) ══ */
+
+/* 3 · เลิกตัวพิมพ์ดีดฝั่ง นศ.: ตัวเลข x/10 ใช้ Prompt ตัวเลขกว้างเท่ากัน · ชื่อขั้นย่อยใช้ฟอนต์เนื้อความ
+   ใบพิมพ์ทางการ (.a4) คงตัวพิมพ์ดีดไว้เหมือนเดิม */
+.phone { --font-mono: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.phone .a4 { --font-mono: 'IBM Plex Mono', ui-monospace, monospace; }
+.phone .tl__proc { font: 400 14px/1.5 var(--font-body); }
+
+/* แผงน้ำเงินหัวหน้า (เกณฑ์ · รายละเอียดเคส) — ใช้ภาษาเดียวกับแผงหน้าแรก */
+.s-header.pagepanel {
+  position: relative; background: var(--panel); color: #fff; border-bottom: 0;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.screen[data-scrolled='true'] .s-header.pagepanel { padding-top: 12px; padding-bottom: 13px; }
+
+/* 1 · หน้าเกณฑ์ */
+.critpanel__kicker { font: 500 13px var(--font-body); color: rgba(255, 255, 255, 0.75); }
+.critpanel__big { margin: 0; font: 700 44px/1.1 var(--font-head); }
+.critpanel__big span { font-size: 23px; color: var(--panel-hi); }
+.critpanel__segs { display: grid; gap: 4px; margin-top: 12px; }
+.critpanel__segs i { display: block; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); transition: background 0.4s ease; }
+.critpanel__segs i[data-on='true'] { background: #fff; }
+.critpanel__types { display: flex; justify-content: space-between; gap: 4px; margin-top: 16px; }
+.critpanel__type { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; flex: 1; }
+.critpanel__ring { position: relative; width: 50px; height: 50px; }
+.critpanel__ring svg { display: block; }
+.critpanel__ring b { position: absolute; inset: 0; display: grid; place-items: center; font: 700 13px var(--font-head); }
+.critpanel__name { display: flex; align-items: flex-start; justify-content: center; gap: 4px; font: 500 11px/1.25 var(--font-head); text-align: center; max-width: 100%; }
+.critpanel__name .dot { margin-top: 3px; }
+.critpanel__year {
+  display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 12px;
+  border-radius: 12px; background: rgba(0, 0, 0, 0.16); font: 400 13px var(--font-body);
+}
+.critpanel__year b { font: 700 15px var(--font-head); }
+.critpanel__year b span { color: var(--panel-hi); font-weight: 500; }
+
+/* 2 · หน้ารายละเอียดเคส */
+.pagepanel .iconbtn { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.detailpanel__meta { margin-top: 10px; font: 400 12.5px/1.6 var(--font-body); color: rgba(255, 255, 255, 0.8); }
+.detailpanel__meta b { font-weight: 600; color: #fff; }
+/* จุดสีประเภทงานบนพื้นน้ำเงิน — ใส่ขอบขาวบาง ไม่งั้น CD (น้ำเงิน) จมหาย */
+.pagepanel .dot { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75); }
+.detailpanel__req { display: inline-flex; align-items: center; gap: 4px; font: 500 12.5px var(--font-body); color: #8ee6c2; }
+/* ผู้ใช้ขอให้เลข step เล็กลง — ตาต้องไปที่ขั้นย่อยในไทม์ไลน์ก่อน ไม่ใช่ตัวเลข */
+.detailpanel__step { margin-top: 8px; font: 700 21px/1.2 var(--font-head); }
+.detailpanel__step span { font-size: 15px; color: var(--panel-hi); }
+.pagepanel .hp__track { margin-top: 8px; }
+
+/* 4 · แผ่นฉลองตอนปิดเคส */
+.celebrate { text-align: center; padding-bottom: 22px; }
+.celebrate__burst { position: relative; width: 220px; height: 140px; margin: 0 auto; }
+.celebrate__badge {
+  position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%;
+  background: var(--panel); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 10px var(--panel-tint);
+  animation: celebrate-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.15s;
+}
+.celebrate__bit {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r));
+  animation: celebrate-burst 0.7s ease-out both 0.25s;
+}
+.celebrate h3 { margin: 4px 0 0; font: 700 26px var(--font-head); }
+.celebrate__who { margin-top: 2px; font: 400 14px var(--font-body); color: var(--text-muted); }
+.celebrate__box { margin-top: 16px; text-align: left; background: var(--bg-app); border-radius: 16px; padding: 14px 16px; display: grid; gap: 12px; }
+.celebrate__row { display: flex; gap: 8px; font: 500 14px var(--font-body); }
+.celebrate__row > span { flex: 1; }
+.celebrate__row b { font: 700 14px var(--font-head); color: var(--panel); }
+.celebrate__segs { display: grid; gap: 4px; margin-top: 7px; }
+.celebrate__segs i { display: block; height: 8px; border-radius: 4px; background: var(--track); }
+.celebrate__segs i.is-new { transform-origin: left; animation: celebrate-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.6s; }
+.celebrate__done { font: 500 12px var(--font-body); color: var(--success-dark); margin-top: 4px; }
+.celebrate__btns { display: flex; gap: 10px; margin-top: 16px; }
+.celebrate__btns .btn { flex: 1; height: 50px; border-radius: 999px; }
+.celebrate__btns .btn--sec { flex: 0.75; }
+@keyframes celebrate-pop { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes celebrate-burst { 0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; } 30% { opacity: 1; } }
+@keyframes celebrate-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* 5 · ปฏิทินคาบ */
+.calcard { padding: 12px 12px 10px; }
+.calcard__head { display: flex; align-items: center; gap: 6px; padding: 0 4px; }
+.calcard__title { flex: 1; font: 600 16px var(--font-head); }
+.calcard__count { font: 500 12.5px var(--font-body); color: var(--text-muted); }
+.calcard__nav { width: 36px; height: 36px; border-radius: 50%; background: var(--fill); color: var(--text-muted); display: grid; place-items: center; }
+.calcard__nav:disabled { opacity: 0.35; }
+.calcard__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; margin-top: 10px; text-align: center; }
+.calcard__wd { font: 500 11.5px var(--font-head); color: var(--text-faint); padding-bottom: 4px; }
+.calday { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; border-radius: 10px; min-height: 40px; border: 0; background: transparent; font: 400 13.5px var(--font-head); color: var(--text); }
+button.calday { background: var(--panel-tint); color: var(--panel); font-weight: 600; }
+.calday[data-today='true'] { box-shadow: inset 0 0 0 1.5px var(--panel); }
+.calday__dot { width: 6px; height: 6px; border-radius: 50%; box-sizing: border-box; }
+.calday__dot--ok { background: var(--success); }
+.calday__dot--wait { background: var(--warning); }
+.calday__dot--nopt { border: 1.5px solid var(--success); }
+.calday__dot--nopt.calday__dot--wait { background: transparent; border-color: var(--warning); }
+.calcard__legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin-top: 8px; font: 400 12px var(--font-body); color: var(--text-muted); }
+.calcard__legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .celebrate__badge, .celebrate__bit, .celebrate__segs i.is-new { animation: none; }
+}
+.calcard__legend i { display: inline-block; }

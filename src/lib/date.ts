@@ -117,3 +117,16 @@ export function clampPerformedAt(
   if (v > today) v = today;
   return v;
 }
+
+const TH_MONTHS_LONG = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const EN_MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** "กรกฎาคม 2569" / "July 2026" — หัวปฏิทินรายเดือน (month 0–11) */
+export function monthTitle(year: number, month: number): string {
+  return lang === 'en' ? `${EN_MONTHS_LONG[month]} ${year}` : `${TH_MONTHS_LONG[month]} ${year + 543}`;
+}
+
+/** หัวคอลัมน์ปฏิทิน เริ่มวันอาทิตย์ */
+export function weekdayShort(): string[] {
+  return lang === 'en' ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+}

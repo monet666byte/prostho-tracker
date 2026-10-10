@@ -1,13 +1,14 @@
 import { ArrowLeft, CameraPlus, Check, CheckCircle, Circle, CircleDashed, Images, SealCheck } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Bar, PendingBadge, PhotoSlot, SelfBadge } from '../../components/ui/Bits';
+import { PendingBadge, PhotoSlot, SelfBadge } from '../../components/ui/Bits';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
+import { recordStepLabel } from '../../components/student/stepLabel';
 import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
 import { typeMeta } from '../../domain/catalog';
 import {
-  maxProgression, nextProc, progression, stepGroups, isReturned, stepFraction } from '../../domain/rules';
+  activeStepGroup, maxProgression, nextProc, progression, stepGroups, isReturned, stepFraction } from '../../domain/rules';
 import { useLastStepDate, usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
 import { setWorkpieceReturned } from '../../data/repo';
@@ -63,6 +64,13 @@ export default function WorkpieceDetail() {
   const max = maxProgression(w);
   const next = nextProc(w);
   const lastDoneIndex = groups.map((x) => x.state).lastIndexOf('done');
+  // เส้น step หมุดสามตัวแบบหน้าแรก (เริ่ม · ตอนนี้ · ปิดเคส)
+  const active = activeStepGroup(w);
+  const nowProg = active ? active.progression : Math.max(prog, 0);
+  const startG = groups[0];
+  const endG = groups[groups.length - 1];
+  const at = (p: number) => `${(p / Math.max(1, max)) * 100}%`;
+  const tight = (p: number) => Math.abs(p - nowProg) / Math.max(1, max) < 0.2;
 
   const footer = (
     <div className="footer">
@@ -77,7 +85,7 @@ export default function WorkpieceDetail() {
             <CheckCircle size={20} weight="fill" />
             {/* ชื่อขั้นสุดท้ายไม่ใช่ "Completion of case" ทุกประเภท — Recall จบที่ "Completion of recall"
                 เขียนชื่อขั้นจริงต่อท้าย ปุ่มจะตรงกับบรรทัดที่อยู่เหนือมันเสมอ */}
-            {next.progression >= max ? `${t('ปิดเคส')} · ${next.name}` : t('ทำขั้นนี้เสร็จแล้ว')}
+            {next.progression >= max ? `${t('ปิดเคส')} · ${next.name}` : recordStepLabel(next.name)}
           </button>
         </>
       ) : (
@@ -151,34 +159,28 @@ export default function WorkpieceDetail() {
         )}
       </>}
     >
-      <header className="s-header">
+      {/* หัวหน้าเป็นแผงน้ำเงินแบบเดียวกับหน้าแรก — เลข step ตัวเล็กลง (ผู้ใช้ขอ) ให้ตาไปที่ขั้นย่อยในไทม์ไลน์ก่อน */}
+      <header className="s-header pagepanel">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button className="iconbtn iconbtn--plain" onClick={() => navigate(-1)} aria-label={t('ย้อนกลับ')}>
             <ArrowLeft size={17} />
           </button>
-          {/* หัวหน้าแบบหน้าแรก: ชื่อผู้ป่วยเป็นหัวเรื่อง
-              ชิปประเภท/ขากรรไกร/ซี่ → บรรทัดเทาบรรทัดเดียวพร้อม HN กึ่งหนา · ชิป minimum requirement → ข้อความเขียว
-              ตัดหัวข้อ "CD / Complicated APD" ตัวใหญ่ (ซ้ำกับบรรทัดเทา) */}
-          <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)' }}>{patientTitle(w.patient, namesOn, t)}</h1>
-          {/* เคยมีปุ่มเมนู ⋯ ตรงนี้ แต่ไม่เคยผูกอะไรเลย (กดแล้วเงียบ) — เอาออกจนกว่าจะมีเมนูจริง
-              การลบชิ้นงานทำได้ที่หน้าคนไข้ (โหมดแก้ไข) */}
+          <h1 style={{ flex: 1, minWidth: 0, margin: 0, font: '700 20px/1.3 var(--font-head)', color: '#fff' }}>{patientTitle(w.patient, namesOn, t)}</h1>
         </div>
 
-        <div className="detailmeta">
-          <span className="dot" style={{ background: meta.color }} />
-          <span>
-            {meta.short}
-            {w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
-            {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}
-            {w.kennedy ? ` · ${w.kennedy}` : ''}
-            {namesOn ? <>{' · '}<b className="herocase__hn">HN {w.patient.hn}</b></> : <>{' · '}{tSexAge(w.patient.sexAge)}</>}
-            {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
-          </span>
+        <div className="detailpanel__meta">
+          <span className="dot" style={{ background: meta.color, marginRight: 6 }} />
+          {meta.short}
+          {w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
+          {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}
+          {w.kennedy ? ` · ${w.kennedy}` : ''}
+          {namesOn ? <>{' · '}<b>HN {w.patient.hn}</b></> : <>{' · '}{tSexAge(w.patient.sexAge)}</>}
+          {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
         </div>
         {(w.minimumRequirement || pending.has(w.id)) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
             {w.minimumRequirement && (
-              <span style={{ font: '500 12.5px var(--font-body)', color: 'var(--success-dark)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span className="detailpanel__req">
                 <SealCheck size={13} weight="fill" /> {t('นับ minimum requirement')}
               </span>
             )}
@@ -186,11 +188,23 @@ export default function WorkpieceDetail() {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-          <Bar value={stepFraction(w) * 100} color={meta.color} height={8} />
-          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--text-secondary)', flex: 'none' }}>
-            {Math.max(prog, 0)}/{max}
+        <div className="detailpanel__step">Step {nowProg} <span>/ {max}</span></div>
+        <div className="hp__track" aria-hidden>
+          <span className="hp__rail" />
+          <span className="hp__fill" style={{ width: `${stepFraction(w) * 100}%` }} />
+          {startG && startG.progression !== nowProg && (
+            <span className={`hp__node hp__node--done${tight(startG.progression) ? ' is-tight' : ''}`} style={{ left: at(startG.progression) }}>
+              <span className="hp__dot" /><span className="hp__lbl">{t('เริ่ม')}</span>
+            </span>
+          )}
+          <span className="hp__node hp__node--now is-sel" style={{ left: at(nowProg) }}>
+            <span className="hp__dot" /><span className="hp__lbl">{next ? t('ตอนนี้') : t('ปิดเคส')}</span>
           </span>
+          {endG && endG.progression !== nowProg && (
+            <span className={`hp__node hp__node--todo${tight(endG.progression) ? ' is-tight' : ''}`} style={{ left: at(endG.progression) }}>
+              <span className="hp__dot" /><span className="hp__lbl">{t('ปิดเคส')}</span>
+            </span>
+          )}
         </div>
       </header>
 

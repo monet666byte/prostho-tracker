@@ -361,6 +361,32 @@ export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date
     });
 }
 
+/**
+ * เคสหนึ่งเพิ่งจบ → เกณฑ์ขยับเท่าไหร่ (แผ่นฉลองตอนปิดเคสฝั่งนักศึกษา)
+ * before = รายการก่อนจบ · after = รายการเดียวกันที่เคสนั้นจบแล้ว — ใช้ caseCount / caseCountTotals / yearlyRows
+ * ตัวเดียวกับหน้าเกณฑ์ ตัวเลขบนแผ่นจะตรงกับหน้าเกณฑ์เสมอ · row = null เมื่อเคสนี้ไม่นับเข้าเกณฑ์สะสม
+ */
+export function completionImpact(before: Workpiece[], after: Workpiece[], w: Workpiece, settings: Settings, now = new Date()) {
+  const group: ReqGroup | null = w.type === 'CB' || w.type === 'PC' ? 'CROWN'
+    : (['CD', 'RPD', 'RRM', 'RFX'] as const).find((g) => g === w.type) ?? null; // Simple APD ไม่นับเกณฑ์
+  const rowOf = (list: Workpiece[]) => (group ? caseCount(list, settings).find((r) => r.group === group) ?? null : null);
+  const rowBefore = rowOf(before);
+  const rowAfter = rowOf(after);
+  const counted = !!rowAfter && !!rowBefore && rowAfter.done > rowBefore.done;
+  const yBefore = yearlyRows(before, settings, now);
+  const yAfter = yearlyRows(after, settings, now);
+  const days = Math.max(0, Math.round((now.getTime() - new Date(w.acceptedDate).getTime()) / 86_400_000));
+  return {
+    row: counted ? rowAfter : null,
+    rowBefore: rowBefore?.done ?? 0,
+    totalsBefore: caseCountTotals(before, settings).done,
+    totalsAfter: caseCountTotals(after, settings),
+    year: yAfter[yAfter.length - 1],
+    yearBefore: yBefore[yBefore.length - 1]?.done ?? 0,
+    days,
+  };
+}
+
 /** gate ทั้งสี่ในสมุด portfolio — เรียงตามลำดับในเล่ม (OSCE ก่อน Design RPD) */
 export const GATE_KEYS: GateKey[] = ['sect2Removable', 'sect2Fixed', 'osce', 'designRpd'];
 /** ชื่อตามหัวคอลัมน์ในชีต — คงเป็นอังกฤษทั้งสองภาษาเหมือนหัวข้อ radar */

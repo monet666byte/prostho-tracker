@@ -5,6 +5,7 @@ import { Empty } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
 import { Shell } from '../../components/student/Shell';
+import { CheckInCalendar } from '../../components/student/CheckInCalendar';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { deleteCheckIn, updateCheckIn } from '../../data/repo';
 import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
@@ -201,6 +202,18 @@ export default function CheckInPage() {
           <Empty icon={<CalendarCheck size={26} />} title={t('ยังไม่มีคาบที่บันทึก')} />
         )}
 
+        {/* ปฏิทินรายเดือนเหนือรายการ — แตะวันที่มีคาบ = กางแถวนั้นแล้วเลื่อนไปหา */}
+        {checkins.length > 0 && (
+          <CheckInCalendar
+            checkins={checkins}
+            onPick={(c) => {
+              setExpanded(c.id);
+              setConfirmDelete(null);
+              requestAnimationFrame(() => document.getElementById(`ci-${c.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+            }}
+          />
+        )}
+
         {/* หน้าคาบแบบ "ตัดของซ้ำ": การ์ด 8 ใบ → การ์ดเดียวแถวละคาบ
             ตัดเลขลำดับในกล่องเทา · ชิปคะแนน/รอประเมิน → ตัวอักษร (เต็ม = เขียว · รอ = ส้ม) */}
         {checkins.length > 0 && (
@@ -217,6 +230,7 @@ export default function CheckInPage() {
  */
             <div
               key={c.id}
+              id={`ci-${c.id}`}
               role="button"
               tabIndex={0}
               className="checkrow"

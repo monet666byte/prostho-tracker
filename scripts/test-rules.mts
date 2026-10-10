@@ -11,7 +11,7 @@
  *   3. ขอบที่ทำให้ "ครบเกณฑ์" ผิด — เพราะกระทบการจบของนักศึกษาโดยตรง
  */
 import {
-  activeStepGroup, caseCount, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
+  activeStepGroup, caseCount, completionImpact, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
   daysSinceUpdate, isActiveWork, isStale, maxProgression, meetsAllRequirements,
   overallPercent, percentCompleted, procList, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
@@ -240,6 +240,24 @@ console.log('\nขั้นย่อยของ step ที่กำลัง�
   ok('ยังไม่เริ่ม: กลุ่มแรกเสร็จ 0', activeStepGroup(wp('CD'))?.done === 0);
   ok('จบเคส: ไม่มีกลุ่มที่กำลังทำ', activeStepGroup(finished('CD')) === null);
   ok('Recall: กลุ่มไม่เกินขั้น 3', (activeStepGroup(wp('RRM'))?.progression ?? 99) <= maxProgression(wp('RRM')));
+}
+
+/* ── 11. แผ่นฉลองตอนปิดเคส — ตัวเลขต้องตรงกับหน้าเกณฑ์ ───────────────────── */
+console.log('\nแผ่นฉลองตอนปิดเคส');
+{
+  const open = wp('CD', { id: 'cd-open', acceptedDate: '2026-07-02', procIndex: procList(wp('CD')).length - 2 });
+  const other = finished('CD', { id: 'cd-old' });
+  const before = [open, other];
+  const closed = { ...open, procIndex: procList(open).length - 1, completedAt: NOW.toISOString() };
+  const after = [closed, other];
+  const imp = completionImpact(before, after, closed, S, NOW);
+  ok('แถว CD ขยับจาก 1 เป็น 2', imp.rowBefore === 1 && imp.row?.done === 2, `${imp.rowBefore} → ${imp.row?.done}`);
+  ok('ยอดสะสมหลังจบ = caseCountTotals ของรายการหลังจบ', imp.totalsAfter.done === caseCountTotals(after, S).done);
+  ok('ปีนี้ขยับ +1', imp.year.done === imp.yearBefore + 1, `${imp.yearBefore} → ${imp.year.done}`);
+  ok('นับวันจากวันรับเคส', imp.days === 105, imp.days);
+  const simple = wp('APD', { id: 'apd', minimumRequirement: false });
+  const simpleDone = { ...simple, procIndex: procList(simple).length - 1, completedAt: NOW.toISOString() };
+  ok('Simple APD ไม่นับ → ไม่มีแถวเกณฑ์', completionImpact([simple], [simpleDone], simpleDone, S, NOW).row === null);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

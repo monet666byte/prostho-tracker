@@ -19,6 +19,15 @@ export const DICT: Record<string, string> = {
   '{n} ขั้น': '{n} steps',
   'บันทึก {name} เสร็จ': 'Mark {name} done',
   'ดูเคสที่ {n} จาก {m}': 'Show case {n} of {m}',
+  // ── หน้าเกณฑ์แบบแผง · แผ่นฉลองปิดเคส · ปฏิทินคาบ ──
+  'เกณฑ์สะสม {y} ปี': 'Cumulative requirement ({y} years)',
+  'ใช้เวลา {m} เดือน {d} วัน': 'took {m} mo {d} d',
+  'ใช้เวลา {d} วัน': 'took {d} days',
+  'ครบเกณฑ์ {l} แล้ว': '{l} requirement complete',
+  'เยี่ยมเลย': 'Great',
+  'มา {n} คาบเดือนนี้': '{n} sessions this month',
+  'เดือนก่อน': 'Previous month',
+  'เดือนถัดไป': 'Next month',
   // ── ฟอร์มเปิดชิ้นงาน: บอกว่าขาดช่องไหน ──
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล ──

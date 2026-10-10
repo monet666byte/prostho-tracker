@@ -1,15 +1,28 @@
 import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@phosphor-icons/react';
 import { advanceStep } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { caseCount, nextProc } from '../../domain/rules';
+import { caseCount, completionImpact, nextProc } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
-import { useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
+import { usePatientNamesOn, useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
+import { patientTitle } from '../../lib/privacy';
+import { CelebrateSheet, celebrate } from './CelebrateSheet';
 import { usePhotoAttach } from './usePhotoAttach';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { tapFeedback } from '../../lib/haptic';
 
+/** แผ่นยืนยันผ่าน step + แผ่นฉลองตอนปิดเคส (โผล่หลังแผ่นยืนยันปิดไปแล้ว) */
 export function ConfirmSheet() {
+  return (
+    <>
+      <ConfirmStepSheet />
+      <CelebrateSheet />
+    </>
+  );
+}
+
+function ConfirmStepSheet() {
+  const namesOn = usePatientNamesOn();
   const { sheet, closeSheet, patchSheet, offline, showToast, session, settings, touch } = useApp();
   const w = useWorkpiece(sheet?.workpieceId);
   const all = useWorkpieces(session?.studentId);
@@ -46,6 +59,12 @@ export function ConfirmSheet() {
       // ชิ้นนี้เพิ่งจบเคส — บอกว่าไปถึงไหนของเกณฑ์แล้ว
       const after = all.map((x) => (x.id === w.id ? { ...x, procIndex: res.workpiece.procIndex, completedAt: new Date().toISOString() } : x));
       const rows = caseCount(after, settings);
+      const closed = after.find((x) => x.id === w.id) ?? w;
+      celebrate({
+        who: `${patientTitle(w.patient, namesOn, t)} · ${meta.short}${w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}`,
+        impact: completionImpact(all, after, closed, settings),
+        years: settings.req.years,
+      });
       const row =
         w.type === 'CB' || w.type === 'PC'
           ? rows.find((r) => r.group === 'CROWN')

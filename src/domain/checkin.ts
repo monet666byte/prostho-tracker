@@ -102,3 +102,9 @@ export function supersededTitle(c: Pick<CheckIn, 'scoreHistory'>): string {
   });
   return `${t('คะแนนชุดก่อนหน้ายังเก็บไว้ครบ')} — ${lines.join(' · ')}`;
 }
+
+/** คาบของเดือนหนึ่ง (month 0–11) — ปฏิทินคาบฝั่งนักศึกษา · เทียบจากสตริงวันที่ ไม่ผ่าน Date กันเขตเวลาเลื่อนวัน */
+export function checkinsInMonth<T extends { date: string }>(list: T[], year: number, month: number): T[] {
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+  return list.filter((c) => c.date.startsWith(prefix));
+}
