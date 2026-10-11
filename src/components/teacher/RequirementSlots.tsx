@@ -1,8 +1,8 @@
 import { Check, SealCheck, WarningCircle, X } from '@phosphor-icons/react';
 import { TYPES } from '../../domain/catalog';
 import {
-  caseCount, completedInYear, countsTowardRequirement, isComplete, maxProgression, progression,
-  gateRows, GATE_KEYS,
+  caseCount, completedInYear, countsForYearlyReq, countsTowardRequirement, isActiveWork, maxProgression,
+  mayCountTowardRequirement, progression, gateRows, GATE_KEYS,
 } from '../../domain/rules';
 import type { GateKey, Settings, Student, Workpiece } from '../../domain/types';
 import { academicYear } from '../../lib/date';
@@ -14,11 +14,11 @@ interface Slot {
   title: string;
 }
 
-/** เรียงเคสที่จบแล้วขึ้นก่อน แล้วตามด้วยเคสที่เดินหน้ามากที่สุด — ให้เห็นว่าช่องที่เหลือจะถูกเติมด้วยอะไร */
-function slotsFor(pieces: Workpiece[], required: number): Slot[] {
-  const done = pieces.filter(countsTowardRequirement);
+/** เรียงเคสที่จบแล้วขึ้นก่อน แล้วตามด้วยเคสที่เดินหน้ามากที่สุด — ให้เห็นว่าช่องที่เหลือจะถูกเติมด้วยอะไร
+ *  ช่อง "กำลังทำ" รับเฉพาะเคสที่จบแล้วจะนับจริง (ไม่เอาเคสที่ปิดสวิตช์นับเกณฑ์ / คืนแล้ว) */
+function slotsFor(pieces: Workpiece[], required: number, done = pieces.filter(countsTowardRequirement), canFill = mayCountTowardRequirement): Slot[] {
   const active = pieces
-    .filter((w) => !isComplete(w))
+    .filter((w) => isActiveWork(w) && canFill(w))
     .sort((a, b) => progression(b) - progression(a));
 
   return Array.from({ length: Math.max(required, 1) }, (_, i) => {
@@ -90,10 +90,7 @@ export function RequirementSlots({
   const gateMissing = gates.filter((g) => g.value !== true).length;
   const allDone = rows.every((r) => r.complete) && (!student || gateMissing === 0);
 
-  const yearSlots = slotsFor(
-    [...doneThisYear, ...works.filter((w) => !isComplete(w))],
-    settings.req.perYear,
-  );
+  const yearSlots = slotsFor(works, settings.req.perYear, doneThisYear, (w) => countsForYearlyReq(w, settings));
 
   return (
     <div>

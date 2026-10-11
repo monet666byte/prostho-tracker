@@ -7,14 +7,20 @@ import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
 import { StepInfo } from '../../components/StepInfo';
 import { TodayCard, TodayLines, type TodayLine } from '../../components/teacher/TodayCard';
 import { TypeDonut } from '../../components/charts/TypeDonut';
+import { TraceDrawer, TraceRow, type TraceContent } from '../../components/teacher/TraceDrawer';
+import { DataAge } from '../../components/teacher/DataAge';
+import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { isFollowUpGroup, todaySummary } from '../../domain/today';
 import { lastPullAt, pullAll } from '../../data/cloudSync';
 import { cloudEnabled } from '../../lib/cloud';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
-import { bottleneckByStep, riskByGroup, riskRows } from '../../domain/analytics';
-import { currentProc, procLabel, isActiveWork } from '../../domain/rules';
-import type { WorkType } from '../../domain/types';
+import { bottleneckByStep, riskByGroup, riskRows, worksAtStep } from '../../domain/analytics';
+import {
+  currentProc, daysSinceUpdate, isReturned, isStale, maxProgression, notCountedPieces, percentParts, procLabel, progression,
+  isActiveWork, type NotCountedReason,
+} from '../../domain/rules';
+import type { WorkType, Workpiece } from '../../domain/types';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, usePendingPushCount, useSyncProblems, useSyncStatus, useTeacher,
 } from '../../hooks/data';
@@ -149,7 +155,6 @@ export default function Dashboard() {
   const groups = useMemo(() => summarizeGroups(summaries), [summaries]);
   const selected = groups.find((g) => g.code === group) ?? groups[0];
   const stale = useMemo(() => staleRows(students, works, settings), [students, works, settings]);
-  const typeCounts = useMemo(() => countByType(works), [works]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
 
   /* โซน "กลุ่มของฉัน" บนหน้าแรก ไม่ขึ้นกับแท็บชั้นปี (แท็บปีอยู่ในโซนทั้งชั้นปี)
@@ -422,6 +427,191 @@ export default function Dashboard() {
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
   const shownStep = openStep === null ? (busiest.count > 0 ? busiest.progression : -1) : openStep;
 
+  /* ── ลิ้นชัก "ตัวเลขนี้มาจากไหน" — เก็บแค่ว่าเปิดตัวเลขไหน แล้วสร้างเนื้อหาใหม่ทุกเรนเดอร์ (ข้อมูล sync เข้ามาระหว่างเปิดก็ตามทัน)
+     ทุกรายการมาจาก domain/ ชุดเดียวกับตัวเลขบนหน้า (test:invariants "ลิ้นชักที่มาของตัวเลข") ── */
+  type TraceKey =
+    | { kind: 'group'; code: string }
+    | { kind: 'pct' | 'req'; studentId: string }
+    | { kind: 'step'; type: WorkType; step: number }
+    | { kind: 'stale' };
+  const [traceKey, setTraceKey] = useState<TraceKey | null>(null);
+  const yearScopeLabel = yearView === 'all' ? t('ทั้งชั้นปี · รวมปี') : t('ทั้งชั้นปี · ปี {n}', { n: yearView });
+  const stepText = (w: Workpiece) => (progression(w) < 0 ? t('ยังไม่เริ่ม') : `step ${progression(w)}/${maxProgression(w)}`);
+  const reasonText: Record<NotCountedReason, string> = {
+    off: t('ปิดสวิตช์นับเข้าเกณฑ์'),
+    pending: t('รออาจารย์ตรวจรับว่าเข้าเกณฑ์'),
+    type: t('ประเภทนี้ไม่เข้าเกณฑ์'),
+  };
+  const traceContent = ((): TraceContent | null => {
+    if (!traceKey) return null;
+    if (traceKey.kind === 'group') {
+      const g = activeGroups.find((x) => x.code === traceKey.code) ?? groups.find((x) => x.code === traceKey.code);
+      if (!g) return null;
+      const list = [...g.students].sort((a, b) => a.percent - b.percent);
+      return {
+        eyebrow: t('กลุ่ม {g} · ปี {y}', { g: groupShort(g.code), y: g.year }),
+        title: t('ความคืบหน้า {p}% มาจาก {n} คน', { p: g.percent, n: list.length }),
+        body: (
+          <>
+            <div className="trace__rows">
+              {list.map((x) => (
+                <TraceRow
+                  key={x.student.id}
+                  color="var(--accent)"
+                  main={personName(x.student)}
+                  sub={x.student.code}
+                  value={`${x.percent}%`}
+                  onClick={() => setTraceKey({ kind: 'pct', studentId: x.student.id })}
+                />
+              ))}
+            </div>
+            <div className="trace__sum"><span>{t('เฉลี่ย {n} คน', { n: list.length })}</span><b>{g.percent}%</b></div>
+          </>
+        ),
+        how: (
+          <>
+            <p>{t('เอา % ความคืบหน้าของแต่ละคน (แบบในตาราง) มาเฉลี่ย ทุกคนน้ำหนักเท่ากัน ไม่ว่าจะมีชิ้นงานกี่ชิ้น')}</p>
+            <p>{t('กดชื่อเพื่อดูว่า % ของคนนั้นมาจากชิ้นงานไหน')}</p>
+          </>
+        ),
+      };
+    }
+    if (traceKey.kind === 'pct' || traceKey.kind === 'req') {
+      const st = studentById.get(traceKey.studentId);
+      if (!st) return null;
+      const mine = allWorks.filter((w) => w.studentId === st.id);
+      const who = `${personName(st)} · ${st.code}`;
+      if (traceKey.kind === 'pct') {
+        const parts = percentParts(mine);
+        return {
+          eyebrow: `${who} · ${t('ความคืบหน้า')}`,
+          title: t('{p}% มาจาก {n} ชิ้นงาน', { p: parts.average, n: parts.rows.length }),
+          body: parts.rows.length ? (
+            <>
+              <div className="trace__rows">
+                {parts.rows.map(({ workpiece: w, percent }) => (
+                  <TraceRow
+                    key={w.id}
+                    color={typeMeta(w.type).color}
+                    main={tText(w.detail)}
+                    sub={`${typeChipLabel(w.type)} · ${stepText(w)}${isReturned(w) ? ` · ${t('คืนเคส')}` : ''}`}
+                    value={`${percent}%`}
+                    muted={isReturned(w)}
+                  />
+                ))}
+              </div>
+              <div className="trace__sum"><span>{t('เฉลี่ย {n} ชิ้น', { n: parts.rows.length })}</span><b>{parts.average}%</b></div>
+            </>
+          ) : <p className="trace__empty">{t('ยังไม่มีชิ้นงาน')}</p>,
+          how: (
+            <>
+              <p>{t('แต่ละชิ้นคิดตามสูตรในชีตเดิม แล้วเฉลี่ยทุกชิ้นที่มี รวมชิ้นที่จบแล้วและที่คืนเคสแล้ว')}</p>
+              <div className="trace__formula">{t('(ขั้นที่ถึง + 1) ÷ (ขั้นทั้งหมด + 1)')}</div>
+              <ul>
+                <li>{t('ชิ้นที่ยังไม่เริ่มนับเป็น 0%')}</li>
+                <li>{t('ชิ้นที่อยู่ step 0 ได้มากกว่า 0% เพราะสูตรบวก 1')}</li>
+              </ul>
+            </>
+          ),
+        };
+      }
+      const s0 = activeSummaries.find((x) => x.student.id === st.id) ?? summaries.find((x) => x.student.id === st.id);
+      const excluded = notCountedPieces(mine).filter((x) => !isReturned(x.workpiece));
+      return {
+        eyebrow: `${who} · ${t('เกณฑ์สะสม 2 ปี')}`,
+        title: s0 ? t('{a} จาก {b} ช่อง', { a: s0.reqDone, b: s0.reqTotal }) : t('เกณฑ์สะสม 2 ปี'),
+        body: (
+          <>
+            <RequirementSlots works={mine} settings={settings} />
+            {excluded.length > 0 && (
+              <div>
+                <h4 className="trace__h4">{t('ชิ้นงานที่ไม่นับ · {n}', { n: excluded.length })}</h4>
+                <div className="trace__rows">
+                  {excluded.map(({ workpiece: w, reason }) => (
+                    <TraceRow
+                      key={w.id}
+                      color={typeMeta(w.type).color}
+                      main={tText(w.detail)}
+                      sub={`${typeChipLabel(w.type)} · ${stepText(w)}`}
+                      value={reasonText[reason]}
+                      tone="warn"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ),
+        how: (
+          <ul>
+            <li>{t('นับเฉพาะชิ้นที่จบขั้นสุดท้ายแล้ว')}</li>
+            <li>{settings.pairCountsAsOne ? t('CD/RPD คู่บน-ล่างนับเป็น 1 เคส เมื่อจบทั้งคู่') : t('CD/RPD นับต่อ arch')}</li>
+            <li>{t('ทำเกินช่องไม่ล้นไปเติมช่องอื่น')}</li>
+            <li>{t('Crown/Bridge ต้องเป็น Post-core อย่างน้อย {n} ชิ้น', { n: settings.req.postCoreMin })}</li>
+            <li>{t('ไม่นับ: ปิดสวิตช์นับเข้าเกณฑ์ · Simple APD · เคสที่คืนแล้ว')}</li>
+            <li>{t('เคสที่ไม่นับเกณฑ์สะสม ก็ไม่นับเกณฑ์รายปี')}</li>
+          </ul>
+        ),
+      };
+    }
+    if (traceKey.kind === 'step') {
+      const list = worksAtStep(works, traceKey.type, traceKey.step);
+      return {
+        eyebrow: `${yearScopeLabel} · ${typeChipLabel(traceKey.type)}`,
+        title: t('{n} ชิ้นงานอยู่ที่ step {s}', { n: list.length, s: traceKey.step }),
+        body: (
+          <div className="trace__rows">
+            {list.map((w) => {
+              const st = studentById.get(w.studentId);
+              return (
+                <TraceRow
+                  key={w.id}
+                  color={typeMeta(w.type).color}
+                  main={st ? `${personName(st)} · ${groupShort(st.group)}` : w.studentId}
+                  sub={tText(w.detail)}
+                  value={t('{n} วัน', { n: daysSinceUpdate(w) })}
+                  tone={isStale(w, settings) ? 'warn' : undefined}
+                  onClick={st ? () => openStudent(st) : undefined}
+                />
+              );
+            })}
+          </div>
+        ),
+        how: (
+          <>
+            <p>{t('ชิ้นงานที่ยังทำอยู่ แยกตาม step ล่าสุดที่บันทึก · ตัวเลขขวาคือจำนวนวันที่ไม่มีการบันทึกใหม่')}</p>
+            <p>{t('ไม่นับ: ชิ้นที่จบแล้ว · เคสที่คืนแล้ว')}</p>
+          </>
+        ),
+      };
+    }
+    return {
+      eyebrow: yearScopeLabel,
+      title: t('{n} ชิ้นงานไม่ขยับ {d} วันขึ้นไป', { n: stale.length, d: settings.stale }),
+      body: (
+        <div className="trace__rows">
+          {stale.map((r) => (
+            <TraceRow
+              key={r.workpiece.id}
+              color={typeMeta(r.workpiece.type).color}
+              main={`${personName(r.student)} · ${groupShort(r.student.group)}`}
+              sub={`${tText(r.workpiece.detail)} · ${stepText(r.workpiece)}`}
+              value={t('{n} วัน', { n: r.days })}
+              tone="warn"
+              onClick={() => openStudent(r.student)}
+            />
+          ))}
+        </div>
+      ),
+      how: (
+        <>
+          <p>{t('ชิ้นงานที่ยังทำอยู่ และไม่มีการบันทึก step ใหม่ {d} วันขึ้นไป (ตั้งได้ในหน้าตั้งค่า)', { d: settings.stale })}</p>
+          <p>{t('ไม่นับ: ชิ้นที่จบแล้ว · เคสที่คืนแล้ว')}</p>
+        </>
+      ),
+    };
+  })();
+
   /* หน้าแรกโชว์ 4 คนที่ความคืบหน้าน้อยสุด (ตารางเต็มอยู่หน้าสรุปกลุ่ม) · พิมพ์ค้นหา = ผลค้นหาทั้งหมด */
   const HOME_TABLE_ROWS = 4;
   const homeRows = query ? shownStudents : [...shownStudents].sort((a, b) => a.percent - b.percent).slice(0, HOME_TABLE_ROWS);
@@ -471,20 +661,20 @@ export default function Dashboard() {
                     <span className="bar" style={{ height: 6 }}>
                       <i style={{ width: `${s.percent}%`, background: 'var(--accent)' }} />
                     </span>
-                    <span className="mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }}>{s.percent}%</span>
+                    <button className="tracenum mono" style={{ font: '600 10.5px var(--font-mono)', color: 'var(--text-muted)' }} onClick={() => setTraceKey({ kind: 'pct', studentId: s.student.id })} aria-label={t('ที่มาของ {p}%', { p: s.percent })}>{s.percent}%</button>
                   </div>
                 </td>
               )}
               <td>
                 {isAlumniView ? (
                   /* รุ่นเก่าดูแค่เกณฑ์สะสม — ตรงกับตัวนับ "ครบเกณฑ์สะสม" ด้านบน (alumniOverview) */
-                  <span className="mono" style={{ color: s.reqDone >= s.reqTotal ? 'var(--success-dark)' : 'var(--warning-dark)', fontWeight: 600 }}>
+                  <button className="tracenum mono" style={{ color: s.reqDone >= s.reqTotal ? 'var(--success-dark)' : 'var(--warning-dark)', fontWeight: 600 }} onClick={() => setTraceKey({ kind: 'req', studentId: s.student.id })}>
                     {s.reqDone >= s.reqTotal ? `${t('ครบ')} ` : ''}{s.reqDone}/{s.reqTotal}
-                  </span>
+                  </button>
                 ) : (
-                  <span className="mono" style={{ color: s.allComplete ? 'var(--success-dark)' : 'var(--text-secondary)', fontWeight: s.allComplete ? 600 : 500 }}>
+                  <button className="tracenum mono" style={{ color: s.allComplete ? 'var(--success-dark)' : 'var(--text-secondary)', fontWeight: s.allComplete ? 600 : 500 }} onClick={() => setTraceKey({ kind: 'req', studentId: s.student.id })}>
                     {s.reqDone}/{s.reqTotal}
-                  </span>
+                  </button>
                 )}
               </td>
             </tr>
@@ -593,8 +783,12 @@ export default function Dashboard() {
                       : t('กลุ่มที่ดูแล')}
                   </h2>
                   {zoneGroup && (
-                    <small>{t('ปี {y} · {n} คน · ความคืบหน้า {p}%', { y: zoneGroup.year, n: zoneGroup.students.length, p: zoneGroup.percent })}</small>
+                    <small>
+                      {t('ปี {y} · {n} คน · ความคืบหน้า', { y: zoneGroup.year, n: zoneGroup.students.length })}{' '}
+                      <button className="tracenum" onClick={() => setTraceKey({ kind: 'group', code: zoneGroup.code })}>{zoneGroup.percent}%</button>
+                    </small>
                   )}
+                  <DataAge />
                 </div>
                 {/* ตัวเดียวกับตัวเลือกกลุ่มในแถบซ้าย (teacherGroup) — เดิมอยู่หัวตารางนักศึกษา */}
                 <select
@@ -649,6 +843,7 @@ export default function Dashboard() {
                 <div className="zone__title">
                   <h2>{t('ทั้งชั้นปี')}</h2>
                   <small>{t('{g} กลุ่ม · {n} คน', { g: groups.length, n: students.length })}</small>
+                  <DataAge />
                 </div>
                 <YearSeg view={yearView} onChange={setYearView} />
               </div>
@@ -722,7 +917,10 @@ export default function Dashboard() {
                               {advisors && <small>{advisors}</small>}
                               {/* จิ้ม/กดแล้วเท่านั้น (ชี้เมาส์เฉยๆ การ์ดดูอย่างเดียว) — พาไปตารางนักศึกษาของกลุ่มนี้ในโซนซ้าย */}
                               {peek === g.code && (
-                                <button className="groupcell__go" onClick={() => goToStudents(g.code)}>{t('ดูรายชื่อ')} ›</button>
+                                <>
+                                  <button className="groupcell__go" onClick={() => goToStudents(g.code)}>{t('ดูรายชื่อ')} ›</button>
+                                  <button className="groupcell__go" onClick={() => setTraceKey({ kind: 'group', code: g.code })}>{t('ที่มาของ {p}%', { p: g.percent })} ›</button>
+                                </>
                               )}
                             </span>
                           </div>
@@ -751,7 +949,8 @@ export default function Dashboard() {
                       <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
                         {typeChipLabel(ty)}
                         {/* จำนวนชิ้นงานต่อประเภทอยู่ในแท็บเลย — ไม่ต้องมีการ์ดแยกอีกใบ */}
-                        <b className="seg__count">{typeCounts.find((x) => x.type === ty)?.count ?? 0}</b>
+                        {/* นับเฉพาะงานที่ยังทำอยู่ ตรงกับผลรวมแท่งในกราฟ — เดิมนับรวมที่จบ/คืนแล้ว (132 กับแท่งรวม 75) */}
+                        <b className="seg__count">{activeByType.find((x) => x.type === ty)?.count ?? 0}</b>
                       </button>
                     ))}
                   </div>
@@ -786,6 +985,11 @@ export default function Dashboard() {
                       meta={t('{n} ชิ้นงานกำลังอยู่ที่ step นี้', { n: stepBuckets[shownStep].count })}
                       onClose={() => setOpenStep(-1)}
                     />
+                    {stepBuckets[shownStep].count > 0 && (
+                      <button className="tracego" onClick={() => setTraceKey({ kind: 'step', type: stepType, step: shownStep })}>
+                        {t('ดู {n} ชิ้นงานที่อยู่ step นี้', { n: stepBuckets[shownStep].count })} ›
+                      </button>
+                    )}
                   </div>
                 )}
                 <p className="pretty" style={{ margin: '12px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-secondary)' }}>
@@ -798,7 +1002,7 @@ export default function Dashboard() {
               </div>
 
               <div className="panel">
-                <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}<span className="h3count"> · {stale.length}</span></h3>
+                <h3>{t('ชิ้นงานที่ไม่มีความเคลื่อนไหวนานที่สุด')}<span className="h3count"> · <button className="tracenum" onClick={() => setTraceKey({ kind: 'stale' })} aria-label={t('ดูทั้ง {n} ชิ้น', { n: stale.length })}>{stale.length}</button></span></h3>
                 <table className="tbl">
                   <tbody>
                     {stale.slice(0, 5).map((r) => {
@@ -846,6 +1050,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        <TraceDrawer content={traceContent} onClose={() => setTraceKey(null)} />
       </main>
     </TeacherShell>
   );

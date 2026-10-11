@@ -182,10 +182,38 @@ export function sortWorkpieces<T extends Workpiece>(list: T[]): T[] {
  * และอาจารย์ตรวจรับแล้วว่าเข้าเกณฑ์ (ไม่ติดสถานะ "ยังไม่เข้าเกณฑ์ รอตรวจ")
  */
 export function countsTowardRequirement(w: Workpiece): boolean {
+  return mayCountTowardRequirement(w) && isComplete(w);
+}
+
+/**
+ * ถ้าจบเคส ชิ้นนี้จะนับเข้าเกณฑ์สะสมไหม — countsTowardRequirement ลบเงื่อนไข "จบแล้ว" ออก
+ * ใช้เลือกว่าเคสที่กำลังทำเคสไหนเติมช่องเกณฑ์ได้ และใช้ทำรายการ "ไม่นับอะไร" ในลิ้นชักหน้าอาจารย์
+ */
+export function mayCountTowardRequirement(w: Pick<Workpiece, 'type' | 'minimumRequirement' | 'pendingQualification'>): boolean {
   if (w.pendingQualification) return false;
   /* ใช้ CUM_REQ_TYPES (เกณฑ์สะสม) ไม่ใช่ REQ_TYPES (เกณฑ์รายปี) — สองชุดนี้ต่างกันตั้งแต่
      Recall เข้าเกณฑ์สะสมแต่ไม่เข้าเกณฑ์รายปี · เกณฑ์รายปีอ่าน REQ_TYPES ผ่าน countsForYearlyReq */
-  return w.minimumRequirement && isComplete(w) && (CUM_REQ_TYPES as readonly string[]).includes(w.type);
+  return w.minimumRequirement && (CUM_REQ_TYPES as readonly string[]).includes(w.type);
+}
+
+/** เหตุที่ชิ้นงานไม่เข้าเกณฑ์สะสมแม้จบแล้ว — 'type' Simple APD · 'pending' รอตรวจรับ · 'off' ปิดสวิตช์นับเกณฑ์ */
+export type NotCountedReason = 'type' | 'pending' | 'off';
+
+/** ชิ้นงานที่ไม่มีวันนับเข้าเกณฑ์สะสม (ตราบที่ยังตั้งไว้แบบนี้) พร้อมเหตุผล — ตรงข้ามกับ mayCountTowardRequirement พอดี */
+export function notCountedPieces(works: Workpiece[]): Array<{ workpiece: Workpiece; reason: NotCountedReason }> {
+  return works.flatMap((w) => {
+    if (mayCountTowardRequirement(w)) return [];
+    const reason: NotCountedReason = requirementFlag(w) === 'never' ? 'type' : w.pendingQualification ? 'pending' : 'off';
+    return [{ workpiece: w, reason }];
+  });
+}
+
+/** % ความคืบหน้าของนักศึกษาหนึ่งคน แยกรายชิ้น — ค่าเฉลี่ยคือ overallPercent ตัวเดียวกับตาราง (ลิ้นชักหน้าอาจารย์) */
+export function percentParts(works: Workpiece[]): { rows: Array<{ workpiece: Workpiece; percent: number }>; average: number } {
+  return {
+    rows: works.map((w) => ({ workpiece: w, percent: percentCompleted(w) })),
+    average: overallPercent(works),
+  };
 }
 
 /**

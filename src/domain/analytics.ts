@@ -350,6 +350,14 @@ export interface StepBucket {
   label: string;
 }
 
+/** ชิ้นงานที่กำลังทำ อยู่ที่ step นี้ — รายการเบื้องหลังแท่งในกราฟ bottleneckByStep (ลิ้นชักหน้าอาจารย์)
+ *  ใช้ตัวกรองชุดเดียวกัน จำนวนแถวจึงเท่ากับตัวเลขบนแท่งเสมอ · เรียงจากไม่ขยับนานสุด */
+export function worksAtStep(works: Workpiece[], type: WorkType, step: number): Workpiece[] {
+  return works
+    .filter((w) => isActiveWork(w) && w.type === type && Math.max(0, progression(w)) === step)
+    .sort((a, b) => daysSinceUpdate(b) - daysSinceUpdate(a));
+}
+
 export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: WorkType): StepBucket[] {
   const scope = works.filter((w) => isActiveWork(w) && (!type || w.type === type));
   /* จำนวนช่องบนแกน = ขั้นสูงสุดของงานประเภทนั้น +1 — งาน Recall มี 4 ขั้น (0–3)

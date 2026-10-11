@@ -15,12 +15,13 @@
  *   ส่วน B — สุ่มข้อมูล N ชุด เช็ค invariant ทั้งหมด (ผิดที่ไหนพิมพ์ seed ให้เล่นซ้ำได้)
  */
 import {
-  bottleneckByStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
+  bottleneckByStep, worksAtStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
   headline, heatmapRows, profile, riskRows, selfPerformedRows, throughputByMonth,
 } from '../src/domain/analytics.ts';
 import { summarizeStudent } from '../src/domain/aggregate.ts';
 import {
-  caseCountTotals, isActiveWork, isComplete, isReturned, maxProgression,
+  caseCountTotals, countsTowardRequirement, isActiveWork, isComplete, isReturned, maxProgression,
+  mayCountTowardRequirement, notCountedPieces, percentParts,
   meetsAllRequirements, overallPercent, percentCompleted, procList, progression, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
 import { REQ_TYPES, TYPES, orderOf, typeMeta } from '../src/domain/catalog.ts';
@@ -315,6 +316,30 @@ const CHECKS: Check[] = [
         const activeType = works.filter((w) => w.type === type && isActiveWork(w)).length;
         const sum = bottleneckByStep(works, settings, type).reduce((a, b) => a + b.count, 0);
         if (sum !== activeType) return `${type}: ${sum} ≠ ${activeType}`;
+      }
+      return null;
+    },
+  },
+  {
+    /* ลิ้นชัก "ตัวเลขนี้มาจากไหน" หน้าแรกอาจารย์ — รายการในลิ้นชักต้องรวมได้เลขที่โชว์บนหน้าเสมอ */
+    name: 'ลิ้นชักที่มาของตัวเลข: รายการ step = แท่งกราฟ · % รายชิ้นเฉลี่ยได้ % ในตาราง · ไม่นับ ∪ อาจนับ = ทุกชิ้น',
+    run: ({ students, works, settings }) => {
+      for (const type of ALL_TYPES) {
+        for (const b of bottleneckByStep(works, settings, type)) {
+          const n = worksAtStep(works, type, b.progression).length;
+          if (n !== b.count) return `${type} step ${b.progression}: รายการ ${n} ≠ แท่ง ${b.count}`;
+        }
+      }
+      for (const st of students) {
+        const mine = works.filter((w) => w.studentId === st.id);
+        const parts = percentParts(mine);
+        if (parts.average !== summarizeStudent(st, mine, settings).percent) return `${st.id}: % ลิ้นชัก ${parts.average} ≠ ตาราง`;
+        if (parts.rows.length !== mine.length) return `${st.id}: ลิ้นชักขาดชิ้นงาน`;
+      }
+      const excluded = new Set(notCountedPieces(works).map((x) => x.workpiece.id));
+      for (const w of works) {
+        if (excluded.has(w.id) === mayCountTowardRequirement(w)) return `${w.id}: อยู่ทั้งสองฝั่งหรือไม่อยู่ฝั่งไหน`;
+        if (countsTowardRequirement(w) && excluded.has(w.id)) return `${w.id}: นับเกณฑ์แต่ลิ้นชักบอกว่าไม่นับ`;
       }
       return null;
     },

@@ -1769,3 +1769,71 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .rp__bar i, .rp__people i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4; margin: 14mm; }
 }
+
+/* ── ลิ้นชัก "ตัวเลขนี้มาจากไหน" (components/teacher/TraceDrawer) ── */
+/* ตัวเลขที่กดดูที่มาได้ — เส้นประใต้บอกว่ากดได้ ไม่เปลี่ยนสี/ขนาดเลขเดิม */
+.tracenum {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0 2px; margin: 0 -2px; border-radius: 4px; cursor: pointer;
+  text-decoration: underline dotted; text-decoration-color: var(--accent); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
+}
+.tracenum:hover { background: var(--accent-tint); color: var(--accent); }
+.tracenum:focus-visible, .tracego:focus-visible, .trace__x:focus-visible, .trace__link:focus-visible, .dataage__sync:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.tracego { margin-top: 8px; background: none; border: 0; padding: 0; font: 600 12px var(--font-body); color: var(--accent); cursor: pointer; }
+
+/* บรรทัด "ข้อมูล ณ …" ใต้หัวโซน — เทาเงียบๆ · ดึงล่าสุดเกิน 1 ชม. เป็นสีส้ม + ปุ่มซิงก์ */
+.dataage { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 6px; margin-top: 2px; font: 400 11px/1.4 var(--font-body); color: var(--text-faint); }
+.dataage > i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; }
+.dataage[data-old='true'] { color: var(--warning-dark); }
+.dataage[data-old='true'] > i { background: var(--warning); }
+.dataage__sync {
+  display: inline-flex; align-items: center; gap: 3px; background: none; border: 0; padding: 0; cursor: pointer;
+  font: 600 11px var(--font-body); color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
+}
+.zone__title .dataage { margin-top: 3px; }
+
+.trace__scrim { position: fixed; inset: 0; z-index: 90; background: rgba(16, 24, 40, 0.12); }
+.trace {
+  position: fixed; z-index: 91; top: 0; right: 0; bottom: 0; width: min(420px, 100%);
+  display: grid; grid-template-rows: auto 1fr auto; background: var(--surface);
+  border-left: 1px solid var(--border); box-shadow: -14px 0 36px rgba(16, 24, 40, 0.16);
+  animation: trace-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes trace-in { from { transform: translateX(24px); opacity: 0; } }
+.trace__head { position: relative; display: grid; gap: 2px; padding: calc(16px + env(safe-area-inset-top, 0px)) 52px 12px 18px; border-bottom: 1px solid var(--border); }
+.trace__eyebrow { font: 600 11.5px var(--font-head); color: var(--text-faint); }
+.trace__title { margin: 0; font: 700 17px/1.3 var(--font-head); color: var(--text); text-wrap: balance; }
+.trace__x {
+  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; width: 32px; height: 32px; border-radius: 9px;
+  display: grid; place-items: center; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer;
+}
+.trace__body { overflow-y: auto; padding: 12px 18px 18px; display: grid; gap: 14px; align-content: start; }
+.trace__rows { display: grid; }
+.trace__row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--divider); }
+.trace__row:last-child { border-bottom: 0; }
+.trace__row[data-muted] { opacity: 0.6; }
+.trace__dot { width: 9px; height: 9px; border-radius: 50%; }
+.trace__main { min-width: 0; font: 500 13px/1.4 var(--font-body); color: var(--text); overflow-wrap: anywhere; }
+.trace__main small { display: block; font: 400 11.5px/1.45 var(--font-body); color: var(--text-faint); }
+.trace__link { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.trace__val { font: 600 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-secondary); text-align: right; white-space: nowrap; }
+.trace__val[data-tone='warn'] { color: var(--warning-dark); font-family: var(--font-body); font-size: 11.5px; white-space: normal; max-width: 140px; }
+.trace__sum { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 9px; background: var(--fill); font: 600 13px var(--font-head); color: var(--text); }
+.trace__h4 { margin: 0 0 4px; font: 700 12.5px var(--font-head); color: var(--text-secondary); }
+.trace__empty { margin: 0; font: 400 13px var(--font-body); color: var(--text-faint); }
+.trace__how { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--accent-tint); border: 1px solid var(--accent-ring); font: 400 12.5px/1.6 var(--font-body); color: var(--text-secondary); }
+.trace__how h3 { margin: 0; font: 700 12.5px var(--font-head); color: var(--accent); }
+.trace__how p { margin: 0; }
+.trace__how ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.trace__formula { font: 600 12px var(--font-mono); background: var(--surface); border-radius: 6px; padding: 6px 8px; color: var(--text); }
+.trace__foot { padding: 10px 18px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); }
+.trace__foot .dataage { margin: 0; }
+/* จอแคบ (iPad แนวตั้งแคบ/มือถือ) — แผ่นจากล่างแทนลิ้นชักข้าง */
+@media (max-width: 780px) {
+  .trace { top: auto; left: 0; width: 100%; height: 82dvh; border-left: 0; border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; animation-name: trace-up; }
+  .trace__head { padding-top: 16px; }
+  .trace__x { top: 12px; }
+  @keyframes trace-up { from { transform: translateY(32px); opacity: 0; } }
+}
+@media (prefers-reduced-motion: reduce) { .trace { animation: none; } }
