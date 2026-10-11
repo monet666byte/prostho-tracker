@@ -1232,3 +1232,68 @@ button.calday { background: var(--panel-tint); color: var(--panel); font-weight:
   .celebrate__badge, .celebrate__bit, .celebrate__segs i.is-new { animation: none; }
 }
 .calcard__legend i { display: inline-block; }
+
+/* ══ แผงงานถัดไปแบบ 2A — เตี้ยลงหนึ่งในสาม + เก็บข้างในให้คลีน (ผู้ใช้ลองบนมือถือจริงแล้วว่าแผงสูงเกิน) ══
+   Step ขึ้นไปอยู่บรรทัด HN · เส้น step ไม่มีป้าย (หมุดยังแตะได้ · ชื่อหมุดอยู่ใน aria-label)
+   วงแหวนเป็นปุ่มกางขั้นย่อย · จุดบอกหน้าอยู่ใต้แผง */
+.hp__slide { padding: 14px 18px 16px; }
+.hp__top { align-items: center; }
+.hp__step { flex: none; margin-left: auto; font: 600 16px/1.2 var(--font-head); white-space: nowrap; }
+.hp__of { font-size: 13px; font-weight: 500; }
+.hp__open { width: 40px; height: 40px; margin: -10px -12px -10px -2px; }
+.hp__track { height: 28px; margin: 10px 6px 0; }
+.hp__rail, .hp__fill { top: 11.5px; }
+.hp__node { height: 28px; }
+.hp__dot { margin-top: 8px; }
+.hp__node.is-sel .hp__dot { margin-top: 4px; }
+.hp__track .hp__lbl { display: none; }
+.hp__info { padding-top: 6px; }
+.hp__name { font-size: 18px; }
+.hp__ring {
+  border: 0; background: transparent; color: inherit; padding: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none;
+}
+.hp__ringbox { width: 52px; height: 52px; }
+.hp__ringcap { display: inline-flex; align-items: center; gap: 2px; font: 500 11.5px var(--font-head); color: rgba(255, 255, 255, 0.85); }
+.hp__ring:active .hp__ringbox { transform: scale(0.94); }
+.hp__ringbox { transition: transform 0.12s ease; }
+.hp__btn { margin-top: 12px; }
+/* จุดบอกหน้าบนพื้นเทาใต้แผง */
+.hp__dots { margin: -6px 0 -8px; padding-bottom: 0; }
+.hp__pager span { background: var(--border-2); }
+.hp__pager[data-on='true'] span { background: var(--panel); }
+
+/* ── แอนิเมชันเปิดแอป (ครั้งเดียวต่อการเปิดแอป · ปิดเองเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว) ──
+   แถบวิ่งจากซ้าย · หมุด "ตอนนี้" เลื่อนตามไปแล้วกระเพื่อม · วงแหวนหมุนจาก 0 · ตัวเลขนับขึ้น (JS) · ของในแผงลอยขึ้นทีละแถว */
+.hp--intro .hp__fill { animation: hp-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+.hp--intro .hp__node--now { animation: hp-slide 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+.hp--intro .hp__node--now .hp__dot { animation: hp-pulse 1.1s ease-out 1.05s 2; }
+.hp--intro .hp__ringarc { animation: hp-ring 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both; }
+.hp--intro .hp__top { animation: hp-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.hp--intro .hp__track { animation: hp-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s both; }
+.hp--intro .hp__now { animation: hp-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both; }
+.hp--intro .hp__btn { animation: hp-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.18s both; }
+.homeqa--intro .homeqa__ic { animation: hp-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.homeqa--intro .homeqa__item:nth-child(2) .homeqa__ic { animation-delay: 0.05s; }
+.homeqa--intro .homeqa__item:nth-child(3) .homeqa__ic { animation-delay: 0.1s; }
+.homeqa--intro .homeqa__item:nth-child(4) .homeqa__ic { animation-delay: 0.15s; }
+@keyframes hp-fill { from { width: 0; } }
+@keyframes hp-slide { from { left: 0; } }
+@keyframes hp-ring { from { stroke-dasharray: 0 151; } }
+@keyframes hp-up { from { opacity: 0; transform: translateY(8px); } }
+@keyframes hp-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes hp-pulse { 0% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.25); } 50% { box-shadow: 0 0 0 11px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.25); } }
+@media (prefers-reduced-motion: reduce) {
+  .hp--intro *, .homeqa--intro * { animation: none !important; }
+}
+
+/* หัวน้ำเงินหน้าเกณฑ์/รายละเอียดเคส เตี้ยลงตามแผงหน้าแรก */
+.critpanel__big { font-size: 34px; }
+.critpanel__big span { font-size: 19px; }
+.critpanel__segs { margin-top: 10px; }
+.critpanel__types { margin-top: 12px; }
+.critpanel__ring, .critpanel__ring svg { width: 44px; height: 44px; }
+.critpanel__ring b { font-size: 12px; }
+.critpanel__year { margin-top: 12px; padding: 8px 12px; }
+.detailpanel__step { margin-top: 6px; font-size: 19px; }
+.pagepanel .hp__track { margin-top: 6px; }

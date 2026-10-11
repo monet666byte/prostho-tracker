@@ -28,6 +28,7 @@ export const DICT: Record<string, string> = {
   'มา {n} คาบเดือนนี้': '{n} sessions this month',
   'เดือนก่อน': 'Previous month',
   'เดือนถัดไป': 'Next month',
+  'ขั้นย่อยที่เสร็จ {a} จาก {b} · แตะเพื่อดูทั้งหมด': '{a} of {b} sub-steps done · tap to see all',
   // ── ฟอร์มเปิดชิ้นงาน: บอกว่าขาดช่องไหน ──
   'ยังกรอกไม่ครบ: {what}': 'Still missing: {what}',
   // ── แผงสำรองข้อมูล ──

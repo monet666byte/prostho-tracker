@@ -32,25 +32,52 @@ import { studentYear } from '../../domain/cohort';
 // การ์ดความสำเร็จท้ายหน้าแรก — ซ่อนรอเสนอภาคก่อน
 const SHOW_ACHIEVEMENT_CARD = false;
 
-/** วงแหวนขั้นย่อยที่เสร็จใน step ที่กำลังทำ — ตัวเลขวางซ้อนเป็น HTML ไม่ใส่ใน <text> ของ svg ให้ฟอนต์ตรงกับทั้งหน้า */
-function SubRing({ done, total }: { done: number; total: number }) {
+/** ตัวเลขนับขึ้นจาก 0 ตอนเปิดแอป (แผงงานถัดไป) — ไม่เล่นเมื่อ run = false */
+function useCountUp(target: number, run: boolean, ms = 850, delay = 150) {
+  const [v, setV] = useState(run ? 0 : target);
+  useEffect(() => {
+    if (!run) { setV(target); return; }
+    let raf = 0;
+    const t0 = performance.now() + delay;
+    const tick = (now: number) => {
+      const p = Math.min(1, Math.max(0, (now - t0) / ms));
+      setV(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, run]);
+  return v;
+}
+
+/**
+ * วงแหวนขั้นย่อยที่เสร็จ — เป็นปุ่มกาง/พับรายการขั้นย่อยในตัว (แทนแถบกางแยกที่ทำให้แผงสูงและรก)
+ * ตัวเลขวางซ้อนเป็น HTML ไม่ใส่ใน <text> ของ svg ให้ฟอนต์ตรงกับทั้งหน้า
+ */
+function SubRing({ done, total, open, onToggle, intro }: { done: number; total: number; open: boolean; onToggle: () => void; intro: boolean }) {
   const R = 24;
   const C = 2 * Math.PI * R;
+  const shown = useCountUp(done, intro, 700, 350);
   return (
-    <span className="hp__ring">
+    <button className="hp__ring" onClick={onToggle} aria-expanded={open} aria-label={t('ขั้นย่อยที่เสร็จ {a} จาก {b} · แตะเพื่อดูทั้งหมด', { a: done, b: total })}>
       <span className="hp__ringbox">
-        <svg width="58" height="58" viewBox="0 0 60 60" aria-hidden>
+        <svg width="52" height="52" viewBox="0 0 60 60" aria-hidden>
           <circle cx="30" cy="30" r={R} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="6" />
           <circle
+            className="hp__ringarc"
             cx="30" cy="30" r={R} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round"
             strokeDasharray={`${(C * done) / Math.max(1, total)} ${C}`} transform="rotate(-90 30 30)"
             style={{ transition: 'stroke-dasharray .45s cubic-bezier(.2,.8,.2,1)' }}
           />
         </svg>
-        <span className="hp__ringnum">{done}/{total}</span>
+        <span className="hp__ringnum">{shown}/{total}</span>
       </span>
-      <span className="hp__ringcap">{t('ขั้นย่อยที่เสร็จ')}</span>
-    </span>
+      <span className="hp__ringcap">
+        {t('ขั้นย่อย')}
+        <CaretRight size={12} weight="bold" className="hp__chev" data-open={open} />
+      </span>
+    </button>
   );
 }
 
@@ -60,12 +87,14 @@ function SubRing({ done, total }: { done: number; total: number }) {
  * ส่วนกลาง: "กำลังทำ" + ชื่อขั้น + วงแหวนขั้นย่อย · แถบกางรายการขั้นย่อยทั้ง step · ปุ่มบอกชื่องานที่จะบันทึก
  */
 function PanelSlide({
-  w, pending, stale, onPass,
+  w, pending, stale, onPass, intro,
 }: {
   w: WorkpieceView;
   pending: boolean;
   stale: boolean;
   onPass: () => void;
+  /** เล่นแอนิเมชันเปิดแอป (เฉพาะหน้าแรกของแผง ครั้งแรกที่เปิดแอป) */
+  intro: boolean;
 }) {
   const namesOn = usePatientNamesOn();
   const [peek, setPeek] = useState<'start' | 'end' | null>(null);
@@ -82,6 +111,7 @@ function PanelSlide({
   const tight = (prog: number) => Math.abs(prog - nowProg) / Math.max(1, max) < 0.2;
   const where = w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : '';
   const btnLabel = next ? recordStepLabel(next.name) : '';
+  const stepShown = useCountUp(nowProg, intro);
 
   return (
     <div className={`hp__slide t-${w.type}`}>
@@ -91,12 +121,10 @@ function PanelSlide({
           {/* ไม่ใช้ชื่อ (นำร่อง) = HN เป็นหัวเรื่อง · เพศ/อายุช่วยแยกคนไข้ที่ HN คล้ายกัน */}
           {!namesOn && w.patient.sexAge ? ` · ${tSexAge(w.patient.sexAge)}` : ''}
         </span>
+        <span className="hp__step">Step {stepShown} <span className="hp__of">/ {max}</span></span>
         <Link to={`/app/work/${w.id}`} className="hp__open" aria-label={t('เปิดรายละเอียดเคส')}>
-          <CaretRight size={20} weight="bold" />
+          <CaretRight size={18} weight="bold" />
         </Link>
-      </div>
-      <div className="hp__step">
-        Step {nowProg} <span className="hp__of">/ {max}</span>
       </div>
       {(pending || stale) && (
         <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
@@ -162,7 +190,9 @@ function PanelSlide({
               <div className="hp__kicker hp__kicker--hi">{t('กำลังทำ')}</div>
               <Link to={`/app/work/${w.id}`} className="hp__name">{next.name}</Link>
             </div>
-            {active.procs.length > 1 && <SubRing done={active.done} total={active.procs.length} />}
+            {active.procs.length > 1 && (
+              <SubRing done={active.done} total={active.procs.length} open={open} onToggle={() => setOpen(!open)} intro={intro} />
+            )}
           </div>
           {next.selfPerformed && (
             <div className="hp__self">
@@ -172,14 +202,8 @@ function PanelSlide({
           )}
           {active.procs.length > 1 && (
             <>
-              <button className="hp__expand" onClick={() => setOpen(!open)} aria-expanded={open}>
-                <span style={{ flex: 1 }}>
-                  {t('ขั้นย่อยทั้งหมดใน step {n}', { n: active.progression })}
-                  <span className="hp__muted"> · {t('{n} ขั้น', { n: active.procs.length })}</span>
-                </span>
-                <CaretRight size={16} weight="bold" className="hp__chev" data-open={open} />
-              </button>
-              <div className="hp__subs" data-open={open}>
+              {/* กางด้วยการแตะวงแหวน — แถบกางแยกเดิมทำให้แผงสูงและรก */}
+              <div className="hp__subs" data-open={open} aria-label={t('ขั้นย่อยทั้งหมดใน step {n}', { n: active.progression })}>
                 <div>
                   <ol className="hp__sublist">
                     {active.procs.map((p, k) => {
@@ -213,7 +237,7 @@ function PanelSlide({
 
 /** แผงงานถัดไปแบบปัดซ้าย-ขวาเปลี่ยนเคส (จุดใต้แผงกดได้) */
 function CasePanel({
-  cases, index, onIndex, pending, settings, onPass,
+  cases, index, onIndex, pending, settings, onPass, intro,
 }: {
   cases: WorkpieceView[];
   index: number;
@@ -221,6 +245,7 @@ function CasePanel({
   pending: Set<string>;
   settings: Settings;
   onPass: (id: string) => void;
+  intro: boolean;
 }) {
   const [dx, setDx] = useState(0);
   const drag = useRef<{ x: number; y: number; moved: boolean; horizontal: boolean | null } | null>(null);
@@ -264,7 +289,8 @@ function CasePanel({
   }
 
   return (
-    <section className="hp" aria-roledescription="carousel" aria-label={t('งานถัดไป')}>
+    <>
+    <section className={`hp${intro ? ' hp--intro' : ''}`} aria-roledescription="carousel" aria-label={t('งานถัดไป')}>
       <div
         className="hp__viewport"
         style={{ height }}
@@ -289,11 +315,13 @@ function CasePanel({
               key={w.id} ref={(el) => { pages.current[i] = el; }}
               className="hp__page" aria-hidden={i !== index} inert={i !== index ? true : undefined}
             >
-              <PanelSlide w={w} pending={pending.has(w.id)} stale={isStale(w, settings)} onPass={() => onPass(w.id)} />
+              <PanelSlide w={w} pending={pending.has(w.id)} stale={isStale(w, settings)} onPass={() => onPass(w.id)} intro={intro && i === index} />
             </div>
           ))}
         </div>
       </div>
+    </section>
+      {/* จุดบอกหน้าอยู่ใต้แผง (บนพื้นเทา) — แผงเตี้ยลง */}
       {cases.length > 1 && (
         <div className="hp__dots">
           {cases.map((w, i) => (
@@ -310,9 +338,12 @@ function CasePanel({
           ))}
         </div>
       )}
-    </section>
+    </>
   );
 }
+
+/** แอนิเมชันเปิดแอปเล่นครั้งเดียวต่อการเปิดแอป — กลับมาหน้าแรกซ้ำไม่เล่นอีก */
+let introPlayed = false;
 
 function greeting() {
   const h = new Date().getHours();
@@ -365,6 +396,20 @@ export default function Home() {
   // แผงงานถัดไปปัดดูได้ทีละเคส (5 เคสล่าสุด) · เคสที่ไม่ได้อยู่บนแผงตอนนี้เป็นแถวย่อด้านล่าง กดปุ่มขวาผ่าน step ได้เลย
   const panelCases = recent.slice(0, 5);
   const [slideAt, setSlideAt] = useState(0);
+  const [intro, setIntro] = useState(() => {
+    if (introPlayed) return false;
+    let reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* เบราว์เซอร์เก่า */ }
+    return !reduce;
+  });
+  // ต้องรอให้มีเคสก่อนค่อยนับว่าเล่นแล้ว (เปิดแอปครั้งแรก รายการเคสยังโหลดไม่ทัน)
+  const hasCases = recent.length > 0;
+  useEffect(() => {
+    if (!intro || !hasCases) return;
+    introPlayed = true;
+    const id = setTimeout(() => setIntro(false), 2600);
+    return () => clearTimeout(id);
+  }, [intro, hasCases]);
   const slide = Math.min(slideAt, Math.max(0, panelCases.length - 1));
   const rest = panelCases.filter((_, i) => i !== slide);
   const totals = caseCountTotals(works, settings);
@@ -550,7 +595,7 @@ export default function Home() {
       })()}
 
       {/* ทางลัด 4 วง — แบบประเมินตนเองโผล่เฉพาะช่วงที่ภาคเปิด (เหมือนแถวในกล่อง "ของฉัน") */}
-      <nav className="homeqa" aria-label={t('ทางลัด')}>
+      <nav className={`homeqa${intro ? ' homeqa--intro' : ''}`} aria-label={t('ทางลัด')}>
         <Link to="/app/new" className="homeqa__item">
           <span className="homeqa__ic"><Plus size={24} /></span>{t('เพิ่มชิ้นงาน')}
         </Link>
@@ -574,7 +619,7 @@ export default function Home() {
       {panelCases.length > 0 && (
         <CasePanel
           cases={panelCases} index={slide} onIndex={setSlideAt}
-          pending={pending} settings={settings} onPass={(id) => openSheet(id)}
+          pending={pending} settings={settings} onPass={(id) => openSheet(id)} intro={intro}
         />
       )}
 
