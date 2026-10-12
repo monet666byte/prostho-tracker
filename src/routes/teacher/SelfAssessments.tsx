@@ -9,25 +9,27 @@
  * ⚠️ ชั้น ② เห็นเฉพาะที่นี่ ว่านักศึกษาไม่ต้องเห็นสรุป
  *    เป็นเครื่องมือเตรียมตัวของอาจารย์ก่อนนัดคุย ไม่ใช่ผลป้อนกลับที่ส่งถึงนักศึกษา
  */
-import { ClipboardText, Printer, Student as StudentIcon } from '@phosphor-icons/react';
+import { ClipboardText, PencilSimple, Printer, Student as StudentIcon } from '@phosphor-icons/react';
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
+import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import { SaSummary } from '../../components/SaSummary';
 import { Radar } from '../../components/charts/Radar';
 import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
+import { studentYear } from '../../domain/cohort';
 import { firstNameOnly } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
-  SA_APPROPRIATE, readableAnswer, saColLabel, saLabel, saSectionLabel, saSectionsFor, saSub,
+  SA_APPROPRIATE, readableAnswer, saColLabel, saLabel, saOpenFor, saSectionLabel, saSectionsFor, saSub,
   type SAValue,
 } from '../../domain/selfAssessment';
-import { saId } from '../../data/repo';
+import { reopenSelfAssessment, saId } from '../../data/repo';
 import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
-import { useApp } from '../../store/app';
+import { currentActor, useApp } from '../../store/app';
 import type { ProfileAxis } from '../../domain/analytics';
 import type { SelfAssessment, Student } from '../../domain/types';
 
@@ -74,6 +76,9 @@ export default function SelfAssessments() {
   );
   const checkins = useAllCheckIns();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmReopen, setConfirmReopen] = useState(false);
+  const settings = useApp((s) => s.settings);
+  const showToast = useApp((s) => s.showToast);
   const navigate = useNavigate();
 
   const groupStudents = useMemo(
@@ -191,6 +196,13 @@ export default function SelfAssessments() {
                   <button
                     className="btn btn--sec"
                     style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
+                    onClick={() => setConfirmReopen(true)}
+                  >
+                    <PencilSimple size={14} /> {t('เปิดให้แก้ใหม่')}
+                  </button>
+                  <button
+                    className="btn btn--sec"
+                    style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
                     onClick={() => navigate(`/teacher/sa/${openSa.studentId}/print`)}
                   >
                     <Printer size={14} /> {t('พิมพ์')}
@@ -246,6 +258,36 @@ export default function SelfAssessments() {
             )}
           </div>
         </div>
+
+        {confirmReopen && openStudent && openSa?.status === 'submitted' && (
+          <ConfirmBox onBackdrop={() => setConfirmReopen(false)} role="dialog" ariaLabel={t('เปิดให้แก้ใหม่')}>
+            <div className="confirmbox__q">{t('เปิดให้แก้แบบประเมินตนเองใหม่')}</div>
+            <div className="confirmbox__who">{personName(openStudent)}</div>
+            <div className="confirmbox__meta">
+              {t('ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}', {
+                d: thaiShort(openSa.submittedAt ?? openSa.updatedAt), y: openSa.classYear, v: openSa.formVersion,
+              })}
+            </div>
+            <p className="confirmbox__note">
+              {t('คำตอบเดิมอยู่ครบ นักศึกษาแก้ต่อแล้วกดส่งใหม่เอง · ระหว่างนี้จะนับเป็น "กรอกค้าง" และพิมพ์ไม่ได้จนกว่าจะส่งอีกครั้ง')}
+            </p>
+            {!saOpenFor(settings, studentYear(openStudent)) && (
+              <p className="confirmbox__note" style={{ color: 'var(--warning)' }}>
+                {t('ตอนนี้ปิดรับแบบประเมินของชั้นปีนี้อยู่ — นักศึกษาจะเปิดฟอร์มไม่ได้จนกว่าจะเปิดรับในหน้าตั้งค่า')}
+              </p>
+            )}
+            <ConfirmActions
+              onCancel={() => setConfirmReopen(false)}
+              onConfirm={async () => {
+                setConfirmReopen(false);
+                await reopenSelfAssessment(openSa.studentId, openSa.academicYear, currentActor());
+                showToast({ message: t('เปิดให้ {n} แก้ใหม่แล้ว', { n: firstNameOnly(personName(openStudent)) }), tone: 'success' });
+              }}
+            >
+              <PencilSimple size={16} weight="bold" /> {t('เปิดให้แก้')}
+            </ConfirmActions>
+          </ConfirmBox>
+        )}
       </main>
     </TeacherShell>
   );

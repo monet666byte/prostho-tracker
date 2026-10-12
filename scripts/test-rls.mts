@@ -966,6 +966,24 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   check('ทุกครั้งที่กู้มีแถว audit', auditN === 3, auditN);
   const stillGuarded = await commit(U.T1, `update self_assessments set answers = '{"q1":1}'::jsonb where id = 'sa-sA-2569'`);
   check('ยามเดิมยังทำงาน: อาจารย์แก้คำตอบของ นศ. ไม่ได้', !stillGuarded.ok, stillGuarded);
+
+  // ── ⑰ อาจารย์เปิดให้แก้ใหม่ (ปุ่มในหน้าประเมินตนเอง → reopenSelfAssessment) ──
+  console.log('\n⑰ อาจารย์เปิดแบบประเมินตนเองที่ส่งแล้วให้ นศ. แก้ใหม่');
+  // RLS กรองแถวทิ้งเงียบๆ (0 แถว) ไม่ขึ้น error → ตรวจที่ผล
+  const selfReopen = await commit(U.A, `update self_assessments set status = 'draft' where id = 'sa-sA-2569' returning id`);
+  const stillSent = (await db.query<{ status: string }>(`select status from self_assessments where id = 'sa-sA-2569'`)).rows[0].status;
+  check('นศ. เปิดฉบับที่ส่งแล้วของตัวเองไม่ได้', (!selfReopen.ok || selfReopen.rows.length === 0) && stillSent === 'submitted', { selfReopen, stillSent });
+  // ช่องเดียวกับที่ cloudSync ส่งเป็น PATCH จากเครื่องอาจารย์
+  const reopen = await commit(U.T1, `update self_assessments set status = 'draft', submitted_at = null, updated_at = now() where id = 'sa-sA-2569' returning id`);
+  const afterReopen = (await db.query<{ status: string; s: string | null; a: { q1: number } }>(
+    `select status, submitted_at::text as s, answers as a from self_assessments where id = 'sa-sA-2569'`)).rows[0];
+  check('อาจารย์เปิดได้ · สถานะกลับเป็นร่าง · ล้างเวลาส่ง · คำตอบเดิมอยู่ครบ',
+    reopen.ok && reopen.rows.length === 1 && afterReopen.status === 'draft' && afterReopen.s === null && afterReopen.a.q1 === 2,
+    { reopen, afterReopen });
+  const edit = await commit(U.A, `update self_assessments set answers = '{"q1":1}'::jsonb where id = 'sa-sA-2569' returning id`);
+  check('หลังเปิดแล้ว นศ. แก้คำตอบต่อได้', edit.ok && edit.rows.length === 1, edit);
+  const saResend = await commit(U.A, `update self_assessments set status = 'submitted' where id = 'sa-sA-2569' returning submitted_at::text as s`);
+  check('ส่งใหม่ได้ · เวลาส่งเป็นของเซิร์ฟเวอร์รอบใหม่', saResend.ok && !!saResend.rows[0]?.s && !saResend.rows[0].s.startsWith('2026-08-31'), saResend);
 }
 
 await db.close();

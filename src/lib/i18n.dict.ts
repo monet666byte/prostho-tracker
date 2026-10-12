@@ -1225,6 +1225,14 @@ export const DICT: Record<string, string> = {
   '{n} ยังไม่ได้เริ่มกรอกแบบประเมินตนเองของปีนี้': '{n} has not started this year\'s self-assessment',
   'กรอกค้างไว้ ยังไม่ได้กดส่ง — แก้ไขล่าสุด {d}': 'Draft in progress, not submitted — last edited {d}',
   'ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}': 'Submitted {d} · year {y} · form {v}',
+  'เปิดให้แก้ใหม่': 'Reopen for editing',
+  'เปิดให้แก้แบบประเมินตนเองใหม่': 'Reopen this self-assessment for editing',
+  'คำตอบเดิมอยู่ครบ นักศึกษาแก้ต่อแล้วกดส่งใหม่เอง · ระหว่างนี้จะนับเป็น "กรอกค้าง" และพิมพ์ไม่ได้จนกว่าจะส่งอีกครั้ง':
+    'All answers are kept. The student edits and submits again · until then it counts as "in progress" and cannot be printed',
+  'ตอนนี้ปิดรับแบบประเมินของชั้นปีนี้อยู่ — นักศึกษาจะเปิดฟอร์มไม่ได้จนกว่าจะเปิดรับในหน้าตั้งค่า':
+    'The form is currently closed for this class year — the student cannot open it until it is opened in Settings',
+  'เปิดให้แก้': 'Reopen',
+  'เปิดให้ {n} แก้ใหม่แล้ว': 'Reopened for {n}',
   'นักศึกษามองตัวเอง เทียบกับคะแนนที่ได้รับจริง': 'Student\'s self-view versus the scores actually given',
   'เส้นอ้างอิงคือค่าเฉลี่ยจาก {n} คาบที่ประเมินแล้ว': 'The reference line is the average of {n} evaluated periods',
   'นักศึกษาประเมินตัวเอง': 'Student self-rating',

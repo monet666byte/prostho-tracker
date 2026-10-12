@@ -1443,6 +1443,23 @@ export async function submitSelfAssessment(
   return next;
 }
 
+/**
+ * อาจารย์เปิดให้ นศ. แก้ใหม่ — สถานะกลับเป็นร่าง คำตอบเดิมอยู่ครบ
+ * แตะแค่ status/submittedAt เพราะ trigger ฝั่งเซิร์ฟเวอร์ห้ามอาจารย์แก้คำตอบ (0011)
+ */
+export async function reopenSelfAssessment(
+  studentId: string,
+  academicYear: number,
+  actor: string,
+): Promise<SelfAssessment | null> {
+  const row = await db.selfAssessments.get(saId(studentId, academicYear));
+  if (!row || row.status !== 'submitted') return row ?? null;
+  const next: SelfAssessment = { ...row, status: 'draft', submittedAt: undefined, updatedAt: new Date().toISOString() };
+  await db.selfAssessments.put(next);
+  await logAudit(`เปิดให้แก้แบบประเมินตนเอง ปีการศึกษา ${academicYear}`, actor, { studentId });
+  return next;
+}
+
 // ── Section III (Knowledge & skill assessment) ────────────────────────────
 
 export interface Sect3Input {
