@@ -8,7 +8,7 @@ import { studentYear } from '../../domain/cohort';
 import { saYearNow } from '../../domain/saFeedback';
 import {
   SA_APPROPRIATE, SA_FORM_VERSION, SA_NEEDS_WORK, SA_SCALE, SA_SOURCE,
-  readableAnswer, saColLabel, saHint, saLabel, saNote, saOpenFor, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saSub,
+  readableAnswer, saColLabel, saHint, saLabel, saNote, saOption, saProgress, saSectionLabel, saSectionMissing, saSectionsFor, saStudentCanEdit, saSub,
   type SAQuestion, type SAValue,
 } from '../../domain/selfAssessment';
 import { useSelfAssessment, useStudent } from '../../hooks/data';
@@ -128,6 +128,8 @@ export default function SelfAssess() {
   const [step, setStep] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  /* ส่งแล้วแต่ยังเปิดรับ → กด "แก้คำตอบ" เข้าโหมดกรอกอีกรอบ · แก้แล้วบันทึกทับทันที สถานะยังเป็นส่งแล้ว */
+  const [editing, setEditing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /* ค่าล่าสุดบนจอ + ธงว่ามีของค้างเขียน — ต้องเป็น ref เพราะ cleanup ของ useEffect
      และตัวจับเวลาอ่าน state ณ ตอนนั้นไม่ได้ */
@@ -165,13 +167,14 @@ export default function SelfAssess() {
   }, [saved, loaded]);
 
   const submitted = saved?.status === 'submitted';
+  const canEdit = saStudentCanEdit(settings, saved, classYear);
   const progress = saProgress(answers, classYear);
   const section = sections[step];
   const onLast = step === sections.length - 1;
 
   /** เขียนคำตอบ + บันทึกร่างอัตโนมัติ (หน่วง 600ms — กันเขียนถี่ตอนพิมพ์) */
   function set(key: string, v: SAValue) {
-    if (submitted || !session) return;
+    if (!canEdit || !session) return;
     const next = { ...answers, [key]: v };
     setAnswers(next);
     /* ยังไม่รู้ว่าเป็นปี 5 หรือ 6 (แถว student ยังไม่โหลด) → เก็บไว้ในหน้าจอก่อน
@@ -232,7 +235,7 @@ export default function SelfAssess() {
   }
 
   /* ── ฟอร์มปิด: บอกให้ชัดว่าเปิดเมื่อไหร่ ดีกว่าโชว์ฟอร์มเปล่าที่ส่งไม่ได้ ── */
-  if (!saOpenFor(settings, classYear) && !submitted) {
+  if (!canEdit && !submitted) {
     return (
       <PlainShell>
         <header className="s-header s-header--row">
@@ -250,8 +253,8 @@ export default function SelfAssess() {
     );
   }
 
-  /* ── ส่งแล้ว: อ่านอย่างเดียว + สรุปที่อาจารย์ปล่อยแล้ว ── */
-  if (submitted && saved) {
+  /* ── ส่งแล้ว: ดูคำตอบ · ยังเปิดรับอยู่กด "แก้คำตอบ" ได้ (อาจารย์ปิดรับระหว่างแก้ = เด้งกลับมาหน้านี้) ── */
+  if (submitted && saved && (!editing || !canEdit)) {
     return (
       <PlainShell>
         <header className="s-header s-header--row">
@@ -265,9 +268,16 @@ export default function SelfAssess() {
           <div className="sadone">
             <span className="dot" style={{ width: 10, height: 10, background: 'var(--success)' }} />
             <span style={{ flex: 1, minWidth: 0 }}>
-              {t('ส่งแล้ว {d} · แก้ไม่ได้', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })}
-              <small>{t('ต้องแก้ ให้บอกอาจารย์ที่ปรึกษา')}</small>
+              {canEdit
+                ? t('ส่งแล้ว {d}', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })
+                : t('ส่งแล้ว {d} · แก้ไม่ได้', { d: thaiShort(saved.submittedAt ?? saved.updatedAt) })}
+              <small>{canEdit ? t('แก้ได้จนกว่าอาจารย์จะปิดรับ') : t('ต้องแก้ ให้บอกอาจารย์ที่ปรึกษา')}</small>
             </span>
+            {canEdit && (
+              <button type="button" className="inlinelink" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }} onClick={() => { setStep(0); setEditing(true); }}>
+                {t('แก้คำตอบ')} ›
+              </button>
+            )}
             {/* ปริ้นท์ไปให้อาจารย์เซ็นแล้วเก็บเข้าแฟ้ม — ฟอร์ม Word เดิมทำแบบนี้ */}
             <Link to="/app/self-assessment/print" className="inlinelink" style={{ textDecoration: 'none' }}>{t('พิมพ์')} ›</Link>
           </div>
@@ -320,7 +330,19 @@ export default function SelfAssess() {
       >
         <ArrowLeft size={16} /> {t('ก่อนหน้า')}
       </button>
-      {onLast ? (
+      {onLast && submitted ? (
+        /* แก้ฉบับที่ส่งแล้ว: บันทึกทับไปแล้วทุกครั้งที่แตะ · ปุ่มนี้แค่พากลับไปหน้าดูคำตอบ */
+        <button
+          className="btn"
+          style={{ height: 46, flex: 1 }}
+          disabled={progress.done < progress.total}
+          onClick={() => { flush(); setEditing(false); }}
+        >
+          {progress.done < progress.total
+            ? t('ยังเหลืออีก {n} ข้อ', { n: progress.total - progress.done })
+            : t('แก้เสร็จแล้ว')}
+        </button>
+      ) : onLast ? (
         <button
           className="btn"
           style={{ height: 46, flex: 1 }}
@@ -346,7 +368,7 @@ export default function SelfAssess() {
         <div className="grabber" />
         <h3 className="h3">{t('ส่งแบบประเมินตนเอง?')}</h3>
         <p style={{ margin: '8px 0 0', font: '400 12px/1.7 var(--font-body)', color: 'var(--text-muted)' }}>
-          {t('ส่งแล้วแก้เองไม่ได้ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และจะอ่านก่อนนัดคุยกับเรา')}
+          {t('ส่งแล้วยังแก้ได้จนกว่าอาจารย์จะปิดรับ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และจะอ่านก่อนนัดคุยกับเรา')}
         </p>
         <button className="btn" style={{ height: 50, marginTop: 14 }} onClick={send}>
           <PaperPlaneTilt size={17} weight="fill" /> {t('ยืนยันส่ง')}
@@ -363,8 +385,10 @@ export default function SelfAssess() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 className="h2">{t('ประเมินตนเอง')}</h1>
           <p style={{ margin: '2px 0 0', font: '400 11px var(--font-body)', color: 'var(--text-faint)' }}>
-            {t('ปีการศึกษา {y} · ตอบแล้ว {a}/{b} ข้อ', { y: year, a: progress.done, b: progress.total })}
-            {settings.saDue ? ` · ${t('ส่งภายใน {d}', { d: thaiShort(settings.saDue) })}` : ''}
+            {submitted
+              ? t('ส่งแล้ว · กำลังแก้ · บันทึกทับทันที')
+              : t('ปีการศึกษา {y} · ตอบแล้ว {a}/{b} ข้อ', { y: year, a: progress.done, b: progress.total })}
+            {!submitted && settings.saDue ? ` · ${t('ส่งภายใน {d}', { d: thaiShort(settings.saDue) })}` : ''}
           </p>
         </div>
       </header>
@@ -418,7 +442,7 @@ export default function SelfAssess() {
           )}
           {renderQuestions(section.questions, answers, set)}
           <p style={{ font: '400 10px/1.6 var(--font-body)', color: 'var(--text-faint)', textAlign: 'center' }}>
-            {t('บันทึกร่างอัตโนมัติ · อ้างอิงฟอร์ม')} {SA_SOURCE}
+            {submitted ? t('บันทึกอัตโนมัติ · อ้างอิงฟอร์ม') : t('บันทึกร่างอัตโนมัติ · อ้างอิงฟอร์ม')} {SA_SOURCE}
           </p>
         </div>
       )}

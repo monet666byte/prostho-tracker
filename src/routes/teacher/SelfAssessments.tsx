@@ -18,7 +18,6 @@ import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import { SaSummary } from '../../components/SaSummary';
 import { Radar } from '../../components/charts/Radar';
 import { CRITERIA, MAX_SCORE } from '../../domain/checkin';
-import { studentYear } from '../../domain/cohort';
 import { firstNameOnly } from '../../domain/group';
 import { saYearNow } from '../../domain/saFeedback';
 import {
@@ -60,6 +59,11 @@ function compareAxes(sa: SelfAssessment, scores: Array<Record<string, number>>):
     teacher.push({ key: crit.key, label: crit.short, value: (mean / MAX_SCORE) * 100, detail: `${mean.toFixed(1)}/${MAX_SCORE}` });
   }
   return self.length >= 3 ? { self, teacher } : null;
+}
+
+/** แก้หลังส่ง (ระหว่างยังเปิดรับ) — เผื่อนาทีเดียวให้การบันทึกตอนกดส่ง */
+function editedAfterSubmit(sa: SelfAssessment): boolean {
+  return !!sa.submittedAt && Date.parse(sa.updatedAt) - Date.parse(sa.submittedAt) > 60_000;
 }
 
 export default function SelfAssessments() {
@@ -191,15 +195,19 @@ export default function SelfAssessments() {
                       {t('ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}', {
                         d: thaiShort(openSa.submittedAt ?? openSa.updatedAt), y: openSa.classYear, v: openSa.formVersion,
                       })}
+                      {editedAfterSubmit(openSa) && ` · ${t('แก้ล่าสุด {d}', { d: thaiShort(openSa.updatedAt) })}`}
                     </span>
                   </span>
-                  <button
-                    className="btn btn--sec"
-                    style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
-                    onClick={() => setConfirmReopen(true)}
-                  >
-                    <PencilSimple size={14} /> {t('เปิดให้แก้ใหม่')}
-                  </button>
+                  {/* ยังเปิดรับอยู่ นักศึกษาแก้เองได้ — ปุ่มนี้มีไว้หลังปิดรับเท่านั้น */}
+                  {!saOpenFor(settings, openSa.classYear) && (
+                    <button
+                      className="btn btn--sec"
+                      style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
+                      onClick={() => setConfirmReopen(true)}
+                    >
+                      <PencilSimple size={14} /> {t('เปิดให้แก้ใหม่')}
+                    </button>
+                  )}
                   <button
                     className="btn btn--sec"
                     style={{ height: 38, width: 'auto', flex: '0 0 auto', padding: '0 14px', font: '600 11.5px var(--font-body)' }}
@@ -269,13 +277,8 @@ export default function SelfAssessments() {
               })}
             </div>
             <p className="confirmbox__note">
-              {t('คำตอบเดิมอยู่ครบ นักศึกษาแก้ต่อแล้วกดส่งใหม่เอง · ระหว่างนี้จะนับเป็น "กรอกค้าง" และพิมพ์ไม่ได้จนกว่าจะส่งอีกครั้ง')}
+              {t('ปิดรับไปแล้ว — เปิดให้เฉพาะคนนี้แก้ คนอื่นยังล็อกตามเดิม · คำตอบเดิมอยู่ครบ นักศึกษาแก้แล้วต้องกดส่งใหม่เอง ระหว่างนี้นับเป็น "กรอกค้าง" และพิมพ์ไม่ได้')}
             </p>
-            {!saOpenFor(settings, studentYear(openStudent)) && (
-              <p className="confirmbox__note" style={{ color: 'var(--warning)' }}>
-                {t('ตอนนี้ปิดรับแบบประเมินของชั้นปีนี้อยู่ — นักศึกษาจะเปิดฟอร์มไม่ได้จนกว่าจะเปิดรับในหน้าตั้งค่า')}
-              </p>
-            )}
             <ConfirmActions
               onCancel={() => setConfirmReopen(false)}
               onConfirm={async () => {

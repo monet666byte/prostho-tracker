@@ -391,6 +391,8 @@ export interface SelfAssessment {
   answers: Record<string, string | number | string[] | null>;
   status: SelfAssessmentStatus;
   submittedAt?: string;
+  /** อาจารย์เปิดให้แก้ใหม่หลังส่ง (ประทับโดยเซิร์ฟเวอร์) — ร่างแบบนี้แก้ได้แม้ปิดรับแล้ว */
+  reopenedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

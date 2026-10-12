@@ -11,7 +11,7 @@
  */
 import {
   SA_APPROPRIATE, SA_MAX_SCALE, SA_NEEDS_WORK, SA_SCALE, SA_SECTIONS, SA_TYPES,
-  saId, saMissing, saOpenFor, saProgress, saQuestionsFor, saSectionMissing, saSectionsFor,
+  saId, saMissing, saOpenFor, saProgress, saStudentCanEdit, saQuestionsFor, saSectionMissing, saSectionsFor,
   num, list, type SAValue,
 } from '../src/domain/selfAssessment.ts';
 import { buildFeedback, saYearNow, sortFeedback } from '../src/domain/saFeedback.ts';
@@ -100,6 +100,13 @@ ok('ไม่รู้ชั้นปี → ไม่เปิดให้ (ป
 /* เครื่องที่ยังไม่ได้อัปเดตค่าตั้งจะมี saOpen (boolean) ตัวเก่าอยู่ — ต้องยังอ่านออก */
 ok('ค่าตั้งรุ่นเก่า (saOpen=true) ยังใช้ได้', saOpenFor({ saOpen: true }, 5));
 ok('ค่าตั้งรุ่นเก่า (saOpen=false) ปิดอยู่', !saOpenFor({ saOpen: false }, 5));
+const sent5 = { status: 'submitted', classYear: 5 };
+ok('ส่งแล้ว + ยังเปิดรับ → แก้ทับได้', saStudentCanEdit({ saOpenYears: [5] }, sent5, 5));
+ok('ส่งแล้ว + ปิดรับ → ล็อก', !saStudentCanEdit({ saOpenYears: [] }, sent5, 5));
+ok('ส่งแล้วตอนปี 5 · ตอนนี้ปี 6 และเปิดแค่ปี 6 → ล็อก (ดูชั้นปีของฉบับ ตรงกับ 0032)', !saStudentCanEdit({ saOpenYears: [6] }, sent5, 6));
+ok('ร่างที่อาจารย์เปิดให้ → แก้ได้แม้ปิดรับ', saStudentCanEdit({ saOpenYears: [] }, { status: 'draft', classYear: 5, reopenedAt: '2026-10-13T00:00:00Z' }, 5));
+ok('ร่างที่ไม่เคยส่ง + ปิดรับ → ล็อก', !saStudentCanEdit({ saOpenYears: [] }, { status: 'draft', classYear: 5 }, 5));
+ok('ยังไม่มีแถว → ตามสวิตช์ของชั้นปีปัจจุบัน', saStudentCanEdit({ saOpenYears: [5] }, undefined, 5) && !saStudentCanEdit({ saOpenYears: [6] }, null, 5));
 
 console.log('\n④ คีย์ของใบ');
 ok('หนึ่งคน หนึ่งปี หนึ่งใบ', saId('st-1', 2569) === 'sa-st-1-2569', saId('st-1', 2569));

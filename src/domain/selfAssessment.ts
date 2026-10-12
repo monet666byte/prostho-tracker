@@ -426,6 +426,22 @@ export function saOpenFor(
   return classYear != null && years.includes(classYear);
 }
 
+/**
+ * นักศึกษาแก้ฉบับนี้เองได้ไหม
+ *
+ * ร่าง: แก้ได้ระหว่างเปิดรับ · ส่งแล้ว: แก้ทับได้ระหว่างที่ชั้นปีของฉบับนั้นยังเปิดรับ (สถานะยังเป็นส่งแล้ว)
+ * ปิดรับแล้ว = ล็อก ยกเว้นร่างที่อาจารย์กด "เปิดให้แก้ใหม่" ให้คนนั้น (reopenedAt)
+ * ⚠️ ฉบับที่ส่งแล้วเช็คจาก classYear ของฉบับนั้น ให้ตรงกับ sa_form_open(old.class_year) ใน 0032
+ */
+export function saStudentCanEdit(
+  settings: { saOpenYears?: number[]; saOpen?: boolean },
+  row: { status: string; classYear: number; reopenedAt?: string } | null | undefined,
+  classYearNow: number | null | undefined,
+): boolean {
+  if (row?.status === 'draft' && row.reopenedAt) return true;
+  return saOpenFor(settings, row?.status === 'submitted' ? row.classYear : classYearNow);
+}
+
 
 /** ข้อที่ยังไม่ตอบ ในหมวดนี้ — ใช้ติดจุดแดงข้างชื่อหมวด */
 export function saSectionMissing(section: SASection, answers: Record<string, SAValue>, year: number): number {

@@ -20,7 +20,7 @@ import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
   CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { SECT2_GATE_OF, sect2GateValue } from '../domain/sect2';
-import { saId } from '../domain/selfAssessment';
+import { saId, saStudentCanEdit } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
 import { byNewestReview, isOthersForm, pickLatestReviews } from '../domain/conflict';
 import { DEFAULT_SETTINGS, DEMO, SETTINGS_VERSION } from './seed';
@@ -1406,14 +1406,20 @@ export interface SaDraftInput {
 }
 
 /**
- * บันทึกร่าง — เรียกได้บ่อยระหว่างกรอก (autosave)
- * ส่งแล้วห้ามแก้: ถ้าชุดนี้ส่งไปแล้วจะไม่เขียนทับ คืนของเดิมกลับไป
+ * บันทึกคำตอบ — เรียกได้บ่อยระหว่างกรอก (autosave)
+ * ฉบับที่ส่งแล้ว: แก้ทับได้เฉพาะตอนชั้นปีนั้นยังเปิดรับ (saStudentCanEdit) · สถานะ/เวลาส่ง/ชั้นปีคงเดิม
+ * ปิดรับแล้วไม่เขียนทับ คืนของเดิมกลับไป
  */
 export async function saveSelfAssessmentDraft(input: SaDraftInput): Promise<SelfAssessment> {
   const id = saId(input.studentId, input.academicYear);
   const now = new Date().toISOString();
   const prev = await db.selfAssessments.get(id);
-  if (prev?.status === 'submitted') return prev;
+  if (prev?.status === 'submitted') {
+    if (!saStudentCanEdit(await getSettings(), prev, input.classYear)) return prev;
+    const edited: SelfAssessment = { ...prev, answers: input.answers, updatedAt: now };
+    await db.selfAssessments.put(edited);
+    return edited;
+  }
   const next: SelfAssessment = {
     id,
     studentId: input.studentId,
@@ -1422,6 +1428,7 @@ export async function saveSelfAssessmentDraft(input: SaDraftInput): Promise<Self
     formVersion: input.formVersion,
     answers: input.answers,
     status: 'draft',
+    reopenedAt: prev?.reopenedAt,
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
   };
@@ -1445,7 +1452,8 @@ export async function submitSelfAssessment(
 
 /**
  * อาจารย์เปิดให้ นศ. แก้ใหม่ — สถานะกลับเป็นร่าง คำตอบเดิมอยู่ครบ
- * แตะแค่ status/submittedAt เพราะ trigger ฝั่งเซิร์ฟเวอร์ห้ามอาจารย์แก้คำตอบ (0011)
+ * แตะแค่ status/submittedAt/reopenedAt เพราะ trigger ฝั่งเซิร์ฟเวอร์ห้ามอาจารย์แก้คำตอบ (0011)
+ * reopenedAt ทำให้คนนี้แก้ได้แม้ชั้นปีปิดรับแล้ว (saStudentCanEdit) — เซิร์ฟเวอร์ประทับเวลาจริงเอง (0032)
  */
 export async function reopenSelfAssessment(
   studentId: string,
@@ -1454,7 +1462,8 @@ export async function reopenSelfAssessment(
 ): Promise<SelfAssessment | null> {
   const row = await db.selfAssessments.get(saId(studentId, academicYear));
   if (!row || row.status !== 'submitted') return row ?? null;
-  const next: SelfAssessment = { ...row, status: 'draft', submittedAt: undefined, updatedAt: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const next: SelfAssessment = { ...row, status: 'draft', submittedAt: undefined, reopenedAt: now, updatedAt: now };
   await db.selfAssessments.put(next);
   await logAudit(`เปิดให้แก้แบบประเมินตนเอง ปีการศึกษา ${academicYear}`, actor, { studentId });
   return next;

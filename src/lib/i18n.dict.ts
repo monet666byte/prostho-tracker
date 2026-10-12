@@ -1227,10 +1227,17 @@ export const DICT: Record<string, string> = {
   'ส่งเมื่อ {d} · ชั้นปี {y} · ฟอร์มฉบับ {v}': 'Submitted {d} · year {y} · form {v}',
   'เปิดให้แก้ใหม่': 'Reopen for editing',
   'เปิดให้แก้แบบประเมินตนเองใหม่': 'Reopen this self-assessment for editing',
-  'คำตอบเดิมอยู่ครบ นักศึกษาแก้ต่อแล้วกดส่งใหม่เอง · ระหว่างนี้จะนับเป็น "กรอกค้าง" และพิมพ์ไม่ได้จนกว่าจะส่งอีกครั้ง':
-    'All answers are kept. The student edits and submits again · until then it counts as "in progress" and cannot be printed',
-  'ตอนนี้ปิดรับแบบประเมินของชั้นปีนี้อยู่ — นักศึกษาจะเปิดฟอร์มไม่ได้จนกว่าจะเปิดรับในหน้าตั้งค่า':
-    'The form is currently closed for this class year — the student cannot open it until it is opened in Settings',
+  'ปิดรับไปแล้ว — เปิดให้เฉพาะคนนี้แก้ คนอื่นยังล็อกตามเดิม · คำตอบเดิมอยู่ครบ นักศึกษาแก้แล้วต้องกดส่งใหม่เอง ระหว่างนี้นับเป็น "กรอกค้าง" และพิมพ์ไม่ได้':
+    'The form is closed — this reopens it for this student only; everyone else stays locked · All answers are kept. The student must submit again; until then it counts as "in progress" and cannot be printed',
+  'แก้ล่าสุด {d}': 'last edited {d}',
+  'ส่งแล้ว {d}': 'Submitted {d}',
+  'แก้ได้จนกว่าอาจารย์จะปิดรับ': 'You can edit until your instructor closes the form',
+  'แก้คำตอบ': 'Edit answers',
+  'แก้เสร็จแล้ว': 'Done editing',
+  'ส่งแล้วยังแก้ได้จนกว่าอาจารย์จะปิดรับ อาจารย์ในภาควิชาเห็นคำตอบทั้งหมดได้ และจะอ่านก่อนนัดคุยกับเรา':
+    'You can still edit after submitting until your instructor closes the form. Instructors in the department can read every answer and will read it before meeting you.',
+  'ส่งแล้ว · กำลังแก้ · บันทึกทับทันที': 'Submitted · editing · changes save immediately',
+  'บันทึกอัตโนมัติ · อ้างอิงฟอร์ม': 'Saved automatically · based on form',
   'เปิดให้แก้': 'Reopen',
   'เปิดให้ {n} แก้ใหม่แล้ว': 'Reopened for {n}',
   'นักศึกษามองตัวเอง เทียบกับคะแนนที่ได้รับจริง': 'Student\'s self-view versus the scores actually given',

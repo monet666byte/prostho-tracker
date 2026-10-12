@@ -967,8 +967,8 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const stillGuarded = await commit(U.T1, `update self_assessments set answers = '{"q1":1}'::jsonb where id = 'sa-sA-2569'`);
   check('ยามเดิมยังทำงาน: อาจารย์แก้คำตอบของ นศ. ไม่ได้', !stillGuarded.ok, stillGuarded);
 
-  // ── ⑰ อาจารย์เปิดให้แก้ใหม่ (ปุ่มในหน้าประเมินตนเอง → reopenSelfAssessment) ──
-  console.log('\n⑰ อาจารย์เปิดแบบประเมินตนเองที่ส่งแล้วให้ นศ. แก้ใหม่');
+  // ── ⑳ อาจารย์เปิดให้แก้ใหม่ (ปุ่มในหน้าประเมินตนเอง → reopenSelfAssessment) ──
+  console.log('\n⑳ อาจารย์เปิดแบบประเมินตนเองที่ส่งแล้วให้ นศ. แก้ใหม่');
   // RLS กรองแถวทิ้งเงียบๆ (0 แถว) ไม่ขึ้น error → ตรวจที่ผล
   const selfReopen = await commit(U.A, `update self_assessments set status = 'draft' where id = 'sa-sA-2569' returning id`);
   const stillSent = (await db.query<{ status: string }>(`select status from self_assessments where id = 'sa-sA-2569'`)).rows[0].status;
@@ -984,6 +984,41 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   check('หลังเปิดแล้ว นศ. แก้คำตอบต่อได้', edit.ok && edit.rows.length === 1, edit);
   const saResend = await commit(U.A, `update self_assessments set status = 'submitted' where id = 'sa-sA-2569' returning submitted_at::text as s`);
   check('ส่งใหม่ได้ · เวลาส่งเป็นของเซิร์ฟเวอร์รอบใหม่', saResend.ok && !!saResend.rows[0]?.s && !saResend.rows[0].s.startsWith('2026-08-31'), saResend);
+
+  // ── ㉑ ส่งแล้วแก้ต่อได้ระหว่างเปิดรับ (0032) ──
+  console.log('\n㉑ แบบประเมินตนเองที่ส่งแล้ว แก้ได้ระหว่างเปิดรับ (0032)');
+  const setOpen = (v: unknown) => db.query(`update app_settings set value = $1::jsonb where id = 'app'`, [JSON.stringify(v)]);
+  const saNow = async () => (await db.query<{ status: string; s: string | null; cy: number; a: { q1: number } }>(
+    `select status, submitted_at::text as s, class_year as cy, answers as a from self_assessments where id = 'sa-sA-2569'`)).rows[0];
+  const sentAt = (await saNow()).s;
+  await setOpen({ saOpenYears: [] });
+  const whileClosed = await commit(U.A, `update self_assessments set answers = '{"q1":0}'::jsonb where id = 'sa-sA-2569' returning id`);
+  check('ปิดรับอยู่: นศ. แก้ฉบับที่ส่งแล้วไม่ได้', (!whileClosed.ok || whileClosed.rows.length === 0) && (await saNow()).a.q1 === 1, whileClosed);
+  await setOpen({ saOpenYears: [5] });
+  const whileOpen = await commit(U.A, `update self_assessments set answers = '{"q1":3}'::jsonb, status = 'submitted' where id = 'sa-sA-2569' returning id`);
+  const afterEdit = await saNow();
+  check('เปิดรับชั้นปีนี้อยู่: แก้ได้ · ยังเป็น "ส่งแล้ว" · เวลาส่งคงเดิม',
+    whileOpen.ok && whileOpen.rows.length === 1 && afterEdit.a.q1 === 3 && afterEdit.status === 'submitted' && afterEdit.s === sentAt, { whileOpen, afterEdit, sentAt });
+  const unsubmit = await commit(U.A, `update self_assessments set status = 'draft' where id = 'sa-sA-2569'`);
+  const afterUnsubmit = await saNow();
+  check('นศ. ถอนการส่งเองไม่ได้ (สถานะคงเป็นส่งแล้ว)', unsubmit.ok && afterUnsubmit.status === 'submitted' && afterUnsubmit.s === sentAt, afterUnsubmit);
+  await setOpen({ saOpenYears: [6] });
+  const sneak = await commit(U.A, `update self_assessments set class_year = 6, answers = '{"q1":0}'::jsonb where id = 'sa-sA-2569' returning id`);
+  const afterSneak = await saNow();
+  check('เปิดแค่ปี 6: นศ. ปี 5 เปลี่ยนชั้นปีเพื่อปลดล็อกไม่ได้', (!sneak.ok || sneak.rows.length === 0) && afterSneak.a.q1 === 3 && afterSneak.cy === 5, { sneak, afterSneak });
+  await setOpen({ saOpen: true });
+  const legacy = await commit(U.A, `update self_assessments set answers = '{"q1":2}'::jsonb where id = 'sa-sA-2569' returning id`);
+  check('ค่าตั้งรุ่นเก่า (saOpen: true) ยังนับว่าเปิด', legacy.ok && legacy.rows.length === 1, legacy);
+  await setOpen({});
+  const reopenClosed = await commit(U.T1, `update self_assessments set status = 'draft', reopened_at = null where id = 'sa-sA-2569' returning reopened_at::text as r`);
+  check('ปิดรับแล้ว อาจารย์เปิดให้คนนี้แก้ · เซิร์ฟเวอร์ประทับ reopened_at เอง', reopenClosed.ok && !!reopenClosed.rows[0]?.r, reopenClosed);
+  const wipeMark = await commit(U.A, `update self_assessments set reopened_at = null, answers = '{"q1":1}'::jsonb where id = 'sa-sA-2569' returning reopened_at::text as r`);
+  check('นศ. แก้ร่างที่ถูกเปิดได้ แต่ลบรอย reopened_at ไม่ได้', wipeMark.ok && wipeMark.rows[0]?.r === reopenClosed.rows?.[0]?.r, wipeMark);
+  const forgeMark = await commit(U.B, `insert into self_assessments (id, student_id, academic_year, class_year, form_version, reopened_at) values ('sa-sB-2569', 'sB', 2569, 5, '2569.2', now()) returning reopened_at`);
+  check('นศ. สร้างแถวพร้อมรอย reopened_at ปลอมไม่ได้ (ถูกล้าง)', forgeMark.ok && forgeMark.rows[0]?.reopened_at === null, forgeMark);
+  const row32 = (await db.query<{ 'สถานะ': string; migration: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0032'));
+  check('check-migrations.sql ตอบว่า 0032 รันแล้ว', !!row32 && row32['สถานะ'].startsWith('✓'), row32);
 }
 
 await db.close();

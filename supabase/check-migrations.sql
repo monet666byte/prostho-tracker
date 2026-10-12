@@ -120,5 +120,13 @@ from (
   union all select '0031 รอยทางเลขขั้นของเคสฝั่งเซิร์ฟเวอร์ (จดอย่างเดียว ไม่บล็อก)',
     exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'workpiece_step_log')
     and exists (select 1 from pg_trigger where tgname = 'workpiece_step_log_trg')
+
+  -- 0032 ดูสองร่องรอย (ฟังก์ชันเช็คเปิดรับ · กฎ update ที่เรียกมัน)
+  union all select '0032 แบบประเมินตนเองที่ส่งแล้ว แก้ได้ระหว่างเปิดรับ',
+    exists (select 1 from pg_proc where proname = 'sa_form_open')
+    and exists (select 1 from information_schema.columns
+                where table_schema = 'public' and table_name = 'self_assessments' and column_name = 'reopened_at')
+    and exists (select 1 from pg_policies where tablename = 'self_assessments' and policyname = 'sa_update'
+                and qual like '%sa_form_open%')
 ) x
 order by x.label;
