@@ -1491,4 +1491,28 @@ export const DICT: Record<string, string> = {
   'เลือก': 'Select',
   'เปิด': 'Open',
   'หน้า': 'Pages',
+
+  /* ── เช็คอินด้วยการสแกน QR หน้าห้อง ── */
+  'สแกนเช็คอิน': 'Scan to check in',
+  'ปิดกล้อง': 'Close camera',
+  'อ่าน QR นี้ไม่ได้': "Couldn't read this QR",
+  'ส่อง QR ที่จอหน้าห้องคลินิกอีกครั้ง': 'Point at the QR on the clinic screen again',
+  'กำลังเปิดกล้อง…': 'Opening camera…',
+  'ส่อง QR ที่หน้าห้องคลินิก': 'Point at the QR at the clinic entrance',
+  'เจอแล้วระบบลงเวลาให้เอง ไม่ต้องกดอะไรต่อ': 'Your time is recorded as soon as it is found — nothing else to tap',
+  'กล้องใช้ไม่ได้? พิมพ์รหัส 6 หลักแทน': 'Camera not working? Type the 6-digit code',
+  'ยังไม่ได้อนุญาตให้แอปใช้กล้อง': "The app doesn't have camera permission",
+  'เปิดกล้องในเครื่องนี้ไม่ได้': "Can't open the camera on this device",
+  'พิมพ์รหัสใต้ QR': 'Type the code under the QR',
+  'รหัส 6 หลักอยู่ใต้ QR ที่จอหน้าห้อง': 'The 6-digit code is under the QR on the clinic screen',
+  'รหัส 6 หลัก': '6-digit code',
+  'รหัสต้องเป็นตัวเลข 6 หลัก': 'The code must be 6 digits',
+  'กลับไปสแกน': 'Back to scanning',
+  'เช็คอินแล้ว': 'Checked in',
+  'เติมกิจกรรมเลย': 'Add activities now',
+  'ไว้ทีหลัง': 'Later',
+  'เสร็จ': 'Done',
+  'เช็คอินต้องสแกน QR หน้าห้อง': 'Check-in requires scanning the clinic QR',
+  'เปิดเมื่อจอ QR หน้าห้องคลินิกพร้อมแล้ว · ตอนนี้รับ QR ทุกแบบและรหัสตัวเลข 6 หลัก ยังไม่ตรวจว่าเป็นของหน้าห้องจริง':
+    'Turn on once the clinic QR screen is ready · currently accepts any QR or 6-digit code and does not yet verify it came from the clinic screen',
 };

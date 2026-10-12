@@ -304,6 +304,8 @@ export interface Settings {
   saOpenYears: number[];
   /** กำหนดส่งแบบประเมินตนเอง (ISO date) — ว่างได้ ถ้าภาคยังไม่กำหนด */
   saDue?: string;
+  /** เช็คอินคาบต้องสแกน QR ที่จอหน้าห้องก่อน — ปิด = แตะเดียวเหมือนเดิม (domain/checkinQr.ts) */
+  checkinScan: boolean;
 }
 
 /* ── Section III · Knowledge & skill assessment ────────────────────────────

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
+import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { recordStepLabel } from '../../components/student/stepLabel';
 import { Shell } from '../../components/student/Shell';
@@ -442,6 +443,7 @@ export default function Home() {
    * (จำการข้ามไว้ในเครื่อง — พรุ่งนี้ค่อยถามใหม่)
    */
   const [askCheckIn, setAskCheckIn] = useState(false);
+  const scan = useScanCheckIn();
   // ฟอร์มในแผ่นถาม — เลือกกิจกรรม/คนไข้ได้เลยตั้งแต่ตอนเด้ง
   const [askActs, setAskActs] = useState<string[]>([]);
   const [askPatient, setAskPatient] = useState('');
@@ -453,15 +455,16 @@ export default function Home() {
     checkingIn.current = true;
     tapFeedback();
     try {
-      const { checkinAt } = await checkInNow({
+      const res = await scan.checkIn(() => checkInNow({
         studentId: session.studentId, date: today,
         noPatient: askNoPatient,
         patientId: askNoPatient ? undefined : (askPatient || undefined),
         activities: askActs, note: '', actor: currentActor(),
-      });
+      }));
+      if (!res) return; // ปิดกล้องเอง — แผ่นถามยังเปิดอยู่ให้ลองใหม่
       setAskCheckIn(false);
       touch();
-      showToast({ message: t('เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ', { time: checkinAt }), tone: 'success' });
+      if (!res.scanned) showToast({ message: t('เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ', { time: res.stamp.checkinAt }), tone: 'success' });
     } finally {
       checkingIn.current = false;
     }
@@ -488,12 +491,13 @@ export default function Home() {
     checkingIn.current = true;
     tapFeedback();
     try {
-      const { checkinAt } = await checkInNow({
+      const res = await scan.checkIn(() => checkInNow({
         studentId: session.studentId, date: today,
         noPatient: false, activities: [], note: '', actor: currentActor(),
-      });
+      }), { fillLink: true });
+      if (!res) return;
       touch();
-      showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: checkinAt }), tone: 'success' });
+      if (!res.scanned) showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: res.stamp.checkinAt }), tone: 'success' });
     } finally {
       checkingIn.current = false;
     }
@@ -530,6 +534,7 @@ export default function Home() {
         </div>
       )}
       <ConfirmSheet />
+      {scan.overlay}
     </>}>
       <header className="s-header">
         <div className="s-header--row">

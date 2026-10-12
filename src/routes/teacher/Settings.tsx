@@ -262,6 +262,17 @@ export default function Settings() {
                 />
               </label>
 
+              {/* ปิดไว้จนกว่าจอ QR หน้าห้องจะพร้อม — เปิดแล้วนักศึกษาที่ไม่มี QR ให้สแกนจะเช็คอินไม่ได้ */}
+              <button className="setrow" role="switch" aria-checked={!!settings.checkinScan} onClick={() => updateSettings({ checkinScan: !settings.checkinScan })}>
+                <span className="setrow__main">
+                  <b>{t('เช็คอินต้องสแกน QR หน้าห้อง')}</b>
+                  <span className="setrow__hint">
+                    {t('เปิดเมื่อจอ QR หน้าห้องคลินิกพร้อมแล้ว · ตอนนี้รับ QR ทุกแบบและรหัสตัวเลข 6 หลัก ยังไม่ตรวจว่าเป็นของหน้าห้องจริง')}
+                  </span>
+                </span>
+                <span className="toggle" data-on={!!settings.checkinScan}><i /></span>
+              </button>
+
               {/* ย้ายมาจากแถบซ้าย — เมนูซ้ายเหลือแต่เมนู */}
               <div className="setrow">
                 <span className="setrow__main"><b>{t('ขนาดตัวหนังสือ')}</b><span className="setrow__hint">{t('จำไว้เฉพาะเครื่องนี้')}</span></span>

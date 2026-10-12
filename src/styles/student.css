@@ -1297,3 +1297,84 @@ button.calday { background: var(--panel-tint); color: var(--panel); font-weight:
 .critpanel__year { margin-top: 12px; padding: 8px 12px; }
 .detailpanel__step { margin-top: 6px; font-size: 19px; }
 .pagepanel .hp__track { margin-top: 6px; }
+
+/* ── เช็คอินด้วยการสแกน QR (components/student/ScanCheckIn) ──
+   เต็มจอในกรอบมือถือ ทับทุกอย่างรวมแผ่นเช็คอิน (.backdrop = 75) · พื้นมืดตอนกล้อง พื้นขาวตอนพิมพ์รหัส/สำเร็จ */
+.qrscan {
+  position: absolute; inset: 0; z-index: 90; display: flex; flex-direction: column;
+  background: #14161c; color: #fff; animation: fadeIn 0.18s ease;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.qrscan--light { background: var(--bg-app); color: var(--text); }
+.qrscan__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.qrscan__top {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+}
+.qrscan__x {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.18); color: inherit; border: 0;
+}
+.qrscan--light .qrscan__x { background: var(--fill); }
+.qrscan__title { font: 600 15px var(--font-head); }
+.qrscan__finder {
+  position: absolute; left: 50%; top: 44%; width: min(64vw, 230px); aspect-ratio: 1; max-width: 70%;
+  transform: translate(-50%, -50%); z-index: 1;
+  box-shadow: 0 0 0 100vmax rgba(10, 12, 16, 0.45); border-radius: 18px;
+}
+.qrscan__corner { position: absolute; width: 28px; height: 28px; border: 3.5px solid #fff; }
+.qrscan__corner:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
+.qrscan__corner:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
+.qrscan__corner:nth-child(3) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
+.qrscan__corner:nth-child(4) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 18px; }
+.qrscan__line {
+  position: absolute; left: 12px; right: 12px; top: 10%; height: 2px; border-radius: 2px;
+  background: var(--success-toast); box-shadow: 0 0 12px 2px rgba(90, 224, 168, 0.55);
+  animation: qrscan-line 2.2s ease-in-out infinite alternate;
+}
+@keyframes qrscan-line { to { top: 90%; } }
+@media (prefers-reduced-motion: reduce) { .qrscan__line { animation: none; top: 50%; } }
+.qrscan__hint {
+  position: absolute; left: 0; right: 0; top: calc(44% + min(32vw, 115px) + 22px); z-index: 1;
+  text-align: center; padding: 0 28px;
+}
+.qrscan__hint b { display: block; font: 600 15px var(--font-head); }
+.qrscan__hint span { display: block; font: 400 13px/1.5 var(--font-body); opacity: 0.78; margin-top: 4px; }
+.qrscan__bottom {
+  position: absolute; left: 0; right: 0; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 1;
+  display: flex; justify-content: center; padding: 0 16px;
+}
+.qrscan__pill {
+  display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 999px;
+  padding: 11px 16px; background: rgba(255, 255, 255, 0.18); color: #fff; font: 500 13.5px var(--font-head);
+}
+
+.qrcode { flex: 1; display: flex; flex-direction: column; padding: 18px 22px 22px; min-width: 0; }
+.qrcode__reason {
+  display: flex; align-items: center; gap: 7px; margin: 0 0 18px; padding: 10px 12px; border-radius: 12px;
+  background: var(--warning-tint); color: var(--warning-dark); font: 500 13px/1.45 var(--font-body);
+}
+.qrcode__h { margin: 0; font: 700 21px var(--font-head); }
+.qrcode__sub { margin: 4px 0 18px; font: 400 13.5px/1.5 var(--font-body); color: var(--text-muted); }
+.qrcode__input {
+  width: 100%; height: 60px; border-radius: 14px; border: 1.5px solid var(--border-2); background: var(--surface);
+  text-align: center; font: 600 28px var(--font-head); letter-spacing: 0.3em; font-variant-numeric: tabular-nums;
+  color: var(--text); box-sizing: border-box;
+}
+.qrcode__input::placeholder { color: var(--text-disabled); }
+.qrcode__input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.qrcode__input[aria-invalid='true'] { border-color: var(--danger); }
+.qrcode__bad { margin: 8px 0 0; font: 500 12.5px var(--font-body); color: var(--danger-dark); }
+.qrcode__actions { margin-top: auto; display: grid; gap: 6px; padding-top: 18px; }
+
+.qrdone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 24px; text-align: center; }
+.qrdone__ic {
+  width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 8px;
+  color: var(--success); background: var(--success-tint); animation: hp-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.qrdone__h { margin: 0; font: 700 20px var(--font-head); }
+.qrdone__time { font: 700 36px var(--font-head); font-variant-numeric: tabular-nums; }
+.qrdone__chip { font: 600 12.5px var(--font-head); padding: 4px 11px; border-radius: 999px; background: var(--success-tint); color: var(--success-dark); }
+.qrdone__chip--late { background: var(--warning-tint); color: var(--warning); }
+.qrdone__foot { display: grid; gap: 6px; padding: 0 20px 22px; }
+@media (prefers-reduced-motion: reduce) { .qrdone__ic { animation: none; } }

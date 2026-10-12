@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
+import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { Shell } from '../../components/student/Shell';
 import { CheckInCalendar } from '../../components/student/CheckInCalendar';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
@@ -27,6 +28,7 @@ export default function CheckInPage() {
   // ลบคาบ: กดครั้งแรกเปลี่ยนเป็น "ยืนยันลบ?" กันมือลั่น — เปลี่ยนคาบ/พับแถวเมื่อไหร่รีเซ็ต
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const navigate = useNavigate();
+  const scan = useScanCheckIn();
 
   // form state
   const [date, setDate] = useState(toISODate(new Date()));
@@ -65,20 +67,23 @@ export default function CheckInPage() {
 
   async function submit() {
     if (!session) return;
+    let scanned = false;
     if (editingId) {
       // โหมดเติมรายละเอียด — เวลากับความตรงเวลาถูกล็อกไว้ตั้งแต่ตอนเช็คอินด่วนแล้ว
       await updateCheckIn(editingId, { activities, patientId: patientId || undefined, noPatient, note }, currentActor());
     } else {
       // เวลาเช็คอินกับตรงเวลา/สาย ประทับใน checkInNow — หน้านี้ส่งแค่สิ่งที่ผู้ใช้กรอก
-      await checkInNow({
+      const res = await scan.checkIn(() => checkInNow({
         studentId: session.studentId,
-        date,
+        date: scan.required ? today : date,
         noPatient,
         patientId: patientId || undefined,
         activities,
         note,
         actor: currentActor(),
-      });
+      }));
+      if (!res) return; // ปิดกล้องเอง — ฟอร์มยังเปิดอยู่พร้อมสิ่งที่กรอกไว้
+      scanned = res.scanned;
     }
     const wasEditing = !!editingId;
     setFormOpen(false);
@@ -91,7 +96,8 @@ export default function CheckInPage() {
           .filter((w) => w.patientId === patientId && !isComplete(w))
           .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0]
       : undefined;
-    showToast({
+    // สแกนผ่าน = หน้าจอ "เช็คอินแล้ว" บอกไปแล้ว — ขึ้นเฉพาะ toast ที่พาไปเคสต่อ
+    if (!scanned || target) showToast({
       message: wasEditing
         ? t('บันทึกการแก้ไขแล้ว — คาบนี้ยังรออาจารย์ประเมินตามปกติ')
         : target
@@ -111,7 +117,7 @@ export default function CheckInPage() {
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <label className="field" style={{ flex: 1 }}>
             <span>{t('วันที่คาบ')}</span>
-            <input className="input mono" type="date" value={date} max={today} disabled={!!editingId} onChange={(e) => setDate(e.target.value)} />
+            <input className="input mono" type="date" value={scan.required && !editingId ? today : date} max={today} disabled={!!editingId || scan.required} onChange={(e) => setDate(e.target.value)} />
           </label>
           <span
             style={{
@@ -157,7 +163,7 @@ export default function CheckInPage() {
   ) : undefined;
 
   return (
-    <Shell overlay={overlay}>
+    <Shell overlay={<>{overlay}{scan.overlay}</>}>
       <header className="s-header">
         <h1 className="h2">{t('คาบคลินิก')}</h1>
         <p style={{ margin: '3px 0 0', font: '400 11.5px var(--font-body)', color: 'var(--text-faint)' }}>
