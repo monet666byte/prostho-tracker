@@ -1373,26 +1373,16 @@ button.casemap__step[data-on='true'] { padding: 4px 0; margin-top: 1px; }
 /* ─── สรุปวันนี้ + วงงานที่กำลังทำ ─── */
 .todayrow { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-bottom: 18px; align-items: stretch; }
 @media (max-width: 980px) { .todayrow { grid-template-columns: minmax(0, 1fr); } }
-/* ขอบรุ้ง = แผ่นสีรุ้งใต้การ์ด หมุนด้วย transform แล้วมีพื้นการ์ดทับเหลือขอบ 1.5px
-   เดิมหมุนด้วย @property ใน border-image → เบราว์เซอร์ต้องวาดการ์ดใหม่ทุกเฟรม ผู้ใช้บอกเปิดหน้าแล้วแลค (Safari)
-   transform หมุนบนการ์ดจอได้เลย ไม่ต้องวาดใหม่ */
+/* ขอบรุ้ง = เส้นขอบจริง หนาเท่ากันทุกด้านและทุกมุม (พื้นการ์ดวาดแค่ด้านใน padding-box · สีรุ้งวาดถึง border-box)
+   เดิมเป็นแผ่นสีรุ้งหมุนอยู่ใต้การ์ด — ผู้ใช้บอกสีวิ่งชนกันแล้วลายตา และมุมหนากว่าด้านตรง จึงเปลี่ยนเป็นขอบนิ่ง */
 .todaycard {
-  position: relative; isolation: isolate; overflow: hidden; border: 0;
-  /* Safari ตัดขอบมนของลูกที่หมุนอยู่ไม่ครบบางเฟรม (ขอบรุ้งหายเป็นช่วง) — mask บังคับให้ตัดตามมุมมนทุกเฟรม */
-  -webkit-mask-image: linear-gradient(#000, #000);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff) border-box;
   display: grid; gap: 2px; align-content: start;
   box-shadow: 0 8px 30px -16px rgba(124, 92, 255, 0.4);
 }
-.todaycard::before {
-  content: ''; position: absolute; z-index: -2; left: 50%; top: 50%; width: 160%; aspect-ratio: 1;
-  translate: -50% -50%; background: conic-gradient(#7c5cff, #38bdf8, #f472b6, #fbbf24, #7c5cff);
-}
-.todaycard::after {
-  content: ''; position: absolute; z-index: -1; inset: 1.5px; border-radius: 12.5px; background: var(--surface);
-}
-@keyframes todaySpin { to { rotate: 360deg; } }
-/* ขอบหมุนเฉพาะตอนมีเรื่องต้องทำ/ต้องดู — ไม่มีอะไรน่าห่วง = ขอบรุ้งนิ่ง */
-.todaycard--live::before { animation: todaySpin 8s linear infinite; will-change: rotate; }
 .todaycard__top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 6px; }
 .todaycard__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
 .todaycard__orb { align-self: center; }
@@ -1435,7 +1425,6 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .typedonut__legend i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
 .typedonut__foot { padding: 6px 6px 0; border-top: 1px dashed var(--border); font: 400 11.5px var(--font-body); color: var(--text-faint); }
 @media (prefers-reduced-motion: reduce) {
-  .todaycard--live::before { animation: none; }
   .typedonut__seg { transition: opacity 0.2s; }
 }
 
