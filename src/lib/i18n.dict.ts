@@ -1527,4 +1527,22 @@ export const DICT: Record<string, string> = {
   'เช็คอินต้องสแกน QR หน้าห้อง': 'Check-in requires scanning the clinic QR',
   'เปิดเมื่อจอ QR หน้าห้องคลินิกพร้อมแล้ว · ตอนนี้รับ QR ทุกแบบและรหัสตัวเลข 6 หลัก ยังไม่ตรวจว่าเป็นของหน้าห้องจริง':
     'Turn on once the clinic QR screen is ready · currently accepts any QR or 6-digit code and does not yet verify it came from the clinic screen',
+
+  // ── ตำแหน่งในชั้นปี (หน้าวิเคราะห์รวม) ──
+  'นักศึกษาอยู่ตรงไหนของชั้นปี': 'Where students stand in the class',
+  'นักศึกษาที่มีข้อมูลในระบบอยู่ตรงไหน': 'Where students with data in the app stand',
+  'เลือกปี 5 หรือปี 6 — สองชั้นปีอยู่คนละช่วงของหลักสูตร วางรวมกันแล้วเทียบกันไม่ได้':
+    'Choose Year 5 or Year 6 — the two years are at different points of the program and cannot be compared on one chart',
+  'ยังไม่มีนักศึกษาชั้นปีนี้ที่มีชิ้นงานในระบบ': 'No student in this year has a case in the app yet',
+  '% ของเกณฑ์สะสม นับเคสที่กำลังทำตามขั้นที่ผ่าน': '% of the cumulative requirement, counting cases in progress by steps passed',
+  'มีข้อมูล {n} จาก {m} คน': '{n} of {m} students have data',
+  'อีก {n} คนยังไม่มีชิ้นงานในระบบ จึงไม่อยู่ในกราฟ': '{n} more have no case in the app yet and are not on the chart',
+  'ครบ {n} คนขึ้นไปจะแสดงเป็นโค้งทั้งชั้นปี': 'Shown as a whole-class curve once {n} or more students have data',
+  'เป้าตอนนี้ ~{n}%': 'Target now ~{n}%',
+  'จบแล้ว {d}/{n} ช่อง': '{d}/{n} slots completed',
+  'การกระจายตัวของนักศึกษาทั้งชั้นปี': 'Distribution of students across the class',
+  'ถึงเป้าแล้ว {n} จาก {m} คน': '{n} of {m} on target',
+  'ยังไม่ถึงเป้า': 'Below target',
+  'เส้นประ "เป้าตอนนี้" เป็นค่าประมาณ: เริ่มนับหลังขึ้นคลินิก 3 เดือน แล้วไต่ตรงถึงครบเกณฑ์ที่คาบสุดท้ายของปี 6 · ยังไม่ได้ยืนยันกับภาค':
+    'The dashed "target now" line is an estimate: counting starts 3 months into clinic and rises evenly to the full requirement at the last Year 6 session · not yet confirmed by the department',
 };

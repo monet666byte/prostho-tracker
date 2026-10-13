@@ -6,10 +6,10 @@
 import { lang, personName } from '../lib/i18n';
 import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
-  caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork } from './rules';
+  caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork, requirementShare } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
-import { isUpcoming } from './cohort';
+import { cohortOf, isUpcoming } from './cohort';
 import { groupShort } from './group';
 
 const DAY = 86_400_000;
@@ -781,4 +781,64 @@ export function burnup(students: Student[], works: Workpiece[], settings: Settin
         : null,
     };
   });
+}
+
+// ── ตำแหน่งในชั้นปี ─────────────────────────────────────────
+
+/**
+ * มีข้อมูลกี่คนขึ้นไปถึงวาดเป็นโค้งทั้งชั้นปี — น้อยกว่านี้โค้งเป็นคลื่นมั่ว อ่านอะไรไม่ได้
+ * ช่วงนำร่อง (2 กลุ่ม ~12 คน) จึงเห็นเป็นรายชื่อทีละแถวแทน และไม่เรียกว่า "ทั้งชั้นปี"
+ */
+export const CURVE_MIN_STUDENTS = 30;
+
+/**
+ * ตอนนี้ควรไปได้กี่ส่วนของเกณฑ์สะสม 0–1 — เส้น "เป้าตอนนี้" ในกราฟตำแหน่งในชั้นปี
+ * ⚠️ สมมติฐาน ยังไม่ยืนยันกับภาค: เริ่มนับหลังขึ้นคลินิก BURNUP_LEAD_MONTHS เดือน (หลักเดียวกับกราฟ burn-up)
+ * แล้วไต่ตรงถึงครบเกณฑ์ที่คาบสุดท้ายของปีสุดท้าย (LAST_CLINIC_DAY ของปีที่ req.years)
+ * entryYear = ปีการศึกษา (พ.ศ.) ที่ขึ้นคลินิกปีแรก
+ */
+export function expectedRequirementShare(entryYear: number, settings: Settings, now = new Date()): number {
+  const startCal = entryYear - 543;
+  const start = new Date(startCal, 5, 1).getTime();
+  const end = new Date(startCal + Math.max(1, settings.req.years || 2), LAST_CLINIC_DAY.month, LAST_CLINIC_DAY.day).getTime();
+  const span = (end - start) / (DAY * 30.4) - BURNUP_LEAD_MONTHS;
+  const elapsed = (now.getTime() - start) / (DAY * 30.4) - BURNUP_LEAD_MONTHS;
+  if (span <= 0) return 1;
+  return Math.min(1, Math.max(0, elapsed / span));
+}
+
+export interface PositionPoint {
+  student: Student;
+  /** เกณฑ์สะสมไปได้แค่ไหน 0–1 (requirementShare — นับเคสที่กำลังทำเป็นเศษ) */
+  share: number;
+  /** ช่องเกณฑ์ที่จบแล้ว / ช่องทั้งหมด — ตัวเดียวกับ reqDone/reqTotal ของ summarizeStudent */
+  done: number;
+  total: number;
+  /** ยังไม่ถึงเส้นเป้าตอนนี้ — false เมื่อไม่มีเป้า */
+  behind: boolean;
+}
+
+/**
+ * นักศึกษาแต่ละคนอยู่ตรงไหนของชั้นปี — หน้าจอส่งมาทีละชั้นปี
+ * คนที่ยังไม่มีชิ้นงานในระบบเลย ไม่อยู่ในกราฟ (noData) — ถ้าวางไว้ที่ 0 ช่วงนำร่องที่มีแค่บางกลุ่มใช้แอป
+ * ท้ายกราฟจะเต็มไปด้วยคนที่ทำงานไปแล้วแต่ไม่ได้บันทึกในแอป อาจารย์จะเข้าใจว่าเขารั้งท้าย
+ */
+export function classPosition(students: Student[], works: Workpiece[], settings: Settings, now = new Date()) {
+  // เป้าคิดจากรุ่นที่มีคนมากที่สุดในชุดที่ส่งมา (หนึ่งชั้นปี = หนึ่งรุ่นเกือบทุกคน)
+  const counts = new Map<number, number>();
+  students.forEach((s) => { const c = cohortOf(s, now); counts.set(c, (counts.get(c) ?? 0) + 1); });
+  const entry = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const expected = entry === undefined ? null : expectedRequirementShare(entry, settings, now);
+
+  const map = byStudent(works);
+  const points: PositionPoint[] = [];
+  const noData: Student[] = [];
+  for (const s of students) {
+    const mine = map.get(s.id) ?? [];
+    if (!mine.length) { noData.push(s); continue; }
+    const r = requirementShare(mine, settings);
+    points.push({ student: s, share: r.share, done: r.done, total: r.total, behind: expected !== null && r.share < expected });
+  }
+  points.sort((a, b) => b.share - a.share);
+  return { points, noData, expected, curve: points.length >= CURVE_MIN_STUDENTS };
 }

@@ -15,9 +15,10 @@
 import {
   bottleneckByStep, boardByStep, burnup, carriedOverCount, caseDots, durationByType, funnelByType,
   headline, periodsLeftNow, profile, averageProfile, heatmapRows, riskRows, riskByGroup,
-  selfPerformedRows, throughputByMonth,
+  selfPerformedRows, throughputByMonth, classPosition, expectedRequirementShare, CURVE_MIN_STUDENTS,
 } from '../src/domain/analytics.ts';
-import { procList } from '../src/domain/rules.ts';
+import { procList, requirementShare } from '../src/domain/rules.ts';
+import { summarizeStudent } from '../src/domain/aggregate.ts';
 import { RECALL } from '../src/domain/catalog.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from '../src/domain/types.ts';
@@ -470,6 +471,57 @@ console.log('\nriskByGroup');
   ok('ตรงกับ riskRows ทีละคน (ครบเกณฑ์ = ok · ไม่มีงาน = high)', pt1.ok === 1 && pt1.high === 1, pt1);
   ok('จุดเรียง เสี่ยง ก่อน ตามแผน', pt1.levels[0] === 'high' && pt1.levels[1] === 'ok', pt1.levels);
   ok('ไม่มีแถว → Map ว่าง', riskByGroup([]).size === 0);
+}
+
+
+/* ── ตำแหน่งในชั้นปี — กราฟที่อาจารย์ใช้ดูว่าใครอยู่ตรงไหน ── */
+console.log('\nrequirementShare / classPosition');
+{
+  const total = S.req.cd + S.req.rpd + S.req.crown + S.req.recallRemovable + S.req.recallFixed;
+  ok('ไม่มีงาน → 0 ไม่ใช่ NaN', requirementShare([], S).share === 0 && requirementShare([], S).total === total);
+  const half = at('CD', 5);
+  const r1 = requirementShare([half], S);
+  ok('CD กำลังทำ 5/10 = ครึ่งช่อง', Math.abs(r1.partial - 0.5) < 1e-9 && r1.done === 0, r1);
+  const r2 = requirementShare([finished('CD'), finished('CD'), at('CD', 8)], S);
+  ok('CD ครบ 2 ช่องแล้ว → เคสที่สามไม่เติมเกินเกณฑ์', r2.done === 2 && r2.partial === 0, r2);
+  const r3 = requirementShare([at('CD', 2), at('CD', 8), at('CD', 5)], S);
+  ok('ช่องว่าง 2 ช่อง เลือกเคสที่ไปไกลสุดก่อน (8 + 5)', Math.abs(r3.partial - 1.3) < 1e-9, r3.partial);
+  const off = requirementShare([at('CD', 9, { minimumRequirement: false })], S);
+  ok('เคสที่ปิดสวิตช์นับเกณฑ์ไม่เติมช่อง', off.partial === 0);
+  const ret = requirementShare([at('CD', 9, { returned: true } as Partial<Workpiece>)], S);
+  ok('เคสที่คืนแล้วไม่เติมช่อง', ret.partial === 0);
+  const apd = requirementShare([at('APD', 9)], S);
+  ok('Simple APD ไม่เข้าเกณฑ์สะสม', apd.partial === 0 && apd.done === 0);
+  const mixed = [finished('CD'), finished('RPD'), finished('CB'), at('PC', 4), finished('RRM')];
+  const sum = summarizeStudent(S1, mixed, S);
+  ok('done ตรงกับ reqDone/reqTotal ของ summarizeStudent (ตารางหน้าอาจารย์)',
+    requirementShare(mixed, S).done === sum.reqDone && requirementShare(mixed, S).total === sum.reqTotal);
+  const big = Array.from({ length: 20 }, (_, i) => [finished('CD'), finished('RPD'), finished('CB'), finished('PC'), finished('RRM'), finished('RFX'), finished('CD'), finished('RPD')][i % 8]);
+  ok('ครบทุกช่องแล้วไม่เกิน 1', requirementShare(big, S).share === 1);
+}
+{
+  const A = student({ id: 'pa' });
+  const B = student({ id: 'pb' });
+  const C = student({ id: 'pc' });
+  const pos = classPosition([A, B, C], [finished('CD', { studentId: 'pa' }), at('RPD', 3, { studentId: 'pb' })], S, NOW);
+  ok('คนที่ไม่มีชิ้นงานเลยไม่อยู่ในกราฟ แต่ถูกนับแยกไว้', pos.points.length === 2 && pos.noData.map((s) => s.id).join() === 'pc');
+  ok('เรียงจากไปไกลสุด', pos.points[0].student.id === 'pa');
+  ok('จบ CD 1 ชิ้นใน ต.ค. ปี 5 = ถึงเป้า · RPD 3/10 = ยังไม่ถึง', !pos.points[0].behind && pos.points[1].behind,
+    `${pos.points.map((p) => p.share.toFixed(2)).join()} vs ${pos.expected?.toFixed(2)}`);
+  ok(`น้อยกว่า ${CURVE_MIN_STUDENTS} คน → ไม่วาดเป็นโค้ง`, pos.curve === false);
+  const many = Array.from({ length: CURVE_MIN_STUDENTS }, (_, i) => student({ id: `pm${i}` }));
+  const posMany = classPosition(many, many.map((s) => at('CD', 2, { studentId: s.id })), S, NOW);
+  ok(`ครบ ${CURVE_MIN_STUDENTS} คน → วาดเป็นโค้ง`, posMany.curve === true);
+  ok('ไม่มีนักศึกษา → ไม่มีเป้า ไม่พัง', classPosition([], [], S, NOW).expected === null);
+}
+{
+  // รุ่น 2569 ขึ้นคลินิก มิ.ย. 2026 · ปลายเกณฑ์ = 26 มี.ค. 2028
+  ok('ช่วง 3 เดือนแรกเป้ายังเป็น 0', expectedRequirementShare(2569, S, new Date('2026-08-15')) === 0);
+  const mid = expectedRequirementShare(2569, S, NOW);
+  ok('ต.ค. ปี 5 เป้าเล็กแต่มากกว่า 0', mid > 0 && mid < 0.15, mid.toFixed(3));
+  const y6 = expectedRequirementShare(2568, S, NOW);
+  ok('ต.ค. ปี 6 เป้ามากกว่าปี 5', y6 > mid && y6 < 1, y6.toFixed(3));
+  ok('เลยคาบสุดท้ายแล้ว → 1 ไม่เกิน', expectedRequirementShare(2568, S, new Date('2027-05-01')) === 1);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

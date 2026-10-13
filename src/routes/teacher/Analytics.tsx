@@ -6,9 +6,11 @@ import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
+import { ClassPosition } from '../../components/charts/ClassPosition';
 import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
 import {
-  bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount } from '../../domain/analytics';
+  bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount,
+  classPosition, CURVE_MIN_STUDENTS } from '../../domain/analytics';
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
@@ -52,6 +54,13 @@ export default function Analytics() {
   // -1 = ปิด · ไม่เปิดเองตอนเข้าหน้าแล้ว เปิดเมื่อกดเลข
   const [openStep, setOpenStep] = useState<number>(-1);
   const burn = useMemo(() => burnup(students, works, settings), [students, works, settings]);
+  const position = useMemo(() => classPosition(students, works, settings), [students, works, settings]);
+  const singleYear = yearView === '5' || yearView === '6';
+  // กลุ่มที่ไฮไลต์ — กลุ่มที่ปรึกษาจริง ถ้ายังไม่รู้ (เดโม/บัญชียังไม่ผูก) ใช้กลุ่มที่เลือกไว้ในแถบซ้าย เหมือนหน้าแรก
+  const teacherGroup = useApp((st) => st.teacherGroup);
+  const ownGroup = myGroup ?? teacherGroup;
+  const myPos = ownGroup ? position.points.filter((p) => p.student.group === ownGroup) : [];
+  const myBehind = myPos.filter((p) => p.behind);
   const cohortReq = useMemo(() => cohortRequirement(students, works, settings), [students, works, settings]);
   const yearly = useMemo(() => cohortYearly(students, works, settings), [students, works, settings]);
   const durations = useMemo(() => durationByType(works), [works]);
@@ -162,6 +171,46 @@ export default function Analytics() {
             </div>
           )}
         </div>
+
+        {/* ตำแหน่งในชั้นปี — คนน้อยกว่า CURVE_MIN_STUDENTS เห็นทีละแถวพร้อมชื่อ · ครบแล้วเป็นโค้งทั้งชั้นปี */}
+        {yearView !== 'alumni' && (
+          <div className="panel" style={{ marginTop: 16 }}>
+            <h3>{position.curve ? t('นักศึกษาอยู่ตรงไหนของชั้นปี') : t('นักศึกษาที่มีข้อมูลในระบบอยู่ตรงไหน')}</h3>
+            {!singleYear ? (
+              <p className="sub">{t('เลือกปี 5 หรือปี 6 — สองชั้นปีอยู่คนละช่วงของหลักสูตร วางรวมกันแล้วเทียบกันไม่ได้')}</p>
+            ) : position.points.length === 0 ? (
+              <p className="sub">{t('ยังไม่มีนักศึกษาชั้นปีนี้ที่มีชิ้นงานในระบบ')}</p>
+            ) : (
+              <>
+                <p className="sub">
+                  {t('% ของเกณฑ์สะสม นับเคสที่กำลังทำตามขั้นที่ผ่าน')}
+                  {' · '}{t('มีข้อมูล {n} จาก {m} คน', { n: position.points.length, m: students.length })}
+                  {position.noData.length > 0 && <>{' · '}{t('อีก {n} คนยังไม่มีชิ้นงานในระบบ จึงไม่อยู่ในกราฟ', { n: position.noData.length })}</>}
+                  {!position.curve && <>{' · '}{t('ครบ {n} คนขึ้นไปจะแสดงเป็นโค้งทั้งชั้นปี', { n: CURVE_MIN_STUDENTS })}</>}
+                </p>
+                <ClassPosition points={position.points} expected={position.expected} curve={position.curve} myGroup={ownGroup} />
+                {position.curve && ownGroup && myPos.length > 0 && (
+                  <div className="cpos-summary">
+                    <span>
+                      <b>{t('กลุ่ม {g}', { g: groupShort(ownGroup) })}:</b>{' '}
+                      {t('ถึงเป้าแล้ว {n} จาก {m} คน', { n: myPos.length - myBehind.length, m: myPos.length })}
+                    </span>
+                    {myBehind.length > 0 && (
+                      <span className="behind">
+                        {t('ยังไม่ถึงเป้า')}: {myBehind.map((p) => `${personName(p.student)} (${Math.round(p.share * 100)}%)`).join(' · ')}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {position.expected !== null && (
+                  <p style={{ margin: '8px 0 0', font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-faint)' }}>
+                    {t('เส้นประ "เป้าตอนนี้" เป็นค่าประมาณ: เริ่มนับหลังขึ้นคลินิก 3 เดือน แล้วไต่ตรงถึงครบเกณฑ์ที่คาบสุดท้ายของปี 6 · ยังไม่ได้ยืนยันกับภาค')}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(330px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
             {/* 2. เส้นสะสมเทียบเป้า */}

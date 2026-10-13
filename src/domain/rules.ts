@@ -349,6 +349,36 @@ export function caseCountTotals(list: Workpiece[], settings: Settings) {
   };
 }
 
+const REQ_GROUP_TYPES: Record<ReqGroup, WorkType[]> = {
+  CD: ['CD'], RPD: ['RPD'], CROWN: ['CB', 'PC'], RRM: ['RRM'], RFX: ['RFX'],
+};
+
+/**
+ * เกณฑ์สะสมไปได้แค่ไหน 0–1 โดยนับเคสที่กำลังทำเป็นเศษตามขั้นที่ผ่าน (CD ถึง 6/10 = 0.6 ช่อง)
+ * ใช้วางตำแหน่งนักศึกษาในกราฟทั้งชั้นปี — นับแค่ชิ้นที่จบแล้วได้ค่าแค่ 0–8 ทั้งรุ่นกองเป็นเสา
+ * done = ตัวเดียวกับ reqDone ของ summarizeStudent · เคสที่กำลังทำเติมเฉพาะช่องที่ยังว่าง
+ * เลือกเคสที่ไปไกลสุดก่อน และรับเฉพาะเคสที่จบแล้วจะนับจริง (ชุดเดียวกับช่อง "กำลังทำ" ของ RequirementSlots)
+ */
+export function requirementShare(list: Workpiece[], settings: Settings): { done: number; partial: number; total: number; share: number } {
+  let done = 0;
+  let partial = 0;
+  let total = 0;
+  for (const r of caseCount(list, settings)) {
+    const filled = Math.min(r.done, r.required);
+    const open = r.required - filled;
+    const types = REQ_GROUP_TYPES[r.group];
+    partial += list
+      .filter((w) => types.includes(w.type) && isActiveWork(w) && mayCountTowardRequirement(w))
+      .map(stepFraction)
+      .sort((a, b) => b - a)
+      .slice(0, open)
+      .reduce((s, f) => s + f, 0);
+    done += filled;
+    total += r.required;
+  }
+  return { done, partial, total, share: total ? (done + partial) / total : 0 };
+}
+
 /**
  * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
  * เคสที่ปิดสวิตช์ "นับเข้าเกณฑ์" หรือรอตรวจรับ ไม่นับรายปีเหมือนเกณฑ์สะสม (ภาคยืนยัน)
