@@ -470,12 +470,13 @@ export default function Home() {
     }
   }
   useEffect(() => {
-    if (!session || checkedInToday) return;
+    // ภาคเปิดสแกน QR แล้วไม่เด้งถาม — เช็คอินต้องเกิดที่หน้าห้อง กดปุ่มเช็คอินเองตอนถึง
+    if (!session || checkedInToday || scan.required) return;
     let skipped = '';
     try { skipped = localStorage.getItem('pt-checkin-ask') ?? ''; } catch { /* private mode */ }
     if (skipped !== today) setAskCheckIn(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkedInToday, today]);
+  }, [checkedInToday, today, scan.required]);
 
   function skipCheckInAsk() {
     try { localStorage.setItem('pt-checkin-ask', today); } catch { /* private mode */ }
@@ -505,7 +506,7 @@ export default function Home() {
 
   return (
     <Shell overlay={<>
-      {askCheckIn && !checkedInToday && (
+      {askCheckIn && !checkedInToday && !scan.required && (
         <div className="backdrop" onClick={skipCheckInAsk}>
           <div className="sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '82%', overflowY: 'auto' }}>
             <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</h3>
