@@ -26,7 +26,7 @@ export function Radar({
   /** ถ้าส่งมา: กดจุด/ชื่อหัวข้อได้ (ใช้เปิดกราฟรายหัวข้อ) */
   onAxisClick?: (key: string) => void;
   activeKey?: string | null;
-  /** % ที่ใจกลางวง (ตัดฐานสเกล) — ใช้เมื่อข้อมูลกระจุกช่วงบน เช่นคะแนน 0/1/3 ที่เฉลี่ยแล้วเกาะ 2–3 */
+  /** % ที่ใจกลางวง (ตัดฐานสเกล) — ใช้เมื่อข้อมูลกระจุกช่วงบน เช่นคะแนนรายคาบที่เฉลี่ยแล้วเกาะ 2–3 */
   floor?: number;
 }) {
   const id = useId();
@@ -158,8 +158,9 @@ export function Radar({
               <th>{t('ด้าน')}</th>
               {axes[0]?.counts ? (
                 <>
-                  {/* หัวข้อประเมิน: แยกจำนวนคาบเป็น 3 คอลัมน์ อ่านง่ายกว่าสตริงยาวๆ */}
+                  {/* หัวข้อประเมิน: แยกจำนวนคาบเป็นคอลัมน์ละระดับ อ่านง่ายกว่าสตริงยาวๆ */}
                   <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 3')}</th>
+                  <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 2')}</th>
                   <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 1')}</th>
                   <th style={{ width: 44, textAlign: 'center' }}>{t('ได้ 0')}</th>
                 </>
@@ -176,8 +177,10 @@ export function Radar({
                 {a.counts ? (
                   <>
                     <td className="mono" style={{ textAlign: 'center', fontWeight: 600, color: a.counts[0] > 0 ? 'var(--success)' : 'var(--text-disabled)' }}>{a.counts[0]}</td>
-                    <td className="mono" style={{ textAlign: 'center', color: a.counts[1] > 0 ? 'var(--warning-dark)' : 'var(--text-disabled)' }}>{a.counts[1]}</td>
-                    <td className="mono" style={{ textAlign: 'center', fontWeight: a.counts[2] > 0 ? 700 : 400, color: a.counts[2] > 0 ? 'var(--danger)' : 'var(--text-disabled)' }}>{a.counts[2]}</td>
+                    {/* null = หัวข้อนี้ไม่มีระดับ 2 ในสมุด */}
+                    <td className="mono" style={{ textAlign: 'center', color: (a.counts[1] ?? 0) > 0 ? 'var(--warning-dark)' : 'var(--text-disabled)' }}>{a.counts[1] ?? '–'}</td>
+                    <td className="mono" style={{ textAlign: 'center', color: a.counts[2] > 0 ? 'var(--warning-dark)' : 'var(--text-disabled)' }}>{a.counts[2]}</td>
+                    <td className="mono" style={{ textAlign: 'center', fontWeight: a.counts[3] > 0 ? 700 : 400, color: a.counts[3] > 0 ? 'var(--danger)' : 'var(--text-disabled)' }}>{a.counts[3]}</td>
                   </>
                 ) : (
                   <td className="mono">{a.detail}</td>

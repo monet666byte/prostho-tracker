@@ -1,12 +1,14 @@
 import { ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle } from '@phosphor-icons/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
 import { evaluateCheckIn, reviseCheckIn, setCheckInPunctual } from '../../data/repo';
-import { CRITERIA, MAX_TOTAL, SCORE_OPTIONS, supersededBy, supersededTitle, totalScore } from '../../domain/checkin';
+import {
+  CRITERIA, MAX_TOTAL, SCORE_SLOTS, isValidScore, missingCriteria, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
+} from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
   useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, usePatientNamesOn, useStepsOnDates, useTeacher,
@@ -17,6 +19,53 @@ import { patientLabel } from '../../lib/privacy';
 import type { CheckIn } from '../../domain/types';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
+
+/** ปุ่มคะแนนหนึ่งแถว — วางตามช่อง 0 1 2 3 ทุกแถว ข้อที่สมุดไม่มีระดับ 2 เว้นช่องไว้ ให้เลขแต่ละตัวอยู่คอลัมน์เดียวกัน */
+function ScoreButtons({ critKey, label, value, disabled, hint, onPick }: {
+  critKey: string;
+  label: string;
+  value: number | undefined;
+  disabled?: boolean;
+  hint?: (n: number) => string | undefined;
+  onPick: (n: number, e: MouseEvent) => void;
+}) {
+  const levels = scoreLevels(critKey);
+  return (
+    <span className="scorerow__btns" role="radiogroup" aria-label={label}>
+      {SCORE_SLOTS.map((n) => levels.includes(n) ? (
+        <button
+          key={n}
+          type="button"
+          title={hint?.(n)}
+          data-on={value === n}
+          data-v={n}
+          aria-pressed={value === n}
+          disabled={disabled}
+          onClick={(e) => onPick(n, e)}
+        >
+          {n}
+        </button>
+      ) : (
+        // เป็นปุ่มล่องหนเพื่อรับขนาดจากกฎปุ่มคะแนนทุกโหมด (เมาส์/สัมผัส/ตัวใหญ่) โดยไม่ต้องตามแก้ทีละที่
+        <button key={n} type="button" className="scorerow__gap" tabIndex={-1} aria-hidden="true" disabled />
+      ))}
+    </span>
+  );
+}
+
+/** คำอธิบายทุกระดับของหัวข้อหนึ่ง (ข้อความอังกฤษตามสมุด) — ระดับที่เลือกอยู่มีพื้นเน้น ให้อ่านทวนได้ว่าคะแนนที่ให้แปลว่าอะไร */
+function RubricLevels({ critKey, picked }: { critKey: string; picked: number | undefined }) {
+  return (
+    <div className="rubric">
+      {[...scoreLevels(critKey)].reverse().map((n) => (
+        <p key={n} data-picked={picked === n}>
+          <b>{n}</b>
+          <span>{rubricText(critKey, n)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
 
 /** เส้นคะแนนรายคาบของนักศึกษาหนึ่งคน — ใช้ได้ทั้งคะแนนรวม (0–24) และรายหัวข้อ (0–3) */
 function ScoreTrend({
@@ -82,8 +131,22 @@ export default function Evaluate() {
   const checkins = useAllCheckIns();
 
   const group = useApp((st) => st.teacherGroup);
-  // คะแนนที่กำลังกรอก ต่อ check-in (default 3 ทุกข้อ เหมือนที่อาจารย์ส่วนใหญ่ให้ในสมุดจริง)
+  /* คะแนนที่กำลังกรอก ต่อ check-in — เริ่มแบบยังไม่เลือกสักข้อ และลงนามไม่ได้จนกว่าจะครบ 8 ข้อ
+     เดิมเริ่มที่ 3 ทุกข้อ: อาจารย์กดลงนามได้โดยไม่ได้ดูทีละข้อ · ไม่เริ่มที่ 0 เพราะข้อที่กดตกจะกลายเป็น 0 เงียบๆ */
   const [drafts, setDrafts] = useState<Record<string, Record<string, number>>>({});
+  /* เกณฑ์ที่กางอยู่ (แตะชื่อหัวข้อ) — เปิดได้ทีละข้อทั้งหน้า
+     กางเป็นแถวเต็มกว้างใต้ "คู่แถว" ที่หัวข้อนั้นอยู่ ไม่ใช่ใต้หัวข้อเดียว — การ์ดจอกว้างเรียงหัวข้อสองคอลัมน์
+     ถ้ากางในคอลัมน์เดียว อีกคอลัมน์จะเหลือช่องโล่งสูงเท่าเกณฑ์ · cols = จำนวนคอลัมน์ ณ ตอนกด (อ่านจากกริดจริง) */
+  const [openRubric, setOpenRubric] = useState<{ id: string; key: string; cols: number } | null>(null);
+  // หมุนจอ/ย่อหน้าต่าง จำนวนคอลัมน์อาจเปลี่ยน — ปิดเกณฑ์ที่กางไว้แทนการวางผิดแถว
+  // ดูเฉพาะความกว้าง: Safari บน iPhone ยิง resize ทุกครั้งที่เลื่อนจอจนแถบที่อยู่ยุบ/กาง (ความสูงเปลี่ยน)
+  useEffect(() => {
+    if (!openRubric) return;
+    const width = window.innerWidth;
+    const onResize = () => { if (window.innerWidth !== width) setOpenRubric(null); };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [openRubric]);
   const [chartStudent, setChartStudent] = useState<string | null>(null);
   // หัวข้อที่กดเลือกบนกราฟแมงมุม — เปิดกราฟเส้นรายหัวข้อฝั่งขวา (คงไว้ตอนสลับคน จะได้เทียบหัวข้อเดิมข้ามคน)
   const [critKey, setCritKey] = useState<string | null>(null);
@@ -99,18 +162,21 @@ export default function Evaluate() {
   const evaluatedInGroup = useMemo(() => inGroup.filter((c) => c.status === 'evaluated'), [inGroup]);
 
   // รายหัวข้อ (0–3) ต่อคน และของทั้งกลุ่มไว้เป็นเส้นเทียบ — รูปทรงกราฟใช้ค่าเฉลี่ย
-  // แต่ตัวเลขที่โชว์เป็น "จำนวนครั้ง" ที่ได้ 3/1/0 (อาจารย์คอมเมนต์ว่าไม่อยากเห็นเลขเฉลี่ย)
+  // แต่ตัวเลขที่โชว์เป็น "จำนวนครั้ง" ที่ได้แต่ละระดับ (อาจารย์คอมเมนต์ว่าไม่อยากเห็นเลขเฉลี่ย)
   const criterionAvg = (rows: CheckIn[]): ProfileAxis[] =>
     CRITERIA.map((cr) => {
       const vals = rows.map((c) => c.scores?.[cr.key] ?? 0);
       const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
       const count = (n: number) => vals.filter((v) => v === n).length;
+      const hasTwo = scoreLevels(cr.key).includes(2);
       return {
         key: cr.key,
         label: t(cr.short),
         value: Math.round((avg / 3) * 100),
-        detail: t('ได้ 3 = {a} คาบ · ได้ 1 = {b} · ได้ 0 = {c}', { a: count(3), b: count(1), c: count(0) }),
-        counts: [count(3), count(1), count(0)] as [number, number, number],
+        detail: hasTwo
+          ? t('ได้ 3 = {a} คาบ · ได้ 2 = {d} · ได้ 1 = {b} · ได้ 0 = {c}', { a: count(3), d: count(2), b: count(1), c: count(0) })
+          : t('ได้ 3 = {a} คาบ · ได้ 1 = {b} · ได้ 0 = {c}', { a: count(3), b: count(1), c: count(0) }),
+        counts: [count(3), hasTwo ? count(2) : null, count(1), count(0)] as [number, number | null, number, number],
       };
     });
   const selectedId = chartStudent ?? groupStudents[0]?.id ?? null;
@@ -127,7 +193,7 @@ export default function Evaluate() {
   const [reviseId, setReviseId] = useState<string | null>(null);
   const [reviseDraft, setReviseDraft] = useState<Record<string, number>>({});
   /* โหมด "ทีละคน" — โชว์การ์ดเดียว มีคิวด้านข้าง + ปุ่มลัดคีย์บอร์ด · จำไว้ในเครื่อง
-     ขั้นตอนบันทึกเหมือนโหมดรายการทุกอย่าง (ค่าเริ่ม 3 · กล่องยืนยันชื่อก่อนลงนาม) */
+     ขั้นตอนบันทึกเหมือนโหมดรายการทุกอย่าง (เริ่มแบบยังไม่เลือก · กล่องยืนยันชื่อก่อนลงนาม) */
   const [mode, setModeState] = useState<'list' | 'focus'>(() => {
     try { return localStorage.getItem(EVAL_MODE_KEY) === 'focus' ? 'focus' : 'list'; } catch { return 'list'; }
   });
@@ -219,11 +285,12 @@ export default function Evaluate() {
   const [showAllEvaluated, setShowAllEvaluated] = useState(false);
   const evaluated = showAllEvaluated ? evaluatedAll.slice(0, 40) : evaluatedAll.slice(0, 5);
 
-  const draftFor = (id: string) =>
-    drafts[id] ?? Object.fromEntries(CRITERIA.map((c) => [c.key, 3]));
+  const draftFor = (id: string): Record<string, number> => drafts[id] ?? {};
 
   async function sign(id: string) {
     if (signing.current) return;
+    // ปุ่มลงนามปิดอยู่แล้วถ้ายังไม่ครบ — กันซ้ำตรงนี้เผื่อมาทางคีย์บอร์ด
+    if (missingCriteria(draftFor(id)).length) return;
     signing.current = true;
     // โหมดทีละคน: เซ็นเสร็จแล้วไปคนถัดไปในคิว (คิดไว้ก่อนรายการจะหดลง)
     const at = pending.findIndex((c) => c.id === id);
@@ -318,12 +385,14 @@ export default function Evaluate() {
       if (!current) return;
       const st = studentById.get(current.studentId);
       const locked = st ? isAlumni(st) : false;
-      const digit = ({ Digit0: 0, Numpad0: 0, Digit1: 1, Numpad1: 1, Digit3: 3, Numpad3: 3 } as Record<string, number>)[e.code];
+      const digit = ({ Digit0: 0, Numpad0: 0, Digit1: 1, Numpad1: 1, Digit2: 2, Numpad2: 2, Digit3: 3, Numpad3: 3 } as Record<string, number>)[e.code];
       if (digit !== undefined) {
         if (locked) return;
         e.preventDefault();
         const d = draftFor(current.id);
         const cr = CRITERIA[activeCrit];
+        // 2 มีเฉพาะ Knowledge/Skill/Precaution — กด 2 ที่ข้ออื่นไม่ทำอะไร และไม่ขยับไปข้อถัดไป
+        if (!isValidScore(cr.key, digit)) return;
         setDrafts((prev) => ({ ...prev, [current.id]: { ...d, [cr.key]: digit } }));
         setActiveCrit((i) => Math.min(CRITERIA.length - 1, i + 1));
       } else if (e.key === 'ArrowDown') {
@@ -333,7 +402,11 @@ export default function Evaluate() {
       } else if (e.key === 'Enter') {
         // กันปุ่มที่โฟกัสค้างอยู่ (เช่นปุ่มคะแนนที่เพิ่งกด) โดนกดซ้ำแทนการเปิดกล่องยืนยัน
         e.preventDefault();
-        if (!locked) setConfirmId(current.id);
+        if (locked) return;
+        // ยังไม่ครบ: พาไปข้อแรกที่ยังไม่เลือกแทนการเปิดกล่องยืนยัน
+        const miss = missingCriteria(draftFor(current.id));
+        if (miss.length) setActiveCrit(CRITERIA.findIndex((cr) => cr.key === miss[0]));
+        else setConfirmId(current.id);
       } else if (e.code === 'KeyJ') {
         e.preventDefault(); goFocus(1);
       } else if (e.code === 'KeyK') {
@@ -355,8 +428,8 @@ export default function Evaluate() {
     return (
       <div key={c.id} className="evalcard evalcard--calm">
         {/* การ์ดประเมินแบบ "ตัดของซ้ำ"
-            ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · ค่าตั้งต้น 3 เป็นปุ่มเรียบ
-            ข้อที่ให้ 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
+            ซ้าย = ใคร · ทำอะไร · ขวา = ให้คะแนน · 3 เป็นปุ่มเรียบ
+            ข้อที่ให้ 2 = เหลืองอ่อน · 1 = เหลือง · 0 = แดง → ตาเห็นเฉพาะข้อที่หักทันที (เดิมปุ่มน้ำเงินทึบ 8 ปุ่มทุกคน) */}
         <div className="evalcard__info">
           <div className="evalwho">
             <b>{personName(student, '')}</b>
@@ -409,57 +482,94 @@ export default function Evaluate() {
         </div>
 
         <div className="evalcard__scores">
-          {CRITERIA.map((cr, ci) => (
-            <div key={cr.key} className="scorerow" data-changed={draft[cr.key] !== 3} data-cur={focus && ci === activeCrit} onClick={focus ? () => setActiveCrit(ci) : undefined}>
-              <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
-              <span className="scorerow__btns" role="radiogroup" aria-label={cr.label}>
-                {SCORE_OPTIONS.map((n) => (
-                  <button
-                    key={n}
-                    title={focus ? t('กด {n} บนคีย์บอร์ด', { n }) : undefined}
-                    data-on={draft[cr.key] === n}
-                    data-v={n}
-                    aria-pressed={draft[cr.key] === n}
+          {CRITERIA.map((cr, ci) => {
+            const v = draft[cr.key];
+            const picked = isValidScore(cr.key, v);
+            const open = openRubric?.id === c.id && openRubric.key === cr.key;
+            // แถวเกณฑ์วางต่อจากหัวข้อตัวท้ายของคู่ (สองคอลัมน์) หรือต่อจากหัวข้อนั้นเลย (คอลัมน์เดียว)
+            const openAt = openRubric?.id === c.id ? CRITERIA.findIndex((x) => x.key === openRubric.key) : -1;
+            const rowEnd = openAt < 0 ? -1
+              : openRubric!.cols > 1 ? Math.min(CRITERIA.length - 1, openAt - (openAt % openRubric!.cols) + openRubric!.cols - 1)
+              : openAt;
+            const openCrit = openAt >= 0 ? CRITERIA[openAt] : null;
+            return (
+              <Fragment key={cr.key}>
+                <div className="scorerow" data-open={open} data-changed={picked && v !== 3} data-empty={!picked} data-cur={focus && ci === activeCrit} onClick={focus ? () => setActiveCrit(ci) : undefined}>
+                  {/* เกณฑ์จากสมุด: ชี้เมาส์ = กล่องลอย (เฉพาะเครื่องที่มีเมาส์) · แตะ/คลิกชื่อ = กางเป็นแถว
+                      ไม่ผูกกับการกดคะแนน — ให้คะแนนต่อเนื่องได้โดยไม่มีอะไรเด้งมาบัง */}
+                  <span className="scorerow__head">
+                    <button
+                      type="button"
+                      className="scorerow__label scorerow__label--btn"
+                      aria-expanded={open}
+                      onClick={(e) => {
+                        const grid = e.currentTarget.closest('.evalcard__scores');
+                        const cols = grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length : 1;
+                        setOpenRubric(open ? null : { id: c.id, key: cr.key, cols });
+                      }}
+                    >
+                      {cr.label}<span className="scorerow__q" aria-hidden="true">?</span>
+                      {!picked && <span className="scorerow__empty">{t('ยังไม่เลือก')}</span>}
+                    </button>
+                    {!open && (
+                      <span className="scorerow__pop" role="tooltip">
+                        <b>{cr.label}</b>
+                        <RubricLevels critKey={cr.key} picked={v} />
+                      </span>
+                    )}
+                  </span>
+                  <ScoreButtons
+                    critKey={cr.key}
+                    label={cr.label}
+                    value={v}
                     disabled={locked}
-                    onClick={(e) => {
+                    hint={focus ? (n) => t('กด {n} บนคีย์บอร์ด', { n }) : undefined}
+                    onPick={(n, e) => {
                       setDrafts({ ...drafts, [c.id]: { ...draft, [cr.key]: n } });
                       if (focus) { e.stopPropagation(); setActiveCrit(Math.min(CRITERIA.length - 1, ci + 1)); }
                     }}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </span>
-            </div>
-          ))}
+                  />
+                </div>
+                {ci === rowEnd && openCrit && (
+                  <div className="rubricrow">
+                    {openRubric!.cols > 1 && <b>{openCrit.label}</b>}
+                    <RubricLevels critKey={openCrit.key} picked={draft[openCrit.key]} />
+                  </div>
+                )}
+              </Fragment>
+            );
+          })}
           {(() => {
-            const changed = CRITERIA.filter((cr) => draft[cr.key] !== 3).length;
+            const missing = missingCriteria(draft).length;
+            const changed = CRITERIA.filter((cr) => isValidScore(cr.key, draft[cr.key]) && draft[cr.key] !== 3).length;
+            const anyPicked = missing < CRITERIA.length;
             return (
               <div className="evalfoot">
-                <span className="evalfoot__total">{total}<small> / {MAX_TOTAL}</small></span>
+                <span className="evalfoot__total">{missing ? '–' : total}<small> / {MAX_TOTAL}</small></span>
                 <span className="evalfoot__note">
-                  {changed > 0 ? (
+                  {missing ? t('ยังไม่เลือก {n} ข้อ', { n: missing }) : changed ? t('ปรับ {n} ข้อ', { n: changed }) : t('ได้ 3 ทุกข้อ')}
+                  {anyPicked && (
                     <>
-                      {t('ปรับ {n} ข้อ', { n: changed })}{' · '}
+                      {' · '}
                       <button
                         className="textbtn"
                         disabled={locked}
                         onClick={() => { const next = { ...drafts }; delete next[c.id]; setDrafts(next); }}
                       >
-                        {t('คืนเป็น 3 ทุกข้อ')}
+                        {t('ล้างที่เลือก')}
                       </button>
                     </>
-                  ) : t('ได้ 3 ทุกข้อ')}
+                  )}
                 </span>
                 <button
                   className="btn"
                   style={{ width: 'auto', height: 40, fontSize: 13, padding: '0 16px' }}
-                  disabled={locked}
+                  disabled={locked || missing > 0}
                   title={locked ? t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้') : undefined}
                   onClick={() => setConfirmId(c.id)}
                 >
-                  <Signature size={16} weight="bold" />
-                  {locked ? t('รุ่นนี้จบแล้ว') : t('บันทึกผล · ลงนาม')}
+                  {!missing && <Signature size={16} weight="bold" />}
+                  {locked ? t('รุ่นนี้จบแล้ว') : missing ? t('เลือกให้ครบก่อน (เหลือ {n})', { n: missing }) : t('บันทึกผล · ลงนาม')}
                 </button>
               </div>
             );
@@ -775,17 +885,12 @@ export default function Evaluate() {
                   <div key={cr.key} className="scorerow" data-changed={was !== now}>
                     <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
                     {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
-                    <span className="scorerow__btns">
-                      {SCORE_OPTIONS.map((n) => (
-                        <button
-                          key={n}
-                          data-on={now === n}
-                          onClick={() => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </span>
+                    <ScoreButtons
+                      critKey={cr.key}
+                      label={cr.label}
+                      value={now}
+                      onPick={(n) => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
+                    />
                   </div>
                 );
               })}

@@ -7,23 +7,107 @@
 import type { CheckIn } from './types';
 import { t } from '../lib/i18n';
 
-/** คอลัมน์คะแนนตาม Part B ของสมุดจริง — ข้อละ 0–3
- *  label/short เป็นอังกฤษทั้งสองภาษา ตามศัพท์ในสมุดจริง (ภาคไม่ต้องการคำแปล) · th ใช้เป็น tooltip */
+/** คอลัมน์คะแนนตาม Part B ของสมุดจริง
+ *  label/short เป็นอังกฤษทั้งสองภาษา ตามศัพท์ในสมุดจริง (ภาคไม่ต้องการคำแปล) · th ใช้เป็น tooltip
+ *  rubric = คำอธิบายแต่ละระดับ ถอดจาก "Scoring rubrics for Section I" (สมุดฉบับ Edited 29 Apr 2025)
+ *  สามข้อแรกมี 4 ระดับ 3/2/1/0 · อีกห้าข้อมีแค่ 3/1/0 — ระดับที่ให้ได้อ่านจาก key ของ rubric (ดู scoreLevels)
+ *  เชิงอรรถท้ายหน้าเกณฑ์ของ Universal Precaution เป็นกติกาตัดเกรด จึงไม่ใส่ในแอป (ระบบนี้ไม่ตัดเกรด) */
 export const CRITERIA = [
-  { key: 'knowledge', label: 'Overall Knowledge', th: 'ความรู้โดยรวม', short: 'Knowledge' },
-  { key: 'skill', label: 'Overall Skill', th: 'ทักษะโดยรวม', short: 'Skill' },
-  { key: 'precaution', label: 'Universal Precaution', th: 'การป้องกันการติดเชื้อ', short: 'Precaution' },
-  { key: 'instrument', label: 'Instrument Preparation', th: 'การเตรียมเครื่องมือ', short: 'Instrument' },
-  { key: 'time', label: 'Time Management in Clinic', th: 'การบริหารเวลาในคลินิก', short: 'Time' },
-  { key: 'chart', label: 'Chart Recording', th: 'การบันทึกชาร์ต', short: 'Chart' },
-  { key: 'communication', label: 'Interpersonal Communication', th: 'การสื่อสาร', short: 'Comm.' },
-  { key: 'conduct', label: 'General Conduct', th: 'ความประพฤติทั่วไป', short: 'Conduct' },
+  {
+    key: 'knowledge', label: 'Overall Knowledge', th: 'ความรู้โดยรวม', short: 'Knowledge',
+    rubric: {
+      3: 'Demonstrates an excellent understanding of the topics associated with the clinical procedures; well prepared for questions and problems encountered during clinical practice.',
+      2: 'Demonstrates solid understanding of the topics associated with the clinical procedures; highlights the important points where he/she encounters during clinical practice.',
+      1: 'Demonstrates a lack of knowledge in critical components of the clinical procedures.',
+      0: 'Demonstrates poor knowledge of the clinical procedures.',
+    },
+  },
+  {
+    key: 'skill', label: 'Overall Skill', th: 'ทักษะโดยรวม', short: 'Skill',
+    rubric: {
+      3: 'Optimal competent to perform the task without error or instructor intervention (except an instructor’s demonstration).',
+      2: 'Optimal competent to perform the task with minor error BUT do not need instructor intervention.',
+      1: 'Deficient competent to perform task AND instructor intervention should be provided.',
+      0: 'Unable to perform the task and need full instructor intervention; OR conduct critical mistake.',
+    },
+  },
+  {
+    key: 'precaution', label: 'Universal Precaution', th: 'การป้องกันการติดเชื้อ', short: 'Precaution',
+    rubric: {
+      3: 'Performs all clinical procedures with standard infection control.',
+      2: 'Partially performs standard infection control, can recognize mistake AND self-correction.',
+      1: 'Partially performs standard infection control BUT cannot recognize mistake.',
+      0: 'Cannot demonstrate standard infection control techniques.',
+    },
+  },
+  {
+    key: 'instrument', label: 'Instrument Preparation', th: 'การเตรียมเครื่องมือ', short: 'Instrument',
+    rubric: {
+      3: 'Prepares all instruments adequate to perform tasks AND uses material efficiently.',
+      1: 'Some instruments are not prepared OR use material inefficiently.',
+      0: 'Unprepared instruments OR waste of material.',
+    },
+  },
+  {
+    key: 'time', label: 'Time Management in Clinic', th: 'การบริหารเวลาในคลินิก', short: 'Time',
+    rubric: {
+      3: 'Efficient management of time and procedures provided AND finishes treatment 30 minutes before the period ends or as instructor permission.',
+      1: 'Efficient management of time and procedures provided BUT finishes treatment late.',
+      0: 'Inefficient management of time and procedures provided AND finishes treatment late.',
+    },
+  },
+  {
+    key: 'chart', label: 'Chart Recording', th: 'การบันทึกชาร์ต', short: 'Chart',
+    rubric: {
+      3: 'Complete and accurate chart record AND signs within the clinical period.',
+      1: 'Mostly accurate chart record AND signs within the clinical period.',
+      0: 'Incomplete or inaccurate chart record AND/OR signs after the clinical period.',
+    },
+  },
+  {
+    key: 'communication', label: 'Interpersonal Communication', th: 'การสื่อสาร', short: 'Comm.',
+    rubric: {
+      3: 'Able to provide appropriate and professional communication with patient, instructor, or other personnels AND applies psychosocial and behavioral principles in patient-centered health care AND communicates effectively with individuals from diverse population.',
+      1: 'Appropriate and professional communication with patient, instructor, or other personnels BUT unable to apply psychosocial and behavioral principles in patient-centered health care OR communicates effectively with individuals from diverse population.',
+      0: 'Not demonstrates appropriate and professional communication with patient, instructor, or others.',
+    },
+  },
+  {
+    key: 'conduct', label: 'General Conduct', th: 'ความประพฤติทั่วไป', short: 'Conduct',
+    rubric: {
+      3: 'Performs treatment with patient safety or tasks as assigned AND demonstrates integrity, professional dress code, comply with relevant rules and regulations.',
+      1: 'Performs treatment with patient safety or tasks as assigned BUT partially demonstrates integrity, professional dress code comply with relevant rules and regulations.',
+      0: 'Performs treatment with patient trauma or incomplete assigned tasks OR not comply with relevant rules and regulations.',
+    },
+  },
 ] as const;
 
 export type CriterionKey = (typeof CRITERIA)[number]['key'];
 
-/** สเกลคะแนนตามสมุดจริง — มีแค่ 3 / 1 / 0 ไม่มี 2 */
-export const SCORE_OPTIONS = [0, 1, 3] as const;
+/** ช่องคะแนนทั้งหมดที่เป็นไปได้ เรียงน้อย→มาก — หน้าจอวางปุ่มตามช่องนี้ ข้อที่ไม่มีระดับนั้นเว้นช่องว่างไว้ให้คอลัมน์ตรงกัน */
+export const SCORE_SLOTS = [0, 1, 2, 3] as const;
+
+/** ระดับที่ให้ได้ในหัวข้อนี้ (น้อย→มาก) — Knowledge/Skill/Precaution = 0 1 2 3 · ที่เหลือ = 0 1 3 */
+export function scoreLevels(key: string): number[] {
+  const cr = CRITERIA.find((c) => c.key === key);
+  return cr ? Object.keys(cr.rubric).map(Number).sort((a, b) => a - b) : [];
+}
+
+export function isValidScore(key: string, n: number | undefined): boolean {
+  return n !== undefined && scoreLevels(key).includes(n);
+}
+
+/** คำอธิบายระดับนั้นจากสมุด (ไม่มี = หัวข้อนี้ไม่มีระดับนั้น) */
+export function rubricText(key: string, n: number): string | undefined {
+  const cr = CRITERIA.find((c) => c.key === key);
+  return cr ? (cr.rubric as Record<number, string>)[n] : undefined;
+}
+
+/** หัวข้อที่ยังไม่ได้เลือกคะแนน (หรือค่าไม่อยู่ในระดับของหัวข้อนั้น) — หน้าประเมินเริ่มแบบยังไม่เลือก ต้องครบก่อนลงนาม */
+export function missingCriteria(scores: Record<string, number> | undefined): CriterionKey[] {
+  return CRITERIA.filter((c) => !isValidScore(c.key, scores?.[c.key])).map((c) => c.key);
+}
+
 export const MAX_SCORE = 3;
 export const MAX_TOTAL = CRITERIA.length * MAX_SCORE; // 24
 

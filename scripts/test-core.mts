@@ -22,7 +22,7 @@ import {
   entryYearFromDtmu, isActiveStudent, isAlumni, isUpcoming, isWithinRetention, studentYear,
 } from '../src/domain/cohort.ts';
 import {
-  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, SCORE_OPTIONS,
+  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, isValidScore, missingCriteria, rubricText, scoreLevels,
   supersededBy, supersededTitle, totalScore,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
@@ -195,7 +195,17 @@ ok('ช่วงคลินิกคือปี 5–6', CLINIC_START_YEAR === 
    ═════════════════════════════════════════════════════════════════════════════ */
 console.log('\n④ checkin.ts — คะแนนรายคาบ');
 
-ok('สเกลตามสมุดจริงคือ 3 / 1 / 0 ไม่มี 2', !(SCORE_OPTIONS as readonly number[]).includes(2), SCORE_OPTIONS.join('/'));
+/* สเกลตามหน้าเกณฑ์ในสมุด (Section I page 1/7): สามข้อแรกมี 2 · อีกห้าข้อไม่มี
+   เดิมแอปให้ 0/1/3 ทุกข้อ อาจารย์จึงให้ 2 ใน Knowledge/Skill/Precaution ไม่ได้เลย */
+const FOUR_LEVEL = ['knowledge', 'skill', 'precaution'];
+ok('Knowledge/Skill/Precaution ให้ได้ 0 1 2 3', FOUR_LEVEL.every((k) => scoreLevels(k).join('') === '0123'), FOUR_LEVEL.map((k) => scoreLevels(k).join('')).join(','));
+ok('อีก 5 ข้อให้ได้ 0 1 3 ไม่มี 2', CRITERIA.filter((c) => !FOUR_LEVEL.includes(c.key)).every((c) => scoreLevels(c.key).join('') === '013'));
+ok('ทุกระดับที่ให้ได้มีคำอธิบายจากสมุด', CRITERIA.every((c) => scoreLevels(c.key).every((n) => (rubricText(c.key, n) ?? '').length > 20)));
+ok('ทุกข้อเต็มที่ 3', CRITERIA.every((c) => Math.max(...scoreLevels(c.key)) === 3));
+ok('ให้ 2 ในข้อที่ไม่มี 2 = ไม่ถูกต้อง', !isValidScore('chart', 2) && isValidScore('skill', 2));
+ok('ยังไม่เลือกเลย = ขาดครบ 8 ข้อ', missingCriteria({}).length === 8);
+ok('เลือกครบ = ไม่ขาด', missingCriteria(Object.fromEntries(CRITERIA.map((c) => [c.key, 0]))).length === 0);
+ok('ค่า 2 ในข้อที่ไม่มี 2 นับว่ายังไม่ครบ', missingCriteria({ ...Object.fromEntries(CRITERIA.map((c) => [c.key, 3])), chart: 2 }).join() === 'chart');
 ok('คะแนนเต็ม 24 = 8 หัวข้อ × 3', MAX_TOTAL === 24 && CRITERIA.length === 8, MAX_TOTAL);
 ok('ยังไม่ประเมิน → null ไม่ใช่ 0 (0 แปลว่าให้ศูนย์จริง)', totalScore(undefined) === null, String(totalScore(undefined)));
 ok('ให้เต็มทุกข้อ = 24', totalScore(Object.fromEntries(CRITERIA.map((c) => [c.key, 3]))) === 24);

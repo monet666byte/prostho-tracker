@@ -1036,6 +1036,39 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .evalcard--calm .scorerow__btns button[data-on='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
 .evalcard--calm .scorerow__btns button[data-on='true'][data-v='1'] { background: #fef3c7; color: #92600a; box-shadow: inset 0 0 0 1.5px #e0a800; }
 .evalcard--calm .scorerow__btns button[data-on='true'][data-v='0'] { background: var(--danger-tint); color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+/* 2 มีเฉพาะ Knowledge/Skill/Precaution — เหลืองอ่อนกว่า 1 (หักน้อยกว่า) */
+.evalcard--calm .scorerow__btns button[data-on='true'][data-v='2'] { background: #fffbeb; color: #a16207; box-shadow: inset 0 0 0 1.5px #f2d683; }
+
+/* ── ช่องที่หัวข้อนั้นไม่มีระดับ (เช่น 2 ใน Chart Recording) — เว้นเป็นจุด ให้เลขแต่ละตัวอยู่คอลัมน์เดียวกันทุกแถว ── */
+.scorerow__btns button.scorerow__gap { background: transparent; border-color: transparent; box-shadow: none; cursor: default; pointer-events: none; position: relative; }
+.scorerow__btns button.scorerow__gap::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--border-2); }
+
+/* ── เกณฑ์จากสมุด: ชี้ชื่อหัวข้อ = กล่องลอย (มีเมาส์เท่านั้น) · แตะ/คลิกชื่อ = กางเป็นแถวเต็มกว้าง เปิดได้ทีละข้อ ── */
+/* กล่องลอยยึดกรอบช่องคะแนนทั้งก้อน (กว้างเต็มช่อง ไม่ล้นขอบการ์ดไม่ว่าหัวข้ออยู่คอลัมน์ไหน)
+   แนวตั้งไม่ตั้ง top ไว้ จึงวางต่อใต้ชื่อหัวข้อพอดี — เลื่อนเมาส์จากชื่อลงไปที่กล่องได้ไม่หาย */
+.evalcard__scores { position: relative; }
+.scorerow__head { flex: 1; min-width: 0; }
+.scorerow__label--btn { display: block; width: 100%; border: 0; background: none; padding: 4px 0; text-align: left; cursor: pointer; }
+.scorerow__label--btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.scorerow__q { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; font: 700 9.5px var(--font-mono); color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--border-2); vertical-align: 1px; }
+.scorerow__empty { margin-left: 6px; font: 500 10.5px var(--font-body); color: var(--text-faint); white-space: nowrap; }
+.evalcard--calm .scorerow[data-open='true'] .scorerow__label--btn { color: var(--accent); font-weight: 600; }
+.scorerow[data-open='true'] .scorerow__q { background: var(--accent); color: #fff; box-shadow: none; }
+.rubricrow { grid-column: 1 / -1; min-width: 0; padding: 8px 0 10px; border-bottom: 1px solid var(--border); }
+.rubricrow > b { display: block; margin: 0 0 4px 8px; font: 600 12px var(--font-head); color: var(--accent); }
+.rubric { display: grid; gap: 3px; }
+.rubric p { margin: 0; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding: 6px 8px; border-radius: 8px; font: 400 11.5px/1.5 var(--font-body); color: var(--text-muted); }
+.rubric p b { font: 700 12px/1.5 var(--font-mono); color: var(--text-secondary); text-align: center; }
+.rubric p[data-picked='true'] { background: var(--accent-tint); color: var(--text); }
+.rubric p[data-picked='true'] b { color: var(--accent); }
+.scorerow__pop { display: none; visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s linear .12s; position: absolute; z-index: 20; left: 8px; right: 8px; max-width: 560px; padding: 10px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: 0 12px 28px rgba(16, 24, 40, .16); cursor: default; }
+.scorerow__pop > b { display: block; margin: 0 0 6px 2px; font: 600 12px var(--font-head); color: var(--text); }
+/* หน่วงก่อนโผล่ — เมาส์แค่ลากผ่านชื่อหัวข้อระหว่างทางไปกดปุ่มคะแนน กล่องจะไม่วูบขึ้นมา */
+@media (hover: hover) {
+  .scorerow__pop { display: block; }
+  .scorerow__label--btn:hover + .scorerow__pop, .scorerow__pop:hover { visibility: visible; opacity: 1; transition-delay: .35s, .35s; }
+}
+@media (hover: hover) and (prefers-reduced-motion: reduce) { .scorerow__pop { transition: none; } }
 .evalfoot { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; flex-wrap: wrap; }
 .evalfoot__total { font: 700 18px var(--font-mono); }
 .evalfoot__total small { font: 500 12.5px var(--font-body); color: var(--text-faint); }

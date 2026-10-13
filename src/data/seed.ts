@@ -325,7 +325,7 @@ function buildCheckIns(): CheckIn[] {
     createdAt: `${over.date}T09:10:00.000Z`,
     ...over,
   });
-  // สเกลจริงมีแค่ 3 / 1 / 0
+  // ข้อมูลเดโมให้แค่ 3 / 1 / 0 ซึ่งใช้ได้ทุกหัวข้อ (2 มีเฉพาะ Knowledge/Skill/Precaution)
   const score = (k: number, s2: number, rest = 3) => ({
     knowledge: k, skill: s2, precaution: rest, instrument: rest, time: rest, chart: rest,
     communication: 3, conduct: 3,
