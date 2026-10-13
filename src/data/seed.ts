@@ -305,7 +305,7 @@ function generateFor(student: Student, seed: number, graduated = false) {
 
 
 /** bump เมื่อแก้ fixture — ผู้ใช้เดิมจะได้ข้อมูลชุดใหม่โดยไม่ต้องล้างเบราว์เซอร์เอง */
-export const SEED_VERSION = 38; // 38: ธง Sect II/Design RPD คิดจากใบประเมินในเดโมด้วย
+export const SEED_VERSION = 39; // 39: คะแนนรายคาบในเดโมมี 2 (Knowledge/Skill/Precaution) ตามสมุด
 
 /** คาบคลินิกย้อนหลังของ นศ. ก + คิวรอประเมินของกลุ่ม PT7 — เลียนแบบหน้าสมุดจริง */
 function buildCheckIns(): CheckIn[] {
@@ -325,7 +325,7 @@ function buildCheckIns(): CheckIn[] {
     createdAt: `${over.date}T09:10:00.000Z`,
     ...over,
   });
-  // ข้อมูลเดโมให้แค่ 3 / 1 / 0 ซึ่งใช้ได้ทุกหัวข้อ (2 มีเฉพาะ Knowledge/Skill/Precaution)
+  // k/s2 ใส่ 2 ได้ (Knowledge/Skill มี 4 ระดับ) · rest ใช้กับ Instrument/Time/Chart ที่มีแค่ 3/1/0 จึงต้องเป็น 3/1/0 เท่านั้น
   const score = (k: number, s2: number, rest = 3) => ({
     knowledge: k, skill: s2, precaution: rest, instrument: rest, time: rest, chart: rest,
     communication: 3, conduct: 3,
@@ -334,9 +334,9 @@ function buildCheckIns(): CheckIn[] {
   // ประวัติของ นศ. ก — คาบละสัปดาห์ ประเมินแล้ว (เหมือนแถวที่อาจารย์เซ็นแล้วในสมุด)
   const demo: Array<[string, string[], boolean, Record<string, number> | null, string?]> = [
     ['2026-06-24', ['Oral examination'], false, score(1, 1)],
-    ['2026-07-01', ['Primary impression'], false, score(1, 1)],
-    ['2026-07-08', ['ไม่มีผู้ป่วย (no patient)', 'Laboratory work'], true, score(1, 3)],
-    ['2026-07-15', ['Bite registration'], false, score(3, 1)],
+    ['2026-07-01', ['Primary impression'], false, score(1, 2)],
+    ['2026-07-08', ['ไม่มีผู้ป่วย (no patient)', 'Laboratory work'], true, score(2, 3)],
+    ['2026-07-15', ['Bite registration'], false, score(3, 2)],
     ['2026-07-22', ['Laboratory work'], true, score(3, 3)],
     ['2026-07-29', ['Try in / Delivery'], false, score(3, 3)],
     ['2026-08-05', ['Oral examination', 'ส่งงาน · ตรวจงานกับอาจารย์'], false, score(3, 3, 3)],
@@ -386,8 +386,10 @@ function buildCheckIns(): CheckIn[] {
     );
   }
   // กลุ่มอื่นทั้ง 11 กลุ่ม: ประวัติประเมินแล้ว + คิววันนี้ ให้หน้าประเมินมีตัวอย่างทุกกลุ่ม
+  // 2 ใส่ได้เฉพาะ Knowledge/Skill/Precaution ตามสมุด — ข้ออื่นมีแค่ 3/1/0
   const score31 = (i: number) => ({
-    knowledge: i % 3 === 0 ? 1 : 3, skill: i % 4 === 0 ? 1 : 3, precaution: 3, instrument: 3,
+    knowledge: i % 3 === 0 ? 2 : i % 7 === 0 ? 1 : 3, skill: i % 4 === 0 ? 2 : i % 9 === 0 ? 1 : 3,
+    precaution: i % 6 === 0 ? 2 : 3, instrument: 3,
     time: i % 5 === 0 ? 1 : 3, chart: 3, communication: 3, conduct: 3,
   });
   for (let g = 1; g <= 12; g++) {
