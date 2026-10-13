@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { PositionPoint } from '../../domain/analytics';
 import { groupShort } from '../../domain/group';
 import { personName, t } from '../../lib/i18n';
@@ -70,11 +71,25 @@ function RowsView({ points, expected, myGroup }: { points: PositionPoint[]; expe
   );
 }
 
-const W = 640;
 const H = 210;
 const PAD = { l: 14, r: 14, t: 28, b: 30 };
 
+/** วาดเท่าความกว้างจริงของกล่อง — viewBox ตายตัวทำให้ตัวหนังสือในกราฟโตตามจอกว้าง */
+function useWidth(fallback: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(280, Math.round(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
+
 function CurveView({ points, expected, myGroup }: { points: PositionPoint[]; expected: number | null; myGroup?: string | null }) {
+  const [box, W] = useWidth(640);
   const vals = points.map((p) => p.share);
   const n = vals.length;
   const mean = vals.reduce((a, b) => a + b, 0) / n;
@@ -92,10 +107,10 @@ function CurveView({ points, expected, myGroup }: { points: PositionPoint[]; exp
   const mine = myGroup ? points.filter((p) => p.student.group === myGroup) : [];
 
   return (
-    <svg className="cpos-curve" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('การกระจายตัวของนักศึกษาทั้งชั้นปี')}>
+    <div ref={box}>
+    <svg className="cpos-curve" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={t('การกระจายตัวของนักศึกษาทั้งชั้นปี')}>
       <path d={`${line}L${X(1)} ${y0}L${X(0)} ${y0}Z`} fill="var(--accent)" fillOpacity={0.08} />
       <path d={line} fill="none" stroke="var(--accent)" strokeWidth={2} />
-      <line x1={X(0)} x2={X(1)} y1={y0} y2={y0} stroke="var(--border-2)" />
       {expected !== null && (
         <g>
           <line x1={X(expected)} x2={X(expected)} y1={PAD.t - 6} y2={y0} stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" />
@@ -118,5 +133,6 @@ function CurveView({ points, expected, myGroup }: { points: PositionPoint[]; exp
         <text key={v} x={X(v)} y={y0 + 17} textAnchor="middle" className="cpos-svgtext">{pct(v)}%</text>
       ))}
     </svg>
+    </div>
   );
 }
