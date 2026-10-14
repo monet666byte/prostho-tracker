@@ -2,7 +2,8 @@ import { CalendarCheck, CheckCircle, Clock, NotePencil, PencilSimple, Plus, Tras
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
-import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
+import { ActivityChips, PatientSelect, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
+import { useWaitFeature } from '../../data/waitFeature';
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { Shell } from '../../components/student/Shell';
@@ -35,6 +36,8 @@ export default function CheckInPage() {
   const [activities, setActivities] = useState<string[]>([]);
   const [patientId, setPatientId] = useState('');
   const [note, setNote] = useState('');
+  const [npWait, setNpWait] = useState<NoPatientWaitValue>(EMPTY_NO_PATIENT_WAIT);
+  const waitReady = useWaitFeature();
 
   const today = toISODate(new Date());
   const todayEntry = checkins.find((c) => c.date === today);
@@ -85,6 +88,8 @@ export default function CheckInPage() {
       if (!res) return; // ปิดกล้องเอง — ฟอร์มยังเปิดอยู่พร้อมสิ่งที่กรอกไว้
       scanned = res.scanned;
     }
+    if (noPatient && npWait.ids.length) await applyNoPatientWait(npWait, currentActor());
+    setNpWait(EMPTY_NO_PATIENT_WAIT);
     const wasEditing = !!editingId;
     setFormOpen(false);
     setEditingId(null);
@@ -147,6 +152,7 @@ export default function CheckInPage() {
             <PatientSelect value={patientId} onChange={setPatientId} patients={patients} />
           </label>
         )}
+        {noPatient && waitReady && <NoPatientWait works={works} namesOn={namesOn} value={npWait} onChange={setNpWait} />}
 
         <label className="field" style={{ marginTop: 12 }}>
           <span>{t('โน้ตเพิ่มเติม (ไม่บังคับ)')}</span>

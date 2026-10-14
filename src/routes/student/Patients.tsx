@@ -1,13 +1,17 @@
-import { LinkSimple, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
+import { LinkSimple, PauseCircle, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shell } from '../../components/student/Shell';
 import { SingleWorkBody, WorkBadges, WorkProgress } from '../../components/student/WorkRow';
+import { WaitSheet } from '../../components/student/WaitSheet';
+import { useWaitFeature } from '../../data/waitFeature';
+import { thaiShort } from '../../lib/date';
+import { waitReasonLabel } from '../../lib/waitReason';
 import { usePatientNamesOn, usePending, useWorkpieces } from '../../hooks/data';
 import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { currentProc, isStale, isReturned, isActiveWork } from '../../domain/rules';
+import { currentProc, isStale, isReturned, isActiveWork, isWaitingForPatient } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
@@ -97,6 +101,9 @@ export default function Patients() {
   const pending = usePending();
   const [editing, setEditing] = useState(false);
   const [target, setTarget] = useState<WorkpieceView | null>(null);
+  /* แผ่นตั้งสถานะ "รอคนไข้" — เปิดจากบรรทัดสถานะใต้ชื่อคนไข้ (ทุกใบที่ยังมีเคสกำลังทำ) */
+  const [waitFor, setWaitFor] = useState<string | null>(null);
+  const waitReady = useWaitFeature();
 
   async function confirmDelete() {
     if (!target) return;
@@ -119,7 +126,18 @@ export default function Patients() {
   });
 
   return (
-    <Shell overlay={<DeleteSheet target={target} onCancel={() => setTarget(null)} onConfirm={confirmDelete} />}>
+    <Shell overlay={<>
+      <DeleteSheet target={target} onCancel={() => setTarget(null)} onConfirm={confirmDelete} />
+      {waitFor && byPatient.get(waitFor) && (
+        <WaitSheet
+          patientId={waitFor}
+          title={patientTitle(byPatient.get(waitFor)![0].patient, namesOn, t)}
+          works={byPatient.get(waitFor)!}
+          note={byPatient.get(waitFor)![0].patient.note}
+          onClose={() => setWaitFor(null)}
+        />
+      )}
+    </>}>
       <header className="s-header">
         <div className="s-header--row">
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -171,6 +189,27 @@ export default function Patients() {
                     {namesOn && <><b className="herocase__hn">HN {patient.hn}</b> · </>}{tSexAge(patient.sexAge)}
                   </span>
                   <span style={{ display: 'block', font: '700 16.5px/1.3 var(--font-head)', marginTop: 3 }}>{patientTitle(patient, namesOn, t)}</span>
+                  {/* สถานะรอคนไข้ — โชว์ทุกใบที่ยังมีเคสกำลังทำ ไม่ต้องเข้าโหมดแก้ไข (ซ่อนไว้แล้วไม่มีใครเจอ) */}
+                  {waitReady && section === 'active' && !editing && (() => {
+                    const waiting = list.find((w) => isWaitingForPatient(w));
+                    return (
+                      <button className={`waitline${waiting ? ' waitline--on' : ''}`} onClick={() => setWaitFor(pid)}>
+                        {waiting ? (
+                          <>
+                            <PauseCircle size={14} weight="fill" />
+                            {waitReasonLabel(waiting.waitReason!)}
+                            {waiting.waitUntil && ` · ${t('นัดครั้งหน้า {d}', { d: thaiShort(waiting.waitUntil) })}`}
+                          </>
+                        ) : (
+                          <>
+                            <span className="waitline__dot" />
+                            {t('นัดได้ปกติ')}
+                            <span className="waitline__hint">· {t('แตะเพื่อเปลี่ยน')}</span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
                   {/* สถานะผู้ป่วยจากชีต/ที่กรอกเอง — แตะเพื่อแก้ได้เลย */}
                   {noteEdit?.id !== patient.id && (patient.note || editing) && (
                     <button

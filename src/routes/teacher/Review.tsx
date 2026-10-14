@@ -8,13 +8,14 @@ import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setMinimumRequirement, setReview, setStudentGate } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
-  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction, requirementFlag } from '../../domain/rules';
+  progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction, requirementFlag, isWaitingForPatient } from '../../domain/rules';
 import { patientWithHn } from '../../lib/privacy';
 import { useAllStudents, usePatientNamesOn, usePending, usePhotoSrc, useReviewConflicts, useReviews, useTeacher, useWorkpieces } from '../../hooks/data';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { thaiShort, relative } from '../../lib/date';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
+import { waitReasonLabel } from '../../lib/waitReason';
 import { currentActor, useApp } from '../../store/app';
 import type { Photo } from '../../domain/types';
 
@@ -220,6 +221,11 @@ export default function Review() {
                     )}
                     {requirementFlag(w) === 'off' && !isReturned(w) && (
                       <span className="rvtag" style={{ color: 'var(--warning-dark)' }}>{t('ไม่นับเกณฑ์')}</span>
+                    )}
+                    {isWaitingForPatient(w) && !isReturned(w) && (
+                      <span className="rvtag" style={{ color: 'var(--text-muted)' }}>
+                        ⏸ {t('รอคนไข้')} · {waitReasonLabel(w.waitReason!)}{w.waitUntil ? ` · ${t('นัด {d}', { d: thaiShort(w.waitUntil) })}` : ''}
+                      </span>
                     )}
                     {isStale(w, settings) && (
                       <span className="rvtag" style={{ color: 'var(--danger)' }}>{t('ค้าง {d} วัน', { d: daysSinceUpdate(w) })}</span>

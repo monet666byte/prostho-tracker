@@ -5,8 +5,8 @@
  * ไฟล์นี้นับอย่างเดียว ข้อความ/ปุ่มอยู่ที่หน้าจอ · ไม่ใช้ AI ตัวเลขทุกตัวมาจากกติกาเดียวกับหน้าอื่น
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
-import { daysSinceUpdate, isComplete, isStale, progression } from './rules';
-import type { CheckIn, Settings, Student, WorkType, Workpiece } from './types';
+import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, progression } from './rules';
+import type { CheckIn, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
 
 export interface TodayInput {
@@ -57,6 +57,8 @@ export interface TodaySummary {
   staleTop: { progression: number; type: WorkType } | null;
   /** กลุ่มที่ต้องตามตั้งแต่ ⅓ ของกลุ่ม (isFollowUpGroup) เรียงคนต้องตามมากสุดก่อน · เท่ากันคงลำดับกลุ่มเดิม */
   followUpGroups: Array<{ code: string; year: number; followUp: number; size: number }>;
+  /** เคสที่หยุดรอคนไข้อยู่ (ไม่นับเป็นค้าง/ต้องตาม) — นัดใกล้สุดก่อน · ไม่มีนัดไว้ท้าย */
+  waitingList: Array<{ studentId: string; workId: string; type: WorkType; reason: WaitReason; until?: string }>;
   /** ชิ้นงานที่จบใน 7 วันล่าสุด — ไม่นับงานจากชีต (completedAt ของมันคือวันนำเข้า ไม่ใช่วันจบจริง) */
   doneThisWeek: number;
   /** มีเรื่องที่อาจารย์ต้องทำหรือต้องดู — ไม่มี = "วันนี้ไม่มีอะไรน่าห่วง" */
@@ -139,6 +141,11 @@ export function todaySummary(input: TodayInput): TodaySummary {
     .filter((g) => isFollowUpGroup(g.followUp, g.size))
     .sort((a, b) => b.followUp - a.followUp);
 
+  const waitingList: TodaySummary['waitingList'] = works
+    .filter((w) => isWaitingForPatient(w, now))
+    .map((w) => ({ studentId: w.studentId, workId: w.id, type: w.type, reason: w.waitReason!, until: w.waitUntil }))
+    .sort((a, b) => (a.until ?? '9999').localeCompare(b.until ?? '9999') || a.studentId.localeCompare(b.studentId));
+
   const weekAgo = now.getTime() - 7 * DAY;
   const doneThisWeek = works.filter((w) => {
     if (w.fromSheet || !w.completedAt || !isComplete(w)) return false;
@@ -147,7 +154,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleTop, followUpGroups, doneThisWeek,
+    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleTop, followUpGroups, waitingList, doneThisWeek,
     needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || followUpGroups.length > 0,
   };
 }

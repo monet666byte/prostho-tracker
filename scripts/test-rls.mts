@@ -1019,6 +1019,22 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const row32 = (await db.query<{ 'สถานะ': string; migration: string }>(
     (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0032'));
   check('check-migrations.sql ตอบว่า 0032 รันแล้ว', !!row32 && row32['สถานะ'].startsWith('✓'), row32);
+
+  // ── ㉒ เคสรอคนไข้ (0033) — คอลัมน์ใหม่ เขียนได้ตามกฎเดิมของ workpieces ──
+  console.log('\n㉒ เคสรอคนไข้ (0033)');
+  await db.query(`insert into patients (id, name, hn, owner_student_id) values ('pA33', '', 'HN-A33', 'sA') on conflict (id) do nothing`);
+  const wSet = await commit(U.A, `insert into workpieces (id, patient_id, student_id, type, accepted_date, last_updated_at, wait_reason, wait_until, wait_since)
+    values ('wA33', 'pA33', 'sA', 'CD', '2026-06-03', '2026-09-01', 'preprosth', '2026-10-28', '2026-10-14') returning wait_reason, wait_until::text as u`);
+  check('นศ. ตั้งเคสตัวเองเป็นรอคนไข้ได้ · เก็บวันนัดเป็น date', wSet.ok && wSet.rows[0]?.wait_reason === 'preprosth' && wSet.rows[0]?.u === '2026-10-28', wSet);
+  const wBad = await commit(U.A, `update workpieces set wait_reason = 'whatever' where id = 'wA33' returning id`);
+  check('เหตุผลนอกรายการถูกปฏิเสธ (check constraint)', !wBad.ok, wBad);
+  const wOther = await commit(U.B, `update workpieces set wait_reason = 'busy' where id = 'wA33' returning id`);
+  check('นศ. คนอื่นตั้งรอให้เคสที่ไม่ใช่ของตัวเองไม่ได้', !wOther.ok || wOther.rows.length === 0, wOther);
+  const wClear = await commit(U.A, `update workpieces set wait_reason = null, wait_until = null, wait_since = null where id = 'wA33' returning wait_reason`);
+  check('ยกเลิกรอคนไข้ได้ (กลับเป็น null)', wClear.ok && wClear.rows[0]?.wait_reason === null, wClear);
+  const row33 = (await db.query<{ 'สถานะ': string; migration: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0033'));
+  check('check-migrations.sql ตอบว่า 0033 รันแล้ว', !!row33 && row33['สถานะ'].startsWith('✓'), row33);
 }
 
 await db.close();

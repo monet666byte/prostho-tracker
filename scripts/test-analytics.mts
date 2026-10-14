@@ -130,6 +130,11 @@ ok('ไม่มีนักศึกษาเลย → ลิสต์ว่�
     ok('รายการที่กด "เลิกทำ" ไม่นับเป็น step ที่ผ่าน', undone.stuckPeriods === 3, undone.stuckPeriods);
     const other = riskRows([S1], [w], S, cs, [update('w-ของคนอื่น', '2026-10-15')], NOW)[0];
     ok('step ของงานคนอื่น ไม่มาล้างสถานะติดของเรา', other.stuckPeriods === 3, other.stuckPeriods);
+    /* คาบที่บอกว่า "ไม่มีผู้ป่วย" ไม่ใช่คาบที่ลงมือแล้วไม่ผ่าน — เดิมนับรวมแล้วขึ้น "ติดเทคนิค" ผิด */
+    const noPt = cs.map((c, i) => (i < 2 ? { ...c, noPatient: true } : c));
+    const np = riskRows([S1], [w], S, noPt, [], NOW)[0];
+    ok('คาบ "ไม่มีผู้ป่วย" ไม่นับเป็นคาบที่ติด', np.stuckPeriods === 1, np.stuckPeriods);
+    ok('ไม่มีผู้ป่วย 2 คาบ + ติดจริง 1 คาบ → ไม่ขึ้นติดเทคนิค', !/ติด .* มา \d+ คาบ/.test(np.reason), np.reason);
 }
 {
   const rows = riskRows(
@@ -522,6 +527,19 @@ console.log('\nrequirementShare / classPosition');
   const y6 = expectedRequirementShare(2568, S, NOW);
   ok('ต.ค. ปี 6 เป้ามากกว่าปี 5', y6 > mid && y6 < 1, y6.toFixed(3));
   ok('เลยคาบสุดท้ายแล้ว → 1 ไม่เกิน', expectedRequirementShare(2568, S, new Date('2027-05-01')) === 1);
+}
+
+
+console.log('\nriskRows — เคสรอคนไข้ไม่ทำให้ขึ้น "เงียบ"');
+{
+  const quiet = at('CD', 3, { lastUpdatedAt: new Date(NOW.getTime() - 30 * 86_400_000).toISOString() });
+  /* เกณฑ์รายปี 1 ชิ้น — คาบเหลือเยอะพอ จึงเหลือแค่เรื่อง "เงียบ" ให้ตัดสิน */
+  const S1Y = withReq({ req: { ...S.req, perYear: 1 } });
+  const plain = riskRows([S1], [quiet], S1Y, [], [], NOW)[0];
+  ok('เคสเดียวเงียบ 30 วัน ไม่ได้ตั้งรอ → ขึ้นเงียบ', /เงียบ/.test(plain.reason) && plain.risk !== 'ok', plain.reason);
+  const waiting = { ...quiet, waitReason: 'busy' as const, waitSince: '2026-10-10' };
+  const w = riskRows([S1], [waiting], S1Y, [], [], NOW)[0];
+  ok('เคสเดียวกันตั้งรอคนไข้ → ไม่ขึ้นเงียบ', !/เงียบ/.test(w.reason), w.reason);
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

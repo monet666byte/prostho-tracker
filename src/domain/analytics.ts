@@ -6,7 +6,7 @@
 import { lang, personName } from '../lib/i18n';
 import { REQ_TYPES, orderOf, typeMeta } from './catalog';
 import {
-  caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, maxProgression, procAt, procList, progression, isActiveWork, requirementShare } from './rules';
+  caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, isWaitingForPatient, maxProgression, procAt, procList, progression, isActiveWork, requirementShare } from './rules';
 import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { cohortOf, isUpcoming } from './cohort';
@@ -195,12 +195,16 @@ export function riskRows(
       let stuckPeriods = 0;
       for (const c of myCheckins) {
         if (passed.has(c.date)) break;
+        /* คาบที่บอกว่า "ไม่มีผู้ป่วย" ไม่ใช่คาบที่ลงมือแล้วไม่ผ่าน — ไม่นับเป็นติด และไม่ตัดลำดับ */
+        if (c.noPatient) continue;
         stuckPeriods++;
       }
 
-      const lastStepDays = active.length
-        ? Math.min(...active.map((w) => Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)))
-        : 999;
+      /* เคสที่รอคนไข้ไม่นับว่าเงียบ — ถ้าทุกเคสในมือรอคนไข้อยู่ ถือว่ายังไม่เงียบ */
+      const moving = active.filter((w) => !isWaitingForPatient(w, now));
+      const lastStepDays = moving.length
+        ? Math.min(...moving.map((w) => Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)))
+        : active.length ? 0 : 999;
       const lastCheckinDays = myCheckins.length
         ? Math.floor((now.getTime() - new Date(myCheckins[0].date).getTime()) / DAY)
         : 999;

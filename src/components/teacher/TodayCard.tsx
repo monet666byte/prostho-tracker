@@ -1,19 +1,20 @@
-import { ArrowsClockwise, Check, Clock, CloudSlash, PencilSimple, Warning } from '@phosphor-icons/react';
+import { ArrowsClockwise, Check, Clock, CloudSlash, PauseCircle, PencilSimple, Warning } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
 import type { TodaySummary } from '../../domain/today';
 import { lang, t } from '../../lib/i18n';
 
 export interface TodayLine {
   key: string;
-  tone: 'do' | 'warn' | 'good';
-  icon: 'eval' | 'warn' | 'stale' | 'good' | 'sync' | 'offline';
+  /** muted = รู้ไว้ ไม่ต้องทำอะไร (เคสรอคนไข้) */
+  tone: 'do' | 'warn' | 'good' | 'muted';
+  icon: 'eval' | 'warn' | 'stale' | 'good' | 'sync' | 'offline' | 'wait';
   text: ReactNode;
   go?: { label: string; onClick: () => void };
   /** รายคนใต้บรรทัด (ชื่อ + ปุ่มทำงานนั้นได้เลย) — ไม่มี = บรรทัดเดียวแบบเดิม */
   items?: ReactNode;
 }
 
-const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise, offline: CloudSlash } as const;
+const ICONS = { eval: PencilSimple, warn: Warning, stale: Clock, good: Check, sync: ArrowsClockwise, offline: CloudSlash, wait: PauseCircle } as const;
 
 /** "สวัสดีตอนเช้า" ก่อนเที่ยง · หลังเที่ยง "สวัสดีวันศุกร์" */
 export function greeting(now = new Date()): string {

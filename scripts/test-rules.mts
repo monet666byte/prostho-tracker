@@ -12,7 +12,7 @@
  */
 import {
   activeStepGroup, caseCount, completionImpact, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
-  daysSinceUpdate, isActiveWork, isStale, maxProgression, meetsAllRequirements,
+  daysSinceUpdate, isActiveWork, isStale, isWaitingForPatient, maxProgression, meetsAllRequirements, needsWaitNudge, WAIT_MAX_DAYS,
   overallPercent, percentCompleted, procList, requirementFlag, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
 import { readDefaultSettings } from './test-helpers.mts';
@@ -277,6 +277,30 @@ console.log('\nแผ่นฉลองตอนปิดเคส');
   const simple = wp('APD', { id: 'apd', minimumRequirement: false });
   const simpleDone = { ...simple, procIndex: procList(simple).length - 1, completedAt: NOW.toISOString() };
   ok('Simple APD ไม่นับ → ไม่มีแถวเกณฑ์', completionImpact([simple], [simpleDone], simpleDone, S, NOW).row === null);
+}
+
+
+console.log('\nรอคนไข้ — เคสหยุดเพราะคนไข้ไม่นับเป็นค้าง จนเลยวันนัด / เกิน WAIT_MAX_DAYS');
+{
+  const old = { lastUpdatedAt: daysBefore(30) };
+  const plain = wp('CD', old);
+  ok('เคสเงียบ 30 วัน ไม่ได้ตั้งรอ = ค้าง', isStale(plain, S, NOW));
+  const waitDate = wp('CD', { ...old, waitReason: 'preprosth', waitUntil: '2026-10-28', waitSince: '2026-10-01' });
+  ok('ตั้งรอพร้อมวันนัดในอนาคต = ไม่ค้าง', isWaitingForPatient(waitDate, NOW) && !isStale(waitDate, S, NOW));
+  ok('วันนัดคือวันนี้ ยังนับว่ารอ', isWaitingForPatient({ ...waitDate, waitUntil: '2026-10-15' }, NOW));
+  const past = { ...waitDate, waitUntil: '2026-10-14' };
+  ok('เลยวันนัดแล้ว = กลับมาค้างตามปกติ', !isWaitingForPatient(past, NOW) && isStale(past, S, NOW));
+  const noDate = wp('CD', { ...old, waitReason: 'busy', waitSince: '2026-10-01' });
+  ok('ไม่มีวันนัด รอได้ภายใน WAIT_MAX_DAYS', isWaitingForPatient(noDate, NOW) && !isStale(noDate, S, NOW));
+  const tooLong = { ...noDate, waitSince: new Date(NOW.getTime() - WAIT_MAX_DAYS * 86_400_000).toISOString().slice(0, 10) };
+  ok('ไม่มีวันนัดและเกิน WAIT_MAX_DAYS = กลับมาค้าง', !isWaitingForPatient(tooLong, NOW) && isStale(tooLong, S, NOW));
+  const doneWait = done(wp('CD', { waitReason: 'busy', waitSince: '2026-10-01' }));
+  ok('เคสจบแล้วไม่นับว่ารอ (ไม่ขึ้นในรายการรอ)', !isWaitingForPatient(doneWait, NOW));
+  const returned = wp('CD', { ...old, returned: true, waitReason: 'busy', waitSince: '2026-10-01' });
+  ok('เคสคืนแล้วไม่นับว่ารอ', !isWaitingForPatient(returned, NOW));
+  ok('เคสเงียบ 10 วัน ไม่ได้ตั้งรอ → ถามนักศึกษา', needsWaitNudge(wp('CD', { lastUpdatedAt: daysBefore(10) }), NOW));
+  ok('เคสเงียบ 9 วัน → ยังไม่ถาม', !needsWaitNudge(wp('CD', { lastUpdatedAt: daysBefore(9) }), NOW));
+  ok('ตั้งรอแล้ว → ไม่ถามซ้ำ', !needsWaitNudge(waitDate, NOW));
 }
 
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');

@@ -367,5 +367,25 @@ console.log('\nmonthlyReport — รายงานประจำเดือ�
   ok('ขอบเขตว่างไม่พัง', empty.completedInMonth === 0 && empty.bottleneckType === null && empty.bottleneck.length === 0);
 }
 
+
+console.log('\ntodaySummary — รายการเคสรอคนไข้');
+{
+  const a = student({ id: 'wa' });
+  const today = new Date();
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const soon = iso(new Date(today.getTime() + 5 * 86_400_000));
+  const later = iso(new Date(today.getTime() + 20 * 86_400_000));
+  const works = [
+    wp('CD', { studentId: 'wa', lastUpdatedAt: daysAgo(30), waitReason: 'preprosth', waitUntil: later, waitSince: iso(today) }),
+    wp('RPD', { studentId: 'wa', lastUpdatedAt: daysAgo(30), waitReason: 'busy', waitUntil: soon, waitSince: iso(today) }),
+    wp('CB', { studentId: 'wa', lastUpdatedAt: daysAgo(30), waitReason: 'refer', waitSince: iso(today) }),
+    wp('PC', { studentId: 'wa', lastUpdatedAt: daysAgo(30) }),
+  ];
+  const s = todaySummary({ students: [a], works, checkins: [], settings: S, risk: [] });
+  ok('เคสรอคนไข้ไม่นับเป็นค้าง · เคสที่ไม่ได้ตั้งรอยังค้าง', s.stale === 1, s.stale);
+  ok('รายการรอคนไข้ครบ 3 เคส · นัดใกล้สุดก่อน · ไม่มีนัดไว้ท้าย',
+    s.waitingList.map((x) => x.reason).join(',') === 'busy,preprosth,refer', s.waitingList.map((x) => x.reason).join(','));
+}
+
 console.log(bad ? `\n❌ ตก ${bad} ข้อ` : '\n✅ ผ่านหมด');
 process.exit(bad ? 1 : 0);

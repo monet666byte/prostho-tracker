@@ -128,5 +128,11 @@ from (
                 where table_schema = 'public' and table_name = 'self_assessments' and column_name = 'reopened_at')
     and exists (select 1 from pg_policies where tablename = 'self_assessments' and policyname = 'sa_update'
                 and qual like '%sa_form_open%')
+
+  -- 0033 ดูสองร่องรอย (คอลัมน์เหตุผล · check ค่าที่ยอมรับ)
+  union all select '0033 เคสรอคนไข้ (ไม่นับเป็นค้างระหว่างรอ)',
+    exists (select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = 'workpieces' and column_name = 'wait_reason')
+    and exists (select 1 from pg_constraint where conname = 'workpieces_wait_reason_check')
 ) x
 order by x.label;

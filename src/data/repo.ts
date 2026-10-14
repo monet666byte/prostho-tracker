@@ -15,10 +15,10 @@ import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushNow, pendingPushCount } from './cloudSync';
 import { clampPerformedAt, toISODate } from '../lib/date';
-import { hasTeacherEvidence, isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
+import { hasTeacherEvidence, isActiveWork, isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WaitReason, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { SECT2_GATE_OF, sect2GateValue } from '../domain/sect2';
 import { saId, saStudentCanEdit } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
@@ -155,6 +155,10 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
   const performedAt = clampPerformedAt(input.performedAt, w.acceptedDate);
   const now = new Date().toISOString();
   const updated: Workpiece = { ...w, procIndex: next.index, lastUpdatedAt: now };
+  /* ผ่าน step ได้ = คนไข้มาแล้ว — ล้างสถานะ "รอคนไข้" ของเคสนี้ (เคสอื่นของคนไข้รายเดียวกันล้างในธุรกรรมข้างล่าง) */
+  delete updated.waitReason;
+  delete updated.waitUntil;
+  delete updated.waitSince;
   // จบเคสเมื่อไหร่ ใช้ตัดสินเกณฑ์รายปี จึงต้องเก็บเวลาไว้
   if (isComplete(updated)) updated.completedAt = performedAt;
   const label = procLabel(w.type, next);
@@ -175,6 +179,12 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
   await db.transaction('rw', [db.workpieces, db.updates, db.queue, db.photos, db.audit], async () => {
     await db.workpieces.put(updated);
     await db.updates.add(update);
+    const siblings = await db.workpieces.where('patientId').equals(w.patientId).toArray();
+    for (const sib of siblings) {
+      if (sib.id !== w.id && sib.waitReason) {
+        await db.workpieces.update(sib.id, { waitReason: undefined, waitUntil: undefined, waitSince: undefined });
+      }
+    }
     /* เดิมตรงนี้สร้าง "รูป" เปล่าพร้อมขนาดไฟล์ที่สุ่มขึ้นมา ทั้งที่ไม่มีไฟล์รูปอยู่จริง
        ตอนนี้รูปถูกแนบจริงผ่าน usePhotoAttach ตั้งแต่ก่อนกดยืนยัน — แค่ผูกเข้ากับ update นี้
 
@@ -1338,6 +1348,42 @@ export async function updatePatientNote(patientId: string, note: string, actor: 
     actor,
     { studentId: before.ownerStudentId },
   );
+}
+
+/** ป้ายเหตุผลรอคนไข้ใน audit — เก็บเป็นไทยเสมอ (audit แสดงดิบ ห้ามผ่าน t()) */
+const WAIT_AUDIT_LABEL: Record<WaitReason, string> = {
+  busy: 'คนไข้ไม่ว่าง', preprosth: 'รอ pre-prosth', refer: 'refer ไปภาคอื่น', other: 'อื่นๆ',
+};
+
+/**
+ * ตั้ง/ยกเลิก "รอคนไข้" ให้ทุกเคสที่กำลังทำของคนไข้รายนี้ — คนไข้ไม่มา = ทุกเคสของเขาหยุดพร้อมกัน
+ * wait = null คือ "นัดได้ปกติ" (ล้างสถานะ) · until ไม่บังคับ (ไม่มี = รอได้ไม่เกิน WAIT_MAX_DAYS)
+ */
+export async function setPatientWait(
+  patientId: string,
+  wait: { reason: WaitReason; until?: string } | null,
+  actor: string,
+): Promise<number> {
+  const works = (await db.workpieces.where('patientId').equals(patientId).toArray()).filter(isActiveWork);
+  if (!works.length) return 0;
+  const today = toISODate(new Date());
+  const until = wait?.until && wait.until >= today ? wait.until : undefined;
+  await db.transaction('rw', [db.workpieces, db.audit], async () => {
+    for (const w of works) {
+      await db.workpieces.update(w.id, wait
+        ? { waitReason: wait.reason, waitUntil: until, waitSince: today }
+        : { waitReason: undefined, waitUntil: undefined, waitSince: undefined });
+    }
+    /* ⚠️ ห้ามใส่ชื่อหรือ HN ผู้ป่วยลง audit — ใช้รหัสเคส (เหตุผลเดียวกับ updatePatientNote) */
+    await db.audit.add({
+      id: uid('a'),
+      text: wait
+        ? `ตั้งรอคนไข้ (${WAIT_AUDIT_LABEL[wait.reason]}${until ? ` · นัด ${until}` : ''}) ${caseCode(patientId)}`
+        : `ยกเลิกรอคนไข้ ${caseCode(patientId)}`,
+      who: actor, at: new Date().toISOString(), studentId: works[0].studentId,
+    });
+  });
+  return works.length;
 }
 
 /** คืนเคส / ยกคืนสถานะ — นักศึกษาทำเองได้จากหน้าเคส

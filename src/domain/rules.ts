@@ -4,8 +4,8 @@
  */
 
 import { CUM_REQ_TYPES, DENTURE_CLASSES, PROCS, RECALL, REQ_TYPES, TYPES, orderOf, type Proc, typeMeta } from './catalog';
-import { academicYear } from '../lib/date';
-import type { Settings, WorkType, Workpiece, StudentGates, GateKey } from './types';
+import { academicYear, toISODate } from '../lib/date';
+import type { Settings, WorkType, Workpiece, StudentGates, GateKey, WaitReason } from './types';
 
 /** ลิสต์ว่างสำหรับประเภทที่ catalog รุ่นนี้ไม่รู้จัก — คนละ object ทุกครั้งไม่ได้ ต้องคงที่ */
 const NO_PROCS: Proc[] = [];
@@ -157,7 +157,33 @@ export function daysSinceUpdate(w: Workpiece, now = new Date()): number {
  * ทุกหน้า (ภาพรวม/ตรวจงาน/วิเคราะห์) โดยไม่มีวันลดลง
  */
 export function isStale(w: Workpiece, settings: Settings, now = new Date()): boolean {
-  return isActiveWork(w) && daysSinceUpdate(w, now) >= settings.stale;
+  return isActiveWork(w) && !isWaitingForPatient(w, now) && daysSinceUpdate(w, now) >= settings.stale;
+}
+
+/* ── รอคนไข้ ─────────────────────────────────────────────────────────────────
+   เคสที่หยุดเพราะคนไข้ (ไม่ว่าง · รอ pre-prosth · refer) ไม่ใช่นักศึกษาช้า
+   ระหว่างรอ: ไม่นับเป็นค้าง และไม่ทำให้นักศึกษาขึ้น "ต้องตาม" เพราะเงียบ
+   หมดเวลารอ (เลยวันนัด หรือไม่มีวันนัดแล้วเกิน WAIT_MAX_DAYS) = กลับมานับตามปกติ
+   กันเคสที่ตั้ง "รอ" ทิ้งไว้แล้วลืม */
+export const WAIT_REASONS: readonly WaitReason[] = ['busy', 'preprosth', 'refer', 'other'];
+/** ไม่ใส่วันนัด รอได้นานสุดกี่วัน */
+export const WAIT_MAX_DAYS = 30;
+/** เคสเงียบกี่วันแล้วหน้าแรกนักศึกษาถามว่า "คนไข้ไม่ว่างไหม" — ก่อนถึงเกณฑ์ค้างของภาค (ค่าเริ่มต้น 14) */
+export const WAIT_NUDGE_DAYS = 10;
+
+export function isWaitingForPatient(w: Workpiece, now = new Date()): boolean {
+  if (!w.waitReason || !isActiveWork(w)) return false;
+  const today = toISODate(now);
+  if (w.waitUntil) return today <= w.waitUntil;
+  if (!w.waitSince) return false;
+  const since = new Date(`${w.waitSince}T00:00:00`).getTime();
+  const todayAt = new Date(`${today}T00:00:00`).getTime();
+  return Math.round((todayAt - since) / 86_400_000) < WAIT_MAX_DAYS;
+}
+
+/** เคสที่ควรถามนักศึกษาว่าคนไข้ไม่ว่างหรือเปล่า — ยังทำอยู่ · ไม่ได้ตั้งรอ · เงียบมานานพอ */
+export function needsWaitNudge(w: Workpiece, now = new Date()): boolean {
+  return isActiveWork(w) && !isWaitingForPatient(w, now) && daysSinceUpdate(w, now) >= WAIT_NUDGE_DAYS;
 }
 
 /**

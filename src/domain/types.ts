@@ -119,8 +119,17 @@ export interface Workpiece {
   returned?: boolean;
   /** ข้อความคืนเคสตามที่เขียนในชีต เช่น "คืนเคสเพราะคนไข้ไม่สะดวกทำ preprosth" */
   returnNote?: string;
+  /** เคสหยุดเพราะคนไข้ (ไม่ใช่นักศึกษาช้า) — ระหว่างรอไม่นับเป็นค้าง/ต้องตาม · กติกาอยู่ที่ isWaitingForPatient */
+  waitReason?: WaitReason;
+  /** นัดครั้งหน้า (ISO date) — เลยวันนี้แล้วเคสกลับมานับตามปกติ */
+  waitUntil?: string;
+  /** วันที่ตั้งสถานะรอ (ISO date) — ไม่มีวันนัด = รอได้ไม่เกิน WAIT_MAX_DAYS นับจากวันนี้ */
+  waitSince?: string;
   catalogVersion: string; // ชีตแก้รายปี — เก็บว่าอ้างอิง catalog เวอร์ชันไหน
 }
+
+/** เหตุผลที่เคสหยุดรอคนไข้ — ต้องตรงกับ check constraint ใน migration 0033 */
+export type WaitReason = 'busy' | 'preprosth' | 'refer' | 'other';
 
 export interface ProgressUpdate {
   id: string;

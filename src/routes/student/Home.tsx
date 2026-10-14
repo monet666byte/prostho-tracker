@@ -1,24 +1,26 @@
-import { Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
+import { Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Hourglass, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
-import { ActivityChips, PatientSelect } from '../../components/student/CheckInFields';
+import { ActivityChips, PatientSelect, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { recordStepLabel } from '../../components/student/stepLabel';
 import { Shell } from '../../components/student/Shell';
 import { SyncBanner } from '../../components/student/SyncBanner';
+import { WaitSheet } from '../../components/student/WaitSheet';
+import { useWaitFeature } from '../../data/waitFeature';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
-import { personName, t, tSexAge } from '../../lib/i18n';
+import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
 import { typeMeta } from '../../domain/catalog';
 import type { Settings, WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
-import { activeStepGroup, caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
+import { activeStepGroup, caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { NO_PATIENT_ACTIVITY } from '../../domain/checkin';
@@ -360,6 +362,22 @@ export default function Home() {
   const works = useWorkpieces(session?.studentId);
   const pending = usePending();
   const navigate = useNavigate();
+  const waitReady = useWaitFeature();
+  /* การ์ดถาม "คนไข้ไม่ว่างไหม" — เคสที่เงียบนานสุด (needsWaitNudge) · กด "ยังทำอยู่" แล้วไม่ถามเคสนั้นซ้ำ
+     จนกว่าจะมีการอัปเดตใหม่ (จำคู่ id + เวลาอัปเดตล่าสุดไว้ในเครื่อง) */
+  const [nudgeSkip, setNudgeSkip] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('pt-wait-nudge') ?? '{}') as Record<string, string>; } catch { return {}; }
+  });
+  const nudge = waitReady
+    ? [...works].filter((w) => needsWaitNudge(w) && nudgeSkip[w.id] !== w.lastUpdatedAt)
+      .sort((a, b) => a.lastUpdatedAt.localeCompare(b.lastUpdatedAt))[0]
+    : undefined;
+  const [waitFor, setWaitFor] = useState<WorkpieceView | null>(null);
+  function skipNudge(w: WorkpieceView) {
+    const next = { ...nudgeSkip, [w.id]: w.lastUpdatedAt };
+    setNudgeSkip(next);
+    try { localStorage.setItem('pt-wait-nudge', JSON.stringify(next)); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ถามใหม่ */ }
+  }
   /* แบบประเมินตนเองของปีการศึกษานี้ — การ์ดบนหน้าแรกทำหน้าที่แจ้งเตือนไปในตัว
      3 สถานะ: เปิดแล้วยังไม่เริ่ม (จุดแดง) · กรอกค้าง (บอกความคืบหน้า) · ส่งแล้ว (เงียบ) */
   const selfAssessment = useSelfAssessment(session?.studentId, saYearNow());
@@ -448,6 +466,7 @@ export default function Home() {
   const [askActs, setAskActs] = useState<string[]>([]);
   const [askPatient, setAskPatient] = useState('');
   const askNoPatient = askActs.includes(NO_PATIENT_ACTIVITY);
+  const [askWait, setAskWait] = useState<NoPatientWaitValue>(EMPTY_NO_PATIENT_WAIT);
   const askPatients = useCheckInPatients(works, namesOn);
 
   async function submitAskCheckIn() {
@@ -462,6 +481,8 @@ export default function Home() {
         activities: askActs, note: '', actor: currentActor(),
       }));
       if (!res) return; // ปิดกล้องเอง — แผ่นถามยังเปิดอยู่ให้ลองใหม่
+      if (askNoPatient && askWait.ids.length) await applyNoPatientWait(askWait, currentActor());
+      setAskWait(EMPTY_NO_PATIENT_WAIT);
       setAskCheckIn(false);
       touch();
       if (!res.scanned) showToast({ message: t('เช็คอินแล้ว {time} น. — โชคดีกับคาบนี้ครับ', { time: res.stamp.checkinAt }), tone: 'success' });
@@ -523,6 +544,9 @@ export default function Home() {
                 <PatientSelect value={askPatient} onChange={setAskPatient} patients={askPatients} ariaLabel={t('ผู้ป่วยที่นัด')} style={{ marginBottom: 14 }} />
               </>
             )}
+            {askNoPatient && waitReady && (
+              <div style={{ marginBottom: 14 }}><NoPatientWait works={works} namesOn={namesOn} value={askWait} onChange={setAskWait} /></div>
+            )}
 
             <button className="btn" style={{ height: 50 }} onClick={submitAskCheckIn}>
               <CheckCircle size={18} weight="fill" />
@@ -536,6 +560,15 @@ export default function Home() {
       )}
       <ConfirmSheet />
       {scan.overlay}
+      {waitFor && (
+        <WaitSheet
+          patientId={waitFor.patientId}
+          title={patientTitle(waitFor.patient, namesOn, t)}
+          works={works.filter((w) => w.patientId === waitFor.patientId)}
+          note={waitFor.patient.note}
+          onClose={() => setWaitFor(null)}
+        />
+      )}
     </>}>
       <header className="s-header">
         <div className="s-header--row">
@@ -627,6 +660,22 @@ export default function Home() {
           cases={panelCases} index={slide} onIndex={setSlideAt}
           pending={pending} settings={settings} onPass={(id) => openSheet(id)} intro={intro}
         />
+      )}
+
+      {nudge && (
+        <section className="waitnudge" aria-label={t('เคสที่ไม่ขยับนาน')}>
+          <span className="waitnudge__title">
+            <Hourglass size={17} weight="fill" color="var(--warning)" />
+            {t('{p} ไม่ขยับมา {n} วัน', { p: patientTitle(nudge.patient, namesOn, t), n: daysSinceUpdate(nudge) })}
+          </span>
+          <p className="waitnudge__sub">
+            {tText(nudge.detail)} · {t('ขั้น {n}', { n: Math.max(progression(nudge), 0) })} — {t('ถ้าคนไข้ไม่ว่าง บอกแอปไว้ อาจารย์จะได้ไม่เข้าใจว่าเคสค้าง')}
+          </p>
+          <div className="waitnudge__btns">
+            <button className="btn" onClick={() => setWaitFor(nudge)}>{t('คนไข้ไม่ว่าง / รอ')}</button>
+            <button className="btn btn--sec" onClick={() => skipNudge(nudge)}>{t('ยังทำอยู่')}</button>
+          </div>
+        </section>
       )}
 
       {rest.map((w) => {

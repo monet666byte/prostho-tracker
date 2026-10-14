@@ -27,6 +27,8 @@ import {
 import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
+import { thaiShort } from '../../lib/date';
+import { waitReasonLabel } from '../../lib/waitReason';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { signOutToReLogin, useApp } from '../../store/app';
 import { onUpdateReady, updateReady } from '../../lib/appUpdate';
@@ -271,6 +273,13 @@ export default function Dashboard() {
         go: { label: t('ดูรายชื่อ'), onClick: () => goToStudents(zoneGroup!.code) },
       });
     }
+    /* เคสที่นักศึกษาบอกว่าหยุดเพราะคนไข้ — สีเทา รู้ไว้ ไม่นับในต้องตาม/ค้าง (isWaitingForPatient) */
+    if (today.waitingList.length > 0) {
+      todayLines.push({
+        key: 'wait', tone: 'muted', icon: 'wait',
+        text: <>{t('รอคนไข้')} <b>{t('{n} เคส', { n: today.waitingList.length })}</b></>,
+      });
+    }
   } else {
     todayLines.push(...yearLevelLines(today));
   }
@@ -418,6 +427,33 @@ export default function Dashboard() {
           );
         })}
         {moreRow(today.followUpList.length - QUEUE_MAX, () => goToStudents(zoneGroup!.code))}
+      </>
+    );
+  }
+
+  const waitLine = todayLines.find((l) => l.key === 'wait');
+  if (waitLine) {
+    waitLine.items = (
+      <>
+        {today.waitingList.slice(0, QUEUE_MAX).map((w) => {
+          const st = studentById.get(w.studentId);
+          if (!st) return null;
+          const name = personName(st);
+          return (
+            <div key={w.workId} className="todaykid todaykid--muted">
+              <span className="todaykid__av todaykid__av--muted" aria-hidden>{initialOf(name)}</span>
+              <div className="todaykid__who">
+                <button className="todaykid__name" onClick={() => openStudent(st)}>{name}</button>
+                <div className="todaykid__meta">
+                  <span className="stalepill"><i style={{ background: typeMeta(w.type).color }} />{typeChipLabel(w.type)}</span>
+                  {' '}{waitReasonLabel(w.reason)}
+                </div>
+              </div>
+              <span className="todaykid__age">{w.until ? t('นัด {d}', { d: thaiShort(w.until) }) : t('ยังไม่มีนัด')}</span>
+            </div>
+          );
+        })}
+        {moreRow(today.waitingList.length - QUEUE_MAX, () => goToStudents(zoneGroup!.code))}
       </>
     );
   }
