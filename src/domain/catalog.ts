@@ -21,14 +21,14 @@ export interface TypeMeta {
 
 /* สีประเภทงาน (ชุด T6): น้ำเงิน · อำพัน · ชมพูหม่น · ฟ้าทะเล — ต้องต่างกันทั้งเฉดและความเข้ม
    ผ่านตัวตรวจตาบอดสี/contrast ทุกคู่ · ไม่ใช้เขียว/แดงเพราะจองให้สถานะผ่าน/เตือน
-   APD ใช้น้ำเงินอ่อนตระกูลเดียวกับ CD · ⚠️ ในเกณฑ์ APD นับรวมกับ RPD (อำพัน) ไม่ใช่ CD
+   APD เป็นอำพันอ่อนตระกูลเดียวกับ RPD เพราะนับรวมกันในเกณฑ์ RPD
    · ค่าเดียวกันอยู่ใน styles/tokens.css */
 export const TYPES: Record<WorkType, TypeMeta> = {
   CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2C50BA', tint: '#E9EDF9', ink: '#2C50BA' },
   RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#D97706', tint: '#FBF0DE', ink: '#B45309' },
   PC: { short: 'Post-core', full: 'Post-core crown or bridge', prefix: 'Postcore', color: '#C2478D', tint: '#F9EAF3', ink: '#A83778' },
   CB: { short: 'Cr,Br', full: 'Crown or Bridge', prefix: 'Cr,Br', color: '#0D9BB8', tint: '#E2F5F9', ink: '#0B7D94' },
-  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#6C86DD', tint: '#EDF0FB', ink: '#3A55B8' },
+  APD: { short: 'APD', full: 'Simple APD (acrylic)', prefix: 'APD', color: '#EDB04F', tint: '#FDF4E3', ink: '#8A4B0A' },
   RRM: { short: 'Recall Rem.', full: 'Recall Removable', prefix: 'Recall-Rem', color: '#64748B', tint: '#F1F3F7', ink: '#64748B' },
   RFX: { short: 'Recall Fixed', full: 'Recall Fixed', prefix: 'Recall-Fix', color: '#475569', tint: '#EEF1F5', ink: '#475569' },
 };
@@ -218,6 +218,20 @@ export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType
   return (Object.keys(TYPES) as WorkType[])
     .filter((t) => seen.has(t))
     .sort((a, b) => ORDER[a] - ORDER[b]);
+}
+
+/**
+ * ป้ายชนิดงานของชิ้นงานหนึ่งชิ้น (การ์ดเคส · หน้าแรก · หน้าตรวจงาน)
+ * ป้ายประเภท (TYPES.short) รวม CD กับ Complicated APD เป็น "CD/APD" ตามแถวเกณฑ์ — อ่านแล้วไม่รู้ว่าชิ้นนี้คืออะไร
+ * ป้ายนี้แยกตามลักษณะเคส · RPD ทุกแบบเป็นโครงโลหะ จึงเรียก Co-Cr RPD ให้ตรงกับเงื่อนไขในเกณฑ์
+ * CD ที่ไม่มีลักษณะเคส (นำเข้าจากชีตรุ่นเก่า) ถือเป็น CD — ตรงกับตัวนับใน caseCount
+ */
+export function workLabel(w: { type: string; dentureClass?: DentureClass }): string {
+  if (w.type === 'CD') return w.dentureClass === 'complicated-APD' ? DENTURE_CLASSES['complicated-APD'].label : 'CD';
+  if (w.type === 'RPD') return 'Co-Cr RPD';
+  if (w.type === 'APD') return 'Simple APD';
+  if (w.type === 'CB') return 'Crown/Bridge'; // "Cr,Br" ตามหัวคอลัมน์ชีต อ่านยากบนป้าย
+  return typeMeta(w.type).short;
 }
 
 /** ป้ายสำหรับปุ่มกรอง/legend — "APD" เฉยๆ ชนกับปุ่ม "CD/APD" (= CD/Complicated APD)

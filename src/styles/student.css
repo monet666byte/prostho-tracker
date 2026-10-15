@@ -380,6 +380,21 @@
   gap: 8px;
 }
 .minirow__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.minirow__top .badge { flex: none; }
+
+/* หน้าแรก: หัว "งานที่กำลังทำ" + หัวกลุ่มตามแถวเกณฑ์ (CD · RPD · Crown · Recall) */
+.actlabel { display: flex; justify-content: space-between; margin-top: 4px; }
+.actgroup { display: flex; align-items: center; gap: 7px; margin: 4px 4px -4px; font: 600 12.5px var(--font-head); color: var(--text-secondary); }
+.actgroup__name { flex: 1; min-width: 0; }
+.actgroup__count { flex: none; font: 500 11.5px var(--font-mono); color: var(--text-faint); }
+
+/* ป้ายชนิดงานบนแผงน้ำเงินหน้าแรก — โปร่งบนพื้นน้ำเงิน จุดสีประเภทขอบขาว */
+.hp__chip {
+  display: inline-flex; align-items: center; gap: 5px; vertical-align: 1px;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+  font: 600 11.5px/1.5 var(--font-head); border-radius: 7px; padding: 0 8px;
+}
+.hp__chip i { width: 7px; height: 7px; border-radius: 99px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8); flex: none; }
 .minirow__name {
   font: 600 13.5px var(--font-head);
   overflow: hidden;

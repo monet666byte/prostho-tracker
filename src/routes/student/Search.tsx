@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
 import { PlainShell } from '../../components/student/Shell';
 import { SingleWorkBody } from '../../components/student/WorkRow';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import { currentProc } from '../../domain/rules';
 import { usePatientNamesOn, useWorkpieces } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
@@ -35,7 +35,7 @@ export default function Search() {
     const q = query.trim().toLowerCase();
     if (!q) return works;
     return works.filter((w) =>
-      [namesOn ? w.patient.name : '', w.patient.hn, w.detail, w.tooth ?? '', typeMeta(w.type).full, typeMeta(w.type).short]
+      [namesOn ? w.patient.name : '', w.patient.hn, w.detail, w.tooth ?? '', typeMeta(w.type).full, typeMeta(w.type).short, workLabel(w)]
         .join(' ')
         .toLowerCase()
         .includes(q),

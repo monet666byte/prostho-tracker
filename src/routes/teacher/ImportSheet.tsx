@@ -15,7 +15,7 @@ import { currentActor, useApp } from '../../store/app';
 import { thaiShort } from '../../lib/date';
 import { fetchCohortTabs, importGroupCsv, parseStudentList, sheetIdFromUrl, type GroupImportResult, type RosterEntry } from '../../lib/sheetImport';
 import { cohortOfRoster, replaceWithRoster } from '../../data/repo';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import { groupCodeFor, groupShort, studentIdFor } from '../../domain/group';
 import { entryYearFromDtmu } from '../../domain/cohort';
 import { cloudEnabled } from '../../lib/cloud';
@@ -264,7 +264,7 @@ export function ImportSheetBody() {
                           <td className="mono" style={{ fontSize: 11 }}>{p?.hn}</td>
                           <td>
                             <span className="badge" style={{ background: typeMeta(w.type).tint, color: typeMeta(w.type).ink }}>
-                              {typeMeta(w.type).short}
+                              {workLabel(w)}
                             </span>
                           </td>
                           <td style={{ font: '400 11.5px var(--font-body)' }}>{w.detail}</td>

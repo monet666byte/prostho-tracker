@@ -91,7 +91,7 @@ export function SingleWorkBody({
 }) {
   return (
     <>
-      <TypeBadge type={w.type} />
+      <TypeBadge work={w} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{

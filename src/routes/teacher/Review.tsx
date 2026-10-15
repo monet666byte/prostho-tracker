@@ -6,7 +6,7 @@ import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { setMinimumRequirement, setReview, setStudentGate } from '../../data/repo';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import { caseCount, currentProc, daysSinceUpdate, isComplete, isStale, maxProgression, procLabel,
   progression, sortWorkpieces, yearlyRows, nextProc, isReturned, gatesDone, GATE_KEYS, stepFraction, requirementFlag, isWaitingForPatient } from '../../domain/rules';
 import { patientWithHn } from '../../lib/privacy';
@@ -210,10 +210,10 @@ export default function Review() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                     {/* การ์ดตรวจงานแบบ "ตัดของซ้ำ": ป้ายทุกอันเป็นตัวอักษรสี ไม่มีพื้น · ตัดชิป % (เลขถ่วงน้ำหนักไม่ตรงกับ x/10 ชวนงง) */}
-                    <span className="rvtype" style={{ color: meta.ink }}>{meta.short}</span>
+                    <span className="rvtype" style={{ color: meta.ink }}>{workLabel(w)}</span>
                     <span style={{ font: '600 14.5px var(--font-head)' }}>{tText(w.detail)}</span>
                     {isReturned(w) && <span className="returnedtag">{t('คืนเคส')}</span>}
-                    {/* อ่านจาก requirementFlag ตัวเดียวกับตัวนับเกณฑ์ — Simple APD ไม่ขึ้น "นับเกณฑ์" เพราะไม่เคยนับจริง */}
+                    {/* อ่านจาก requirementFlag ตัวเดียวกับตัวนับเกณฑ์ — ป้าย "นับเกณฑ์" ตรงกับที่นับจริงเสมอ */}
                     {requirementFlag(w) === 'on' && !isReturned(w) && (
                       <span className="rvtag" style={{ color: 'var(--success-dark)' }}>✓ {t('นับเกณฑ์')}</span>
                     )}

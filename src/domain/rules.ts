@@ -428,6 +428,17 @@ export function caseCountTotals(list: Workpiece[], settings: Settings) {
   };
 }
 
+/**
+ * จัดเคสเป็นกลุ่มตามแถวเกณฑ์สะสม (CD · RPD · Crown · Recall) เรียงตามลำดับแถว ลำดับเคสในกลุ่มคงตามที่ส่งมา
+ * row = แถวเกณฑ์ของกลุ่ม (ไว้บอก "จบ x/y") · null = ประเภทที่ไม่อยู่ในเกณฑ์ (ไว้ท้ายสุด)
+ * กลุ่มที่ไม่มีเคสไม่ถูกส่งกลับ
+ */
+export function groupByReqRow<T extends Pick<Workpiece, 'type'>>(items: T[], rows: ReqRow[]): Array<{ row: ReqRow | null; items: T[] }> {
+  const groups = rows.map((row) => ({ row: row as ReqRow | null, items: items.filter((w) => reqGroupOf(w.type) === row.group) }));
+  groups.push({ row: null, items: items.filter((w) => !rows.some((r) => r.group === reqGroupOf(w.type))) });
+  return groups.filter((g) => g.items.length > 0);
+}
+
 /** เคสประเภทนี้นับเข้าแถวเกณฑ์สะสมแถวไหน (null = ไม่นับ) — หน้าจอหาแถวของเคสด้วยตัวนี้ ห้ามเทียบ type เอง */
 export function reqGroupOf(type: string): ReqGroup | null {
   return (Object.keys(REQ_GROUP_TYPES) as ReqGroup[]).find((g) => (REQ_GROUP_TYPES[g] as string[]).includes(type)) ?? null;

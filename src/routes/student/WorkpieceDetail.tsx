@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../../components/student/ConfirmSheet';
 import { recordStepLabel } from '../../components/student/stepLabel';
 import { PlainShell } from '../../components/student/Shell';
 import { usePhotoAttach } from '../../components/student/usePhotoAttach';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import {
   activeStepGroup, maxProgression, nextProc, progression, requirementFlag, stepGroups, isReturned, stepFraction } from '../../domain/rules';
 import { useLastStepDate, usePatientNamesOn, usePending, usePhotoSrc, useWorkpiece, useWorkpiecePhotos } from '../../hooks/data';
@@ -106,7 +106,7 @@ export default function WorkpieceDetail() {
           }}
         >
           <SealCheck size={19} weight="fill" />
-          {/* เดิมขึ้น "นับเข้าเกณฑ์" ทุกเคสที่จบ รวมเคสที่ปิดสวิตช์และ Simple APD */}
+          {/* เดิมขึ้น "นับเข้าเกณฑ์" ทุกเคสที่จบ รวมเคสที่ปิดสวิตช์ */}
           {requirementFlag(w) === 'on' ? t('จบเคสแล้ว · นับเข้าเกณฑ์') : t('จบเคสแล้ว')}
         </div>
       )}
@@ -191,14 +191,14 @@ export default function WorkpieceDetail() {
 
         <div className="detailpanel__meta">
           <span className="dot" style={{ background: meta.color, marginRight: 6 }} />
-          {meta.short}
+          {workLabel(w)}
           {w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
           {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}
           {w.kennedy ? ` · ${w.kennedy}` : ''}
           {namesOn ? <>{' · '}<b>HN {w.patient.hn}</b></> : <>{' · '}{tSexAge(w.patient.sexAge)}</>}
           {' · '}{t('รับเคส')} {thaiShort(w.acceptedDate)}
         </div>
-        {/* ป้ายอ่านจาก requirementFlag ตัวเดียวกับที่นับช่องเกณฑ์ — Simple APD ไม่ขึ้นป้าย "นับ" เพราะไม่เคยนับจริง
+        {/* ป้ายอ่านจาก requirementFlag ตัวเดียวกับที่นับช่องเกณฑ์ — ป้าย "นับ" ตรงกับที่นับจริงเสมอ
             ป้าย "ไม่นับ" ต้องเห็นชัด: เดิมปิดสวิตช์ตอนเปิดเคสแล้วไม่มีอะไรบอก จบเคสแล้วเลขเกณฑ์ไม่ขึ้นโดยไม่รู้ว่าทำไม */}
         {(requirementFlag(w) !== 'never' || pending.has(w.id)) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>

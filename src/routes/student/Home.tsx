@@ -1,7 +1,7 @@
 import { Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Hourglass, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PendingBadge, SelfBadge, StaleBadge } from '../../components/ui/Bits';
+import { PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
 import { ActivityChips, PatientSelect, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
@@ -17,10 +17,10 @@ import { daysUntil, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import type { Settings, WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
-import { activeStepGroup, caseCountTotals, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
+import { activeStepGroup, caseCountTotals, groupByReqRow, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
 import { NO_PATIENT_ACTIVITY } from '../../domain/checkin';
@@ -112,7 +112,7 @@ function PanelSlide({
   const at = (prog: number) => `${(prog / Math.max(1, max)) * 100}%`;
   // หมุดหัว/ท้ายอยู่ชิดหมุด "ตอนนี้" เกินไป ป้ายจะทับกัน → ซ่อนแค่ป้าย หมุดยังแตะได้
   const tight = (prog: number) => Math.abs(prog - nowProg) / Math.max(1, max) < 0.2;
-  const where = w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : '';
+  const where = w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? t('บน') : t('ล่าง')}` : '';
   const btnLabel = next ? recordStepLabel(next.name) : '';
   const stepShown = useCountUp(nowProg, intro);
 
@@ -120,7 +120,10 @@ function PanelSlide({
     <div className={`hp__slide t-${w.type}`}>
       <div className="hp__top">
         <span className="hp__who">
-          <b>{patientTitle(w.patient, namesOn, t)}</b> · {typeMeta(w.type).short}{where}
+          <b>{patientTitle(w.patient, namesOn, t)}</b>{' '}
+          {/* ชื่อชนิดงานจริง (Complicated APD / Co-Cr RPD …) แทนป้ายแถวเกณฑ์ "CD/APD" */}
+          <span className="hp__chip"><i style={{ background: typeMeta(w.type).color }} />{workLabel(w)}</span>
+          {where}
           {/* ไม่ใช้ชื่อ (นำร่อง) = HN เป็นหัวเรื่อง · เพศ/อายุช่วยแยกคนไข้ที่ HN คล้ายกัน */}
           {!namesOn && w.patient.sexAge ? ` · ${tSexAge(w.patient.sexAge)}` : ''}
         </span>
@@ -678,37 +681,53 @@ export default function Home() {
         </section>
       )}
 
-      {rest.map((w) => {
-        const next = nextProc(w);
-        const meta = typeMeta(w.type);
-        return (
-          // ปุ่มผ่าน step อยู่ในการ์ดแล้ว — เดิมลอยนอกการ์ด ขอบขวาของการ์ดนี้เลยสั้นกว่าใบอื่น ดูเบี้ยว
-          <div key={w.id} className="minirow">
-            <Link to={`/app/work/${w.id}`} className="minirow__body">
-              <span className="minirow__top">
-                <span className="dot" style={{ background: meta.color }} />
-                <span className="minirow__name">
-                  {patientTitle(w.patient, namesOn, t)}
-                  {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : ''}
-                  {' · '}<span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
-                </span>
-                {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
-                {pending.has(w.id) && <PendingBadge />}
-              </span>
-              {/* ชื่อขั้นถัดไป — เดิมแถวย่อบอกแค่ตัวเลข ต้องกดเข้าไปถึงจะรู้ว่าต้องทำอะไร
-                  ผู้ใช้ขอให้เคสอื่นเด่นขึ้น — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
-              {next && <span className="minirow__step">{next.name}</span>}
-            </Link>
-            {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก
-                เลข step ตัดออกเพราะซ้ำกับ 9/10 ที่อยู่ข้างๆ อยู่แล้ว — เหลือเครื่องหมายถูกอย่างเดียว */}
-            {next && (
-              <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
-                <Check size={19} weight="bold" />
-              </button>
-            )}
+      {/* เคสอื่นจัดกลุ่มตามแถวเกณฑ์ — ชื่อชนิดงานจริงบนทุกแถว หัวกลุ่มบอกว่าแถวนั้นจบไปกี่ชิ้นแล้ว
+          (เดิมมีแค่จุดสี ต้องจำเองว่าสีไหนคืออะไร และ CD กับ Complicated APD สีเดียวกัน) */}
+      {rest.length > 0 && (
+        <div className="homelabel actlabel">
+          <span>{t('งานที่กำลังทำ')}</span>
+          <span>{t('{n} ชิ้น', { n: active.length })}</span>
+        </div>
+      )}
+      {groupByReqRow(rest, totals.rows).map((g) => (
+        <Fragment key={g.row?.group ?? 'other'}>
+          <div className="actgroup">
+            <span className="dot" style={{ background: g.row?.color ?? 'var(--text-faint)' }} />
+            <span className="actgroup__name">{g.row ? t(g.row.label) : t('อื่นๆ')}</span>
+            {g.row && <span className="actgroup__count">{t('จบ {a}/{b}', { a: g.row.done, b: g.row.required })}</span>}
           </div>
-        );
-      })}
+          {g.items.map((w) => {
+            const next = nextProc(w);
+            return (
+              // ปุ่มผ่าน step อยู่ในการ์ดแล้ว — เดิมลอยนอกการ์ด ขอบขวาของการ์ดนี้เลยสั้นกว่าใบอื่น ดูเบี้ยว
+              <div key={w.id} className="minirow">
+                <Link to={`/app/work/${w.id}`} className="minirow__body">
+                  <span className="minirow__top">
+                    <TypeBadge work={w} />
+                    <span className="minirow__name">
+                      {patientTitle(w.patient, namesOn, t)}
+                      {w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : w.arch ? ` · ${w.arch === 'upper' ? t('บน') : t('ล่าง')}` : ''}
+                      {' · '}<span className="mono">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
+                    </span>
+                    {isStale(w, settings) && <StaleBadge days={daysSinceUpdate(w)} />}
+                    {pending.has(w.id) && <PendingBadge />}
+                  </span>
+                  {/* ชื่อขั้นถัดไป — เดิมแถวย่อบอกแค่ตัวเลข ต้องกดเข้าไปถึงจะรู้ว่าต้องทำอะไร
+                      ผู้ใช้ขอให้เคสอื่นเด่นขึ้น — งานวันนี้ของทุกเคสควรอ่านได้จากหน้าแรก */}
+                  {next && <span className="minirow__step">{next.name}</span>}
+                </Link>
+                {/* วงกลมลอยกลางแถว — เดิมเป็นแท่งสูงเต็มแถวมีเช็ค+เลขซ้อนกัน ดูแปลก
+                    เลข step ตัดออกเพราะซ้ำกับ 9/10 ที่อยู่ข้างๆ อยู่แล้ว — เหลือเครื่องหมายถูกอย่างเดียว */}
+                {next && (
+                  <button className="minirow__pass" onClick={() => openSheet(w.id)} aria-label={t('บันทึกทำ step {n} เสร็จ', { n: next.progression })}>
+                    <Check size={19} weight="bold" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </Fragment>
+      ))}
       </div>
 
       <div className="homecol">

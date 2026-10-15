@@ -11,10 +11,11 @@
  *   3. ขอบที่ทำให้ "ครบเกณฑ์" ผิด — เพราะกระทบการจบของนักศึกษาโดยตรง
  */
 import {
-  activeStepGroup, caseCount, completionImpact, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
+  activeStepGroup, caseCount, completionImpact, groupByReqRow, caseCountTotals, completedInYear, countCDA, countsTowardRequirement,
   daysSinceUpdate, isActiveWork, isStale, isWaitingForPatient, maxProgression, meetsAllRequirements, needsWaitNudge, WAIT_MAX_DAYS,
   overallPercent, percentCompleted, procList, requirementFlag, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
+import { workLabel } from '../src/domain/catalog.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { Settings, Workpiece, WorkType } from '../src/domain/types.ts';
 
@@ -198,6 +199,23 @@ const rpdRow = (list: Workpiece[], st: Settings) => caseCount(list, st).find((r)
   ok('แถบ CD ยังนับรวม (= ผลรวมชนิดย่อย)', r.done === cd.done + capd.done);
   const cdNoClass = cdRow([finished('CD')], S).parts!.find((p) => p.key === 'CD')!;
   ok('CD ที่ไม่มีลักษณะเคส (นำเข้าจากชีต) ไปอยู่บรรทัด CD', cdNoClass.done === 1);
+}
+{
+  /* ป้ายชนิดงานบนการ์ดเคส/หน้าแรก — ต้องแยกชนิดเดียวกับรายการใต้แถบเกณฑ์ */
+  ok('ป้าย: CD / Complicated APD / Co-Cr RPD / Simple APD',
+    workLabel(wp('CD', { dentureClass: 'CD' })) === 'CD'
+    && workLabel(wp('CD', { dentureClass: 'complicated-APD' })) === 'Complicated APD'
+    && workLabel(wp('RPD', { dentureClass: 'complicated-RPD' })) === 'Co-Cr RPD'
+    && workLabel(wp('APD', { dentureClass: 'simple-APD' })) === 'Simple APD');
+  ok('ป้าย: CD ที่ไม่มีลักษณะเคสเป็น CD (ตรงกับตัวนับ)', workLabel(wp('CD')) === 'CD');
+  ok('ป้าย: ประเภทไม่รู้จักไม่ระเบิด', workLabel(wp('XYZ' as WorkType)) === '?');
+
+  const items = [wp('CB', { id: 'c1' }), wp('APD', { id: 'a1' }), wp('XYZ' as WorkType, { id: 'x1' }), wp('RPD', { id: 'r1' }), wp('CD', { id: 'd1' })];
+  const groups = groupByReqRow(items, caseCount(items, S));
+  ok('จัดกลุ่มหน้าแรกตามแถวเกณฑ์: CD → RPD → Crown → ไม่รู้จัก',
+    groups.map((g) => g.row?.group ?? 'none').join(',') === 'CD,RPD,CROWN,none', groups.map((g) => g.row?.group ?? 'none').join(','));
+  ok('Simple APD อยู่กลุ่ม RPD และคงลำดับเดิมในกลุ่ม', groups[1].items.map((w) => w.id).join(',') === 'a1,r1');
+  ok('ไม่มีเคสหายหรือซ้ำตอนจัดกลุ่ม', groups.reduce((n, g) => n + g.items.length, 0) === items.length);
 }
 {
   /* ทุกแถวที่มีชนิดย่อย: ผลรวมชิ้นที่จบของชนิดย่อย = ตัวเลขบนแถบ (นับรายแถว) — สองตัวเลขบนการ์ดเดียวต้องไม่ขัดกัน */

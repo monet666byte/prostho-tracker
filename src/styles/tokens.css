@@ -135,7 +135,7 @@ html.theme-ink {
 
 /* สีประจำประเภทงาน — ต้องตรงกับ TYPES ใน src/domain/catalog.ts */
 .t-CD { --type: #2c50ba; }
-.t-APD { --type: #6c86dd; }
+.t-APD { --type: #edb04f; }
 .t-RPD { --type: #d97706; }
 .t-PC { --type: #c2478d; }
 .t-CB { --type: #0d9bb8; }

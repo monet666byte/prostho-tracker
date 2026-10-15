@@ -1,6 +1,6 @@
 import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@phosphor-icons/react';
 import { advanceStep } from '../../data/repo';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel } from '../../domain/catalog';
 import { caseCount, completionImpact, nextProc, reqGroupOf } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { usePatientNamesOn, useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
@@ -61,7 +61,7 @@ function ConfirmStepSheet() {
       const rows = caseCount(after, settings);
       const closed = after.find((x) => x.id === w.id) ?? w;
       celebrate({
-        who: `${patientTitle(w.patient, namesOn, t)} · ${meta.short}${w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}`,
+        who: `${patientTitle(w.patient, namesOn, t)} · ${workLabel(w)}${w.arch ? ` · ${w.arch === 'upper' ? 'Upper' : 'Lower'}` : w.tooth ? ` · ${t('ซี่')} ${w.tooth}` : ''}`,
         impact: completionImpact(all, after, closed, settings),
         years: settings.req.years,
       });

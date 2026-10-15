@@ -10,7 +10,7 @@ import { waitReasonLabel } from '../../lib/waitReason';
 import { usePatientNamesOn, usePending, useWorkpieces } from '../../hooks/data';
 import { patientTitle, patientWithHn } from '../../lib/privacy';
 import { deleteWorkpiece, updatePatientNote } from '../../data/repo';
-import { typeMeta } from '../../domain/catalog';
+import { workLabel } from '../../domain/catalog';
 import { currentProc, isStale, isReturned, isActiveWork, isWaitingForPatient } from '../../domain/rules';
 import type { WorkpieceView } from '../../domain/types';
 import { t, tSexAge, tText } from '../../lib/i18n';
@@ -264,7 +264,7 @@ export default function Patients() {
                   <div key={first.pairId} className={`pairbox t-${first.type}`}>
                     <div className="pairlabel">
                       <LinkSimple size={13} weight="bold" />
-                      {t('คู่ upper/lower · รับเคสพร้อมกัน')} · {typeMeta(first.type).short}
+                      {t('คู่ upper/lower · รับเคสพร้อมกัน')} · {workLabel(first)}
                     </div>
                     {pair.map((w) => (
                       <MiniRow
