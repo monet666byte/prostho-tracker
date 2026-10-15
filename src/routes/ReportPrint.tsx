@@ -13,7 +13,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import { riskRows } from '../domain/analytics';
 import { summarizeAll, summarizeGroups } from '../domain/aggregate';
-import { typeChipLabel } from '../domain/catalog';
+import { typeChipLabel, workLabel } from '../domain/catalog';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, isActiveStudent, studentCohortLabel, studentYear } from '../domain/cohort';
 import { groupShort, sortGroupCodes } from '../domain/group';
 import { monthlyReport, reportMonths } from '../domain/report';
@@ -308,7 +308,7 @@ export default function ReportPrint() {
                       return (
                         <tr key={i}>
                           <td className="nw">{scope === 'year' ? (st ? groupShort(st.group) : '—') : personName(st, '')}</td>
-                          <td>{typeChipLabel(w.type)} · step {w.progression}</td>
+                          <td>{workLabel(w)} · step {w.progression}</td>
                           <td className="n">{w.days}</td>
                         </tr>
                       );

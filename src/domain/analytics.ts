@@ -4,10 +4,10 @@
  */
 
 import { lang, personName } from '../lib/i18n';
-import { REQ_TYPES, orderOf, typeMeta } from './catalog';
+import { REQ_TYPES, kindOf, orderOf, typeMeta, workLabel, type WorkKind } from './catalog';
 import {
   caseCount, completedInYear, countsForYearlyReq, daysSinceUpdate, isComplete, isReturned, isStale, isWaitingForPatient, maxProgression, procAt, procList, progression, isActiveWork, requirementShare } from './rules';
-import type { CheckIn, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
+import type { CheckIn, DentureClass, ProgressUpdate, Settings, Student, WorkType, Workpiece } from './types';
 import { academicYear } from '../lib/date';
 import { cohortOf, isUpcoming } from './cohort';
 import { groupShort } from './group';
@@ -67,9 +67,9 @@ export interface RiskRow {
   /** ชื่อเต็มของ step ที่กำลังทำ เช่น "RPD-6 · Mounting on articulator" */
   currentStepLabel: string;
   /** งานที่ยังไม่จบทุกชิ้น เรียงตามที่แตะล่าสุด — ให้อาจารย์กดกางดู/เลือกได้เมื่อมีหลายงาน */
-  pieces: Array<{ id: string; type: WorkType; code: string; name: string; progression: number; days: number; /** ขั้นสุดท้ายของงานนี้ (Recall = 3) — ใช้วาดหลอด ห้ามตรึง 10 */ max: number }>;
+  pieces: Array<{ id: string; type: WorkType; dentureClass?: DentureClass; code: string; name: string; progression: number; days: number; /** ขั้นสุดท้ายของงานนี้ (Recall = 3) — ใช้วาดหลอด ห้ามตรึง 10 */ max: number }>;
   /** งานที่จบแล้ว — โชว์ตอนกาง ให้เลขรวม (piecesDone/piecesTotal) นับด้วยตาได้ครบ */
-  donePieces: Array<{ id: string; type: WorkType; days: number }>;
+  donePieces: Array<{ id: string; type: WorkType; dentureClass?: DentureClass; days: number }>;
   /** เคสที่ยังขาด (ต้องรับเพิ่ม) ถึงจะครบเกณฑ์รายปี */
   piecesShort: number;
   monthsLeft: number;
@@ -170,7 +170,8 @@ export function riskRows(
       // step ที่กำลังพยายามผ่าน = step ถัดไปของเคสที่แตะล่าสุด
       const current = [...active].sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))[0];
       // ขั้นสุดท้ายของ Recall คือ 3 ไม่ใช่ 10 — ตรึงที่ 10 จะได้ป้าย step ที่ไม่มีอยู่จริง
-      const stuckStep = current ? `${typeMeta(current.type).prefix}-${Math.min(maxProgression(current), progression(current) + 1)}` : '';
+      // ชื่อชนิดงานที่เห็นบนจอ (Complicated APD · Crown/Bridge) แทนรหัสชีต "Cr,Br-9" ที่อาจารย์ต้องแปลเอง
+      const stuckStep = current ? `${workLabel(current)} step ${Math.min(maxProgression(current), progression(current) + 1)}` : '';
       const nextProcOfCurrent = current ? procAt(current, current.procIndex + 1) : null;
       const pieces = [...active]
         .sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt))
@@ -179,6 +180,7 @@ export function riskRows(
           return {
             id: w.id,
             type: w.type,
+            dentureClass: w.dentureClass,
             code: `${typeMeta(w.type).prefix}-${Math.min(maxProgression(w), progression(w) + 1)}`,
             name: next ? next.name : (lang === 'en' ? 'awaiting case closure' : 'รอปิดเคส'),
             progression: Math.max(0, progression(w)),
@@ -189,7 +191,7 @@ export function riskRows(
       const currentStepLabel = current
         ? nextProcOfCurrent
           ? `${stuckStep} · ${nextProcOfCurrent.name}`
-          : `${typeMeta(current.type).prefix} ${lang === 'en' ? 'awaiting closure' : 'รอปิดเคส'}`
+          : `${workLabel(current)} ${lang === 'en' ? 'awaiting closure' : 'รอปิดเคส'}`
         : lang === 'en' ? 'no active case' : 'ไม่มีเคสในมือ';
       const passed = stepDates.get(student.id) ?? new Set<string>();
       let stuckPeriods = 0;
@@ -259,7 +261,7 @@ export function riskRows(
         student, completedThisYear, yearGap, stepsRemaining,
         piecesTotal: mine.length, piecesDone: mine.filter((w) => isComplete(w)).length,
         donePieces: mine.filter((w) => isComplete(w)).map((w) => ({
-          id: w.id, type: w.type,
+          id: w.id, type: w.type, dentureClass: w.dentureClass,
           days: Math.max(0, Math.floor((now.getTime() - new Date(w.lastUpdatedAt).getTime()) / DAY)),
         })),
         piecesCounted: counted.length, periodsNeeded, periodsLeft,
@@ -657,6 +659,8 @@ export interface CaseDot {
   id: string;
   progression: number;
   type: WorkType;
+  /** ชนิดงานที่เห็นบนจอ (CD แยก Complicated APD) — สีจุดและปุ่มกรองอ่านตัวนี้ */
+  kind: WorkKind | null;
   stale: boolean;
   label: string;
 }
@@ -681,6 +685,7 @@ export function caseDots(
         id: w.id,
         progression: p,
         type: w.type,
+        kind: kindOf(w),
         stale: isStale(w, settings),
         label: `${personName(student)} (${groupShort(student?.group ?? '')}) · ${w.detail} · step ${p}`,
       };

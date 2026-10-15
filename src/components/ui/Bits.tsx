@@ -1,14 +1,14 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { t } from '../../lib/i18n';
-import { typeMeta, workLabel } from '../../domain/catalog';
+import { workMeta } from '../../domain/catalog';
 import type { DentureClass, WorkType } from '../../domain/types';
 
-/** ป้ายชนิดงานของชิ้นงาน — สีตามประเภท (แถวเกณฑ์) ข้อความตามลักษณะเคส (workLabel) */
+/** ป้ายชนิดงานของชิ้นงาน — สีและข้อความตามชนิดงาน (workMeta · CD แยก Complicated APD) */
 export function TypeBadge({ work, style }: { work: { type: WorkType; dentureClass?: DentureClass }; style?: CSSProperties }) {
-  const m = typeMeta(work.type);
+  const m = workMeta(work);
   return (
     <span className="badge" style={{ background: m.tint, color: m.ink, ...style }}>
-      {workLabel(work)}
+      {m.label}
     </span>
   );
 }

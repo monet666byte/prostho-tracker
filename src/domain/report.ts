@@ -10,7 +10,7 @@
 import { hasRealCompletionDate, throughputByMonth, bottleneckByStep, type MonthPoint, type RiskLevel, type StepBucket } from './analytics';
 import { daysSinceUpdate, isActiveWork, isStale, progression } from './rules';
 import { todaySummary, type TodayInput, type TodaySummary } from './today';
-import type { CheckIn, Settings, Student, WorkType, Workpiece } from './types';
+import type { CheckIn, DentureClass, Settings, Student, WorkType, Workpiece } from './types';
 
 export interface MonthlyReportInput {
   /** นักศึกษาในขอบเขต (ทั้งชั้นปี หรือสมาชิกกลุ่มเดียว) */
@@ -42,7 +42,7 @@ export interface MonthlyReport {
   /** key ของเดือนที่เลือกใน months (ไว้ระบายแท่ง) */
   monthKey: string;
   /** งานค้างนานสุด 5 ชิ้น — ไม่มีข้อมูลผู้ป่วย */
-  longest: Array<{ studentId: string; type: WorkType; progression: number; days: number }>;
+  longest: Array<{ studentId: string; type: WorkType; dentureClass?: DentureClass; progression: number; days: number }>;
 }
 
 export function monthlyReport(input: MonthlyReportInput): MonthlyReport {
@@ -77,7 +77,7 @@ export function monthlyReport(input: MonthlyReportInput): MonthlyReport {
 
   const longest = works
     .filter((w) => isStale(w, settings, now))
-    .map((w) => ({ studentId: w.studentId, type: w.type, progression: Math.max(0, progression(w)), days: daysSinceUpdate(w, now) }))
+    .map((w) => ({ studentId: w.studentId, type: w.type, dentureClass: w.dentureClass, progression: Math.max(0, progression(w)), days: daysSinceUpdate(w, now) }))
     .sort((a, b) => b.days - a.days || a.studentId.localeCompare(b.studentId))
     .slice(0, 5);
 

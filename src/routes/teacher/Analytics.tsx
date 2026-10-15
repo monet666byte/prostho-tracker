@@ -7,12 +7,11 @@ import { StepInfo } from '../../components/StepInfo';
 import { CaseMap } from '../../components/charts/CaseMap';
 import { Burnup } from '../../components/charts/Burnup';
 import { ClassPosition } from '../../components/charts/ClassPosition';
-import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
+import { KINDS, kindOf, kindsPresent, typeChipLabel, typeMeta, type WorkKind } from '../../domain/catalog';
 import {
   bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount,
   classPosition, CURVE_MIN_STUDENTS } from '../../domain/analytics';
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
-import type { WorkType } from '../../domain/types';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { defaultYearView, useYearView } from '../../hooks/useYearView';
 import { cloudEnabled } from '../../lib/cloud';
@@ -50,7 +49,9 @@ export default function Analytics() {
   const stuIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
   const works = useMemo(() => allWorks.filter((w) => stuIds.has(w.studentId)), [allWorks, stuIds]);
   const checkinsAll = useMemo(() => everyCheckIn.filter((c) => stuIds.has(c.studentId)), [everyCheckIn, stuIds]);
-  const [stepType, setStepType] = useState<WorkType | 'all'>('all');
+  /* ปุ่มกรองแผนที่เคสตามชนิดงาน (CD แยก Complicated APD) */
+  const [stepKind, setStepKind] = useState<WorkKind | 'all'>('all');
+  const kindWorks = useMemo(() => (stepKind === 'all' ? works : works.filter((w) => kindOf(w) === stepKind)), [works, stepKind]);
   // -1 = ปิด · ไม่เปิดเองตอนเข้าหน้าแล้ว เปิดเมื่อกดเลข
   const [openStep, setOpenStep] = useState<number>(-1);
   const burn = useMemo(() => burnup(students, works, settings), [students, works, settings]);
@@ -71,15 +72,15 @@ export default function Analytics() {
     [students, works, settings, checkinsAll, updatesAll],
   );
   const buckets = useMemo(
-    () => bottleneckByStep(works, settings, stepType === 'all' ? undefined : stepType),
-    [works, settings, stepType],
+    () => bottleneckByStep(kindWorks, settings, stepKind === 'all' ? undefined : KINDS[stepKind].type),
+    [kindWorks, settings, stepKind],
   );
   const shownStep = openStep;
   const allDots = useMemo(() => caseDots(works, students, settings), [works, students, settings]);
-  const dotCount = (ty: WorkType | 'all') => (ty === 'all' ? allDots.length : allDots.filter((d) => d.type === ty).length);
+  const dotCount = (k: WorkKind | 'all') => (k === 'all' ? allDots.length : allDots.filter((d) => d.kind === k).length);
   const dots = useMemo(
-    () => caseDots(works, students, settings, stepType === 'all' ? undefined : stepType),
-    [works, students, settings, stepType],
+    () => caseDots(kindWorks, students, settings),
+    [kindWorks, students, settings],
   );
 
   const maxDuration = Math.max(1, ...durations.map((d) => d.maxWeeks));
@@ -123,12 +124,12 @@ export default function Analytics() {
 
           {/* ปุ่มประเภท = ตัวกรอง + legend สี + จำนวนชิ้น ในตัวเดียว (แทน legend ใต้กราฟที่ซ้ำ) */}
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', margin: '10px 0 4px' }}>
-            {(['all', ...typesPresent(works)] as Array<WorkType | 'all'>).map((ty) => {
-              const on = stepType === ty;
+            {(['all', ...kindsPresent(works)] as Array<WorkKind | 'all'>).map((ty) => {
+              const on = stepKind === ty;
               return (
                 <button
                   key={ty}
-                  onClick={() => { setStepType(ty); setOpenStep(-1); }}
+                  onClick={() => { setStepKind(ty); setOpenStep(-1); }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 7,
                     font: `600 12px var(--font-body)`, padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
@@ -138,9 +139,9 @@ export default function Analytics() {
                   }}
                 >
                   {ty !== 'all' && (
-                    <i style={{ width: 9, height: 9, borderRadius: 99, background: typeMeta(ty).color, flex: 'none' }} />
+                    <i style={{ width: 9, height: 9, borderRadius: 99, background: KINDS[ty].color, flex: 'none' }} />
                   )}
-                  {ty === 'all' ? t('ทุกประเภท') : typeChipLabel(ty)}
+                  {ty === 'all' ? t('ทุกประเภท') : KINDS[ty].label}
                   <span className="mono" style={{ fontWeight: 400, opacity: 0.75 }}>{dotCount(ty)}</span>
                 </button>
               );
@@ -153,7 +154,7 @@ export default function Analytics() {
             showTypeLegend={false}
             showStaleLegend={false}
             lively
-            stepNames={stepType === 'all' ? undefined : buckets.map((b) => b.label)}
+            stepNames={stepKind === 'all' ? undefined : buckets.map((b) => b.label)}
             onStepClick={(n) => setOpenStep(shownStep === n ? -1 : n)}
             activeStep={shownStep}
           />
@@ -162,7 +163,7 @@ export default function Analytics() {
             <div style={{ marginTop: 12 }}>
               <StepInfo
                 progression={shownStep}
-                type={stepType === 'all' ? undefined : stepType}
+                type={stepKind === 'all' ? undefined : KINDS[stepKind].type}
                 meta={t('{n} ชิ้น', { n: buckets[shownStep].count }) + (
                   buckets[shownStep].stale ? t(' · ค้างเกิน {d} วัน {c} ชิ้น', { d: settings.stale, c: buckets[shownStep].stale }) : ''
                 )}

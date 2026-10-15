@@ -1,5 +1,5 @@
 import { X } from '@phosphor-icons/react';
-import { REQ_TYPES, typeMeta } from '../domain/catalog';
+import { REQ_TYPES, typeChipLabel, typeMeta } from '../domain/catalog';
 import { procList } from '../domain/rules';
 import { t } from '../lib/i18n';
 import type { WorkType } from '../domain/types';
@@ -35,7 +35,7 @@ function TypeBlock({ type, progression }: { type: WorkType; progression: number 
 
   return (
     <div className="stepinfo__type">
-      <b style={{ color: meta.ink }}>{meta.short}</b>
+      <b style={{ color: meta.ink }}>{typeChipLabel(type)}</b>
       <span>
         {!cast.length && !prefab.length ? (
           <span className="faint">{t('ไม่มีขั้นตอนที่ progression นี้')}</span>

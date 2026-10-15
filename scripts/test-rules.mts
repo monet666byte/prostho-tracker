@@ -15,7 +15,7 @@ import {
   daysSinceUpdate, isActiveWork, isStale, isWaitingForPatient, maxProgression, meetsAllRequirements, needsWaitNudge, WAIT_MAX_DAYS,
   overallPercent, percentCompleted, procList, requirementFlag, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
-import { workLabel } from '../src/domain/catalog.ts';
+import { KINDS, kindOf, kindsPresent, workLabel } from '../src/domain/catalog.ts';
 import { readDefaultSettings } from './test-helpers.mts';
 import type { Settings, Workpiece, WorkType } from '../src/domain/types.ts';
 
@@ -209,6 +209,11 @@ const rpdRow = (list: Workpiece[], st: Settings) => caseCount(list, st).find((r)
     && workLabel(wp('APD', { dentureClass: 'simple-APD' })) === 'Simple APD');
   ok('ป้าย: CD ที่ไม่มีลักษณะเคสเป็น CD (ตรงกับตัวนับ)', workLabel(wp('CD')) === 'CD');
   ok('ป้าย: ประเภทไม่รู้จักไม่ระเบิด', workLabel(wp('XYZ' as WorkType)) === '?');
+  /* ชนิดงานบนจอ (ปุ่มกรอง · วงงานที่กำลังทำ · กราฟคงค้าง) — CD แยก Complicated APD และไม่มีชิ้นไหนตกหล่น */
+  const mix = [wp('CD'), wp('CD', { dentureClass: 'complicated-APD' }), wp('APD'), wp('RPD'), wp('CB'), wp('XYZ' as WorkType)];
+  ok('ชนิดงาน: CD กับ Complicated APD เป็นคนละปุ่ม', kindsPresent(mix).join(',') === 'CD,CAPD,RPD,APD,CB', kindsPresent(mix).join(','));
+  ok('ชนิดงาน: ป้ายตรงกับ workLabel ทุกชิ้น', mix.every((w) => { const k = kindOf(w); return !k || KINDS[k].label === workLabel(w); }));
+  ok('ชนิดงาน: ทุกชนิดชี้กลับ WorkType ที่ถูก', mix.every((w) => { const k = kindOf(w); return !k || KINDS[k].type === w.type; }));
 
   const items = [wp('CB', { id: 'c1' }), wp('APD', { id: 'a1' }), wp('XYZ' as WorkType, { id: 'x1' }), wp('RPD', { id: 'r1' }), wp('CD', { id: 'd1' })];
   const groups = groupByReqRow(items, caseCount(items, S));

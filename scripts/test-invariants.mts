@@ -92,7 +92,7 @@ console.log('\nA2. step ที่เหลือต้องวัดจาก�
   const settings = { ...S, perYearCountsAllTypes: true, req: { ...S.req, perYear: 1 } };
   const r = riskRows([st], works, settings, [], [], NOW)[0];
   ok('เหลือ 1 ขั้นจริง → stepsRemaining = 1', r.stepsRemaining === 1, r.stepsRemaining);
-  ok('ป้าย step ไม่เกินขั้นสุดท้ายของประเภท', r.stuckStep === `${TYPES.RRM.prefix}-3`, r.stuckStep);
+  ok('ป้าย step ไม่เกินขั้นสุดท้ายของประเภท', r.stuckStep === `${TYPES.RRM.short} step 3`, r.stuckStep);
 }
 
 console.log('\nA3. เคสที่นับเข้าเกณฑ์รายปีไม่ได้ ต้องไม่ถูกใช้เป็นทางไปสู่เกณฑ์');

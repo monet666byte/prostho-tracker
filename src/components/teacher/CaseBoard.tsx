@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { boardByStep } from '../../domain/analytics';
-import { countByType } from '../../domain/aggregate';
-import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
+import { countByKind } from '../../domain/aggregate';
+import { KINDS, kindOf, kindsPresent, type WorkKind } from '../../domain/catalog';
 import { isActiveWork } from '../../domain/rules';
-import type { CheckIn, Settings, Student, WorkType, Workpiece } from '../../domain/types';
+import type { CheckIn, Settings, Student, Workpiece } from '../../domain/types';
 import { personName, t, tText } from '../../lib/i18n';
 
 /**
@@ -19,12 +19,16 @@ export function CaseBoard({ works, students, checkins, settings, onOpen }: {
   onOpen: (s: Student) => void;
 }) {
   const active = useMemo(() => works.filter(isActiveWork), [works]);
-  const types = typesPresent(active);
-  const counts = useMemo(() => countByType(active), [active]);
-  const [picked, setPicked] = useState<WorkType | null>(null);
+  /* ปุ่มเลือกตามชนิดงาน (CD แยก Complicated APD) — ขั้นตอนเหมือนกัน กรองชิ้นก่อนแล้วส่ง WorkType ไปหาคอลัมน์ */
+  const types = kindsPresent(active);
+  const counts = useMemo(() => countByKind(active), [active]);
+  const [picked, setPicked] = useState<WorkKind | null>(null);
   const type = picked && types.includes(picked) ? picked : types[0];
   const byId = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
-  const cols = useMemo(() => (type ? boardByStep(works, settings, type, checkins) : []), [works, settings, type, checkins]);
+  const cols = useMemo(
+    () => (type ? boardByStep(works.filter((w) => kindOf(w) === type), settings, KINDS[type].type, checkins) : []),
+    [works, settings, type, checkins],
+  );
   const most = Math.max(0, ...cols.map((c) => c.cards.length));
 
   if (!type) {
@@ -37,9 +41,9 @@ export function CaseBoard({ works, students, checkins, settings, onOpen }: {
         <div className="seg seg--sm" role="group" aria-label={t('ประเภทงาน')}>
           {types.map((ty) => (
             <button key={ty} data-on={ty === type} aria-pressed={ty === type} onClick={() => setPicked(ty)}>
-              <i className="caseboard__dot" style={{ background: typeMeta(ty).color }} />
-              {typeChipLabel(ty)}
-              <b className="seg__count">{counts.find((c) => c.type === ty)?.count ?? 0}</b>
+              <i className="caseboard__dot" style={{ background: KINDS[ty].color }} />
+              {KINDS[ty].label}
+              <b className="seg__count">{counts.find((c) => c.kind === ty)?.count ?? 0}</b>
             </button>
           ))}
         </div>

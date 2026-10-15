@@ -221,21 +221,66 @@ export function typesPresent(items: ReadonlyArray<{ type: WorkType }>): WorkType
 }
 
 /**
- * ป้ายชนิดงานของชิ้นงานหนึ่งชิ้น (การ์ดเคส · หน้าแรก · หน้าตรวจงาน)
- * ป้ายประเภท (TYPES.short) รวม CD กับ Complicated APD เป็น "CD/APD" ตามแถวเกณฑ์ — อ่านแล้วไม่รู้ว่าชิ้นนี้คืออะไร
- * ป้ายนี้แยกตามลักษณะเคส · RPD ทุกแบบเป็นโครงโลหะ จึงเรียก Co-Cr RPD ให้ตรงกับเงื่อนไขในเกณฑ์
- * CD ที่ไม่มีลักษณะเคส (นำเข้าจากชีตรุ่นเก่า) ถือเป็น CD — ตรงกับตัวนับใน caseCount
+ * ชนิดงานที่ผู้ใช้เห็น — ละเอียดกว่า WorkType หนึ่งขั้น
+ * WorkType 'CD' รวม CD กับ Complicated APD ไว้ (ลิสต์ขั้นตอนเดียวกัน · นับเกณฑ์แถวเดียวกัน)
+ * แต่บนหน้าจอต้องแยก ไม่งั้นป้าย "CD/APD" บอกไม่ได้ว่าชิ้นนี้คืออะไร
+ * ทุกที่ที่แสดงชิ้นงานรายชิ้น หรือกรอง/นับ "ตามชนิดงาน" ให้ใช้ชุดนี้ · การนับเกณฑ์ยังอ่าน WorkType
  */
-export function workLabel(w: { type: string; dentureClass?: DentureClass }): string {
-  if (w.type === 'CD') return w.dentureClass === 'complicated-APD' ? DENTURE_CLASSES['complicated-APD'].label : 'CD';
-  if (w.type === 'RPD') return 'Co-Cr RPD';
-  if (w.type === 'APD') return 'Simple APD';
-  if (w.type === 'CB') return 'Crown/Bridge'; // "Cr,Br" ตามหัวคอลัมน์ชีต อ่านยากบนป้าย
-  return typeMeta(w.type).short;
+export type WorkKind = 'CD' | 'CAPD' | 'RPD' | 'APD' | 'PC' | 'CB' | 'RRM' | 'RFX';
+
+export interface KindMeta {
+  label: string;
+  /** WorkType ที่ชนิดนี้อยู่ — ใช้หาลิสต์ขั้นตอน/เกณฑ์ */
+  type: WorkType;
+  color: string;
+  tint: string;
+  ink: string;
 }
 
-/** ป้ายสำหรับปุ่มกรอง/legend — "APD" เฉยๆ ชนกับปุ่ม "CD/APD" (= CD/Complicated APD)
- *  จนอ่านเหมือนซ้ำกัน จึงเขียนให้ชัดว่าเป็น Simple APD */
+/* Complicated APD ใช้น้ำเงินอ่อน (ตระกูลเดียวกับ CD ที่นับรวมกัน) ให้แยกจาก CD บนกราฟได้
+   · RPD ทุกแบบเป็นโครงโลหะ จึงเรียก Co-Cr RPD ให้ตรงกับเงื่อนไขในเกณฑ์
+   · Crown/Bridge แทน "Cr,Br" ตามหัวคอลัมน์ชีตที่อ่านยากบนป้าย */
+export const KINDS: Record<WorkKind, KindMeta> = {
+  CD: { label: 'CD', type: 'CD', color: TYPES.CD.color, tint: TYPES.CD.tint, ink: TYPES.CD.ink },
+  CAPD: { label: 'Complicated APD', type: 'CD', color: '#6C86DD', tint: '#EDF0FB', ink: '#3A55B8' },
+  RPD: { label: 'Co-Cr RPD', type: 'RPD', color: TYPES.RPD.color, tint: TYPES.RPD.tint, ink: TYPES.RPD.ink },
+  APD: { label: 'Simple APD', type: 'APD', color: TYPES.APD.color, tint: TYPES.APD.tint, ink: TYPES.APD.ink },
+  PC: { label: 'Post-core', type: 'PC', color: TYPES.PC.color, tint: TYPES.PC.tint, ink: TYPES.PC.ink },
+  CB: { label: 'Crown/Bridge', type: 'CB', color: TYPES.CB.color, tint: TYPES.CB.tint, ink: TYPES.CB.ink },
+  RRM: { label: TYPES.RRM.short, type: 'RRM', color: TYPES.RRM.color, tint: TYPES.RRM.tint, ink: TYPES.RRM.ink },
+  RFX: { label: TYPES.RFX.short, type: 'RFX', color: TYPES.RFX.color, tint: TYPES.RFX.tint, ink: TYPES.RFX.ink },
+};
+
+export const KIND_ORDER: WorkKind[] = ['CD', 'CAPD', 'RPD', 'APD', 'PC', 'CB', 'RRM', 'RFX'];
+
+/** ชนิดงานของชิ้นงาน — CD ที่ไม่มีลักษณะเคส (นำเข้าจากชีตรุ่นเก่า) ถือเป็น CD ตรงกับตัวนับใน caseCount
+ *  · ประเภทที่ catalog ไม่รู้จักได้ null (หน้าจอใช้ป้ายกลาง ๆ ของ typeMeta แทน) */
+export function kindOf(w: { type: string; dentureClass?: DentureClass }): WorkKind | null {
+  if (w.type === 'CD') return w.dentureClass === 'complicated-APD' ? 'CAPD' : 'CD';
+  return (KIND_ORDER as string[]).includes(w.type) ? (w.type as WorkKind) : null;
+}
+
+/** สี/ป้ายของชิ้นงานหนึ่งชิ้น — ทนประเภทที่ไม่รู้จักเหมือน typeMeta */
+export function workMeta(w: { type: string; dentureClass?: DentureClass }): KindMeta {
+  const k = kindOf(w);
+  if (k) return KINDS[k];
+  const m = typeMeta(w.type);
+  return { label: m.short, type: w.type as WorkType, color: m.color, tint: m.tint, ink: m.ink };
+}
+
+/** ป้ายชนิดงานของชิ้นงานหนึ่งชิ้น (การ์ดเคส · หน้าแรก · หน้าตรวจงาน · รายการในหน้าอาจารย์) */
+export const workLabel = (w: { type: string; dentureClass?: DentureClass }): string => workMeta(w).label;
+
+/** ชนิดงานที่มีอยู่จริงในชุดข้อมูล เรียงตามลำดับชนิด — ใช้ทำปุ่มกรอง/legend แบบเดียวกับ typesPresent */
+export function kindsPresent(items: ReadonlyArray<{ type: string; dentureClass?: DentureClass }>): WorkKind[] {
+  const seen = new Set(items.map(kindOf));
+  return KIND_ORDER.filter((k) => seen.has(k));
+}
+
+/** ป้ายประเภทในสถิติที่ยังนับตาม WorkType (ระยะเวลา · funnel · รายงาน) — CD รวม Complicated APD จึงเขียนเต็ม
+ *  "APD" เฉยๆ ชนกับ CD จนอ่านเหมือนซ้ำกัน จึงเขียนให้ชัดว่าเป็น Simple APD */
 export function typeChipLabel(ty: WorkType): string {
-  return ty === 'APD' ? 'Simple APD' : TYPES[ty].short;
+  if (ty === 'CD') return 'CD + Complicated APD';
+  if (ty === 'APD') return 'Simple APD';
+  return KINDS[ty as WorkKind]?.label ?? typeMeta(ty).short;
 }

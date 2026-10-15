@@ -13,14 +13,14 @@ import { RequirementSlots } from '../../components/teacher/RequirementSlots';
 import { isFollowUpGroup, todaySummary } from '../../domain/today';
 import { lastPullAt, pullAll } from '../../data/cloudSync';
 import { cloudEnabled } from '../../lib/cloud';
-import { typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
-import { alumniOverview, cohortYearly, countByType, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
+import { KINDS, kindOf, kindsPresent, typeMeta, workLabel, workMeta, type WorkKind } from '../../domain/catalog';
+import { alumniOverview, cohortYearly, countByKind, staleRows, summarizeAll, summarizeGroups } from '../../domain/aggregate';
 import { bottleneckByStep, riskByGroup, riskRows, worksAtStep } from '../../domain/analytics';
 import {
   currentProc, daysSinceUpdate, isReturned, isStale, maxProgression, notCountedPieces, percentParts, procLabel, progression,
   isActiveWork, type NotCountedReason,
 } from '../../domain/rules';
-import type { WorkType, Workpiece } from '../../domain/types';
+import type { Workpiece } from '../../domain/types';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, usePendingPushCount, useSyncProblems, useSyncStatus, useTeacher,
 } from '../../hooks/data';
@@ -108,7 +108,7 @@ export default function Dashboard() {
 
   const group = useApp((st) => st.teacherGroup);
   const setGroup = useApp((st) => st.setTeacherGroup);
-  const [stepType, setStepType] = useState<WorkType>('CB');
+  const [stepKind, setStepKind] = useState<WorkKind>('CB');
   // null = ยังไม่ได้เลือกเอง → เปิด step ที่กองมากสุดให้อัตโนมัติ · -1 = ผู้ใช้กดปิด
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [pinged, setPinged] = useState<Record<string, boolean>>({});
@@ -197,7 +197,7 @@ export default function Dashboard() {
 
   const isAlumniView = yearView === 'alumni';
   const alumni = useMemo(() => alumniOverview(summaries, works), [summaries, works]);
-  const activeByType = useMemo(() => countByType(works.filter(isActiveWork)), [works]);
+  const activeByKind = useMemo(() => countByKind(works.filter(isActiveWork)), [works]);
 
   /* สรุปวันนี้ (โซนกลุ่ม) — นับเฉพาะกลุ่มที่โซนซ้ายแสดงอยู่เสมอ · ไม่มีกลุ่มให้แสดง = สรุปทั้งชั้นปีแทน
      เรื่องระดับชั้นปี (กลุ่มที่ต้องตามเยอะ · งานค้างกองที่ step ไหน) อยู่กล่อง "ต้องดูในชั้นปี" ในโซนขวา (yearToday) */
@@ -249,7 +249,7 @@ export default function Dashboard() {
       out.push({
         key: 'stale', tone: 'warn', icon: 'stale',
         text: <>{t('งานค้างเกิน {d} วัน', { d: settings.stale })} <b>{t('{n} ชิ้น', { n: sum.stale })}</b> · {t('ส่วนใหญ่ติด step {n}', { n: top.progression })}</>,
-        go: { label: t('ดูในกราฟ'), onClick: () => { setStepType(top.type); setOpenStep(top.progression); scrollFlash(stepsRef.current, 'center'); } },
+        go: { label: t('ดูในกราฟ'), onClick: () => { setStepKind(kindOf(top) ?? 'CB'); setOpenStep(top.progression); scrollFlash(stepsRef.current, 'center'); } },
       });
     }
     return out;
@@ -406,8 +406,8 @@ export default function Dashboard() {
                   {f.stale.length
                     ? f.stale.slice(0, 2).map((w) => (
                       <span key={w.workId} className="stalepill">
-                        <i style={{ background: typeMeta(w.type).color }} />
-                        {typeChipLabel(w.type)} · step {w.progression}
+                        <i style={{ background: workMeta(w).color }} />
+                        {workLabel(w)} · step {w.progression}
                       </span>
                     ))
                     : f.reason}
@@ -445,7 +445,7 @@ export default function Dashboard() {
               <div className="todaykid__who">
                 <button className="todaykid__name" onClick={() => openStudent(st)}>{name}</button>
                 <div className="todaykid__meta">
-                  <span className="stalepill"><i style={{ background: typeMeta(w.type).color }} />{typeChipLabel(w.type)}</span>
+                  <span className="stalepill"><i style={{ background: workMeta(w).color }} />{workLabel(w)}</span>
                   {' '}{waitReasonLabel(w.reason)}
                 </div>
               </div>
@@ -458,7 +458,11 @@ export default function Dashboard() {
     );
   }
 
-  const stepBuckets = useMemo(() => bottleneckByStep(works, settings, stepType), [works, settings, stepType]);
+  /* กราฟคงค้างกรองตามชนิดงาน — CD กับ Complicated APD ขั้นตอนชุดเดียวกัน กรองชิ้นก่อนแล้วส่ง WorkType ไปหาจำนวนขั้น */
+  const stepBuckets = useMemo(
+    () => bottleneckByStep(works.filter((w) => kindOf(w) === stepKind), settings, KINDS[stepKind].type),
+    [works, settings, stepKind],
+  );
   const maxStepBucket = Math.max(1, ...stepBuckets.map((b) => b.count));
   const busiest = [...stepBuckets].sort((a, b) => b.count - a.count)[0] ?? { progression: 0, count: 0, label: '' };
   const shownStep = openStep === null ? (busiest.count > 0 ? busiest.progression : -1) : openStep;
@@ -468,7 +472,7 @@ export default function Dashboard() {
   type TraceKey =
     | { kind: 'group'; code: string }
     | { kind: 'pct' | 'req'; studentId: string }
-    | { kind: 'step'; type: WorkType; step: number }
+    | { kind: 'step'; work: WorkKind; step: number }
     | { kind: 'stale' };
   const [traceKey, setTraceKey] = useState<TraceKey | null>(null);
   const yearScopeLabel = yearView === 'all' ? t('ทั้งชั้นปี · รวมปี') : t('ทั้งชั้นปี · ปี {n}', { n: yearView });
@@ -528,9 +532,9 @@ export default function Dashboard() {
                 {parts.rows.map(({ workpiece: w, percent }) => (
                   <TraceRow
                     key={w.id}
-                    color={typeMeta(w.type).color}
+                    color={workMeta(w).color}
                     main={tText(w.detail)}
-                    sub={`${typeChipLabel(w.type)} · ${stepText(w)}${isReturned(w) ? ` · ${t('คืนเคส')}` : ''}`}
+                    sub={`${workLabel(w)} · ${stepText(w)}${isReturned(w) ? ` · ${t('คืนเคส')}` : ''}`}
                     value={`${percent}%`}
                     muted={isReturned(w)}
                   />
@@ -566,9 +570,9 @@ export default function Dashboard() {
                   {excluded.map(({ workpiece: w, reason }) => (
                     <TraceRow
                       key={w.id}
-                      color={typeMeta(w.type).color}
+                      color={workMeta(w).color}
                       main={tText(w.detail)}
-                      sub={`${typeChipLabel(w.type)} · ${stepText(w)}`}
+                      sub={`${workLabel(w)} · ${stepText(w)}`}
                       value={reasonText[reason]}
                       tone="warn"
                     />
@@ -593,9 +597,9 @@ export default function Dashboard() {
       };
     }
     if (traceKey.kind === 'step') {
-      const list = worksAtStep(works, traceKey.type, traceKey.step);
+      const list = worksAtStep(works.filter((w) => kindOf(w) === traceKey.work), KINDS[traceKey.work].type, traceKey.step);
       return {
-        eyebrow: `${yearScopeLabel} · ${typeChipLabel(traceKey.type)}`,
+        eyebrow: `${yearScopeLabel} · ${KINDS[traceKey.work].label}`,
         title: t('{n} ชิ้นงานอยู่ที่ step {s}', { n: list.length, s: traceKey.step }),
         body: (
           <div className="trace__rows">
@@ -972,7 +976,7 @@ export default function Dashboard() {
               {/* วงงานที่กำลังทำ · เลขจบเคสสะสมเป็นบรรทัดเล็กใต้วง */}
               <section className="panel donutpanel" aria-label={t('งานที่กำลังทำ')}>
                 <TypeDonut
-                  items={activeByType}
+                  items={activeByKind}
                   foot={t('จบแล้วปี {y} · {a} จาก {b} ชิ้น', { y: yearly.year, a: yearly.piecesDone, b: yearly.piecesGoal })}
                 />
               </section>
@@ -983,12 +987,12 @@ export default function Dashboard() {
                     <h3>{t('ชิ้นงานคงค้าง จำแนกตามขั้นงาน')}</h3>
                   </div>
                   <div className="seg seg--sm">
-                    {typesPresent(works).map((ty) => (
-                      <button key={ty} data-on={stepType === ty} onClick={() => { setStepType(ty); setOpenStep(null); }}>
-                        {typeChipLabel(ty)}
+                    {kindsPresent(works).map((k) => (
+                      <button key={k} data-on={stepKind === k} onClick={() => { setStepKind(k); setOpenStep(null); }}>
+                        {KINDS[k].label}
                         {/* จำนวนชิ้นงานต่อประเภทอยู่ในแท็บเลย — ไม่ต้องมีการ์ดแยกอีกใบ */}
                         {/* นับเฉพาะงานที่ยังทำอยู่ ตรงกับผลรวมแท่งในกราฟ — เดิมนับรวมที่จบ/คืนแล้ว (132 กับแท่งรวม 75) */}
-                        <b className="seg__count">{activeByType.find((x) => x.type === ty)?.count ?? 0}</b>
+                        <b className="seg__count">{activeByKind.find((x) => x.kind === k)?.count ?? 0}</b>
                       </button>
                     ))}
                   </div>
@@ -1007,7 +1011,7 @@ export default function Dashboard() {
                         className="bar-v"
                         style={{
                           height: Math.max(2, (b.count / maxStepBucket) * 92),
-                          background: b.count === maxStepBucket && b.count > 0 ? 'var(--danger-chart)' : typeMeta(stepType).color,
+                          background: b.count === maxStepBucket && b.count > 0 ? 'var(--danger-chart)' : KINDS[stepKind].color,
                         }}
                       />
                       <span className="tick">{b.progression}</span>
@@ -1019,12 +1023,12 @@ export default function Dashboard() {
                   <div style={{ marginTop: 12 }}>
                     <StepInfo
                       progression={shownStep}
-                      type={stepType}
+                      type={KINDS[stepKind].type}
                       meta={t('{n} ชิ้นงานกำลังอยู่ที่ step นี้', { n: stepBuckets[shownStep].count })}
                       onClose={() => setOpenStep(-1)}
                     />
                     {stepBuckets[shownStep].count > 0 && (
-                      <button className="tracego" onClick={() => setTraceKey({ kind: 'step', type: stepType, step: shownStep })}>
+                      <button className="tracego" onClick={() => setTraceKey({ kind: 'step', work: stepKind, step: shownStep })}>
                         {t('ดู {n} ชิ้นงานที่อยู่ step นี้', { n: stepBuckets[shownStep].count })} ›
                       </button>
                     )}
@@ -1059,8 +1063,8 @@ export default function Dashboard() {
                             <div className="staledetail" title={tText(r.workpiece.detail)}>{tText(r.workpiece.detail)}</div>
                             {/* ป้ายสั้น "● Post-core · step 6" · ชื่อขั้นเต็มอยู่ใน title */}
                             <span className="stalepill" title={cur ? procLabel(r.workpiece.type, cur) : undefined}>
-                              <i style={{ background: typeMeta(r.workpiece.type).color }} />
-                              {typeChipLabel(r.workpiece.type)} · {cur ? `step ${cur.progression}` : t('ยังไม่เริ่ม')}
+                              <i style={{ background: workMeta(r.workpiece).color }} />
+                              {workLabel(r.workpiece)} · {cur ? `step ${cur.progression}` : t('ยังไม่เริ่ม')}
                             </span>
                           </td>
                           <td style={{ width: 64 }}>

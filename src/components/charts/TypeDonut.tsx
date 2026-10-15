@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
-import { typeChipLabel, typeMeta } from '../../domain/catalog';
-import type { WorkType } from '../../domain/types';
+import { KINDS, type WorkKind } from '../../domain/catalog';
 import { t } from '../../lib/i18n';
 
 const R = 62;
 const C = 2 * Math.PI * R;
 
 /**
- * วงงานที่กำลังทำ แยกประเภท
+ * วงงานที่กำลังทำ แยกชนิดงาน (CD แยก Complicated APD)
  * ข้างวงมีแค่ชื่อประเภท ไม่มีตัวเลข · ชี้/จิ้มส่วนไหน เลขกลางวงเปลี่ยนเป็นของประเภทนั้น
  */
-export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; count: number }>; foot?: string }) {
+export function TypeDonut({ items, foot }: { items: Array<{ kind: WorkKind; count: number }>; foot?: string }) {
   const total = items.reduce((s, x) => s + x.count, 0);
-  const [hot, setHot] = useState<WorkType | null>(null);
+  const [hot, setHot] = useState<WorkKind | null>(null);
   /* เริ่มจากวงว่างแล้ววาดขึ้นหนึ่งครั้ง — รอให้หน้าวาดเสร็จก่อน (เครื่องว่าง) ค่อยเริ่ม
      เดิมเริ่มทันทีแล้วชนกับจังหวะที่ทั้งหน้ากำลังโหลด วงเลยวาดกระตุก */
   const [drawn, setDrawn] = useState(false);
@@ -26,7 +25,7 @@ export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; coun
     return () => window.clearTimeout(id);
   }, []);
   const hover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches;
-  const pick = hot ? items.find((x) => x.type === hot) : undefined;
+  const pick = hot ? items.find((x) => x.kind === hot) : undefined;
 
   let off = 0;
   const segs = items.filter((x) => x.count > 0).map((x) => {
@@ -35,7 +34,7 @@ export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; coun
     off += len;
     return seg;
   });
-  const bind = (ty: WorkType) => ({
+  const bind = (ty: WorkKind) => ({
     onMouseEnter: hover ? () => setHot(ty) : undefined,
     onMouseLeave: hover ? () => setHot(null) : undefined,
     onClick: () => setHot(hot === ty ? null : ty),
@@ -48,25 +47,25 @@ export function TypeDonut({ items, foot }: { items: Array<{ type: WorkType; coun
         <g transform="rotate(-90)">
           {segs.map((s) => (
             <circle
-              key={s.type}
+              key={s.kind}
               r={R}
-              className={`typedonut__seg${hot === s.type ? ' typedonut__seg--on' : ''}`}
-              stroke={typeMeta(s.type).color}
+              className={`typedonut__seg${hot === s.kind ? ' typedonut__seg--on' : ''}`}
+              stroke={KINDS[s.kind].color}
               strokeDasharray={`${drawn ? Math.max(0, s.len - (segs.length > 1 ? 2.5 : 0)) : 0} ${C}`}
               strokeDashoffset={-s.off}
-              {...bind(s.type)}
+              {...bind(s.kind)}
             />
           ))}
         </g>
         <text className="typedonut__n" textAnchor="middle" y={8}>{pick ? pick.count : total}</text>
-        <text className="typedonut__sub" textAnchor="middle" y={26}>{pick ? typeChipLabel(pick.type) : t('งานที่กำลังทำ')}</text>
+        <text className="typedonut__sub" textAnchor="middle" y={26}>{pick ? KINDS[pick.kind].label : t('งานที่กำลังทำ')}</text>
       </svg>
       <div className="typedonut__side">
       <div className="typedonut__legend">
         {items.filter((x) => x.count > 0).map((x) => (
-          <button key={x.type} aria-pressed={hot === x.type} {...bind(x.type)} onFocus={() => setHot(x.type)} onBlur={() => setHot(null)}>
-            <i style={{ background: typeMeta(x.type).color }} />
-            {typeChipLabel(x.type)}
+          <button key={x.kind} aria-pressed={hot === x.kind} {...bind(x.kind)} onFocus={() => setHot(x.kind)} onBlur={() => setHot(null)}>
+            <i style={{ background: KINDS[x.kind].color }} />
+            {KINDS[x.kind].label}
           </button>
         ))}
       </div>

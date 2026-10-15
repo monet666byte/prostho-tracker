@@ -7,7 +7,7 @@ import { CaseBoard } from '../../components/teacher/CaseBoard';
 import { DivergingBars } from '../../components/charts/Diverging';
 import { Heatmap } from '../../components/charts/Heatmap';
 import { averageProfile, heatmapRows, riskRows } from '../../domain/analytics';
-import { typeMeta } from '../../domain/catalog';
+import { typeMeta, workLabel, workMeta } from '../../domain/catalog';
 import {
   useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces,
 } from '../../hooks/data';
@@ -255,7 +255,7 @@ export default function MyGroup() {
                           <div className="worknow">
                             {/* เลขเดียวพอ: แถบ = ผ่านแล้วกี่ขั้น (มี tooltip) · ข้อความ = กำลังทำขั้นไหน
                                เดิมมี "3/10" คู่กับ "CD-4" คนอ่านเห็นเลขชนกัน */}
-                            <span className="worknow__type" style={{ color: typeMeta(main.type).ink }}>{typeMeta(main.type).prefix}</span>
+                            <span className="worknow__type" style={{ color: workMeta(main).ink }}>{workLabel(main)}</span>
                             <span className="worknow__name">
                               {t('กำลังทำขั้น {n}', { n: Math.min(main.max, main.progression + 1) })} · {main.name}
                             </span>
@@ -305,7 +305,7 @@ export default function MyGroup() {
                           <td /><td /><td />
                           <td>
                             <div className="worknow">
-                              <span className="worknow__type" style={{ color: typeMeta(pc.type).ink }}>{typeMeta(pc.type).prefix}</span>
+                              <span className="worknow__type" style={{ color: workMeta(pc).ink }}>{workLabel(pc)}</span>
                               <span className="worknow__name" style={{ fontWeight: 400 }}>
                                 {t('กำลังทำขั้น {n}', { n: Math.min(pc.max, pc.progression + 1) })} · {pc.name}
                               </span>
@@ -320,7 +320,7 @@ export default function MyGroup() {
                           <td /><td /><td />
                           <td>
                             <div className="worknow">
-                              <span className="worknow__type" style={{ color: typeMeta(pc.type).ink }}>{typeMeta(pc.type).prefix}</span>
+                              <span className="worknow__type" style={{ color: workMeta(pc).ink }}>{workLabel(pc)}</span>
                               <span className="worknow__name" style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{t('จบเคสแล้ว')} ✓</span>
                               <span className="worknow__ago">{pc.days === 0 ? t('วันนี้') : t('{n} วันก่อน', { n: pc.days })}</span>
                             </div>
@@ -342,14 +342,14 @@ export default function MyGroup() {
                 <small>{t('งานในมือ {a} ชิ้น · จบแล้ว {b}', { a: r.pieces.length, b: r.donePieces.length })}</small>
                 {r.pieces.map((pc, i) => (
                   <span className="grpcard__pc" key={pc.id} style={{ '--k': i } as React.CSSProperties}>
-                    <span style={{ color: '#9db4ff' }}>{typeMeta(pc.type).prefix}</span>
+                    <span style={{ color: '#9db4ff' }}>{workLabel(pc)}</span>
                     <span className="grpcard__tr"><i style={{ width: `${Math.round((pc.progression / Math.max(1, pc.max)) * 100)}%` }} /></span>
                     <span className="grpcard__d">{pc.days === 0 ? t('วันนี้') : t('{n} วัน', { n: pc.days })}</span>
                   </span>
                 ))}
                 {r.donePieces.map((pc, i) => (
                   <span className="grpcard__pc" key={pc.id} style={{ '--k': r.pieces.length + i } as React.CSSProperties}>
-                    <span style={{ color: '#6ce9a6' }}>{typeMeta(pc.type).prefix}</span>
+                    <span style={{ color: '#6ce9a6' }}>{workLabel(pc)}</span>
                     <span className="grpcard__tr"><i style={{ width: '100%', background: '#12b76a' }} /></span>
                     <span className="grpcard__d">{t('จบเคสแล้ว')}</span>
                   </span>

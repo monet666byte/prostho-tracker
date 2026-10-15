@@ -25,7 +25,7 @@ export default function Search() {
    * พอใช้จริง HN "DEMO-0307" ไม่มีทางตรงกับใคร กดแล้วได้ 0 ผลลัพธ์เสมอ
    */
   const quick = useMemo(() => {
-    const types = [...new Set(works.map((w) => typeMeta(w.type).short))].slice(0, 4);
+    const types = [...new Set(works.map((w) => workLabel(w)))].slice(0, 4);
     const teeth = [...new Set(works.map((w) => w.tooth).filter(Boolean) as string[])].slice(0, 2);
     // ซี่ฟันเป็นเลขเปล่า "46" ไม่รู้ว่าคืออะไร → ป้าย "ซี่ 46" แต่ค้นด้วยเลขเหมือนเดิม
     return [...types.map((v) => ({ value: v, label: v })), ...teeth.map((v) => ({ value: v, label: t('ซี่ {n}', { n: v }) }))];

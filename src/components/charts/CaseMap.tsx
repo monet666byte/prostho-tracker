@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { orderOf, typeChipLabel, typeMeta, typesPresent } from '../../domain/catalog';
+import { KIND_ORDER, KINDS, typeMeta, type WorkKind } from '../../domain/catalog';
 import type { CaseDot } from '../../domain/analytics';
 import { t, tText } from '../../lib/i18n';
 
@@ -49,13 +49,17 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
     setColPeek({ n, x, y: cb.top - wb.top - 8, ax: W / 2 + (want - x) });
   };
 
-  // เรียงสีให้เกาะกลุ่มกันในแต่ละกอง (ตามลำดับประเภทงาน) และดันตัวค้างขึ้นบนสุดของกลุ่มตัวเอง
+  /* สีและลำดับตามชนิดงาน (CD แยก Complicated APD) · จุดที่ประเภทไม่รู้จักใช้สีกลางของ typeMeta ไว้ท้ายสุด */
+  const dotColor = (d: CaseDot) => (d.kind ? KINDS[d.kind].color : typeMeta(d.type).color);
+  const kindRank = (d: CaseDot) => (d.kind ? KIND_ORDER.indexOf(d.kind) : 99);
+  const kindsIn = (list: CaseDot[]) => KIND_ORDER.filter((k) => list.some((d) => d.kind === k));
+  // เรียงสีให้เกาะกลุ่มกันในแต่ละกอง (ตามลำดับชนิดงาน) และดันตัวค้างขึ้นบนสุดของกลุ่มตัวเอง
   const columns = Array.from({ length: 11 }, (_, i) => ({
     progression: i,
     items: dots
       .filter((d) => d.progression === i)
       .sort((a, b) => {
-        if (orderOf(a.type) !== orderOf(b.type)) return orderOf(a.type) - orderOf(b.type);
+        if (kindRank(a) !== kindRank(b)) return kindRank(a) - kindRank(b);
         return Number(a.stale) - Number(b.stale);
       }),
   }));
@@ -79,7 +83,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
                   key={d.id}
                   data-stale={d.stale}
                   data-on={hover?.id === d.id}
-                  style={{ background: typeMeta(d.type).color }}
+                  style={{ background: dotColor(d) }}
                   title={d.label}
                   onMouseEnter={() => setHover(d)}
                   onMouseLeave={() => setHover(null)}
@@ -106,7 +110,7 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
 
       {colPeek && (() => {
         const items = columns[colPeek.n]?.items ?? [];
-        const byType = typesPresent(items).map((ty) => ({ ty, n: items.filter((d) => d.type === ty).length }));
+        const byType = kindsIn(items).map((ty: WorkKind) => ({ ty, n: items.filter((d) => d.kind === ty).length }));
         const stale = items.filter((d) => d.stale).length;
         return (
           <div className="casemap__card" role="tooltip" style={{ left: colPeek.x, top: colPeek.y, '--ax': `${colPeek.ax}px` } as React.CSSProperties}>
@@ -114,8 +118,8 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
             {stale > 0 && <small className="casemap__cardwarn">{t('ค้างเกิน {d} วัน {n} ชิ้น', { d: staleDays, n: stale })}</small>}
             {byType.map(({ ty, n }) => (
               <span className="casemap__cardrow" key={ty}>
-                <span style={{ color: '#c8d4ff' }}>{typeChipLabel(ty)}</span>
-                <span className="casemap__cardtr"><i style={{ width: `${items.length ? Math.round((n / items.length) * 100) : 0}%`, background: typeMeta(ty).color }} /></span>
+                <span style={{ color: '#c8d4ff' }}>{KINDS[ty].label}</span>
+                <span className="casemap__cardtr"><i style={{ width: `${items.length ? Math.round((n / items.length) * 100) : 0}%`, background: KINDS[ty].color }} /></span>
                 <span className="casemap__cardn">{n}</span>
               </span>
             ))}
@@ -125,8 +129,8 @@ export function CaseMap({ dots, staleDays, onStepClick, activeStep, showTypeLege
       })()}
 
       <div className="chartlegend">
-        {showTypeLegend && typesPresent(dots).map((t) => (
-          <span key={t}><i style={{ background: typeMeta(t).color, borderRadius: 99 }} /> {typeChipLabel(t)}</span>
+        {showTypeLegend && kindsIn(dots).map((t) => (
+          <span key={t}><i style={{ background: KINDS[t].color, borderRadius: 99 }} /> {KINDS[t].label}</span>
         ))}
         {showStaleLegend && <span><i style={{ background: '#fff', border: '1.5px solid var(--danger-chart)', borderRadius: 99 }} /> {t('ค้างเกิน {n} วัน', { n: staleDays })}</span>}
         <span style={{ marginLeft: 'auto', minHeight: 16, color: 'var(--text-secondary)' }}>

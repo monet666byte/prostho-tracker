@@ -17,7 +17,7 @@ import { daysUntil, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
-import { typeMeta, workLabel } from '../../domain/catalog';
+import { workLabel, workMeta } from '../../domain/catalog';
 import type { Settings, WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { activeStepGroup, caseCountTotals, groupByReqRow, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
@@ -122,7 +122,7 @@ function PanelSlide({
         <span className="hp__who">
           <b>{patientTitle(w.patient, namesOn, t)}</b>{' '}
           {/* ชื่อชนิดงานจริง (Complicated APD / Co-Cr RPD …) แทนป้ายแถวเกณฑ์ "CD/APD" */}
-          <span className="hp__chip"><i style={{ background: typeMeta(w.type).color }} />{workLabel(w)}</span>
+          <span className="hp__chip"><i style={{ background: workMeta(w).color }} />{workLabel(w)}</span>
           {where}
           {/* ไม่ใช้ชื่อ (นำร่อง) = HN เป็นหัวเรื่อง · เพศ/อายุช่วยแยกคนไข้ที่ HN คล้ายกัน */}
           {!namesOn && w.patient.sexAge ? ` · ${tSexAge(w.patient.sexAge)}` : ''}

@@ -6,7 +6,7 @@
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
 import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, progression } from './rules';
-import type { CheckIn, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
+import type { CheckIn, DentureClass, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
 
 export interface TodayInput {
@@ -38,7 +38,7 @@ export interface FollowUpPerson {
   studentId: string;
   risk: Exclude<RiskLevel, 'ok'>;
   reason: string;
-  stale: Array<{ workId: string; type: WorkType; progression: number; days: number }>;
+  stale: Array<{ workId: string; type: WorkType; dentureClass?: DentureClass; progression: number; days: number }>;
 }
 
 export interface TodaySummary {
@@ -58,7 +58,7 @@ export interface TodaySummary {
   /** กลุ่มที่ต้องตามตั้งแต่ ⅓ ของกลุ่ม (isFollowUpGroup) เรียงคนต้องตามมากสุดก่อน · เท่ากันคงลำดับกลุ่มเดิม */
   followUpGroups: Array<{ code: string; year: number; followUp: number; size: number }>;
   /** เคสที่หยุดรอคนไข้อยู่ (ไม่นับเป็นค้าง/ต้องตาม) — นัดใกล้สุดก่อน · ไม่มีนัดไว้ท้าย */
-  waitingList: Array<{ studentId: string; workId: string; type: WorkType; reason: WaitReason; until?: string }>;
+  waitingList: Array<{ studentId: string; workId: string; type: WorkType; dentureClass?: DentureClass; reason: WaitReason; until?: string }>;
   /** ชิ้นงานที่จบใน 7 วันล่าสุด — ไม่นับงานจากชีต (completedAt ของมันคือวันนำเข้า ไม่ใช่วันจบจริง) */
   doneThisWeek: number;
   /** มีเรื่องที่อาจารย์ต้องทำหรือต้องดู — ไม่มี = "วันนี้ไม่มีอะไรน่าห่วง" */
@@ -110,7 +110,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
       studentId, risk: r.risk, reason: r.reason,
       stale: staleWorks
         .filter((w) => w.studentId === studentId)
-        .map((w) => ({ workId: w.id, type: w.type, progression: Math.max(0, progression(w)), days: daysSinceUpdate(w, now) }))
+        .map((w) => ({ workId: w.id, type: w.type, dentureClass: w.dentureClass, progression: Math.max(0, progression(w)), days: daysSinceUpdate(w, now) }))
         .sort((a, b) => b.days - a.days),
     }))
     .sort((a, b) => (a.risk === b.risk ? 0 : a.risk === 'high' ? -1 : 1)
@@ -143,7 +143,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
 
   const waitingList: TodaySummary['waitingList'] = works
     .filter((w) => isWaitingForPatient(w, now))
-    .map((w) => ({ studentId: w.studentId, workId: w.id, type: w.type, reason: w.waitReason!, until: w.waitUntil }))
+    .map((w) => ({ studentId: w.studentId, workId: w.id, type: w.type, dentureClass: w.dentureClass, reason: w.waitReason!, until: w.waitUntil }))
     .sort((a, b) => (a.until ?? '9999').localeCompare(b.until ?? '9999') || a.studentId.localeCompare(b.studentId));
 
   const weekAgo = now.getTime() - 7 * DAY;

@@ -3,7 +3,7 @@ import type { Icon } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, studentCohortLabel, studentYear } from '../../domain/cohort';
-import { typeChipLabel } from '../../domain/catalog';
+import { workLabel } from '../../domain/catalog';
 import { groupShort, sortGroupCodes } from '../../domain/group';
 import type { Patient, Student, Workpiece } from '../../domain/types';
 import { useAllPatients, useAllStudents, useAllWorkpieces, usePatientNamesOn } from '../../hooks/data';
@@ -190,7 +190,7 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
                         <b>{patientWithHn(r.patient, namesOn, t)}</b>
                         <small>
                           {personName(r.student)} · {groupShort(r.student.group)}
-                          {r.works.length > 0 && ` · ${[...new Set(r.works.map((w) => typeChipLabel(w.type)))].join(', ')}`}
+                          {r.works.length > 0 && ` · ${[...new Set(r.works.map((w) => workLabel(w)))].join(', ')}`}
                         </small>
                       </span>
                       <span className="cmdk__go">{t('ตรวจงานรายคน')}</span>
