@@ -20,7 +20,7 @@ import {
 } from '../src/domain/analytics.ts';
 import { summarizeStudent } from '../src/domain/aggregate.ts';
 import {
-  caseCountTotals, countsTowardRequirement, isActiveWork, isComplete, isReturned, maxProgression,
+  caseCount, caseCountTotals, countsTowardRequirement, isActiveWork, isComplete, isReturned, maxProgression,
   mayCountTowardRequirement, notCountedPieces, percentParts,
   meetsAllRequirements, overallPercent, percentCompleted, procList, progression, sortWorkpieces, yearlyRows,
 } from '../src/domain/rules.ts';
@@ -97,11 +97,12 @@ console.log('\nA2. step ที่เหลือต้องวัดจาก�
 
 console.log('\nA3. เคสที่นับเข้าเกณฑ์รายปีไม่ได้ ต้องไม่ถูกใช้เป็นทางไปสู่เกณฑ์');
 /* เคยพัง: riskRows หยิบ "เคสที่ใกล้จบที่สุด" มาคิดโดยไม่ดูประเภท
-   นักศึกษาที่ในมือมีแต่ Simple APD กับ Recall (ทั้งคู่ไม่นับเข้าเกณฑ์รายปี) จึงถูกอ่านว่า
-   เหลืออีกไม่กี่ step แล้วขึ้นสถานะ ok — คนที่ควรถูกตามก่อนใครกลายเป็นคนที่หน้าอาจารย์บอกว่าไม่ต้องห่วง */
+   นักศึกษาที่ในมือมีแต่ Recall กับเคสที่ปิดสวิตช์นับเกณฑ์ (ไม่นับเข้าเกณฑ์รายปี) จึงถูกอ่านว่า
+   เหลืออีกไม่กี่ step แล้วขึ้นสถานะ ok — คนที่ควรถูกตามก่อนใครกลายเป็นคนที่หน้าอาจารย์บอกว่าไม่ต้องห่วง
+   (เดิมใช้ Simple APD เป็นตัวอย่าง — ตอนนี้ Simple APD นับเข้า RPD แล้ว จึงใช้เคสที่ปิดสวิตช์แทน) */
 {
   const st = student('s1');
-  const uncountable = [at('APD', 9, { studentId: 's1' }), at('RRM', 2, { studentId: 's1' }), at('RFX', 2, { studentId: 's1' })];
+  const uncountable = [at('APD', 9, { studentId: 's1', minimumRequirement: false }), at('RRM', 2, { studentId: 's1' }), at('RFX', 2, { studentId: 's1' })];
   const countable = [at('CD', 9, { studentId: 's1' }), at('RPD', 9, { studentId: 's1' }), at('CB', 9, { studentId: 's1' })];
   const a = riskRows([st], uncountable, S, [], [], NOW)[0];
   const b = riskRows([st], countable, S, [], [], NOW)[0];
@@ -202,7 +203,7 @@ function makeDataset(seed: number): Dataset {
     req: {
       ...S.req,
       cd: int(0, 3), rpd: int(0, 3), crown: int(0, 3),
-      postCoreMin: int(0, 2), perYear: int(0, 4), years: int(1, 2),
+      postCoreMin: int(0, 2), coCrMin: int(0, 2), perYear: int(0, 4), years: int(1, 2),
     },
     perYearCountsAllTypes: chance(0.3),
     pairCountsAsOne: chance(0.3),
@@ -392,6 +393,22 @@ const CHECKS: Check[] = [
       for (const row of totals.rows) {
         if (row.done < 0) return `${row.group} ติดลบ`;
         if (row.complete && row.done < row.required) return `${row.group} ครบทั้งที่ ${row.done}/${row.required}`;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'เกณฑ์สะสม: ชนิดย่อยใต้แถบ (CD/Complicated APD · Co-Cr/Simple APD · Post-core/Crown) ไม่ขัดกับแถบ',
+    run: ({ students, works, settings }) => {
+      for (const st of students) {
+        for (const row of caseCount(works.filter((w) => w.studentId === st.id), settings)) {
+          if (row.must && row.complete && !row.must.complete) return `${st.id} ${row.group}: ครบทั้งที่ ${row.must.label} ยังไม่ครบ`;
+          if (!row.parts) continue;
+          if (row.parts.some((p) => p.done < 0 || p.doing < 0)) return `${st.id} ${row.group}: ชนิดย่อยติดลบ`;
+          // นับต่อคู่ (pairCountsAsOne) คู่บน-ล่างที่ต่างชนิดกันนับในทั้งสองบรรทัดได้ — เทียบเฉพาะแบบนับรายแถว
+          const sum = row.parts.reduce((n, p) => n + p.done, 0);
+          if (!settings.pairCountsAsOne && sum !== row.done) return `${st.id} ${row.group}: ชนิดย่อยรวม ${sum} ≠ แถบ ${row.done}`;
+        }
       }
       return null;
     },

@@ -222,7 +222,7 @@ export function mayCountTowardRequirement(w: Pick<Workpiece, 'type' | 'minimumRe
   return w.minimumRequirement && (CUM_REQ_TYPES as readonly string[]).includes(w.type);
 }
 
-/** เหตุที่ชิ้นงานไม่เข้าเกณฑ์สะสมแม้จบแล้ว — 'type' Simple APD · 'pending' รอตรวจรับ · 'off' ปิดสวิตช์นับเกณฑ์ */
+/** เหตุที่ชิ้นงานไม่เข้าเกณฑ์สะสมแม้จบแล้ว — 'type' ประเภทที่ไม่อยู่ในเกณฑ์ · 'pending' รอตรวจรับ · 'off' ปิดสวิตช์นับเกณฑ์ */
 export type NotCountedReason = 'type' | 'pending' | 'off';
 
 /** ชิ้นงานที่ไม่มีวันนับเข้าเกณฑ์สะสม (ตราบที่ยังตั้งไว้แบบนี้) พร้อมเหตุผล — ตรงข้ามกับ mayCountTowardRequirement พอดี */
@@ -246,7 +246,8 @@ export function percentParts(works: Workpiece[]): { rows: Array<{ workpiece: Wor
  * ป้าย "นับเข้าเกณฑ์" บนหน้าเคส — บอกว่าเคสนี้ตั้งให้นับไหม ไม่ได้บอกว่านับแล้ว (ต้องจบเคสก่อน)
  *   'on'    ติ๊กนับ
  *   'off'   ติ๊กไม่นับ — จบแล้วก็ไม่ขึ้นในช่องเกณฑ์สะสม
- *   'never' ประเภทนี้ไม่เข้าเกณฑ์สะสมอยู่แล้ว (Simple APD) ติ๊กหรือไม่ก็ไม่นับ
+ *   'never' ประเภทนี้ไม่เข้าเกณฑ์สะสมอยู่แล้ว ติ๊กหรือไม่ก็ไม่นับ
+ *           (ทุกประเภทใน catalog นับเกณฑ์แล้ว — เหลือไว้ให้ประเภทที่ catalog รุ่นนี้ไม่รู้จัก)
  * อ่านชุดเดียวกับ countsTowardRequirement — ป้ายกับตัวเลขในช่องเกณฑ์จึงไม่ขัดกัน
  */
 export function requirementFlag(w: Pick<Workpiece, 'type' | 'minimumRequirement'>): 'on' | 'off' | 'never' {
@@ -269,8 +270,8 @@ export function countCDA(pieces: Workpiece[]): number {
  * ข้อนี้ยังรอภาควิชายืนยัน — ชีตจริง tab "Case CD" คอลัมน์ Count CDA ให้ค่า 1–2 ต่อผู้ป่วย
  * ซึ่งเอียงไปทางนับรายแถว จึงทำเป็น setting ให้สลับได้
  */
-function countRemovable(list: Workpiece[], type: WorkType, settings: Settings): number {
-  const mine = list.filter((w) => w.type === type && w.minimumRequirement);
+function countRemovable(list: Workpiece[], pick: (w: Workpiece) => boolean, settings: Settings): number {
+  const mine = list.filter((w) => pick(w) && w.minimumRequirement);
   if (!settings.pairCountsAsOne) return mine.filter(countsTowardRequirement).length;
 
   const singles = mine.filter((w) => !w.pairId);
@@ -302,14 +303,52 @@ export interface ReqRow {
   postCoreDone?: number;
   postCoreRequired?: number;
   postCoreComplete?: boolean;
+  /** เงื่อนไขซ้อนในโควตา — Crown/Bridge ต้องมี Post-core · RPD ต้องมี Co-Cr
+   *  แถวครบได้ต่อเมื่อจำนวนรวมถึงและเงื่อนไขนี้ครบด้วย */
+  must?: { label: string; done: number; required: number; complete: boolean };
+  /** ชนิดงานในแถวนี้ แยกทีละชนิด — บอกว่าชิ้นที่จบ/กำลังทำเป็นชนิดไหน (แถบยังนับรวมกัน) */
+  parts?: ReqPart[];
 }
 
-/** เกณฑ์สะสมตลอดหลักสูตร — CD · RPD · Crown/Bridge (โดยต้องมี Post-core อย่างน้อย N) */
+export interface ReqPart {
+  key: string;
+  label: string;
+  /** คำขยายสั้นๆ เช่น "เหลือ ≤4 ซี่" */
+  hint?: string;
+  /** จบแล้วและนับเข้าเกณฑ์ */
+  done: number;
+  /** กำลังทำอยู่ และถ้าจบจะนับเข้าเกณฑ์ */
+  doing: number;
+  /** มีเฉพาะชนิดที่บังคับ (Post-core · Co-Cr) */
+  required?: number;
+}
+
+const isComplicatedApd = (w: Workpiece) => w.type === 'CD' && w.dentureClass === 'complicated-APD';
+
+/**
+ * เกณฑ์สะสมตลอดหลักสูตร
+ *   CD          = CD หรือ Complicated APD (นับรวมกัน)
+ *   RPD         = Co-Cr RPD หรือ Simple APD (นับรวมกัน) โดยต้องมี Co-Cr อย่างน้อย N
+ *   Crown/Bridge = Crown/Bridge หรือ Post-core (นับรวมกัน) โดยต้องมี Post-core อย่างน้อย N
+ *   Recall สองแถว
+ * Co-Cr RPD คือ WorkType 'RPD' ทั้ง Simple และ Complicated RPD · Simple APD คือ WorkType 'APD'
+ */
 export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
   const { req } = settings;
   const recallDone = (type: WorkType) => list.filter((w) => w.type === type && countsTowardRequirement(w)).length;
   const crownDone = list.filter((w) => (w.type === 'CB' || w.type === 'PC') && countsTowardRequirement(w)).length;
   const postCoreDone = list.filter((w) => w.type === 'PC' && countsTowardRequirement(w)).length;
+  const cdDone = countRemovable(list, (w) => w.type === 'CD', settings);
+  const rpdDone = countRemovable(list, (w) => w.type === 'RPD' || w.type === 'APD', settings);
+  const coCrDone = countRemovable(list, (w) => w.type === 'RPD', settings);
+
+  /* ชิ้นที่กำลังทำ = ยังเปิดอยู่และถ้าจบจะนับเกณฑ์ (ชุดเดียวกับ requirementShare) */
+  const doing = (pick: (w: Workpiece) => boolean) =>
+    list.filter((w) => pick(w) && isActiveWork(w) && mayCountTowardRequirement(w)).length;
+  const removablePart = (key: string, label: string, pick: (w: Workpiece) => boolean, extra?: Partial<ReqPart>): ReqPart =>
+    ({ key, label, done: countRemovable(list, pick, settings), doing: doing(pick), ...extra });
+  const piecePart = (key: string, label: string, pick: (w: Workpiece) => boolean, extra?: Partial<ReqPart>): ReqPart =>
+    ({ key, label, done: list.filter((w) => pick(w) && countsTowardRequirement(w)).length, doing: doing(pick), ...extra });
 
   return [
     {
@@ -317,18 +356,27 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
       label: TYPES.CD.full,
       short: 'CD',
       color: TYPES.CD.color,
-      done: countRemovable(list, 'CD', settings),
+      done: cdDone,
       required: req.cd,
-      complete: countRemovable(list, 'CD', settings) >= req.cd,
+      complete: cdDone >= req.cd,
+      parts: [
+        removablePart('CD', 'CD', (w) => w.type === 'CD' && !isComplicatedApd(w)),
+        removablePart('complicated-APD', 'Complicated APD', isComplicatedApd, { hint: DENTURE_CLASSES['complicated-APD'].teeth }),
+      ],
     },
     {
       group: 'RPD',
       label: TYPES.RPD.full,
       short: 'RPD',
       color: TYPES.RPD.color,
-      done: countRemovable(list, 'RPD', settings),
+      done: rpdDone,
       required: req.rpd,
-      complete: countRemovable(list, 'RPD', settings) >= req.rpd,
+      complete: rpdDone >= req.rpd && coCrDone >= req.coCrMin,
+      must: { label: 'Co-Cr RPD', done: coCrDone, required: req.coCrMin, complete: coCrDone >= req.coCrMin },
+      parts: [
+        removablePart('RPD', 'Co-Cr RPD', (w) => w.type === 'RPD', { required: req.coCrMin }),
+        removablePart('APD', 'Simple APD', (w) => w.type === 'APD'),
+      ],
     },
     {
       group: 'CROWN',
@@ -341,6 +389,11 @@ export function caseCount(list: Workpiece[], settings: Settings): ReqRow[] {
       postCoreDone,
       postCoreRequired: req.postCoreMin,
       postCoreComplete: postCoreDone >= req.postCoreMin,
+      must: { label: 'Post-core', done: postCoreDone, required: req.postCoreMin, complete: postCoreDone >= req.postCoreMin },
+      parts: [
+        piecePart('PC', 'Post-core', (w) => w.type === 'PC', { required: req.postCoreMin }),
+        piecePart('CB', 'Crown / Bridge', (w) => w.type === 'CB'),
+      ],
     },
     /* Recall สองแถว — นับรายชิ้นตรง ๆ ไม่ยุบคู่ upper/lower
        เพราะ recall คือการนัดตรวจชิ้นงานที่ใส่ไปแล้ว ไม่ใช่การรับเคสมาเป็นคู่ */
@@ -375,8 +428,13 @@ export function caseCountTotals(list: Workpiece[], settings: Settings) {
   };
 }
 
+/** เคสประเภทนี้นับเข้าแถวเกณฑ์สะสมแถวไหน (null = ไม่นับ) — หน้าจอหาแถวของเคสด้วยตัวนี้ ห้ามเทียบ type เอง */
+export function reqGroupOf(type: string): ReqGroup | null {
+  return (Object.keys(REQ_GROUP_TYPES) as ReqGroup[]).find((g) => (REQ_GROUP_TYPES[g] as string[]).includes(type)) ?? null;
+}
+
 const REQ_GROUP_TYPES: Record<ReqGroup, WorkType[]> = {
-  CD: ['CD'], RPD: ['RPD'], CROWN: ['CB', 'PC'], RRM: ['RRM'], RFX: ['RFX'],
+  CD: ['CD'], RPD: ['RPD', 'APD'], CROWN: ['CB', 'PC'], RRM: ['RRM'], RFX: ['RFX'],
 };
 
 /**
@@ -406,7 +464,7 @@ export function requirementShare(list: Workpiece[], settings: Settings): { done:
 }
 
 /**
- * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall กับ Simple APD ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
+ * ชิ้นงานนี้ "มีสิทธิ์นับเข้าเกณฑ์รายปี" ไหม — Recall ไม่นับ เว้นแต่ภาคเปิด perYearCountsAllTypes
  * เคสที่ปิดสวิตช์ "นับเข้าเกณฑ์" หรือรอตรวจรับ ไม่นับรายปีเหมือนเกณฑ์สะสม (ภาคยืนยัน)
  * เป็นกติกาเดียวที่ completedInYear · กราฟ burn-up · ตัวประเมินความเสี่ยงใช้ร่วมกัน (ห้ามเขียนซ้ำที่อื่น)
  */
@@ -468,8 +526,7 @@ export function yearlyRows(list: Workpiece[], settings: Settings, now = new Date
  * ตัวเดียวกับหน้าเกณฑ์ ตัวเลขบนแผ่นจะตรงกับหน้าเกณฑ์เสมอ · row = null เมื่อเคสนี้ไม่นับเข้าเกณฑ์สะสม
  */
 export function completionImpact(before: Workpiece[], after: Workpiece[], w: Workpiece, settings: Settings, now = new Date()) {
-  const group: ReqGroup | null = w.type === 'CB' || w.type === 'PC' ? 'CROWN'
-    : (['CD', 'RPD', 'RRM', 'RFX'] as const).find((g) => g === w.type) ?? null; // Simple APD ไม่นับเกณฑ์
+  const group = reqGroupOf(w.type);
   const rowOf = (list: Workpiece[]) => (group ? caseCount(list, settings).find((r) => r.group === group) ?? null : null);
   const rowBefore = rowOf(before);
   const rowAfter = rowOf(after);

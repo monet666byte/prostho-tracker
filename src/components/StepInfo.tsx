@@ -68,7 +68,8 @@ export function StepInfo({
   meta?: string;
   onClose?: () => void;
 }) {
-  const types = type ? [type] : ([...REQ_TYPES] as WorkType[]);
+  // Simple APD ใช้ขั้นตอนชุดเดียวกับ CD — ไม่ต้องขึ้นซ้ำ
+  const types = type ? [type] : (REQ_TYPES.filter((ty) => ty !== 'APD') as WorkType[]);
   return (
     <div className="stepinfo">
       <div className="stepinfo__head">

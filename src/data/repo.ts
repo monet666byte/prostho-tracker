@@ -48,6 +48,7 @@ export async function listWorkpieces(studentId: string): Promise<WorkpieceView[]
  * ปรับค่าเริ่มต้นที่แก้ทีหลังให้มีผลกับเครื่องที่ตั้งค่าไว้แล้ว — รันครั้งเดียวตอนเปิดแอป
  * v2: เกณฑ์ CD 1 → 2 — แตะเฉพาะเครื่องที่ยังเป็นค่าเก่า
  * v3: saOpen (เปิด/ปิดรวม) → saOpenYears (แยกชั้นปี) — ที่เคยเปิดไว้ ให้เปิดทั้งสองชั้นปีเหมือนเดิม
+ * v5: เพิ่มเงื่อนไข Co-Cr อย่างน้อย N ชิ้นในเกณฑ์ RPD (Simple APD เริ่มนับเข้า RPD)
  * v4: เพิ่มเกณฑ์ Recall สองแถว
  *     เขียนค่าลงเครื่องที่ยังไม่มีช่องนี้ ให้ค่าที่เก็บไว้ตรงกับที่หน้าจออ่านจริง
  *     (getSettings เติม default ให้อยู่แล้ว แต่ถ้าไม่เขียนลง อาจารย์กดปรับเลขอื่นแล้ว
@@ -81,6 +82,13 @@ export async function migrateSettings(): Promise<void> {
           recallFixed: req.recallFixed ?? DEFAULT_SETTINGS.req.recallFixed,
         },
       });
+    }
+  }
+  if (ver < 5) {
+    const stored = (await kvGet<Partial<Settings>>('settings', {})) ?? {};
+    const req = stored.req as Partial<typeof DEFAULT_SETTINGS.req> | undefined;
+    if (req && req.coCrMin === undefined) {
+      await saveSettings({ req: { ...DEFAULT_SETTINGS.req, ...req, coCrMin: DEFAULT_SETTINGS.req.coCrMin } });
     }
   }
   await kvSet('settingsVersion', SETTINGS_VERSION);

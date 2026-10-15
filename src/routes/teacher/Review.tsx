@@ -104,7 +104,6 @@ export default function Review() {
   const staleCount = works.filter((w) => isStale(w, settings)).length;
   const doneCount = works.filter((w) => isComplete(w)).length;
   const reqRows = caseCount(works, settings);
-  const crownRow = reqRows.find((r) => r.group === 'CROWN');
   const thisYear = yearlyRows(works, settings).slice(-1)[0] ?? { done: 0, required: settings.req.perYear };
 
   return (
@@ -142,8 +141,7 @@ export default function Review() {
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
             <div style={{ font: '500 12px/1.55 var(--font-body)', color: 'var(--text-secondary)' }}>
               {t('{n} ชิ้นงาน', { n: works.length })} · {t('เกณฑ์สะสม')}{' '}
-              {reqRows.map((r) => `${r.short} ${r.done}/${r.required}`).join(' · ')}
-              {crownRow?.postCoreRequired !== undefined && ` (Post-core ${crownRow.postCoreDone}/${crownRow.postCoreRequired})`}
+              {reqRows.map((r) => `${r.short} ${r.done}/${r.required}${r.must ? ` (${r.must.label} ${r.must.done}/${r.must.required})` : ''}`).join(' · ')}
               {' · '}{t('รายปี')} {thisYear.done}/{thisYear.required}
               {active?.gates && Object.keys(active.gates).length > 0 && (
                 <> · {t('ข้อกำหนด')} {gatesDone(active.gates)}/{GATE_KEYS.length}</>

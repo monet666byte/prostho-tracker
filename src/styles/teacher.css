@@ -227,6 +227,10 @@
 
 /* ── ช่องเกณฑ์ทีละเคส ── */
 .slots { display: flex; gap: 5px; margin-top: 8px; }
+/* รายการชนิดงานใต้ช่องเกณฑ์ (ReqParts) — ฝั่งอาจารย์ตัวเล็กลงให้เข้ากับหัวแถว 11.5px */
+.panel .reqparts { margin-top: 8px; }
+.panel .reqparts__row { font-size: 11.5px; padding-block: 3px; }
+.panel .reqparts__st { font-size: 10.5px; }
 .slots__box {
   flex: 1;
   height: 30px;

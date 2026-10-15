@@ -92,7 +92,7 @@ ok('อาจารย์ยังไม่ตรวจรับ (pendingQualifi
   !countsTowardRequirement(finished('CD', { pendingQualification: true })));
 ok('ไม่ได้ติดธง minimumRequirement → ไม่นับ',
   !countsTowardRequirement(finished('CD', { minimumRequirement: false })));
-ok('Simple APD ไม่อยู่ในชุดที่นับเข้าเกณฑ์สะสม → ไม่นับ', !countsTowardRequirement(finished('APD')));
+ok('Simple APD นับเข้าเกณฑ์สะสม (กลุ่ม RPD)', countsTowardRequirement(finished('APD')));
 /* ป้ายบนหน้าเคส (requirementFlag) ต้องตรงกับตัวนับ — เดิม Simple APD ที่ติ๊กไว้ขึ้นป้าย "นับ" ทั้งที่ไม่เคยนับจริง */
 {
   const all: WorkType[] = ['CD', 'RPD', 'APD', 'PC', 'CB', 'RRM', 'RFX'];
@@ -101,7 +101,8 @@ ok('Simple APD ไม่อยู่ในชุดที่นับเข้�
     return (requirementFlag(w) === 'on') === countsTowardRequirement(w) ? [] : [`${ty}/${flag}`];
   }));
   ok('ป้าย "นับ" บนหน้าเคส = จบแล้วนับจริง ทุกประเภท', mismatch.length === 0, mismatch.join(' '));
-  ok('Simple APD ไม่ขึ้นป้ายนับหรือไม่นับ', requirementFlag(wp('APD')) === 'never');
+  ok('Simple APD ขึ้นป้าย "นับ" เหมือนประเภทอื่น', requirementFlag(wp('APD')) === 'on');
+  ok('ประเภทที่ catalog ไม่รู้จัก ไม่ขึ้นป้ายนับหรือไม่นับ', requirementFlag(wp('XYZ' as WorkType)) === 'never');
   ok('ปิดสวิตช์ → ป้าย "ไม่นับ"', requirementFlag(wp('CD', { minimumRequirement: false })) === 'off');
 }
 /* Recall เข้าเกณฑ์สะสมตั้งแต่ 10 ก.ย. 69 (ผู้ใช้เพิ่ม: งานถอดได้ 1 · งานติดแน่น 1)
@@ -161,6 +162,51 @@ const crownRow = (list: Workpiece[], st: Settings) => caseCount(list, st).find((
   const mixed = [finished('CB'), finished('PC')];
   const r2 = crownRow(mixed, S);
   ok('Crown 1 + Post-core 1 → ครบ', r2.done === 2 && r2.complete);
+}
+/* เกณฑ์ RPD = Co-Cr RPD หรือ Simple APD รวมกัน โดยต้องเป็น Co-Cr อย่างน้อย coCrMin
+   เกณฑ์ CD = CD หรือ Complicated APD รวมกัน — หน้าจอแยกชนิดให้เห็น แต่นับรวม */
+const rpdRow = (list: Workpiece[], st: Settings) => caseCount(list, st).find((r) => r.group === 'RPD')!;
+{
+  const twoApd = [finished('APD', { dentureClass: 'simple-APD' }), finished('APD', { dentureClass: 'simple-APD' })];
+  const r = rpdRow(twoApd, S);
+  ok('Simple APD 2 ชิ้น → RPD 2/2 แต่ยังไม่ครบ (ไม่มี Co-Cr)', r.done === 2 && !r.complete, `done=${r.done}`);
+  ok('บอกได้ว่าที่ขาดคือ Co-Cr', r.must?.label === 'Co-Cr RPD' && r.must.done === 0 && !r.must.complete);
+
+  const mixed = [finished('APD', { dentureClass: 'simple-APD' }), finished('RPD', { dentureClass: 'complicated-RPD' })];
+  const r2 = rpdRow(mixed, S);
+  ok('Simple APD 1 + Co-Cr (Complicated RPD) 1 → ครบ', r2.done === 2 && r2.complete);
+  ok('Complicated RPD นับเป็น Co-Cr', r2.must?.done === 1);
+
+  ok('ตั้ง Co-Cr = 0 → Simple APD 2 ชิ้นครบได้', rpdRow(twoApd, withReq({ req: { ...S.req, coCrMin: 0 } })).complete);
+
+  const parts = r2.parts!;
+  ok('รายการชนิดย่อยของ RPD: Co-Cr 1 · Simple APD 1',
+    parts.find((p) => p.key === 'RPD')?.done === 1 && parts.find((p) => p.key === 'APD')?.done === 1);
+  ok('Co-Cr เป็นชนิดที่บังคับ', parts.find((p) => p.key === 'RPD')?.required === S.req.coCrMin);
+}
+{
+  const list = [
+    finished('CD', { dentureClass: 'CD' }),
+    wp('CD', { dentureClass: 'complicated-APD', procIndex: 5 }),
+    wp('CD', { dentureClass: 'complicated-APD', procIndex: 3, minimumRequirement: false }), // ปิดสวิตช์ → ไม่ขึ้นเป็นกำลังทำ
+  ];
+  const r = cdRow(list, S);
+  const cd = r.parts!.find((p) => p.key === 'CD')!;
+  const capd = r.parts!.find((p) => p.key === 'complicated-APD')!;
+  ok('CD แยกชนิด: CD จบ 1 · Complicated APD กำลังทำ 1', cd.done === 1 && cd.doing === 0 && capd.done === 0 && capd.doing === 1,
+    `cd ${cd.done}/${cd.doing} · capd ${capd.done}/${capd.doing}`);
+  ok('แถบ CD ยังนับรวม (= ผลรวมชนิดย่อย)', r.done === cd.done + capd.done);
+  const cdNoClass = cdRow([finished('CD')], S).parts!.find((p) => p.key === 'CD')!;
+  ok('CD ที่ไม่มีลักษณะเคส (นำเข้าจากชีต) ไปอยู่บรรทัด CD', cdNoClass.done === 1);
+}
+{
+  /* ทุกแถวที่มีชนิดย่อย: ผลรวมชิ้นที่จบของชนิดย่อย = ตัวเลขบนแถบ (นับรายแถว) — สองตัวเลขบนการ์ดเดียวต้องไม่ขัดกัน */
+  const many: Workpiece[] = [
+    finished('CD'), finished('CD', { dentureClass: 'complicated-APD' }), finished('RPD'), finished('APD'),
+    finished('PC'), finished('CB'), finished('CB', { minimumRequirement: false }), wp('RPD'), wp('APD'),
+  ];
+  const bad = caseCount(many, S).filter((r) => r.parts && r.parts.reduce((n, p) => n + p.done, 0) !== r.done).map((r) => r.group);
+  ok('ผลรวมชนิดย่อย = ตัวเลขบนแถบ ทุกแถว', bad.length === 0, bad.join(' '));
 }
 {
   // การ์ดสรุปต้องไม่โชว์ "8/6" เวลาทำเกินเกณฑ์
@@ -276,7 +322,10 @@ console.log('\nแผ่นฉลองตอนปิดเคส');
   ok('นับวันจากวันรับเคส', imp.days === 105, imp.days);
   const simple = wp('APD', { id: 'apd', minimumRequirement: false });
   const simpleDone = { ...simple, procIndex: procList(simple).length - 1, completedAt: NOW.toISOString() };
-  ok('Simple APD ไม่นับ → ไม่มีแถวเกณฑ์', completionImpact([simple], [simpleDone], simpleDone, S, NOW).row === null);
+  ok('ปิดสวิตช์นับเกณฑ์ → ไม่มีแถวเกณฑ์', completionImpact([simple], [simpleDone], simpleDone, S, NOW).row === null);
+  const apd = wp('APD', { id: 'apd2' });
+  const apdDone = { ...apd, procIndex: procList(apd).length - 1, completedAt: NOW.toISOString() };
+  ok('Simple APD จบ → แถว RPD ขยับ', completionImpact([apd], [apdDone], apdDone, S, NOW).row?.group === 'RPD');
 }
 
 

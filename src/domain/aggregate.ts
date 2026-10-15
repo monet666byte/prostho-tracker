@@ -130,8 +130,8 @@ export function cohortRequirement(students: Student[], works: Workpiece[], setti
     let twoPlus = 0;
     perStudent.forEach((rows) => {
       const row = rows[i];
-      // กลุ่ม Crown ยังไม่ครบถ้าขาด Post-core แม้จำนวนรวมจะถึงแล้ว
-      const gap = Math.max(row.required - row.done, 0) + (row.postCoreComplete === false ? 1 : 0);
+      // Crown ยังไม่ครบถ้าขาด Post-core · RPD ยังไม่ครบถ้าขาด Co-Cr — แม้จำนวนรวมจะถึงแล้ว
+      const gap = Math.max(row.required - row.done, 0) + (row.must?.complete === false ? 1 : 0);
       if (row.complete) complete++;
       else if (gap <= 1) oneShort++;
       else twoPlus++;

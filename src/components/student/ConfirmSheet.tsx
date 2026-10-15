@@ -1,7 +1,7 @@
 import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@phosphor-icons/react';
 import { advanceStep } from '../../data/repo';
 import { typeMeta } from '../../domain/catalog';
-import { caseCount, completionImpact, nextProc } from '../../domain/rules';
+import { caseCount, completionImpact, nextProc, reqGroupOf } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { usePatientNamesOn, useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
@@ -65,16 +65,15 @@ function ConfirmStepSheet() {
         impact: completionImpact(all, after, closed, settings),
         years: settings.req.years,
       });
-      const row =
-        w.type === 'CB' || w.type === 'PC'
-          ? rows.find((r) => r.group === 'CROWN')
-          : rows.find((r) => r.group === w.type);
+      const group = reqGroupOf(w.type);
+      const row = group ? rows.find((r) => r.group === group) : undefined;
 
       if (!row) {
         showToast({ message: `${t('จบเคสแล้ว')} · ${res.label}`, tone: 'success', undoWorkpieceId: w.id });
-      } else if (row.group === 'CROWN' && row.done >= row.required && row.postCoreComplete === false) {
+      } else if (row.done >= row.required && row.must && !row.must.complete) {
+        // ชิ้นครบแล้วแต่ยังไม่มีชนิดที่บังคับ — Crown ขาด Post-core · RPD ขาด Co-Cr
         showToast({
-          message: t('Crown/Bridge ครบ {a}/{b} แล้ว — แต่ยังต้องเป็น Post-core อีก {n} ชิ้น', { a: row.done, b: row.required, n: (row.postCoreRequired ?? 0) - (row.postCoreDone ?? 0) }),
+          message: t('{l} ครบ {a}/{b} แล้ว — แต่ยังต้องเป็น {f} อีก {n} ชิ้น', { l: row.short, a: row.done, b: row.required, f: row.must.label, n: row.must.required - row.must.done }),
           tone: 'warning',
           undoWorkpieceId: w.id,
         });

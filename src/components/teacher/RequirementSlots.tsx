@@ -1,9 +1,9 @@
 import { Check, SealCheck, WarningCircle, X } from '@phosphor-icons/react';
-import { TYPES } from '../../domain/catalog';
 import {
   caseCount, completedInYear, countsForYearlyReq, countsTowardRequirement, isActiveWork, maxProgression,
-  mayCountTowardRequirement, progression, gateRows, GATE_KEYS,
+  mayCountTowardRequirement, progression, gateRows, GATE_KEYS, reqGroupOf, type ReqGroup, type ReqPart,
 } from '../../domain/rules';
+import { ReqParts } from '../ReqParts';
 import type { GateKey, Settings, Student, Workpiece } from '../../domain/types';
 import { academicYear } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -38,8 +38,13 @@ function slotsFor(pieces: Workpiece[], required: number, done = pieces.filter(co
   });
 }
 
-function Row({ title, color, slots, note }: { title: string; color: string; slots: Slot[]; note?: string }) {
+function Row({ title, color, slots, note, parts, complete }: {
+  title: string; color: string; slots: Slot[]; note?: string; parts?: ReqPart[];
+  /** ครบเกณฑ์จริง — ช่องเต็มแต่ขาดชนิดที่บังคับ (Post-core · Co-Cr) ยังไม่ขึ้นเขียว */
+  complete?: boolean;
+}) {
   const done = slots.filter((s) => s.state === 'done').length;
+  const ok = complete ?? done >= slots.length;
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--divider)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -47,7 +52,7 @@ function Row({ title, color, slots, note }: { title: string; color: string; slot
         <span style={{ flex: 1, font: '600 11.5px var(--font-body)' }}>{title}</span>
         <span
           className="mono"
-          style={{ font: '600 11px var(--font-mono)', color: done >= slots.length ? 'var(--success)' : 'var(--text-muted)' }}
+          style={{ font: '600 11px var(--font-mono)', color: ok ? 'var(--success)' : 'var(--text-muted)' }}
         >
           {done}/{slots.length}
         </span>
@@ -60,6 +65,7 @@ function Row({ title, color, slots, note }: { title: string; color: string; slot
           </span>
         ))}
       </div>
+      {parts && <ReqParts parts={parts} />}
       {note && (
         <div style={{ font: '400 10px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 6 }}>{note}</div>
       )}
@@ -83,7 +89,10 @@ export function RequirementSlots({
   onToggleGate?: (key: GateKey, value: boolean) => void;
 }) {
   const rows = caseCount(works, settings);
-  const crown = rows.find((r) => r.group === 'CROWN')!;
+  const inGroup = (g: ReqGroup) => works.filter((w) => reqGroupOf(w.type) === g);
+  /* ชนิดที่บังคับแต่ยังไม่ครบ (Post-core · Co-Cr) — ใช้ทำบรรทัดสรุปท้ายการ์ด */
+  const missingPieces = rows.reduce((n, r) => n + Math.max(0, r.required - r.done), 0);
+  const mustMissing = rows.flatMap((r) => (r.must && !r.must.complete ? [{ label: r.must.label, n: r.must.required - r.must.done }] : []));
   const year = academicYear(new Date());
   const doneThisYear = completedInYear(works, year, settings);
   const gates = student ? gateRows(student.gates) : [];
@@ -94,36 +103,17 @@ export function RequirementSlots({
 
   return (
     <div>
-      <Row
-        title={TYPES.CD.full}
-        color={TYPES.CD.color}
-        slots={slotsFor(works.filter((w) => w.type === 'CD'), settings.req.cd)}
-      />
-      <Row
-        title={TYPES.RPD.full}
-        color={TYPES.RPD.color}
-        slots={slotsFor(works.filter((w) => w.type === 'RPD'), settings.req.rpd)}
-      />
-      <Row
-        title={t('Crown / Bridge (รวม Post-core)')}
-        color={TYPES.CB.color}
-        slots={slotsFor(works.filter((w) => w.type === 'CB' || w.type === 'PC'), settings.req.crown)}
-        note={
-          crown.postCoreComplete
-            ? `Post-core ครบ ${crown.postCoreDone}/${crown.postCoreRequired} แล้ว`
-            : `ในช่องด้านบนต้องเป็น Post-core อย่างน้อย ${crown.postCoreRequired} ชิ้น — ตอนนี้ ${crown.postCoreDone}`
-        }
-      />
-      <Row
-        title="Recall Removable (CD/RPD)"
-        color={TYPES.RRM.color}
-        slots={slotsFor(works.filter((w) => w.type === 'RRM'), settings.req.recallRemovable)}
-      />
-      <Row
-        title="Recall Fixed (FDP)"
-        color={TYPES.RFX.color}
-        slots={slotsFor(works.filter((w) => w.type === 'RFX'), settings.req.recallFixed)}
-      />
+      {/* แถวเกณฑ์สะสมสร้างจาก caseCount ตัวเดียวกับหน้าเกณฑ์ฝั่งนักศึกษา — ช่องนับรวม ใต้ช่องแยกชนิดงาน */}
+      {rows.map((r) => (
+        <Row
+          key={r.group}
+          title={t(r.label)}
+          color={r.color}
+          slots={slotsFor(inGroup(r.group), r.required)}
+          parts={r.parts}
+          complete={r.complete}
+        />
+      ))}
       <Row
         title={`เกณฑ์รายปี · ปีการศึกษา ${year}`}
         color="var(--accent)"
@@ -198,10 +188,9 @@ export function RequirementSlots({
           {allDone
             ? t('ครบเกณฑ์สะสมทุกด้านแล้ว')
             : [
-                rows.every((r) => r.complete)
-                  ? ''
-                  : t('ยังขาด {n} ชิ้นสำหรับเกณฑ์สะสม', { n: rows.reduce((n, r) => n + Math.max(0, r.required - r.done), 0) }) +
-                    (crown.postCoreComplete ? '' : t(' และต้องมี Post-core อีก {n} ชิ้น', { n: Math.max(1, (crown.postCoreRequired ?? 0) - (crown.postCoreDone ?? 0)) })),
+                missingPieces > 0 ? t('ยังขาด {n} ชิ้นสำหรับเกณฑ์สะสม', { n: missingPieces }) : '',
+                /* ชิ้นครบแล้วแต่ยังไม่มีชนิดที่บังคับ — เดิมขึ้น "ยังขาด 0 ชิ้น และต้องมี Post-core อีก 1 ชิ้น" */
+                ...mustMissing.map((m) => t('ต้องมี {f} อีก {n} ชิ้น', { f: m.label, n: Math.max(1, m.n) })),
                 student && gateMissing > 0 ? t('ข้อกำหนด Sect II / Design RPD ยังไม่ผ่านอีก {n} ข้อ', { n: gateMissing }) : '',
               ].filter(Boolean).join(' · ')}
         </span>

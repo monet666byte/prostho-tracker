@@ -43,8 +43,9 @@ PWA ติดตามความคืบหน้าเคสทันตก�
   ประเภทงาน "นับต่อ arch / ถอดได้ / ต่อซี่" ใช้ `isArchWork` (CD·RPD·APD) · `isRemovableType` (+RRM · Section II) ·
   `isToothWork` (PC·CB·RFX) — ห้ามเขียน `type === 'CD' || …` เอง (เคยมี 5 สำเนาแล้วไม่ตรงกัน)
 - **ห้าม hard-code เลข 10** เป็นขั้นสุดท้าย — งาน Recall จบที่ขั้น **3** ใช้ `maxProgression(w)` เสมอ
-- **เกณฑ์มีสองชุด ห้ามสลับกัน** (`domain/catalog.ts`) `CUM_REQ_TYPES` = สะสม (CD · RPD · PC · CB · **RRM · RFX**) ·
-  `REQ_TYPES` = รายปี (4 ตัวแรก) · Recall เข้าสะสมแต่ไม่เข้ารายปี — `countsTowardRequirement` อ่านชุดสะสม
+- **เกณฑ์มีสองชุด ห้ามสลับกัน** (`domain/catalog.ts`) `CUM_REQ_TYPES` = สะสม (CD · RPD · APD · PC · CB · **RRM · RFX**) ·
+  `REQ_TYPES` = รายปี (5 ตัวแรก) · Recall เข้าสะสมแต่ไม่เข้ารายปี · Simple APD นับในแถว RPD (ต้องมี Co-Cr ≥ `coCrMin`)
+  · เคสไหนนับแถวไหนใช้ `reqGroupOf(type)` ห้ามเทียบ type เอง — `countsTowardRequirement` อ่านชุดสะสม
   ส่วน `completedInYear` / burn-up / ตารางเสี่ยง อ่านชุดรายปีผ่าน **`countsForYearlyReq` (`domain/rules.ts`) ตัวเดียว**
 - **เพิ่มช่องใน `Settings.req` ต้องทำสามที่พร้อมกัน** — `DEFAULT_SETTINGS`, bump `SETTINGS_VERSION`, และบล็อก `if (ver < N)`
   ใน `migrateSettings` (บล็อกที่ไม่มี guard `ver <` จะทับค่าที่อาจารย์ตั้งไว้ทุกครั้งที่ bump) · `getSettings()` merge `req` ลึกอีกชั้น

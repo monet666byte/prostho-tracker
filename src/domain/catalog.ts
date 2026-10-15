@@ -21,7 +21,8 @@ export interface TypeMeta {
 
 /* สีประเภทงาน (ชุด T6): น้ำเงิน · อำพัน · ชมพูหม่น · ฟ้าทะเล — ต้องต่างกันทั้งเฉดและความเข้ม
    ผ่านตัวตรวจตาบอดสี/contrast ทุกคู่ · ไม่ใช้เขียว/แดงเพราะจองให้สถานะผ่าน/เตือน
-   APD เป็นน้ำเงินอ่อนตระกูลเดียวกับ CD เพราะนับรวมกันในเกณฑ์ · ค่าเดียวกันอยู่ใน styles/tokens.css */
+   APD ใช้น้ำเงินอ่อนตระกูลเดียวกับ CD · ⚠️ ในเกณฑ์ APD นับรวมกับ RPD (อำพัน) ไม่ใช่ CD
+   · ค่าเดียวกันอยู่ใน styles/tokens.css */
 export const TYPES: Record<WorkType, TypeMeta> = {
   CD: { short: 'CD/APD', full: 'CD / Complicated APD', prefix: 'CD', color: '#2C50BA', tint: '#E9EDF9', ink: '#2C50BA' },
   RPD: { short: 'RPD', full: 'RPD (Co-Cr or Simple APD)', prefix: 'RPD', color: '#D97706', tint: '#FBF0DE', ink: '#B45309' },
@@ -58,8 +59,9 @@ export const ORDER: Record<WorkType, number> = { CD: 0, RPD: 1, APD: 2, PC: 3, C
 export const orderOf = (type: string | undefined): number =>
   (type && (ORDER as Record<string, number>)[type] !== undefined ? (ORDER as Record<string, number>)[type] : 99);
 
-/** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — 4 ประเภทหลัก (ภาคยืนยันแล้ว) */
-export const REQ_TYPES = ['CD', 'RPD', 'PC', 'CB'] as const;
+/** ประเภทที่นับเข้า **เกณฑ์รายปี** (ปีละ N ชิ้น) — CD · RPD · Simple APD · Post-core · Crown/Bridge
+ *  Simple APD นับเป็นงานกลุ่ม RPD (เกณฑ์ RPD = Co-Cr หรือ Simple APD) จึงนับรายปีด้วย */
+export const REQ_TYPES = ['CD', 'RPD', 'APD', 'PC', 'CB'] as const;
 
 /**
  * ประเภทที่นับเข้า **เกณฑ์สะสม** — 4 ประเภทหลัก + Recall สองแบบ
@@ -68,9 +70,8 @@ export const REQ_TYPES = ['CD', 'RPD', 'PC', 'CB'] as const;
  * ⚠️ ตั้งใจแยกจาก REQ_TYPES — Recall เข้าเกณฑ์สะสมแต่ **ไม่** เข้าเกณฑ์รายปี
  * (เกณฑ์รายปีคือ "ปีนี้จบเคสใหม่กี่ชิ้น" ซึ่ง Recall ไม่ใช่การรับเคสใหม่)
  * ถ้าวันหน้าภาคขอให้ Recall นับรายปีด้วย มีสวิตช์ perYearCountsAllTypes อยู่แล้ว
- * Simple APD ยังไม่นับทั้งสองเกณฑ์
  */
-export const CUM_REQ_TYPES = ['CD', 'RPD', 'PC', 'CB', 'RRM', 'RFX'] as const;
+export const CUM_REQ_TYPES = ['CD', 'RPD', 'APD', 'PC', 'CB', 'RRM', 'RFX'] as const;
 
 /**
  * งานที่ทำเป็นชิ้นต่อขากรรไกร (บน/ล่าง) — ฟอร์มเปิดชิ้นงานถามขากรรไกรกับลักษณะเคส

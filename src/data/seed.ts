@@ -25,14 +25,15 @@ import { cloudEnabled } from '../lib/cloud';
 import { db, kvGet, kvSet } from './db';
 
 /** ขยับเลขนี้เมื่อแก้ค่าเริ่มต้นที่ต้องมีผลกับเครื่องที่ตั้งค่าไว้แล้ว (ดู migrateSettings) */
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 export const DEFAULT_SETTINGS: Settings = {
-  /* เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
+  /* เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 (Co-Cr หรือ Simple APD ในนั้นต้องเป็น Co-Cr อย่างน้อย 1)
+     · Crown/Bridge 2 (ในนั้นต้องเป็น Post-core อย่างน้อย 1)
      · Recall งานถอดได้ 1 · Recall งานติดแน่น 1  และทุกปีต้องจบอย่างน้อย 3 ชิ้นงาน
      CD = 2 เพราะนับต่อ arch (บน+ล่าง) ว่าขั้นต่ำคือ 2 ไม่ใช่ 1
      Recall สองแถว — ผู้ใช้ (นับเกณฑ์สะสม ไม่นับเกณฑ์รายปี) */
-  req: { cd: 2, rpd: 2, crown: 2, postCoreMin: 1, recallRemovable: 1, recallFixed: 1, perYear: 3, years: 2 },
+  req: { cd: 2, rpd: 2, coCrMin: 1, crown: 2, postCoreMin: 1, recallRemovable: 1, recallFixed: 1, perYear: 3, years: 2 },
   periodsPerWeek: 2, // สมมติฐานตั้งต้น — อาจารย์ปรับได้ในหน้าตั้งค่าเกณฑ์
   // ค่าเริ่มต้นนับรายแถวตามชีตจริง (tab "Case CD" คอลัมน์ Count CDA ให้ 1–2 ต่อผู้ป่วย) — รอภาควิชายืนยัน
   pairCountsAsOne: false,

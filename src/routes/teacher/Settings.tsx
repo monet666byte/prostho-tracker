@@ -30,6 +30,7 @@ import { onPersistState, persistState } from '../../lib/storagePersist';
 const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['cd', 'CD / Complicated APD', TYPES.CD.color, ''],
   ['rpd', 'RPD (Co-Cr or Simple APD)', TYPES.RPD.color, ''],
+  ['coCrMin', t('↳ ในนั้นต้องเป็น Co-Cr'), TYPES.RPD.color, t('เงื่อนไขซ้อนในโควตา RPD ด้านบน')],
   ['crown', t('Crown / Bridge (รวม Post-core)'), TYPES.CB.color, ''],
   ['postCoreMin', t('↳ ในนั้นต้องเป็น Post-core'), TYPES.PC.color, t('เงื่อนไขซ้อนในโควตา Crown ด้านบน')],
   ['recallRemovable', 'Recall Removable (CD/RPD)', TYPES.RRM.color, t('นับสะสม ไม่นับรายปี')],
@@ -38,10 +39,13 @@ const REQ_FIELDS: Array<[keyof Requirement, string, string, string]> = [
   ['years', t('เกณฑ์สะสมกี่ปี'), 'var(--text-muted)', ''],
 ];
 
+/** เงื่อนไขซ้อนในโควตาแถวบน — วาดเยื้องเข้าไม่มีจุดสี */
+const NESTED_REQ = new Set<keyof Requirement>(['postCoreMin', 'coCrMin']);
+
 /**
  * ปรับเกณฑ์ทีละขั้น พร้อมกันค่าที่ขัดกันเอง
  *
- * Post-core เป็นส่วนย่อยของ Crown/Bridge — ถ้าตั้ง Post-core มากกว่า Crown
+ * Post-core เป็นส่วนย่อยของ Crown/Bridge (Co-Cr ของ RPD ก็เช่นกัน) — ถ้าตั้ง Post-core มากกว่า Crown
  * จะกลายเป็นเกณฑ์ที่ไม่มีใครทำได้เลย (ต้องมี Post-core 3 ชิ้น ในโควตา Crown 2 ชิ้น)
  * ปรับตัวใดตัวหนึ่งแล้วดึงอีกตัวตามให้อยู่ในกรอบเสมอ
  */
@@ -49,6 +53,9 @@ function bumpReq(req: Requirement, key: keyof Requirement, delta: number): Requi
   const next: Requirement = { ...req, [key]: Math.max(0, req[key] + delta) };
   if (key === 'crown' || key === 'postCoreMin') {
     next.postCoreMin = Math.min(next.postCoreMin, next.crown);
+  }
+  if (key === 'rpd' || key === 'coCrMin') {
+    next.coCrMin = Math.min(next.coCrMin, next.rpd);
   }
   return next;
 }
@@ -145,10 +152,10 @@ export default function Settings() {
               <span className="sub">{t('สะสม {y} ปี', { y: settings.req.years })}</span>
             </div>
             {REQ_FIELDS.map(([key, label, color, hint]) => (
-              <div key={key} className="setrow" style={key === 'postCoreMin' ? { paddingLeft: 36 } : undefined}>
-                {key !== 'postCoreMin' && <span className="dot" style={{ background: color }} />}
+              <div key={key} className="setrow" style={NESTED_REQ.has(key) ? { paddingLeft: 36 } : undefined}>
+                {!NESTED_REQ.has(key) && <span className="dot" style={{ background: color }} />}
                 <span className="setrow__main">
-                  <b style={key === 'postCoreMin' ? { fontWeight: 500 } : undefined}>{label}</b>
+                  <b style={NESTED_REQ.has(key) ? { fontWeight: 500 } : undefined}>{label}</b>
                   {hint && <span className="setrow__hint">{hint}</span>}
                 </span>
                 <div className="stepper">
@@ -184,7 +191,7 @@ export default function Settings() {
                 [
                   'perYearCountsAllTypes',
                   t('เกณฑ์รายปีนับ'),
-                  settings.perYearCountsAllTypes ? t('ทุกประเภท (รวม Simple APD / Recall)') : t('เฉพาะ 4 ประเภทหลัก'),
+                  settings.perYearCountsAllTypes ? t('ทุกประเภท (รวม Recall)') : t('เฉพาะงานหลัก (ไม่รวม Recall)'),
                   settings.perYearCountsAllTypes,
                 ],
               ] as Array<[keyof typeof settings, string, string, boolean]>

@@ -876,7 +876,6 @@
 .critrow__v { font: 600 13px var(--font-mono); color: var(--text-secondary); flex: none; }
 .critsegs { display: grid; gap: 4px; margin-top: 11px; }
 .critsegs i { height: 8px; border-radius: 99px; background: var(--track); }
-.critrow__note { margin-top: 9px; font: 500 12px/1.5 var(--font-body); }
 .critgate { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font: 400 13.5px var(--font-body); }
 .critgate + .critgate { border-top: 1px solid var(--border); }
 .critgate span:first-child { flex: 1; min-width: 0; }

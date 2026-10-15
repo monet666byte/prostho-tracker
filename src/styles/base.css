@@ -40,6 +40,18 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .faint { color: var(--text-faint); }
 .pretty { text-wrap: pretty; }
 
+/* รายการชนิดงานใต้แถบเกณฑ์สะสม (ReqParts) — ใช้ทั้งฝั่งนักศึกษาและอาจารย์ */
+.reqparts { margin: 10px 0 0 3px; border-left: 2px solid var(--border-2); }
+.reqparts__row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0 4px 12px; font: 400 13px/1.45 var(--font-body); }
+.reqparts__name { flex: 1; min-width: 0; color: var(--text); }
+.reqparts__name small { font-size: 11.5px; color: var(--text-faint); }
+.reqparts__name .reqparts__must { color: var(--self); font-weight: 600; }
+.reqparts__st { flex: none; display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--text-faint); }
+.reqparts__st b { font: 600 12px var(--font-mono); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.reqparts__st b[data-tone='must'] { color: var(--self); }
+.reqparts__st b[data-tone='ok'] { color: var(--success-dark); }
+.reqparts__doing { font: 600 10.5px var(--font-body); color: var(--accent); background: var(--accent-tint); border-radius: 99px; padding: 1px 7px; }
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

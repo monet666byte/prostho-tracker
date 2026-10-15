@@ -584,7 +584,9 @@ export default function Dashboard() {
             <li>{settings.pairCountsAsOne ? t('CD/RPD คู่บน-ล่างนับเป็น 1 เคส เมื่อจบทั้งคู่') : t('CD/RPD นับต่อ arch')}</li>
             <li>{t('ทำเกินช่องไม่ล้นไปเติมช่องอื่น')}</li>
             <li>{t('Crown/Bridge ต้องเป็น Post-core อย่างน้อย {n} ชิ้น', { n: settings.req.postCoreMin })}</li>
-            <li>{t('ไม่นับ: ปิดสวิตช์นับเข้าเกณฑ์ · Simple APD · เคสที่คืนแล้ว')}</li>
+            <li>{t('RPD นับ Co-Cr หรือ Simple APD · ต้องเป็น Co-Cr อย่างน้อย {n} ชิ้น', { n: settings.req.coCrMin })}</li>
+            <li>{t('CD นับ CD หรือ Complicated APD รวมกัน')}</li>
+            <li>{t('ไม่นับ: ปิดสวิตช์นับเข้าเกณฑ์ · เคสที่คืนแล้ว')}</li>
             <li>{t('เคสที่ไม่นับเกณฑ์สะสม ก็ไม่นับเกณฑ์รายปี')}</li>
           </ul>
         ),

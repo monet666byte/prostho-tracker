@@ -289,6 +289,7 @@ export interface Requirement {
   rpd: number;
   crown: number; // Crown/Bridge + Post-core รวมกัน
   postCoreMin: number; // ในจำนวน crown ต้องเป็น Post-core อย่างน้อยกี่ชิ้น
+  coCrMin: number; // ในจำนวน RPD (Co-Cr หรือ Simple APD) ต้องเป็น Co-Cr อย่างน้อยกี่ชิ้น
   /** Recall งานถอดได้ (CD/RPD) — ผู้ใช้ */
   recallRemovable: number;
   /** Recall งานติดแน่น (FDP) — ผู้ใช้ */

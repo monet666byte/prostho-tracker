@@ -1,4 +1,5 @@
 import { SealCheck } from '@phosphor-icons/react';
+import { ReqParts } from '../../components/ReqParts';
 import { Shell } from '../../components/student/Shell';
 import { caseCount, caseCountTotals, gateRows, gatesDone, yearlyRows } from '../../domain/rules';
 import { useStudent, useWorkpieces } from '../../hooks/data';
@@ -88,12 +89,9 @@ export default function Criteria() {
                 </span>
               </div>
               <Segs n={r.required} done={r.done} color={r.color} />
-              {/* Crown/Bridge มีเงื่อนไขซ้อน: ในโควตานี้ต้องเป็น Post-core อย่างน้อย N ชิ้น */}
-              {r.postCoreRequired !== undefined && (
-                <div className="critrow__note" style={{ color: r.postCoreComplete ? 'var(--success-dark)' : 'var(--self)' }}>
-                  {t('ต้องมี {f} อย่างน้อย {n} ชิ้น · ตอนนี้ {a}/{n}', { f: 'Post-core', n: r.postCoreRequired, a: r.postCoreDone ?? 0 })}
-                </div>
-              )}
+              {/* แถบนับรวม · ใต้แถบแยกชนิดงาน (CD/Complicated APD · Co-Cr/Simple APD · Post-core/Crown)
+                  ชนิดที่บังคับ (Co-Cr · Post-core) โชว์เป็น x/y แทนบรรทัดม่วงเดิม */}
+              {r.parts && <ReqParts parts={r.parts} />}
             </div>
           ))}
         </article>
@@ -119,8 +117,8 @@ export default function Criteria() {
         </article>
 
         <p className="critfoot">
-          {t('เกณฑ์รายปี')}{settings.perYearCountsAllTypes ? t(' (นับทุกประเภท)') : t(' (นับเฉพาะ CD · RPD · Post-core · Crown/Bridge)')}
-          {' · '}{t('Simple APD ไม่นับเข้าเกณฑ์ · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี')}
+          {t('เกณฑ์รายปี')}{settings.perYearCountsAllTypes ? t(' (นับทุกประเภท)') : t(' (นับ CD · RPD · Simple APD · Post-core · Crown/Bridge)')}
+          {' · '}{t('Simple APD นับเข้า RPD · Recall นับเฉพาะเกณฑ์สะสม ไม่นับเกณฑ์รายปี')}
           {' · '}{gateKnown ? t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ค่าตั้งต้นมาจากชีต') : t('อาจารย์ที่ปรึกษาเป็นผู้ยืนยัน — ยังไม่มีข้อมูลในระบบ')}
         </p>
       </div>

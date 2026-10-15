@@ -189,7 +189,7 @@ console.log('\nthroughputByMonth — 10 เดือน มิ.ย. → มี.�
 console.log('\ndurationByType — รับเคส → จบเคส กี่สัปดาห์');
 {
   const rows = durationByType([]);
-  ok('ไม่มีงานจบเลย → ยังคืนครบ 4 ประเภทหลัก', rows.length === 4, rows.length);
+  ok('ไม่มีงานจบเลย → ยังคืนครบ 5 ประเภทที่นับเกณฑ์รายปี (รวม Simple APD)', rows.length === 5, rows.length);
   ok('มัธยฐานของลิสต์ว่าง = 0 ไม่ใช่ NaN',
     rows.every((r) => Number.isFinite(r.medianWeeks) && r.samples === 0));
 }
@@ -496,7 +496,7 @@ console.log('\nrequirementShare / classPosition');
   const ret = requirementShare([at('CD', 9, { returned: true } as Partial<Workpiece>)], S);
   ok('เคสที่คืนแล้วไม่เติมช่อง', ret.partial === 0);
   const apd = requirementShare([at('APD', 9)], S);
-  ok('Simple APD ไม่เข้าเกณฑ์สะสม', apd.partial === 0 && apd.done === 0);
+  ok('Simple APD กำลังทำ เติมช่อง RPD ตามขั้น (นับเข้า RPD แล้ว)', apd.partial > 0 && apd.done === 0, apd.partial);
   const mixed = [finished('CD'), finished('RPD'), finished('CB'), at('PC', 4), finished('RRM')];
   const sum = summarizeStudent(S1, mixed, S);
   ok('done ตรงกับ reqDone/reqTotal ของ summarizeStudent (ตารางหน้าอาจารย์)',
