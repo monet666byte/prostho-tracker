@@ -91,6 +91,11 @@ export async function migrateSettings(): Promise<void> {
       await saveSettings({ req: { ...DEFAULT_SETTINGS.req, ...req, coCrMin: DEFAULT_SETTINGS.req.coCrMin } });
     }
   }
+  if (ver < 6 && !cloudEnabled) {
+    /* โหมดลองเล่น: เครื่องที่เคยบันทึกค่าตั้งไว้แล้วมี checkinScan: false ติดอยู่ — เปิดให้ครั้งเดียวตามค่าเริ่มใหม่
+       (เว็บนำร่องไม่แตะ ค่าที่นั่นมาจากเซิร์ฟเวอร์และต้องปิดจนกว่าภาคจะเปิดเอง) */
+    await saveSettings({ checkinScan: true });
+  }
   await kvSet('settingsVersion', SETTINGS_VERSION);
 }
 

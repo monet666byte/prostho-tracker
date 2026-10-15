@@ -25,7 +25,7 @@ import { cloudEnabled } from '../lib/cloud';
 import { db, kvGet, kvSet } from './db';
 
 /** ขยับเลขนี้เมื่อแก้ค่าเริ่มต้นที่ต้องมีผลกับเครื่องที่ตั้งค่าไว้แล้ว (ดู migrateSettings) */
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
 
 export const DEFAULT_SETTINGS: Settings = {
   /* เกณฑ์สะสม 2 ปี — CD 2 · RPD 2 (Co-Cr หรือ Simple APD ในนั้นต้องเป็น Co-Cr อย่างน้อย 1)
@@ -43,7 +43,9 @@ export const DEFAULT_SETTINGS: Settings = {
   remindDays: 3,
   // แบบประเมินตนเอง: ปิดไว้ก่อน — ภาคเปิดเองปีละครั้งตอนจบเทอม 1 ที่หน้าตั้งค่า แยกชั้นปีได้
   saOpenYears: [],
-  // สแกน QR หน้าห้องก่อนเช็คอิน: ปิดไว้จนกว่าจอหน้าห้องจะพร้อม
+  /* สแกน QR หน้าห้องก่อนเช็คอิน — เว็บนำร่องปิดไว้จนกว่าจอหน้าห้องจะพร้อม (เปิด = นักศึกษาจริงทุกคนต้องสแกน)
+     โหมดลองเล่นเปิดให้ตอนลงข้อมูลตัวอย่าง (seedIfEmpty) และใน migrateSettings — ค่านี้ต้องเป็นลิเทอรัล
+     เพราะเทสต์อ่าน DEFAULT_SETTINGS เป็นข้อความ (scripts/test-helpers.mts) */
   checkinScan: false,
 };
 
@@ -612,7 +614,7 @@ async function seedIfEmptyInner(): Promise<void> {
     /* เดโม/รันในเครื่องที่ยังไม่ต่อเซิร์ฟเวอร์ — เปิดแบบประเมินตนเองไว้ให้ลองกดได้
        ค่าจริงของภาคยังเป็น "ปิด" ตาม DEFAULT_SETTINGS เพราะภาคต้องเป็นคนเปิดเองปีละครั้ง
        ถ้าไม่เปิดไว้ ฝั่งนักศึกษาจะไม่มีเมนูนี้เลย คนดูเดโมก็ประเมินฟอร์มไม่ได้ */
-    await kvSet('settings', { ...DEFAULT_SETTINGS, saOpenYears: [5, 6] });
+    await kvSet('settings', { ...DEFAULT_SETTINGS, saOpenYears: [5, 6], checkinScan: true });
     await kvSet('seedVersion', SEED_VERSION);
     if (keptSession) await kvSet('session', keptSession);
     // รุ่นที่จบแล้วยังไม่เขียน — รอจนกดเมนู "รุ่นที่จบแล้ว" (ดู ensureAlumniSeeded)
