@@ -1,0 +1,52 @@
+# กัน Supabase แบบฟรีพักโปรเจกต์ (พักอัตโนมัติเมื่อไม่มีใครเรียกใช้ครบ 7 วัน)
+#
+# ทุก 3 วันส่งคำขออ่านเล็กๆ หนึ่งครั้งไปที่ฐานข้อมูล — อ่านอย่างเดียว ไม่เขียนอะไร
+# ใช้กุญแจ anon (กุญแจเดียวกับที่แอปฝั่งเบราว์เซอร์ใช้) ไม่ใช้ service_role
+#
+# ต้องตั้ง secret สองตัวใน GitHub (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL       = ค่า VITE_SUPABASE_URL ใน .env.local
+#   SUPABASE_ANON_KEY  = ค่า VITE_SUPABASE_ANON_KEY ใน .env.local
+#
+# ถ้ารันพลาด (โปรเจกต์ถูกพักไปแล้ว / กุญแจผิด) GitHub จะส่งอีเมลแจ้ง
+# ⚠️ GitHub ปิด workflow แบบตั้งเวลาเองถ้า repo ไม่มีความเคลื่อนไหว 60 วัน — เข้าไปเปิดใหม่ได้ที่หน้า Actions
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 2 */3 * *'   # ทุก 3 วัน ราว 09:17 เวลาไทย
+  workflow_dispatch:          # กดสั่งเองได้จากหน้า Actions
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_URL / SUPABASE_ANON_KEY"
+            exit 1
+          fi
+
+          # อ่านแถวเดียวจากตาราง teachers — RLS จะคืนรายการว่างให้ anon ก็ได้ ขอแค่ให้คำขอวิ่งถึงฐานข้อมูล
+          status=$(curl -sS -o body.txt -w '%{http_code}' --max-time 60 \
+            "${SUPABASE_URL%/}/rest/v1/teachers?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+          echo "HTTP $status"
+          if grep -qi 'invalid api key' body.txt; then
+            echo "::error::กุญแจ anon ไม่ถูกต้อง — เช็ค secret SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          if [ "$status" -ge 500 ] || [ "$status" = "000" ]; then
+            echo "::error::เรียกฐานข้อมูลไม่ได้ (โปรเจกต์อาจถูกพักไปแล้ว) — เข้า supabase.com/dashboard แล้วกด Restore"
+            cat body.txt
+            exit 1
+          fi
+          echo "ok — ฐานข้อมูลยังตื่นอยู่"
