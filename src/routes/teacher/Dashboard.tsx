@@ -1,4 +1,4 @@
-import { Archive, BellRinging, Check, House, SquaresFour, Users } from '@phosphor-icons/react';
+import { Archive, BellRinging, CaretDown, CaretUp, Check, House, PauseCircle, SquaresFour, Users } from '@phosphor-icons/react';
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -18,11 +18,11 @@ import { alumniOverview, cohortYearly, countByKind, staleRows, summarizeAll, sum
 import { bottleneckByStep, riskByGroup, riskRows, worksAtStep } from '../../domain/analytics';
 import {
   currentProc, daysSinceUpdate, isReturned, isStale, maxProgression, notCountedPieces, percentParts, procLabel, progression,
-  isActiveWork, type NotCountedReason,
+  isActiveWork, isWaitingForPatient, type NotCountedReason,
 } from '../../domain/rules';
 import type { Workpiece } from '../../domain/types';
 import {
-  useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, usePendingPushCount, useSyncProblems, useSyncStatus, useTeacher,
+  useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useGroups, usePendingPushCount, useSyncProblems, useSyncStatus, useTeacher,
 } from '../../hooks/data';
 import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
@@ -35,7 +35,7 @@ import { onUpdateReady, updateReady } from '../../lib/appUpdate';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
-import { groupShort, groupYearOf, sortGroupCodes, splitPersonName } from '../../domain/group';
+import { currentAdvisorIds, groupShort, groupYearOf, sortGroupCodes, splitPersonName } from '../../domain/group';
 import { cohortLabel, cohortOf, isActiveStudent, isAlumni, studentCohortLabel, studentYear } from '../../domain/cohort';
 
 /* อ้างอิงเดิมทุกเรนเดอร์ — `?? []` สร้างอาร์เรย์ใหม่ทุกครั้ง ทำให้ useMemo ที่พึ่งมันไม่ memo จริง */
@@ -204,15 +204,29 @@ export default function Dashboard() {
   const groupScope = !!zoneGroup;
   const session = useApp((st) => st.session);
   const me = useTeacher(session?.teacherId);
+  /* อาจารย์ดูแลได้หลายกลุ่ม — หน้าแรกรวมทุกกลุ่มที่ดูแล (กล่องวันนี้รวม + กลุ่มเรียงต่อกัน)
+     เปิดดูกลุ่มที่ไม่ได้ดูแล (อาจารย์เวร) = กลุ่มนั้นกลุ่มเดียว · อ่านที่ปรึกษาจาก groups แบบเดียวกับแถบซ้าย */
+  const groupsAll = useGroups();
+  const myGroupCodes = useMemo(
+    () => (session?.teacherId ? groupsAll.filter((g) => currentAdvisorIds(g).includes(session.teacherId!)).map((g) => g.code) : []),
+    [groupsAll, session?.teacherId],
+  );
+  const homeCodes = useMemo(() => {
+    if (!zoneGroup) return [];
+    const mine = activeGroups.filter((g) => myGroupCodes.includes(g.code)).map((g) => g.code);
+    return mine.length > 1 && mine.includes(zoneGroup.code) ? sortGroupCodes(mine, activeStudents) : [zoneGroup.code];
+  }, [zoneGroup, activeGroups, myGroupCodes, activeStudents]);
+  const multi = homeCodes.length > 1;
+  const homeGroups = homeCodes.map((c) => activeGroups.find((g) => g.code === c)).filter((g): g is NonNullable<typeof g> => !!g);
   const riskInput = useMemo(() => riskAll.map((r) => ({ studentId: r.student.id, risk: r.risk, reason: r.reason })), [riskAll]);
   const today = useMemo(() => todaySummary({
-    students: zoneGroup ? activeStudents.filter((s) => s.group === zoneGroup.code) : students,
+    students: zoneGroup ? activeStudents.filter((s) => homeCodes.includes(s.group)) : students,
     works: allWorks,
     checkins: everyCheckIn,
     settings,
     risk: riskInput,
     groups: zoneGroup ? undefined : groups,
-  }), [zoneGroup, activeStudents, students, allWorks, everyCheckIn, settings, riskInput, groups]);
+  }), [zoneGroup, homeCodes, activeStudents, students, allWorks, everyCheckIn, settings, riskInput, groups]);
   /* ทั้งชั้นปีตามแท็บปีในโซนขวา — ใช้แค่บรรทัดระดับชั้นปี */
   const yearToday = useMemo(() => todaySummary({
     students, works: allWorks, checkins: everyCheckIn, settings, risk: riskInput, groups,
@@ -373,7 +387,7 @@ export default function Dashboard() {
               <div className="todaykid__who">
                 <button className="todaykid__name" onClick={() => openStudent(st)}>{name}</button>
                 <div className="todaykid__meta">
-                  {!groupScope && `${groupShort(st.group)} · `}
+                  {(!groupScope || multi) && `${groupShort(st.group)} · `}
                   {/* กิจกรรมเช็คอินเก็บตามที่เขียนไว้ ไม่ผ่าน t() (ดู domain/checkin.ts) */}
                   {p.activities.length ? p.activities.join(' · ') : t('{n} คาบ', { n: p.count })}
                 </div>
@@ -403,6 +417,7 @@ export default function Dashboard() {
               <div className="todaykid__who">
                 <button className="todaykid__name" onClick={() => openStudent(st)}>{name}</button>
                 <div className="todaykid__meta">
+                  {multi && `${groupShort(st.group)} · `}
                   {f.stale.length
                     ? f.stale.slice(0, 2).map((w) => (
                       <span key={w.workId} className="stalepill">
@@ -445,6 +460,7 @@ export default function Dashboard() {
               <div className="todaykid__who">
                 <button className="todaykid__name" onClick={() => openStudent(st)}>{name}</button>
                 <div className="todaykid__meta">
+                  {multi && `${groupShort(st.group)} · `}
                   <span className="stalepill"><i style={{ background: workMeta(w).color }} />{workLabel(w)}</span>
                   {' '}{waitReasonLabel(w.reason)}
                 </div>
@@ -654,16 +670,34 @@ export default function Dashboard() {
     };
   })();
 
-  /* หน้าแรกโชว์ 4 คนที่ความคืบหน้าน้อยสุด (ตารางเต็มอยู่หน้าสรุปกลุ่ม) · พิมพ์ค้นหา = ผลค้นหาทั้งหมด */
+  /* หน้าแรกเน้นกลุ่มที่ดูแล: กลุ่มเดียว = ตารางครบทุกคน · หลายกลุ่ม = กลุ่มละ 4 คนที่ช้าสุด + ปุ่มดูครบ
+     พิมพ์ค้นหา = ผลค้นหาทั้งรุ่น */
   const HOME_TABLE_ROWS = 4;
-  const homeRows = query ? shownStudents : [...shownStudents].sort((a, b) => a.percent - b.percent).slice(0, HOME_TABLE_ROWS);
+  const slowestFirst = <T extends { percent: number }>(list: T[]) => [...list].sort((a, b) => a.percent - b.percent);
+  const riskById = useMemo(() => new Map(riskAll.map((r) => [r.student.id, r])), [riskAll]);
+  const allWorksById = useMemo(() => new Map(allWorks.map((w) => [w.id, w])), [allWorks]);
+  const homeStudentCount = homeGroups.reduce((n, g) => n + g.students.length, 0);
+  /* จบเคสปีนี้ — ตัวเดียวกับการ์ดในหน้าสรุปกลุ่ม (riskRows.completedThisYear) */
+  const homeDoneThisYear = homeGroups.reduce((n, g) => n + g.students.reduce((m, st) => m + (riskById.get(st.student.id)?.completedThisYear ?? 0), 0), 0);
+  const followIn = (code: string) => today.followUpList.filter((f) => studentById.get(f.studentId)?.group === code).length;
+  const pendingIn = (code: string) => today.pendingList.filter((p) => studentById.get(p.studentId)?.group === code).length;
+  /* ทั้งชั้นปีเหลือแถบเดียวใต้โซนกลุ่ม · กางดูได้ (ของเดิมอยู่ครบ) · จำว่ากางไว้ในเครื่อง */
+  const [yearOpen, setYearOpenState] = useState(() => {
+    try { return localStorage.getItem('pt-home-year') === 'open'; } catch { return false; }
+  });
+  const setYearOpen = (v: boolean) => {
+    setYearOpenState(v);
+    try { localStorage.setItem('pt-home-year', v ? 'open' : 'closed'); } catch { /* โหมดส่วนตัว */ }
+  };
 
-  /** ตารางนักศึกษา — ใช้ทั้งโซนกลุ่มบนหน้าแรกและหน้ารุ่นที่จบแล้ว */
-  const renderStudentTable = (rows = shownStudents) => (
+  /** ตารางนักศึกษา — ใช้ทั้งโซนกลุ่มบนหน้าแรกและหน้ารุ่นที่จบแล้ว
+   *  now = คอลัมน์ "กำลังทำ" (เคสที่แตะล่าสุดจาก riskRows.pieces — ชุดเดียวกับการ์ดในสรุปกลุ่ม) */
+  const renderStudentTable = (rows = shownStudents, now = false) => (
     <table className="tbl">
       <thead>
         <tr>
           <th>{t('นักศึกษา')}</th>
+          {now && <th>{t('กำลังทำ')}</th>}
           {!isAlumniView && <th style={{ width: 130 }}>{t('ความคืบหน้า')}</th>}
           {/* 76px ทำหัวไทยตัดคำห้อยสองบรรทัด */}
           <th style={{ width: 94, whiteSpace: 'nowrap' }}>{t('เกณฑ์สะสม 2 ปี')}</th>
@@ -697,6 +731,25 @@ export default function Dashboard() {
                   {query && ` · ${groupShort(s.student.group)}`}
                 </div>
               </td>
+              {now && (() => {
+                const pc = riskById.get(s.student.id)?.pieces[0];
+                const w = pc ? allWorksById.get(pc.id) : undefined;
+                return (
+                  <td className="nowcell">
+                    {pc ? (
+                      <>
+                        <span className="stalepill"><i style={{ background: workMeta(pc).color }} />{workLabel(pc)}</span>
+                        <span className="nowcell__step">{t('ขั้น {n}', { n: pc.progression })} · {pc.name}</span>
+                        <div className="nowcell__age">
+                          {w && isWaitingForPatient(w)
+                            ? <><PauseCircle size={12} weight="fill" /> {t('รอคนไข้')}</>
+                            : pc.days === 0 ? t('อัปเดตวันนี้') : t('อัปเดต {n} วันก่อน', { n: pc.days })}
+                        </div>
+                      </>
+                    ) : <span className="nowcell__age">{t('ไม่มีเคสในมือ')}</span>}
+                  </td>
+                );
+              })()}
               {!isAlumniView && (
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -812,27 +865,32 @@ export default function Dashboard() {
             </div>
           </>
         ) : (
-          /* หน้าแรกแบ่งสองโซน — ซ้าย: กลุ่มที่ดูอยู่ (งานที่ต้องทำวันนี้ + ตารางนักศึกษา) · ขวา: ทั้งชั้นปี
-             พื้นสองโซนใช้สีเดียวกับสองหมวดในแถบเมนูซ้าย ให้รู้ว่ากล่องไหนนับจากใคร */
-          <div className="homezones">
+          /* หน้าแรกเน้นกลุ่มที่ดูแล — โซนกลุ่มเต็มความกว้าง · ทั้งชั้นปีย่อเหลือแถบเดียวข้างล่าง (กางดูได้)
+             อาจารย์ที่ดูแลหลายกลุ่ม: กล่องวันนี้รวมทุกกลุ่ม (มีป้ายกลุ่มต่อคน) + กลุ่มเรียงต่อกัน */
+          <div className="homefocus">
             <section className="zone zone--group" aria-label={zoneGroup ? t('กลุ่ม {g}', { g: groupShort(zoneGroup.code) }) : t('กลุ่มที่ดูแล')}>
               <div className="zone__head">
                 <span className="zone__ic" aria-hidden><Users size={18} weight="bold" /></span>
                 <div className="zone__title">
                   <h2>
-                    {zoneGroup
-                      ? (zoneGroup.code === ownGroup ? t('กลุ่มของฉัน · {g}', { g: groupShort(zoneGroup.code) }) : t('กลุ่ม {g}', { g: groupShort(zoneGroup.code) }))
-                      : t('กลุ่มที่ดูแล')}
+                    {multi
+                      ? t('กลุ่มของฉัน · {n} กลุ่ม', { n: homeGroups.length })
+                      : zoneGroup
+                        ? (zoneGroup.code === ownGroup || myGroupCodes.includes(zoneGroup.code) ? t('กลุ่มของฉัน · {g}', { g: groupShort(zoneGroup.code) }) : t('กลุ่ม {g}', { g: groupShort(zoneGroup.code) }))
+                        : t('กลุ่มที่ดูแล')}
                   </h2>
-                  {zoneGroup && (
+                  {multi ? (
+                    <small>{t('ปี {y} · {g} · {n} คน', { y: homeGroups[0].year, g: homeGroups.map((g) => groupShort(g.code)).join(' + '), n: homeStudentCount })}</small>
+                  ) : zoneGroup && (
                     <small>
                       {t('ปี {y} · {n} คน · ความคืบหน้า', { y: zoneGroup.year, n: zoneGroup.students.length })}{' '}
                       <button className="tracenum" onClick={() => setTraceKey({ kind: 'group', code: zoneGroup.code })}>{zoneGroup.percent}%</button>
+                      {advisorsOf(zoneGroup.code) && ` · ${advisorsOf(zoneGroup.code)}`}
                     </small>
                   )}
                   <DataAge />
                 </div>
-                {/* ตัวเดียวกับตัวเลือกกลุ่มในแถบซ้าย (teacherGroup) — เดิมอยู่หัวตารางนักศึกษา */}
+                {/* ตัวเดียวกับตัวเลือกกลุ่มในแถบซ้าย (teacherGroup) — เลือกกลุ่มที่ไม่ได้ดูแล = ดูกลุ่มนั้นกลุ่มเดียว */}
                 <select
                   className="zone__select"
                   value={zoneGroup?.code ?? ''}
@@ -850,35 +908,109 @@ export default function Dashboard() {
               {/* นักศึกษาขอผูกบัญชี (0023) — ไม่มีคำขอ = ไม่แสดง · อยู่หน้าแรกเพราะอาจารย์ที่ปรึกษาเปิดหน้านี้ก่อนเสมอ */}
               <LinkRequestsPanel />
 
-              <TodayCard
-                name={me ? personName(me) : ''}
-                summary={today}
-                /* ยังไม่มีรายชื่อในเครื่อง (เครื่องใหม่กำลังซิงก์) = ยังไม่รู้ ห้ามขึ้น "ไม่มีอะไรน่าห่วง" */
-                lines={activeStudents.length ? todayLines.slice(0, 3) : []}
-              />
-
-              <div className="panel" ref={studentsRef} style={{ scrollMarginTop: 16 }}>
-                <div className="tblhead">
-                  <h3>{zoneGroup ? t('นักศึกษาใน {g}', { g: groupShort(zoneGroup.code) }) : t('นักศึกษา')}</h3>
-                  {!query && <span className="tblhead__hint">{t('เรียงจากช้าสุด')}</span>}
-                  <input
-                    className="tblhead__search"
-                    type="search"
-                    value={query}
-                    placeholder={t('ค้นชื่อ/รหัส ทั้งรุ่น')}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
+              {/* ตัวเลข 3 ช่องของกลุ่มที่ดูแล — ตัวเดียวกับกล่องวันนี้ (todaySummary) และการ์ดในหน้าสรุปกลุ่ม */}
+              {homeGroups.length > 0 && (
+                <div className="kpis kpis--strip homekpis">
+                  <div className="kpi">
+                    <div className="kpi__value" style={{ color: today.followUp ? 'var(--danger)' : 'var(--success)' }}>
+                      {today.followUp}<span className="kpi__of"> / {t('{n} คน', { n: homeStudentCount })}</span>
+                    </div>
+                    <div className="kpi__label">{t('ต้องตาม')}{today.waitingList.length > 0 && ` · ${t('รอคนไข้ {n} เคส', { n: today.waitingList.length })}`}</div>
+                  </div>
+                  <div className="kpi">
+                    <div className="kpi__value" style={{ color: today.pendingPeople ? 'var(--warning)' : 'var(--success-dark)' }}>
+                      {today.pendingPeople}<span className="kpi__of"> {t('คน')}</span>
+                    </div>
+                    <div className="kpi__label">
+                      {t('รอประเมิน')}
+                      {today.pendingPeople > 0 && <> · <button className="kpi__link" onClick={() => navigate('/teacher/evaluate')}>{t('ไปประเมิน')} ›</button></>}
+                    </div>
+                  </div>
+                  <div className="kpi">
+                    <div className="kpi__value" style={{ color: homeDoneThisYear >= homeStudentCount * settings.req.perYear ? 'var(--success)' : undefined }}>
+                      {homeDoneThisYear}<span className="kpi__of"> / {t('เป้า {n} ชิ้น', { n: homeStudentCount * settings.req.perYear })}</span>
+                    </div>
+                    <div className="kpi__label">{t('จบเคสปีนี้ · เกณฑ์รายปี คนละ {n} ชิ้น', { n: settings.req.perYear })}</div>
+                  </div>
                 </div>
-                {query && <p className="sub">{t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })}</p>}
-                {renderStudentTable(homeRows)}
-                {!query && zoneGroup && zoneGroup.students.length > HOME_TABLE_ROWS && (
-                  <button className="homemore" onClick={() => { setGroup(zoneGroup.code); navigate('/teacher/group'); }}>
-                    {t('ดูครบ {n} คนในสรุปกลุ่ม', { n: zoneGroup.students.length })} ›
-                  </button>
-                )}
+              )}
+
+              <div className="homefocus__grid">
+                <TodayCard
+                  name={me ? personName(me) : ''}
+                  summary={today}
+                  /* ยังไม่มีรายชื่อในเครื่อง (เครื่องใหม่กำลังซิงก์) = ยังไม่รู้ ห้ามขึ้น "ไม่มีอะไรน่าห่วง" */
+                  lines={activeStudents.length ? todayLines.slice(0, 4) : []}
+                />
+
+                <div className="homefocus__right" ref={studentsRef} style={{ scrollMarginTop: 16 }}>
+                  {(query || !multi) ? (
+                    <div className="panel">
+                      <div className="tblhead">
+                        <h3>{zoneGroup && !query ? t('นักศึกษาใน {g}', { g: groupShort(zoneGroup.code) }) : t('นักศึกษา')}</h3>
+                        {!query && zoneGroup && <span className="tblhead__hint">{t('ครบ {n} คน · เรียงจากช้าสุด', { n: zoneGroup.students.length })}</span>}
+                        <input
+                          className="tblhead__search"
+                          type="search"
+                          value={query}
+                          placeholder={t('ค้นชื่อ/รหัส ทั้งรุ่น')}
+                          onChange={(e) => setQuery(e.target.value)}
+                        />
+                      </div>
+                      {query && <p className="sub">{t('ผลค้นหาทั้งรุ่น · {n} คน', { n: shownStudents.length })}</p>}
+                      {renderStudentTable(query ? shownStudents : slowestFirst(shownStudents), !query)}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        className="tblhead__search homefocus__search"
+                        type="search"
+                        value={query}
+                        placeholder={t('ค้นชื่อ/รหัส ทั้งรุ่น')}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      {homeGroups.map((g) => (
+                        <section key={g.code} className="panel homegsec" aria-label={t('กลุ่ม {g}', { g: groupShort(g.code) })}>
+                          <div className="homegsec__head">
+                            <b>{groupShort(g.code)}</b>
+                            <small>{[advisorsOf(g.code), t('{n} คน', { n: g.students.length })].filter(Boolean).join(' · ')}</small>
+                            <span className="homegsec__mini">
+                              <span>{t('ต้องตาม')} <em className={followIn(g.code) ? 'is-warn' : undefined}>{followIn(g.code)}/{g.students.length}</em></span>
+                              <span>{t('รอประเมิน')} <em>{pendingIn(g.code)}</em></span>
+                            </span>
+                          </div>
+                          {renderStudentTable(slowestFirst(g.students).slice(0, HOME_TABLE_ROWS), true)}
+                          {g.students.length > HOME_TABLE_ROWS && (
+                            <button className="homemore" onClick={() => { setGroup(g.code); navigate('/teacher/group'); }}>
+                              {t('ดูครบ {n} คนในสรุปกลุ่ม {g}', { n: g.students.length, g: groupShort(g.code) })} ›
+                            </button>
+                          )}
+                        </section>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
             </section>
 
+            {/* ทั้งชั้นปีบรรทัดเดียว — ตัวเลขชุดเดียวกับกล่อง "ต้องดูในชั้นปี" (yearToday) */}
+            <div className="yearstrip">
+              <span className="yearstrip__t"><SquaresFour size={16} weight="fill" /> {yearView === 'all' ? t('ทุกชั้นปี') : t('ทั้งชั้นปี {n}', { n: yearView })}</span>
+              <span>{t('ต้องตาม')} <b>{t('{n} คน', { n: yearToday.followUp })}</b></span>
+              {yearToday.followUpGroups.length > 0 && (
+                <span>{t('กลุ่มที่ต้องดู')} <b>{yearToday.followUpGroups.slice(0, 3).map((g) => groupName(g.code, g.year)).join(' · ')}</b>{yearToday.followUpGroups.length > 3 && ` +${yearToday.followUpGroups.length - 3}`}</span>
+              )}
+              {yearToday.stale > 0 && (
+                <span>{t('งานค้างเกิน {d} วัน', { d: settings.stale })} <b>{t('{n} ชิ้น', { n: yearToday.stale })}</b>{yearToday.staleTop && ` · ${t('ส่วนใหญ่ติด step {n}', { n: yearToday.staleTop.progression })}`}</span>
+              )}
+              <span className="yearstrip__gap" />
+              <button className="yearstrip__btn" aria-expanded={yearOpen} onClick={() => setYearOpen(!yearOpen)}>
+                {yearOpen ? <>{t('พับ')} <CaretUp size={13} weight="bold" /></> : <>{t('กางดู')} <CaretDown size={13} weight="bold" /></>}
+              </button>
+              <button className="yearstrip__link" onClick={() => navigate('/teacher/analytics')}>{t('วิเคราะห์รวม')} ›</button>
+            </div>
+
+            {yearOpen && (
             <section className="zone zone--year" aria-label={t('ทั้งชั้นปี')}>
               <div className="zone__head">
                 <span className="zone__ic" aria-hidden><SquaresFour size={18} weight="fill" /></span>
@@ -1089,6 +1221,7 @@ export default function Dashboard() {
                 </table>
               </div>
             </section>
+            )}
           </div>
         )}
 

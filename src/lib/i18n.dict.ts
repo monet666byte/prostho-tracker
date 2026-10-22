@@ -1439,6 +1439,17 @@ export const DICT: Record<string, string> = {
   'ทิ้งงานที่ค้างของบัญชีก่อนหน้า {n} รายการ แล้วให้บัญชีใหม่เข้าเครื่องนี้? กู้คืนไม่ได้':
     'Discard the previous account’s {n} unsent item(s) and let a new account use this device? This cannot be undone',
   'ทิ้งงานนั้น แล้วเข้าด้วยบัญชีอื่น': 'Discard that work and sign in with another account',
+  // ── หน้าแรกเน้นกลุ่มที่ดูแล ──
+  'กลุ่มของฉัน · {n} กลุ่ม': 'My groups · {n} groups',
+  'ปี {y} · {g} · {n} คน': 'Year {y} · {g} · {n} students',
+  'รอคนไข้ {n} เคส': 'waiting for patient {n}',
+  'จบเคสปีนี้ · เกณฑ์รายปี คนละ {n} ชิ้น': 'Completed this year · yearly req. {n} per student',
+  'ครบ {n} คน · เรียงจากช้าสุด': 'all {n} · slowest first',
+  'ดูครบ {n} คนในสรุปกลุ่ม {g}': 'See all {n} in {g} summary',
+  'ทุกชั้นปี': 'All years',
+  'ทั้งชั้นปี {n}': 'Year {n}',
+  'พับ': 'Collapse',
+  'กางดู': 'Expand',
   // ── รอคนไข้ (เคสหยุดเพราะคนไข้ ไม่นับเป็นค้าง) ──
   'refer ไปภาคอื่น': 'Referred to another dept.',
   '{n} เคส': '{n} cases',
