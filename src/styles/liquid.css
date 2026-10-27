@@ -100,13 +100,13 @@
   --g3s: color-mix(in oklch, var(--g3), transparent 55%);
   --gspeed: 3s;
 }
-/* แผงน้ำเงิน: น้ำเงินครามเข้ม — ฐานดำ 50% · ก้อนคราม 55% · ก้อนน้ำเงินสด 45% · ก้อนทึบ (โปร่ง 30%) ให้สีเต็มแผง
+/* แผงน้ำเงิน: น้ำเงินคราม (ผู้ใช้เลือกแบบ "คราม สว่างกว่า" แล้วขอสว่างขึ้นอีกนิด) — ฐานดำ 40% · ก้อนคราม #4338ca 55% · ก้อนน้ำเงินสด 55% · ก้อนทึบ (โปร่ง 30%) ให้สีเต็มแผง
    ตัวหนังสือในแผงเป็นขาวล้วน (ด้านล่าง) · ประกาศทั้งชุดใหม่ */
 .phone .hp,
 .phone .s-header.pagepanel {
-  --gbase: color-mix(in oklch, var(--panel), black 50%);
-  --g1: color-mix(in oklch, var(--gbase), #3730a3 55%);
-  --g3: color-mix(in oklch, var(--gbase), #2b5ce6 45%);
+  --gbase: color-mix(in oklch, var(--panel), black 40%);
+  --g1: color-mix(in oklch, var(--gbase), #4338ca 55%);
+  --g3: color-mix(in oklch, var(--gbase), #2b5ce6 55%);
   --g1s: color-mix(in oklch, var(--g1), transparent 30%);
   --g3s: color-mix(in oklch, var(--g3), transparent 30%);
 }
