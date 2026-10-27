@@ -165,8 +165,9 @@ export function PlainShell({ children, footer, overlay }: { children: ReactNode;
         <StatusBar />
         <SandboxStrip />
         <SideRail />
-        <div className="screen screen--plain" onScroll={markScrolled}><div className="screenfill">{children}</div></div>
-        {footer}
+        {/* แถบปุ่มล่างอยู่ท้ายพื้นที่เลื่อนและติดขอบล่าง (liquid.css) — เนื้อหาไหลลอดใต้แถบ ใช้จอได้เต็ม
+            เดิมอยู่นอกพื้นที่เลื่อน กินจอราว 210px บนหน้าเคส · เลื่อนสุดแล้วไม่มีอะไรจมใต้แถบ เพราะแถบกินที่ท้ายเนื้อหาเอง */}
+        <div className="screen screen--plain" onScroll={markScrolled}><div className="screenfill">{children}</div>{footer}</div>
         <ToastView />
         {overlay}
       </PhoneFrame>

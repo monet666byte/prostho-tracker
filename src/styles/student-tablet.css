@@ -55,7 +55,7 @@
   .rolefab { bottom: calc(18px + env(safe-area-inset-bottom)); }
 
   /* ปุ่มค้างล่างของหน้าย่อย — กว้างเท่าคอลัมน์ ไม่ยาวเต็มจอ */
-  .phone > .footer { padding-inline: max(16px, calc((100% - var(--col-w)) / 2 + 16px)); }
+  .phone > .footer, .phone .screen > .footer { padding-inline: max(16px, calc((100% - var(--col-w)) / 2 + 16px)); }
 
   /* แผ่นเลื่อนขึ้น (เช็คอิน · ยืนยันผ่าน step) — กว้างพอดีอ่าน อยู่กลางพื้นที่เนื้อหา */
   .backdrop { justify-content: center; padding-left: calc(var(--rail-w) + env(safe-area-inset-left)); }

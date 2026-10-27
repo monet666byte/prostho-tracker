@@ -131,6 +131,44 @@
 /* หัวเรื่องติดหัวจอทุกขนาดจอ (ตามของเดิมใน student.css) — สเปก liquid glass เคยสั่งให้ปลดบนมือถือ
    ลองบน iPhone แล้วผู้ใช้อยากให้ติดไว้เหมือนเดิม */
 
+/* หัวที่เป็นแผงน้ำเงิน (หน้าเคส · หน้าเกณฑ์): ติดหัวจอ และหดเหลือแถบบางเมื่อเลื่อน
+   เหลือ: ปุ่มกลับ + ชื่อ + Step / แถบความคืบหน้า (หน้าเคส) · "1 / 8 เคส" (หน้าเกณฑ์)
+   หดด้วย max-height + opacity ให้ค่อยๆ ยุบ ไม่ใช่หายวับ (display: none ทำเนื้อหาข้างล่างกระโดด) */
+/* ตัวเลือกเจาะจงกว่ากฎ liquid ด้านล่างที่ตั้ง position: relative ให้แผง (ต้องการเป็นฐานของก้อนสี — sticky ก็เป็นฐานได้) */
+.phone .screen .s-header.pagepanel { position: sticky; top: 0; z-index: 20; }
+/* ปิด scroll anchoring: ตอนหัวหด Chrome จะดึงตำแหน่งเลื่อนกลับเท่าที่หดไป → เลื่อนนิดเดียวกลับไปที่ 0 → หัวกางอีก = กะพริบสลับ
+   Safari ไม่มีพฤติกรรมนี้อยู่แล้ว ปิดให้ทุกเบราว์เซอร์ทำเหมือนกัน */
+.phone .screen:has(.pagepanel) { overflow-anchor: none; }
+.phone .pagepanel :is(.detailpanel__meta, .detailpanel__req, .critpanel__kicker, .critpanel__segs, .critpanel__types, .critpanel__year) {
+  max-height: 140px;
+  overflow: hidden;
+  transition: max-height 0.32s var(--lg-ease), opacity 0.2s ease, margin 0.32s var(--lg-ease), padding 0.32s var(--lg-ease);
+}
+.phone .screen[data-scrolled='true'] .pagepanel :is(.detailpanel__meta, .detailpanel__req, .critpanel__kicker, .critpanel__segs, .critpanel__types, .critpanel__year) {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.phone .pagepanel .critpanel__big { transition: font-size 0.32s var(--lg-ease); }
+.phone .screen[data-scrolled='true'] .pagepanel .critpanel__big { font-size: 30px; }
+
+/* แถบปุ่มล่างของหน้าย่อย (หน้าเคส · เพิ่มชิ้นงาน): อยู่ท้ายพื้นที่เลื่อน ติดขอบล่าง เนื้อหาไหลลอดใต้ (Shell.tsx)
+   เป็นกระจกเบลอแบบแถบเมนู · เดิมเป็นกล่องขาวทึบนอกพื้นที่เลื่อน กินจอราว 210px */
+.phone .screen > .footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: var(--lg-bar);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border-top: 1px solid var(--lg-glass-edge);
+  box-shadow: 0 -12px 28px -18px rgba(24, 36, 72, 0.3);
+}
+.phone .screen--plain:has(> .footer) { padding-bottom: 0; }
+
 /* ── Liquid: ปุ่มหลัก · ปุ่มติ๊กผ่าน step · แผงน้ำเงิน ─────────────────────────────
    พื้น = สีหลักเข้มขึ้น · ก้อนสีสองก้อน = สีหลักผสมไปทางม่วงกับทางฟ้า วนสวนกันคนละความเร็วแบบ alternate
    color-mix คำนวณที่ตัวแปรครั้งเดียว (ชุดนี้ผูกกับ --panel ของ .phone) · สีอื่นต้องประกาศทั้งชุดใหม่ในตัวนั้น
@@ -286,4 +324,5 @@
   .phone .minirow__pass::before, .phone .minirow__pass::after,
   .phone .hp::before, .phone .hp::after, .phone .s-header.pagepanel::before, .phone .s-header.pagepanel::after { animation: none; }
   .phone button.card, .phone a.card, .phone .minirow, .phone .btn, .phone .seg button { transition: none; }
+  .phone .pagepanel :is(.detailpanel__meta, .detailpanel__req, .critpanel__kicker, .critpanel__segs, .critpanel__types, .critpanel__year, .critpanel__big) { transition: none; }
 }
