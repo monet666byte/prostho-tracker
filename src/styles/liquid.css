@@ -153,6 +153,8 @@
   padding-bottom: 0;
 }
 .phone .pagepanel .critpanel__big { transition: font-size 0.32s var(--lg-ease); }
+/* หน้าเกณฑ์: แถบขีด 8 ช่องใต้ "1 / 8 เคส" ซ้ำกับวงแยกชนิดงานข้างล่าง — ผู้ใช้บอกว่าเกะกะ เอาออกทุกสถานะ */
+.phone .pagepanel .critpanel__segs { display: none; }
 .phone .screen[data-scrolled='true'] .pagepanel .critpanel__big { font-size: 30px; }
 /* ตอนหด ก้อนสีสว่างหลุดออกนอกแถบที่เตี้ยลง เหลือแต่พื้นเข้ม (วัดได้ความสว่าง 53 จาก 72 ตอนกาง)
    ยกพื้นให้สว่างขึ้นเฉพาะตอนหด → แถบสีเท่าตอนกาง · ประกาศชุดสีใหม่ทั้งชุด */
