@@ -154,6 +154,15 @@
 }
 .phone .pagepanel .critpanel__big { transition: font-size 0.32s var(--lg-ease); }
 .phone .screen[data-scrolled='true'] .pagepanel .critpanel__big { font-size: 30px; }
+/* ตอนหด ก้อนสีสว่างหลุดออกนอกแถบที่เตี้ยลง เหลือแต่พื้นเข้ม (วัดได้ความสว่าง 53 จาก 72 ตอนกาง)
+   ยกพื้นให้สว่างขึ้นเฉพาะตอนหด → แถบสีเท่าตอนกาง · ประกาศชุดสีใหม่ทั้งชุด */
+.phone .screen[data-scrolled='true'] .s-header.pagepanel {
+  --gbase: color-mix(in oklch, var(--panel), black 12%);
+  --g1: color-mix(in oklch, var(--gbase), #4338ca 55%);
+  --g3: color-mix(in oklch, var(--gbase), #2b5ce6 55%);
+  --g1s: color-mix(in oklch, var(--g1), transparent 30%);
+  --g3s: color-mix(in oklch, var(--g3), transparent 30%);
+}
 
 /* แถบปุ่มล่างของหน้าย่อย (หน้าเคส · เพิ่มชิ้นงาน): อยู่ท้ายพื้นที่เลื่อน ติดขอบล่าง เนื้อหาไหลลอดใต้ (Shell.tsx)
    เป็นกระจกเบลอแบบแถบเมนู · เดิมเป็นกล่องขาวทึบนอกพื้นที่เลื่อน กินจอราว 210px */
