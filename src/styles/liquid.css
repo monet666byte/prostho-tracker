@@ -98,15 +98,22 @@
   --g3s: color-mix(in oklch, var(--g3), transparent 55%);
   --gspeed: 3s;
 }
-/* แผงน้ำเงินมีป้ายฟ้าอ่อนตัวเล็ก (--panel-hi) ด้วย — ต้องเข้มกว่าปุ่ม ประกาศทั้งชุดใหม่
-   ฐานดำ 40% ผสม 40% → ป้ายฟ้าอ่อนบนก้อนฟ้า 4.52:1 · ตัวขาว 6.8:1 */
+/* แผงน้ำเงิน: ม่วง/ฟ้าสดกว่าปุ่ม — ตัวหนังสือในแผงเป็นขาวล้วน (ด้านล่าง) จึงสดได้ถึงเพดานของตัวขาว
+   ก้อนฟ้าคือตัวจำกัด: ฐานดำ 35% ผสม 55% → ขาว 4.7:1 · ก้อนม่วงเข้มอยู่แล้ว ผสมแรงได้ 68%
+   ก้อนทึบขึ้น (โปร่ง 30% แทน 55%) ให้สีเต็มแผง โดยจุดที่สว่างสุดยังเท่าเดิม · ประกาศทั้งชุดใหม่ */
 .phone .hp,
 .phone .s-header.pagepanel {
-  --gbase: color-mix(in oklch, var(--panel), black 40%);
-  --g1: color-mix(in oklch, var(--gbase), #7b4ff6 40%);
-  --g3: color-mix(in oklch, var(--gbase), #31c5f4 40%);
-  --g1s: color-mix(in oklch, var(--g1), transparent 55%);
-  --g3s: color-mix(in oklch, var(--g3), transparent 55%);
+  --gbase: color-mix(in oklch, var(--panel), black 35%);
+  --g1: color-mix(in oklch, var(--gbase), #7b4ff6 68%);
+  --g3: color-mix(in oklch, var(--gbase), #31c5f4 55%);
+  --g1s: color-mix(in oklch, var(--g1), transparent 30%);
+  --g3s: color-mix(in oklch, var(--g3), transparent 30%);
+}
+/* ตัวหนังสือในแผงเป็นขาวล้วน (เดิมฟ้าอ่อน / ขาวจาง / เขียว / ส้ม อ่านไม่ผ่านบนก้อนสีที่สดขึ้น)
+   ลำดับความสำคัญบอกด้วยขนาดและน้ำหนักแทนสี · เลขขั้นย่อยที่มีพื้นของตัวเองไม่แตะ */
+.phone .hp :is(.hp__who, .hp__of, .hp__lbl, .hp__kicker, .hp__kicker--hi, .hp__ringcap, .hp__self, .hp__sub, .hp__subname, .hp__subtag, .hp__sub--todo .hp__subnum),
+.phone .s-header.pagepanel :is(.hp__lbl, .critpanel__kicker, .critpanel__big span, .critpanel__year b span, .detailpanel__meta, .detailpanel__req, .detailpanel__req--off, .detailpanel__step span) {
+  color: #fff;
 }
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success),
 .phone .herocase__btn,
@@ -192,8 +199,6 @@
 }
 .phone .seg button:active { transform: translateY(1px) scale(0.98); }
 
-/* ── ตัวหนังสืออ่านง่ายบนแผงน้ำเงิน: ขั้นย่อยที่ทำแล้วเดิมจาง 55% = 3.5:1 · 75% = 5.1:1 (AA) ── */
-.phone .hp__sub--done { color: rgba(255, 255, 255, 0.75); }
 
 /* ── เครื่องที่ขอให้ลดการเคลื่อนไหว ── */
 @media (prefers-reduced-motion: reduce) {
