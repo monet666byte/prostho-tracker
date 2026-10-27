@@ -55,8 +55,14 @@
 .phone .minirow,
 .phone .growcard,
 .phone .herocase,
-.phone .herocase.herocase {
+.phone .herocase.herocase,
+.phone .rowcard,
+.phone .tl__panel {
   --text-faint: var(--text-muted);
+  /* เส้นคั่นและพื้นช่องย่อยข้างในการ์ดเป็นขาวโปร่ง แทนเทา — ผ่าน token จึงครอบทุกคลาสข้างใน */
+  --border: var(--lg-glass-line);
+  --border-2: var(--lg-glass-edge);
+  --fill: rgba(255, 255, 255, 0.55);
   background: var(--lg-glass);
   border: 1px solid var(--lg-glass-edge);
   border-bottom-width: 1px;
@@ -67,6 +73,18 @@
 .phone .growcard__stat + .growcard__stat { border-left-color: var(--lg-glass-line); }
 .phone .linkgroup__row + .linkgroup__row { border-top-color: var(--lg-glass-line); }
 .phone .linkgroup__row:active { background: rgba(255, 255, 255, 0.4); }
+/* กล่องขั้นย่อยที่กางในหน้าเคส: กระจกเหมือนการ์ด แต่มุมเล็กกว่า (ซ้อนอยู่ในรายการ) */
+.phone .tl__panel { border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 10px 22px -16px rgba(28, 44, 92, 0.3); }
+/* ปุ่มเลือกประเภทงาน (หน้าเพิ่มชิ้นงาน): กระจก · ที่เลือกอยู่คงสีเดิม */
+.phone .typepick button:not([data-on='true']) {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.48));
+  border-color: var(--lg-glass-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 6px 14px -10px rgba(28, 44, 92, 0.3);
+}
+/* แถบเลือกแบบแบ่งช่อง: รางเป็นกระจก ช่องที่เลือกเป็นขาวทึบ */
+.phone .minseg { background: rgba(255, 255, 255, 0.45); box-shadow: inset 0 0 0 1px var(--lg-glass-edge); }
+/* ปุ่มเพิ่มแบบขอบประ: กระจกบาง ขอบประขาว */
+.phone .dashed { background: rgba(255, 255, 255, 0.35); border-color: rgba(255, 255, 255, 0.95); }
 /* วงไอคอนปุ่มด่วน: กระจกกลม */
 .phone .homeqa__ic {
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.45));
