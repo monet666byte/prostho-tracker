@@ -231,12 +231,12 @@
   .phone .hp::before, .phone .s-header.pagepanel::before {
     animation: lq-panel-a calc(var(--gspeed) * 2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-a linear both;
     animation-timeline: auto, --lq-page;
-    animation-range: normal, 0 520px;
+    animation-range: normal, 0 360px;
   }
   .phone .hp::after, .phone .s-header.pagepanel::after {
     animation: lq-panel-b calc(var(--gspeed) * 2.67) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-b linear both;
     animation-timeline: auto, --lq-page;
-    animation-range: normal, 0 520px;
+    animation-range: normal, 0 360px;
   }
 }
 @keyframes lq-panel-a {
@@ -249,8 +249,9 @@
   50% { transform: translate(-22%, 12%) rotate(-10deg) scale(0.9); }
   100% { transform: translate(-4%, -14%) rotate(6deg) scale(1.12); }
 }
-@keyframes lq-scroll-a { from { translate: 0 0; } to { translate: 20% 34%; } }
-@keyframes lq-scroll-b { from { translate: 0 0; } to { translate: -20% -30%; } }
+/* ตอนเลื่อน: ผู้ใช้ลองบน iPhone แล้วขอให้ขยับมากกว่านี้ — ไกลขึ้นเท่าตัว + หมุน + ขยาย ในระยะเลื่อนที่สั้นลง (360px) */
+@keyframes lq-scroll-a { from { translate: 0 0; rotate: 0deg; scale: 1; } to { translate: 45% 70%; rotate: 30deg; scale: 1.18; } }
+@keyframes lq-scroll-b { from { translate: 0 0; rotate: 0deg; scale: 1; } to { translate: -45% -65%; rotate: -26deg; scale: 0.88; } }
 @keyframes lq-orbit-a {
   0% { transform: translate(-6%, 4%) rotate(-8deg) scale(1); }
   50% { transform: translate(14%, -6%) rotate(6deg) scale(1.09); }
