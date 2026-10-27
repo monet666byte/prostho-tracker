@@ -831,7 +831,7 @@ export default function Home() {
 }
 
 const statBox: React.CSSProperties = {
-  flex: 1, padding: '13px 14px', display: 'grid', gap: 3, textAlign: 'left', borderRadius: 14,
+  flex: 1, padding: '13px 14px', display: 'grid', gap: 3, textAlign: 'left',
 };
 const statNum: React.CSSProperties = { font: '700 22px var(--font-head)', color: 'var(--panel)' };
 const statLabel: React.CSSProperties = { font: '400 11px var(--font-body)', color: 'var(--text-muted)' };

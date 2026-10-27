@@ -24,6 +24,7 @@ import './styles/base.css';
 import './styles/student.css';
 import './styles/teacher.css';
 import './styles/student-tablet.css';
+import './styles/liquid.css';
 import App from './App';
 import { AppBoundary } from './components/AppBoundary';
 import { initTextSize } from './components/TextSize';

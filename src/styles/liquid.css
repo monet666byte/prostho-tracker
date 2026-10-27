@@ -1,0 +1,164 @@
+/* ── Liquid glass (ฝั่งนักศึกษา) ──────────────────────────────────────────────
+   ชั้นแต่งหน้าตาทับของเดิม: สี layout และขนาดทั้งหมดมาจาก tokens / student.css
+   ไฟล์นี้เปลี่ยนแค่ผิว (พื้น · การ์ด · ปุ่ม · หัวเรื่อง · แถบเมนู) ทุกกฎอยู่ใต้ .phone — หน้าอาจารย์ไม่โดน
+   ต้องโหลดเป็นไฟล์สุดท้าย
+
+   กติกาที่ห้ามข้าม:
+   · backdrop-filter ใช้แค่หัวเรื่องกับแถบเมนู — ใส่ทุกการ์ดแล้ว Safari / iPad กระตุก
+   · ก้อนสีหลังปุ่มขยับด้วย transform ของ ::before / ::after เท่านั้น ห้าม background-position / filter
+   · ของที่วางแบบ absolute เป็นตาราง ห้ามมี transform ตอน hover และห้าม filter (iOS เด้ง)
+   · hover อยู่ใต้ (hover: hover) and (pointer: fine) เท่านั้น · ปิดการเคลื่อนไหวเมื่อเครื่องขอ reduce
+   · ทรงแคปซูลใช้กับปุ่มเล็ก — การ์ดที่กดได้ใช้มุมการ์ด
+   · ค่าที่หน้าจอตั้งเป็น style แบบ inline ห้ามใช้ !important ทับ ให้แก้ที่ต้นทาง
+   · จอ ≤ 767px หัวเรื่องไม่ติดหัวจอ                                                    */
+
+.phone {
+  --lg-radius: 24px;
+  --lg-card: rgba(255, 255, 255, 0.9);
+  --lg-edge: rgba(255, 255, 255, 0.95);
+  --lg-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --lg-shadow: 0 1px 2px rgba(24, 36, 72, 0.05), 0 12px 28px -14px rgba(24, 36, 72, 0.24);
+  --lg-shadow-up: 0 2px 4px rgba(24, 36, 72, 0.06), 0 18px 34px -14px rgba(24, 36, 72, 0.3);
+  --lg-bar: rgba(255, 255, 255, 0.62);
+  --lg-bar-solid: rgba(255, 255, 255, 0.9);
+  --lg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* ฟอนต์เดียวทั้งฝั่ง — ตัวเลขกว้างเท่ากันทุกตัว */
+  --font-head: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-body: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-mono: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  /* พื้นหลัง: สีอ่อนจากสีหลัก (น้ำเงินแผง) */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 12%, #fff) 0%, color-mix(in srgb, var(--panel) 6%, #f7f8fb) 38%, color-mix(in srgb, var(--panel) 4%, #f7f8fb) 100%);
+}
+
+/* ── การ์ดและแผง: ขาวเกือบทึบ ขอบขาวบาง ไฮไลต์ด้านในบน เงานุ่มทิ้งลงล่าง ── */
+.phone .card,
+.phone .minirow,
+.phone .growcard,
+.phone .herocase,
+.phone .herocase.herocase {
+  background: var(--lg-card);
+  border: 1px solid var(--lg-edge);
+  border-bottom-width: 1px;
+  border-radius: var(--lg-radius);
+  box-shadow: var(--lg-highlight), var(--lg-shadow);
+}
+
+/* การ์ดที่กดได้: ลอยขึ้นนิดและสว่างขึ้นตอนชี้ ยุบตอนกด (ไม่ใช่ทรงแคปซูล — ใช้มุมการ์ด) */
+.phone button.card,
+.phone a.card,
+.phone .minirow {
+  transition: transform 0.35s var(--lg-ease), box-shadow 0.35s var(--lg-ease), background-color 0.35s var(--lg-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .phone button.card:hover,
+  .phone a.card:hover,
+  .phone .minirow:hover { transform: translateY(-2px); background: #fff; box-shadow: var(--lg-highlight), var(--lg-shadow-up); }
+}
+.phone button.card:active,
+.phone a.card:active,
+.phone .minirow:active { transform: translateY(1px) scale(0.99); box-shadow: var(--lg-highlight), var(--lg-shadow); }
+
+/* ── หัวเรื่องกับแถบเมนู: กระจกเบลอจริง เลื่อนแล้วทึบขึ้นและมีเงา ── */
+.phone .s-header:not(.pagepanel) {
+  background: var(--lg-bar);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid transparent;
+  transition: padding 0.2s var(--lg-ease), background-color 0.3s var(--lg-ease), box-shadow 0.3s var(--lg-ease);
+}
+.phone .screen[data-scrolled='true'] .s-header:not(.pagepanel) {
+  background: var(--lg-bar-solid);
+  border-bottom-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px -16px rgba(24, 36, 72, 0.35);
+}
+.phone .tabbar {
+  background: var(--lg-bar);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--lg-edge);
+  box-shadow: var(--lg-highlight), 0 14px 30px -12px rgba(24, 36, 72, 0.3);
+}
+
+/* มือถือ: หัวเรื่องเลื่อนไปกับเนื้อหา ไม่ติดหัวจอ */
+@media (max-width: 767px) {
+  .phone .s-header { position: static; }
+}
+
+/* ── ปุ่มหลักที่มีสี: ของเหลวในกระจก — ก้อนสีโทนเดียวกันสองก้อนวนสวนกันคนละความเร็ว ── */
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success),
+.phone .herocase__btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 22px -10px color-mix(in srgb, var(--accent) 75%, transparent);
+  transition: transform 0.35s var(--lg-ease), box-shadow 0.35s var(--lg-ease), background-color 0.35s var(--lg-ease);
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::before,
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::after,
+.phone .herocase__btn::before,
+.phone .herocase__btn::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 120%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::before,
+.phone .herocase__btn::before {
+  left: -45%; top: -110%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, #fff) 0%, transparent 62%);
+  animation: lg-orbit-a 9s linear infinite;
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::after,
+.phone .herocase__btn::after {
+  right: -45%; bottom: -110%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, #0b1430) 0%, transparent 62%);
+  animation: lg-orbit-b 14s linear infinite;
+}
+@keyframes lg-orbit-a {
+  from { transform: rotate(0turn) translateX(16%) rotate(0turn); }
+  to { transform: rotate(1turn) translateX(16%) rotate(-1turn); }
+}
+@keyframes lg-orbit-b {
+  from { transform: rotate(0turn) translateX(20%) rotate(0turn); }
+  to { transform: rotate(-1turn) translateX(20%) rotate(1turn); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):not(:disabled):hover,
+  .phone .herocase__btn:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent) 88%, #fff);
+    filter: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 14px 26px -10px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):not(:disabled):active,
+.phone .herocase__btn:active {
+  transform: translateY(1px) scale(0.985);
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.phone .btn:disabled::before, .phone .btn:disabled::after { content: none; }
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):disabled { background: var(--text-disabled); box-shadow: none; }
+
+/* ── ปุ่มเล็กเป็นทรงแคปซูล ── */
+.phone .seg button, .phone .iconbtn { border-radius: 999px; }
+.phone .seg button { transition: transform 0.3s var(--lg-ease), background-color 0.3s var(--lg-ease); }
+@media (hover: hover) and (pointer: fine) {
+  .phone .seg button:hover { transform: translateY(-1px); }
+}
+.phone .seg button:active { transform: translateY(1px) scale(0.98); }
+
+/* ── ตัวหนังสืออ่านง่ายบนแผงน้ำเงิน: ขั้นย่อยที่ทำแล้วเดิมจาง 55% = 3.5:1 · 75% = 5.1:1 (AA) ── */
+.phone .hp__sub--done { color: rgba(255, 255, 255, 0.75); }
+
+/* ── เครื่องที่ขอให้ลดการเคลื่อนไหว ── */
+@media (prefers-reduced-motion: reduce) {
+  .phone .btn::before, .phone .btn::after, .phone .herocase__btn::before, .phone .herocase__btn::after { animation: none; }
+  .phone button.card, .phone a.card, .phone .minirow, .phone .btn, .phone .seg button { transition: none; }
+}
