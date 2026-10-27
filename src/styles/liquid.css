@@ -27,21 +27,51 @@
   --font-body: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif;
   --font-mono: 'Prompt', 'Noto Sans Thai', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  /* พื้นหลัง: สีอ่อนจากสีหลัก (น้ำเงินแผง) */
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 12%, #fff) 0%, color-mix(in srgb, var(--panel) 6%, #f7f8fb) 38%, color-mix(in srgb, var(--panel) 4%, #f7f8fb) 100%);
+  /* การ์ดกระจก: ขาวโปร่งไล่จากมุมบนซ้าย (เหมือนแสงสะท้อน) ไปจางลงมุมล่างขวา */
+  --lg-glass: linear-gradient(150deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.42) 100%);
+  --lg-glass-up: linear-gradient(150deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.56) 100%);
+  --lg-glass-edge: rgba(255, 255, 255, 0.78);
+  --lg-glass-line: rgba(255, 255, 255, 0.7);
+  /* พื้นหลัง: แสงฟุ้งฟ้า-เทาจากสีหลัก ให้กระจกมีอะไรให้มองทะลุ */
+  --lg-backdrop:
+    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.6) 34%, transparent 50%),
+    linear-gradient(115deg, transparent 50%, color-mix(in srgb, var(--panel-hi) 70%, transparent) 66%, transparent 84%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 14%, #eef1f6) 0%, color-mix(in srgb, var(--panel) 22%, #e9edf4) 42%, color-mix(in srgb, var(--panel) 14%, #eef1f6) 78%, color-mix(in srgb, var(--panel) 8%, #f3f5f9) 100%);
+  background: var(--lg-backdrop);
+}
+/* พื้นที่เลื่อนของหน้าเดิมทาเทาทึบทับไว้ — ใช้พื้นแสงฟุ้งแทน
+   background ของตัวที่เลื่อนอยู่กับกรอบ ไม่เลื่อนตามเนื้อหา → การ์ดกระจกเลื่อนผ่านพื้นที่อยู่นิ่ง */
+.phone .screen {
+  background: var(--lg-backdrop);
+  /* หัวข้อเทาที่วางบนพื้นฟุ้งตรงๆ ("สะสมมาแล้ว" ฯลฯ) — วัดจากพิกเซลจริง เทาเดิม #667085 ได้ ~3:1 · #475467 ได้ 3.85:1
+     จึงใช้ --text-secondary (#344054) */
+  --text-faint: var(--text-secondary);
+  --text-muted: var(--text-secondary);
 }
 
-/* ── การ์ดและแผง: ขาวเกือบทึบ ขอบขาวบาง ไฮไลต์ด้านในบน เงานุ่มทิ้งลงล่าง ── */
+/* ── การ์ด: กระจกใส — โปร่งให้เห็นพื้นหลัง ขอบขาวบาง แสงสะท้อนในขอบบน เงานุ่มทิ้งลงล่าง ──
+   ไม่ใช้ backdrop-filter (ใส่ทุกการ์ดแล้ว Safari / iPad กระตุก) — พื้นหลังฟุ้งอยู่แล้ว การ์ดโปร่งจึงอ่านเป็นกระจกฝ้าได้เอง */
 .phone .card,
 .phone .minirow,
 .phone .growcard,
 .phone .herocase,
 .phone .herocase.herocase {
-  background: var(--lg-card);
-  border: 1px solid var(--lg-edge);
+  --text-faint: var(--text-muted);
+  background: var(--lg-glass);
+  border: 1px solid var(--lg-glass-edge);
   border-bottom-width: 1px;
   border-radius: var(--lg-radius);
-  box-shadow: var(--lg-highlight), var(--lg-shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(255, 255, 255, 0.28), 0 14px 30px -16px rgba(28, 44, 92, 0.32);
+}
+/* เส้นคั่นข้างในการ์ดเป็นขาวโปร่ง แทนเทา */
+.phone .growcard__stat + .growcard__stat { border-left-color: var(--lg-glass-line); }
+.phone .linkgroup__row + .linkgroup__row { border-top-color: var(--lg-glass-line); }
+.phone .linkgroup__row:active { background: rgba(255, 255, 255, 0.4); }
+/* วงไอคอนปุ่มด่วน: กระจกกลม */
+.phone .homeqa__ic {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.45));
+  border: 1px solid var(--lg-glass-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 8px 18px -12px rgba(28, 44, 92, 0.35);
 }
 
 /* การ์ดที่กดได้: ลอยขึ้นนิดและสว่างขึ้นตอนชี้ ยุบตอนกด (ไม่ใช่ทรงแคปซูล — ใช้มุมการ์ด) */
@@ -53,11 +83,11 @@
 @media (hover: hover) and (pointer: fine) {
   .phone button.card:hover,
   .phone a.card:hover,
-  .phone .minirow:hover { transform: translateY(-2px); background: #fff; box-shadow: var(--lg-highlight), var(--lg-shadow-up); }
+  .phone .minirow:hover { transform: translateY(-2px); background: var(--lg-glass-up); box-shadow: inset 0 1px 0 #fff, 0 18px 34px -14px rgba(28, 44, 92, 0.36); }
 }
 .phone button.card:active,
 .phone a.card:active,
-.phone .minirow:active { transform: translateY(1px) scale(0.99); box-shadow: var(--lg-highlight), var(--lg-shadow); }
+.phone .minirow:active { transform: translateY(1px) scale(0.99); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 8px 18px -14px rgba(28, 44, 92, 0.32); }
 
 /* ── หัวเรื่องกับแถบเมนู: กระจกเบลอจริง เลื่อนแล้วทึบขึ้นและมีเงา ── */
 .phone .s-header:not(.pagepanel) {
