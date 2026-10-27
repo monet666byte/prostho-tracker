@@ -85,66 +85,104 @@
   .phone .s-header { position: static; }
 }
 
-/* ── ปุ่มหลักที่มีสี: ของเหลวในกระจก — ก้อนสีโทนเดียวกันสองก้อนวนสวนกันคนละความเร็ว ── */
-.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success),
-.phone .herocase__btn {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  background: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 22px -10px color-mix(in srgb, var(--accent) 75%, transparent);
-  transition: transform 0.35s var(--lg-ease), box-shadow 0.35s var(--lg-ease), background-color 0.35s var(--lg-ease);
+/* ── Liquid: ปุ่มหลัก · ปุ่มติ๊กผ่าน step · แผงน้ำเงิน ─────────────────────────────
+   พื้น = สีหลักเข้มขึ้น · ก้อนสีสองก้อน = สีหลักผสมไปทางม่วงกับทางฟ้า วนสวนกันคนละความเร็วแบบ alternate
+   color-mix คำนวณที่ตัวแปรครั้งเดียว (ชุดนี้ผูกกับ --panel ของ .phone) · สีอื่นต้องประกาศทั้งชุดใหม่ในตัวนั้น
+   ก้อนสีขยับด้วย transform อย่างเดียว · ใช้กับปุ่มหลัก/แผงสำคัญเท่านั้น */
+/* ปุ่ม: ตัวหนังสือขาวอย่างเดียว · ผสม 50% (สูตรต้นแบบ 58% ทำก้อนฟ้าให้ขาวได้แค่ 4.08:1) → ก้อนฟ้า 4.7:1 */
+.phone {
+  --gbase: color-mix(in oklch, var(--panel), black 25%);
+  --g1: color-mix(in oklch, var(--gbase), #7b4ff6 50%);
+  --g3: color-mix(in oklch, var(--gbase), #31c5f4 50%);
+  --g1s: color-mix(in oklch, var(--g1), transparent 55%);
+  --g3s: color-mix(in oklch, var(--g3), transparent 55%);
+  --gspeed: 3s;
 }
+/* แผงน้ำเงินมีป้ายฟ้าอ่อนตัวเล็ก (--panel-hi) ด้วย — ต้องเข้มกว่าปุ่ม ประกาศทั้งชุดใหม่
+   ฐานดำ 40% ผสม 40% → ป้ายฟ้าอ่อนบนก้อนฟ้า 4.52:1 · ตัวขาว 6.8:1 */
+.phone .hp,
+.phone .s-header.pagepanel {
+  --gbase: color-mix(in oklch, var(--panel), black 40%);
+  --g1: color-mix(in oklch, var(--gbase), #7b4ff6 40%);
+  --g3: color-mix(in oklch, var(--gbase), #31c5f4 40%);
+  --g1s: color-mix(in oklch, var(--g1), transparent 55%);
+  --g3s: color-mix(in oklch, var(--g3), transparent 55%);
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success),
+.phone .herocase__btn,
+.phone .minirow__pass,
+.phone .hp,
+.phone .s-header.pagepanel {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background: var(--gbase);
+}
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success),
+.phone .herocase__btn,
+.phone .minirow__pass {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 14px 28px -14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.28s var(--lg-ease), filter 0.22s ease;
+}
+.phone .hp,
+.phone .s-header.pagepanel { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::before,
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::after,
-.phone .herocase__btn::before,
-.phone .herocase__btn::after {
+.phone .herocase__btn::before, .phone .herocase__btn::after,
+.phone .minirow__pass::before, .phone .minirow__pass::after,
+.phone .hp::before, .phone .hp::after,
+.phone .s-header.pagepanel::before, .phone .s-header.pagepanel::after {
   content: '';
   position: absolute;
   z-index: -1;
-  width: 120%;
-  aspect-ratio: 1;
-  border-radius: 50%;
   pointer-events: none;
   will-change: transform;
 }
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::before,
-.phone .herocase__btn::before {
-  left: -45%; top: -110%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, #fff) 0%, transparent 62%);
-  animation: lg-orbit-a 9s linear infinite;
+.phone .herocase__btn::before, .phone .minirow__pass::before,
+.phone .hp::before, .phone .s-header.pagepanel::before {
+  left: -32%; top: -95%; width: 168%; height: 290%;
+  background:
+    radial-gradient(closest-side, var(--g1) 0%, var(--g1s) 45%, transparent 100%),
+    radial-gradient(closest-side at 74% 68%, var(--g3) 0%, transparent 100%);
+  animation: lq-orbit-a var(--gspeed) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::after,
-.phone .herocase__btn::after {
-  right: -45%; bottom: -110%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, #0b1430) 0%, transparent 62%);
-  animation: lg-orbit-b 14s linear infinite;
+.phone .herocase__btn::after, .phone .minirow__pass::after,
+.phone .hp::after, .phone .s-header.pagepanel::after {
+  right: -30%; top: -88%; width: 164%; height: 278%;
+  background:
+    radial-gradient(closest-side, var(--g3) 0%, var(--g3s) 45%, transparent 100%),
+    radial-gradient(closest-side at 26% 30%, var(--g1) 0%, transparent 100%);
+  animation: lq-orbit-b calc(var(--gspeed) * 1.35) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
-@keyframes lg-orbit-a {
-  from { transform: rotate(0turn) translateX(16%) rotate(0turn); }
-  to { transform: rotate(1turn) translateX(16%) rotate(-1turn); }
+/* แผงใหญ่กว่าปุ่มมาก — ก้อนสีช้าลงให้ดูเป็นของเหลว ไม่ใช่กะพริบ */
+.phone .hp::before, .phone .s-header.pagepanel::before { animation-duration: calc(var(--gspeed) * 3); }
+.phone .hp::after, .phone .s-header.pagepanel::after { animation-duration: calc(var(--gspeed) * 4); }
+@keyframes lq-orbit-a {
+  0% { transform: translate(-6%, 4%) rotate(-8deg) scale(1); }
+  50% { transform: translate(14%, -6%) rotate(6deg) scale(1.09); }
+  100% { transform: translate(2%, 8%) rotate(-3deg) scale(1.02); }
 }
-@keyframes lg-orbit-b {
-  from { transform: rotate(0turn) translateX(20%) rotate(0turn); }
-  to { transform: rotate(-1turn) translateX(20%) rotate(1turn); }
+@keyframes lq-orbit-b {
+  0% { transform: translate(6%, -5%) rotate(7deg) scale(1.06); }
+  50% { transform: translate(-12%, 6%) rotate(-5deg) scale(0.94); }
+  100% { transform: translate(-2%, -7%) rotate(4deg) scale(1.07); }
 }
 @media (hover: hover) and (pointer: fine) {
   .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):not(:disabled):hover,
-  .phone .herocase__btn:hover {
-    transform: translateY(-1px);
-    background: color-mix(in srgb, var(--accent) 88%, #fff);
-    filter: none;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 14px 26px -10px color-mix(in srgb, var(--accent) 80%, transparent);
-  }
+  .phone .herocase__btn:hover,
+  .phone .minirow__pass:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.04); background: var(--gbase); }
 }
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):not(:disabled):active,
-.phone .herocase__btn:active {
-  transform: translateY(1px) scale(0.985);
-  background: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px -6px color-mix(in srgb, var(--accent) 70%, transparent);
-}
+.phone .herocase__btn:active,
+.phone .minirow__pass:active { transform: scale(0.97); background: var(--gbase); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 14px -10px rgba(0, 0, 0, 0.35); }
 .phone .btn:disabled::before, .phone .btn:disabled::after { content: none; }
-.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):disabled { background: var(--text-disabled); box-shadow: none; }
+.phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success):disabled { background: var(--text-disabled); box-shadow: none; border-color: transparent; }
 
 /* ── ปุ่มเล็กเป็นทรงแคปซูล ── */
 .phone .seg button, .phone .iconbtn { border-radius: 999px; }
@@ -159,6 +197,8 @@
 
 /* ── เครื่องที่ขอให้ลดการเคลื่อนไหว ── */
 @media (prefers-reduced-motion: reduce) {
-  .phone .btn::before, .phone .btn::after, .phone .herocase__btn::before, .phone .herocase__btn::after { animation: none; }
+  .phone .btn::before, .phone .btn::after, .phone .herocase__btn::before, .phone .herocase__btn::after,
+  .phone .minirow__pass::before, .phone .minirow__pass::after,
+  .phone .hp::before, .phone .hp::after, .phone .s-header.pagepanel::before, .phone .s-header.pagepanel::after { animation: none; }
   .phone button.card, .phone a.card, .phone .minirow, .phone .btn, .phone .seg button { transition: none; }
 }
