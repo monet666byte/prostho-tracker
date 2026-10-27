@@ -32,11 +32,11 @@
   --lg-glass-up: linear-gradient(150deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.56) 100%);
   --lg-glass-edge: rgba(255, 255, 255, 0.78);
   --lg-glass-line: rgba(255, 255, 255, 0.7);
-  /* พื้นหลัง: แสงฟุ้งฟ้า-เทาจากสีหลัก ให้กระจกมีอะไรให้มองทะลุ */
+  /* พื้นหลัง: แสงฟุ้งฟ้าอ่อนจากสีหลัก ให้กระจกมีอะไรให้มองทะลุ (รอบแรกเข้มเกิน — ผู้ใช้ขอสว่างลง) */
   --lg-backdrop:
-    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.6) 34%, transparent 50%),
-    linear-gradient(115deg, transparent 50%, color-mix(in srgb, var(--panel-hi) 70%, transparent) 66%, transparent 84%),
-    linear-gradient(180deg, color-mix(in srgb, var(--panel) 14%, #eef1f6) 0%, color-mix(in srgb, var(--panel) 22%, #e9edf4) 42%, color-mix(in srgb, var(--panel) 14%, #eef1f6) 78%, color-mix(in srgb, var(--panel) 8%, #f3f5f9) 100%);
+    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.85) 34%, transparent 50%),
+    linear-gradient(115deg, transparent 50%, color-mix(in srgb, var(--panel-hi) 28%, transparent) 66%, transparent 84%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 4%, #f6f7fa) 0%, color-mix(in srgb, var(--panel) 6%, #f4f6fa) 42%, color-mix(in srgb, var(--panel) 4%, #f6f7fa) 78%, color-mix(in srgb, var(--panel) 2%, #f8f9fb) 100%);
   background: var(--lg-backdrop);
 }
 /* พื้นที่เลื่อนของหน้าเดิมทาเทาทึบทับไว้ — ใช้พื้นแสงฟุ้งแทน
