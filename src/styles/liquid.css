@@ -191,7 +191,7 @@
   --g3: color-mix(in oklch, var(--gbase), #2b5ce6 45%);
   --g1s: color-mix(in oklch, var(--g1), transparent 55%);
   --g3s: color-mix(in oklch, var(--g3), transparent 55%);
-  --gspeed: 3s;
+  --gspeed: 3.6s; /* ผู้ใช้ลองแล้วว่ายังเร็วไปนิด — จาก 3s */
 }
 /* แผงน้ำเงิน: น้ำเงินคราม (ผู้ใช้เลือกแบบ "คราม สว่างกว่า" แล้วขอสว่างขึ้นอีกนิด) — ฐานดำ 40% · ก้อนคราม #4338ca 55% · ก้อนน้ำเงินสด 55% · ก้อนทึบ (โปร่ง 30%) ให้สีเต็มแผง
    ตัวหนังสือในแผงเป็นขาวล้วน (ด้านล่าง) · ประกาศทั้งชุดใหม่ */
@@ -261,25 +261,25 @@
     radial-gradient(closest-side at 26% 30%, var(--g1) 0%, transparent 100%);
   animation: lq-orbit-b calc(var(--gspeed) * 1.35) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
-/* แผง: ก้อนสีวนไกลกว่าปุ่ม (แผงใหญ่ ระยะเท่าปุ่มจะแทบไม่เห็นว่าขยับ) 6 วิ / 8 วิ
+/* แผง: ก้อนสีวนไกลกว่าปุ่ม (แผงใหญ่ ระยะเท่าปุ่มจะแทบไม่เห็นว่าขยับ) ~8 วิ / ~10 วิ (6/8 เร็วไปนิด)
    ตอนเลื่อนจอ ก้อนสีไหลตามระยะเลื่อน (ก้อนหนึ่งลง อีกก้อนขึ้น) — ใช้ translate แยกจาก transform ของการวน
    สองอย่างจึงซ้อนกันได้ · เบราว์เซอร์ที่ไม่รู้จัก scroll timeline ได้แค่การวนตอนอยู่เฉยๆ */
 .phone .hp::before, .phone .s-header.pagepanel::before {
-  animation: lq-panel-a calc(var(--gspeed) * 2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation: lq-panel-a calc(var(--gspeed) * 2.2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 .phone .hp::after, .phone .s-header.pagepanel::after {
-  animation: lq-panel-b calc(var(--gspeed) * 2.67) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation: lq-panel-b calc(var(--gspeed) * 2.8) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 @supports (animation-timeline: scroll()) {
   /* ผูกกับพื้นที่เลื่อนของหน้า (.screen) ด้วยชื่อ — scroll(nearest) จะไปเจอตัวแผงเอง เพราะ overflow: hidden ทำให้แผงเป็นพื้นที่เลื่อน */
   .phone .screen { scroll-timeline: --lq-page y; }
   .phone .hp::before, .phone .s-header.pagepanel::before {
-    animation: lq-panel-a calc(var(--gspeed) * 2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-a linear both;
+    animation: lq-panel-a calc(var(--gspeed) * 2.2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-a linear both;
     animation-timeline: auto, --lq-page;
     animation-range: normal, 0 360px;
   }
   .phone .hp::after, .phone .s-header.pagepanel::after {
-    animation: lq-panel-b calc(var(--gspeed) * 2.67) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-b linear both;
+    animation: lq-panel-b calc(var(--gspeed) * 2.8) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, lq-scroll-b linear both;
     animation-timeline: auto, --lq-page;
     animation-range: normal, 0 360px;
   }
