@@ -65,7 +65,7 @@ function SubRing({ done, total, open, onToggle, intro }: { done: number; total: 
   return (
     <button className="hp__ring" onClick={onToggle} aria-expanded={open} aria-label={t('ขั้นย่อยที่เสร็จ {a} จาก {b} · แตะเพื่อดูทั้งหมด', { a: done, b: total })}>
       <span className="hp__ringbox">
-        <svg width="52" height="52" viewBox="0 0 60 60" aria-hidden>
+        <svg width="46" height="46" viewBox="0 0 60 60" aria-hidden>
           <circle cx="30" cy="30" r={R} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="6" />
           <circle
             className="hp__ringarc"

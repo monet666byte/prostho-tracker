@@ -1043,8 +1043,8 @@ button.formrow:focus-visible { outline: 2px solid var(--accent); outline-offset:
   background: var(--danger); border: 2px solid var(--surface);
 }
 
-/* แผงเต็มความกว้างจอมือถือ: ดึงออกนอกช่องไฟ 16px ของ homegrid (iPad กลับเป็นการ์ดมุมมน — student-tablet.css) */
-.hp { margin-inline: -16px; background: var(--panel); color: #fff; }
+/* แผงเป็นการ์ดมุมมนในช่องไฟ 16px เดียวกับการ์ดอื่น — เดิมยืดเต็มจอ ผู้ใช้ว่ากล่องน้ำเงินใหญ่เกิน */
+.hp { border-radius: 22px; background: var(--panel); color: #fff; }
 /* clip ไม่ใช่ hidden: hidden ยังเลื่อนด้วยโปรแกรมได้ — แตะหมุดใกล้ขอบแล้วเบราว์เซอร์เลื่อนแผงไปโชว์ครึ่งเคสสองเคส */
 .hp__viewport { overflow: hidden; overflow: clip; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .hp__viewport { transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -1250,28 +1250,28 @@ button.calday { background: var(--panel-tint); color: var(--panel); font-weight:
 /* ══ แผงงานถัดไปแบบ 2A — เตี้ยลงหนึ่งในสาม + เก็บข้างในให้คลีน (ผู้ใช้ลองบนมือถือจริงแล้วว่าแผงสูงเกิน) ══
    Step ขึ้นไปอยู่บรรทัด HN · เส้น step ไม่มีป้าย (หมุดยังแตะได้ · ชื่อหมุดอยู่ใน aria-label)
    วงแหวนเป็นปุ่มกางขั้นย่อย · จุดบอกหน้าอยู่ใต้แผง */
-.hp__slide { padding: 14px 18px 16px; }
+.hp__slide { padding: 12px 16px 18px; }
 .hp__top { align-items: center; }
 .hp__step { flex: none; margin-left: auto; font: 600 16px/1.2 var(--font-head); white-space: nowrap; }
 .hp__of { font-size: 13px; font-weight: 500; }
 .hp__open { width: 40px; height: 40px; margin: -10px -12px -10px -2px; }
-.hp__track { height: 28px; margin: 10px 6px 0; }
+.hp__track { height: 28px; margin: 6px 6px 0; }
 .hp__rail, .hp__fill { top: 11.5px; }
 .hp__node { height: 28px; }
 .hp__dot { margin-top: 8px; }
 .hp__node.is-sel .hp__dot { margin-top: 4px; }
 .hp__track .hp__lbl { display: none; }
-.hp__info { padding-top: 6px; }
-.hp__name { font-size: 18px; }
+.hp__info { padding-top: 2px; }
+.hp__name { font-size: 16.5px; }
 .hp__ring {
   border: 0; background: transparent; color: inherit; padding: 0; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none;
 }
-.hp__ringbox { width: 52px; height: 52px; }
+.hp__ringbox { width: 46px; height: 46px; }
 .hp__ringcap { display: inline-flex; align-items: center; gap: 2px; font: 500 11.5px var(--font-head); color: rgba(255, 255, 255, 0.85); }
 .hp__ring:active .hp__ringbox { transform: scale(0.94); }
 .hp__ringbox { transition: transform 0.12s ease; }
-.hp__btn { margin-top: 12px; }
+.hp__btn { margin-top: 10px; min-height: 44px; padding: 10px 20px; font-size: 14px; }
 /* จุดบอกหน้าบนพื้นเทาใต้แผง */
 .hp__dots { margin: -6px 0 -8px; padding-bottom: 0; }
 .hp__pager span { background: var(--border-2); }
