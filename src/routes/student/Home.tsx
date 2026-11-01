@@ -610,9 +610,7 @@ export default function Home() {
             <span style={{ flex: 1, minWidth: 0 }}>
               <span className="homecheck__title">
                 {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
-              </span>
-              {!checkedInToday && <span className="homecheck__sub">{t('แตะเพื่อเช็คอินคาบนี้')}</span>}
-              {checkedInToday && (
+              </span>              {checkedInToday && (
                 <span className="homecheck__sub">
                   {(todayCheckIn?.activities.length ?? 0) > 0
                     ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
