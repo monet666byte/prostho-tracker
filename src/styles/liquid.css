@@ -359,24 +359,38 @@
 .phone .homeqa__ic { background: none; border: 0; box-shadow: none; color: var(--panel); }
 .phone .homeqa__ic svg { width: 26px; height: 26px; }
 /* หัวข้อส่วน: ดำหนา แทนเทาเล็ก — ไม่มีกล่องแล้ว หัวข้อต้องแบ่งหน้าเอง */
-.phone .homegrid .homelabel { margin: 18px 4px 2px; font: 700 18px/1.3 var(--font-head); color: var(--text); }
+.phone .homegrid .homelabel { margin: 18px 4px 2px; }
 .phone .homegrid .actlabel span + span { font: 500 13px var(--font-body); color: var(--text-muted); }
+/* หน้าที่มีแถบล่าง (หน้าแรก คนไข้ เกณฑ์ คาบ สมุด) ใช้กติกาเดียวกัน: การ์ดเป็นแผ่นเรียบไม่มีเงา · หัวข้อดำหนาใหญ่
+   หน้าย่อยที่เปิดต่อจากนั้น (PlainShell = .screen--plain) ยังเป็นการ์ดลอยแบบเดิม */
+.phone .screen:not(.screen--plain) :is(.card, .rowcard) { background: rgba(255, 255, 255, 0.72); box-shadow: none; }
+.phone .screen:not(.screen--plain) :is(.homelabel, .pfhead) { font: 700 18px/1.3 var(--font-head); color: var(--text); }
+.phone .screen:not(.screen--plain) .homelabel .mono { font: 500 13px var(--font-body); color: var(--text-muted); }
+.phone .screen:not(.screen--plain) .critlabel { margin-top: 18px; }
+.phone .screen:not(.screen--plain) .pfhead { margin-top: 14px; }
+@media (hover: hover) and (pointer: fine) {
+  .phone .screen:not(.screen--plain) :is(button.card, a.card):hover { box-shadow: none; }
+}
 /* แผ่นต่อหัวข้อ: ขาวโปร่ง ไม่มีเงา (ไม่แย่งบับเบิล) · ของข้างในแบน คั่นเส้นบาง */
 .phone .homegroup {
   display: grid; padding: 4px 14px;
   background: rgba(255, 255, 255, 0.72); border: 1px solid var(--lg-glass-edge); border-radius: 22px; box-shadow: none;
 }
 .phone .homegroup.linkgroup { padding: 0; }
-.phone .homegroup > :is(.card, .minirow, .actgroup, .homestats),
-.phone .homestats > .card {
+.phone .screen .homegroup > :is(.card, .rowcard, .minirow, .actgroup, .homestats),
+.phone .screen .homestats > .card {
   margin: 0; padding-inline: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; transform: none;
 }
-.phone .homegroup > * + * { border-top: 1px solid rgba(30, 50, 110, 0.1); }
+/* เส้นคั่นต้องเจาะจงกว่ากฎแบนของในแผ่นข้างบน (border: 0) ไม่งั้นเส้นหาย */
+.phone .screen .homegroup > :not(:first-child) { border-top: 1px solid rgba(30, 50, 110, 0.1); }
 .phone .homegroup .actgroup { padding-block: 10px 2px; }
-.phone .homegroup .actgroup + .minirow { border-top: 0; }
-.phone .homestats > .card + .card { padding-left: 14px; border-left: 1px solid rgba(30, 50, 110, 0.1); }
+.phone .screen .homegroup > .actgroup + .minirow { border-top: 0; }
+.phone .screen .homestats > .card + .card { padding-left: 14px; border-left: 1px solid rgba(30, 50, 110, 0.1); }
 .phone .homegroup .linkgroup__row + .linkgroup__row { border-top-color: rgba(30, 50, 110, 0.1); }
 .phone .homegroup .growcard__stat + .growcard__stat { border-left-color: rgba(30, 50, 110, 0.1); }
+/* หน้าคนไข้: แผ่นเดียวต่อหัวข้อ · เส้นคั่นระหว่างคนไข้เข้มกว่าเส้นระหว่างชิ้นงานของคนเดียวกัน */
+.phone .homegroup--rows { margin: 0 16px; padding: 0; overflow: hidden; }
+.phone .screen .homegroup--rows > :not(:first-child) { border-top-color: rgba(30, 50, 110, 0.18); }
 @media (hover: hover) and (pointer: fine) {
   .phone .homegroup > .minirow:hover, .phone .homestats > button.card:hover { transform: none; background: transparent; box-shadow: none; }
 }

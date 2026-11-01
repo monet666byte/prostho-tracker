@@ -164,10 +164,12 @@ export default function Patients() {
           if (entries.length === 0) return null;
           return (
           <div key={section}>
-          <div className="homelabel" style={{ margin: '14px 20px 8px', display: 'flex', justifyContent: 'space-between' }}>
+          <div className="homelabel" style={{ margin: '18px 20px 8px', display: 'flex', justifyContent: 'space-between' }}>
             <span>{section === 'active' ? t('กำลังทำ') : t('จบแล้ว / คืนเคส')}</span>
             <span className="mono" style={{ fontSize: 12 }}>{entries.length}</span>
           </div>
+        {/* คนไข้ใต้หัวข้อเดียวกันอยู่บนแผ่นเดียว คั่นเส้น — แบบเดียวกับหน้าแรก */}
+        <div className="homegroup homegroup--rows">
         {entries.map(([pid, list]) => {
           const patient = list[0].patient;
           // แยกคู่ upper/lower ออกจากชิ้นเดี่ยว
@@ -290,6 +292,7 @@ export default function Patients() {
             </section>
           );
         })}
+        </div>
           </div>
           );
         })}

@@ -229,7 +229,7 @@ export default function CheckInPage() {
         {/* หน้าคาบแบบ "ตัดของซ้ำ": การ์ด 8 ใบ → การ์ดเดียวแถวละคาบ
             ตัดเลขลำดับในกล่องเทา · ชิปคะแนน/รอประเมิน → ตัวอักษร (เต็ม = เขียว · รอ = ส้ม) */}
         {checkins.length > 0 && (
-          <div className="homelabel" style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 4px -3px' }}>
+          <div className="homelabel" style={{ display: 'flex', justifyContent: 'space-between', margin: '14px 4px 0' }}>
             <span>{t('คาบที่ผ่านมา')}</span><span className="mono" style={{ fontSize: 12 }}>{checkins.length}</span>
           </div>
         )}
