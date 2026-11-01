@@ -402,6 +402,7 @@ export const DICT: Record<string, string> = {
   'สะสมมาแล้ว': 'So far',
   'ของฉัน': 'Mine',
   'ยังไม่เช็คอินคาบวันนี้': 'Not checked in today',
+  'แตะเพื่อเช็คอินคาบนี้': 'Tap to check in for this period',
   'ประเมินแล้ว {n} ใบ': '{n} evaluated',
   'step นี้ต้องทำเอง (self-performed)': 'This step must be self-performed',
   'ซี่': 'Tooth',

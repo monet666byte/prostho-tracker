@@ -611,6 +611,7 @@ export default function Home() {
               <span className="homecheck__title">
                 {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
               </span>
+              {!checkedInToday && <span className="homecheck__sub">{t('แตะเพื่อเช็คอินคาบนี้')}</span>}
               {checkedInToday && (
                 <span className="homecheck__sub">
                   {(todayCheckIn?.activities.length ?? 0) > 0
@@ -689,6 +690,9 @@ export default function Home() {
           <span>{t('{n} ชิ้น', { n: active.length })}</span>
         </div>
       )}
+      {/* ของใต้หัวข้อเดียวกันอยู่บนแผ่นเดียว คั่นด้วยเส้น — เดิมเป็นการ์ดลอยทีละใบ ผู้ใช้ว่าบับเบิลเยอะจนดูเป็น AI */}
+      {rest.length > 0 && (
+      <div className="homegroup">
       {groupByReqRow(rest, totals.rows).map((g) => (
         <Fragment key={g.row?.group ?? 'other'}>
           <div className="actgroup">
@@ -729,10 +733,13 @@ export default function Home() {
         </Fragment>
       ))}
       </div>
+      )}
+      </div>
 
       <div className="homecol">
       <div className="homelabel">{t('สะสมมาแล้ว')}</div>
-      <div style={{ display: 'flex', gap: 11 }}>
+      <div className="homegroup">
+      <div className="homestats" style={{ display: 'flex', gap: 11 }}>
         <button className="card" style={statBox} onClick={() => navigate('/app/patients')}>
           <span style={statNum}>{active.length}</span>
           <span style={statLabel}>{t('ชิ้นงานที่กำลังทำ')}</span>
@@ -762,6 +769,7 @@ export default function Home() {
         </div>
         <span className="growcard__sub growcard__sub--quote">“{dailyQuote()}”</span>
       </div>
+      </div>
 
       {/* แบบประเมินตนเอง — ปีละครั้งตอนจบเทอม 1 ซ่อนไว้ตลอดปีจนกว่าภาคจะเปิด
           (การ์ดถาวรที่กดไม่ได้ = ขยะบนหน้าแรก)
@@ -771,7 +779,7 @@ export default function Home() {
           (ทำงานออฟไลน์ ไม่ต้องขอสิทธิ์ ไม่ต้องมีเซิร์ฟเวอร์ — push จริงยังไม่มีในระบบ) */}
       {/* ประเมินตนเอง + สมุดของฉัน อยู่ในการ์ดใบเดียวคั่นเส้น — เดิมแยกสองใบขอบหนา ดูเป็นกองกล่อง */}
       <div className="homelabel">{t('ของฉัน')}</div>
-      <div className="card linkgroup">
+      <div className="card linkgroup homegroup">
       {(saOpen || saDone) && (
         <Link
           to="/app/self-assessment"
