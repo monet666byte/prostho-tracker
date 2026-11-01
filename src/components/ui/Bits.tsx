@@ -31,7 +31,7 @@ export function Bar({ value, color, height = 6 }: { value: number; color?: strin
 
 export function StaleBadge({ days }: { days: number }) {
   return (
-    <span className="badge" style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)' }}>
+    <span className="badge badge--stale">
       {t('ค้าง {d} วัน', { d: days })}
     </span>
   );
@@ -39,7 +39,7 @@ export function StaleBadge({ days }: { days: number }) {
 
 export function PendingBadge() {
   return (
-    <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-dark)' }}>
+    <span className="badge badge--pending">
       {t('รอ sync')}
     </span>
   );

@@ -1458,7 +1458,6 @@ export const DICT: Record<string, string> = {
   'คนไข้ไม่ว่าง': 'Patient unavailable',
   'คนไข้ไม่ว่าง / รอ': 'Patient unavailable / waiting',
   'ตั้งเป็นรอคนไข้แล้ว — อาจารย์จะเห็นว่าเคสนี้รอคนไข้ ไม่ใช่ค้าง': 'Marked as waiting for patient — instructors will see it is waiting, not stalled',
-  'ถ้าคนไข้ไม่ว่าง บอกแอปไว้ อาจารย์จะได้ไม่เข้าใจว่าเคสค้าง': 'If the patient is unavailable, tell the app so instructors don\'t read it as stalled',
   'นัด {d}': 'Appt. {d}',
   'นัดครั้งหน้า (ถ้ารู้)': 'Next appointment (if known)',
   'นัดครั้งหน้า {d}': 'next appt. {d}',
@@ -1473,7 +1472,6 @@ export const DICT: Record<string, string> = {
   'เคสที่ไม่ขยับนาน': 'Case not moving',
   'เลยวันนัดแล้วเคสยังไม่ขยับ จะกลับมานับเป็นค้างตามปกติ': 'If the case hasn\'t moved by the appointment, it counts as stalled again',
   'เลือกถ้าเคสหยุดเพราะคนไข้ — ระหว่างนี้แอปจะไม่นับเคสนี้เป็น "ค้าง"': 'Choose this if the case is paused because of the patient — it won\'t count as stalled meanwhile',
-  'แตะเพื่อเปลี่ยน': 'tap to change',
   'โน้ต (ไม่บังคับ)': 'Note (optional)',
   'ไม่ใส่วันนัด รอได้ {n} วัน แล้วกลับมานับตามปกติ': 'Without a date, waiting lasts {n} days, then it counts normally again',
   // ── รายงานประจำเดือน ──

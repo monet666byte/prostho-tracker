@@ -1,4 +1,4 @@
-import { LinkSimple, PauseCircle, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
+import { CaretRight, LinkSimple, PauseCircle, PencilSimpleLine, PlusCircle, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shell } from '../../components/student/Shell';
@@ -206,7 +206,7 @@ export default function Patients() {
                           <>
                             <span className="waitline__dot" />
                             {t('นัดได้ปกติ')}
-                            <span className="waitline__hint">· {t('แตะเพื่อเปลี่ยน')}</span>
+                            <CaretRight size={11} weight="bold" className="waitline__hint" aria-hidden />
                           </>
                         )}
                       </button>

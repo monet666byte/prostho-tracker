@@ -674,7 +674,7 @@ export default function Home() {
             {t('{p} ไม่ขยับมา {n} วัน', { p: patientTitle(nudge.patient, namesOn, t), n: daysSinceUpdate(nudge) })}
           </span>
           <p className="waitnudge__sub">
-            {tText(nudge.detail)} · {t('ขั้น {n}', { n: Math.max(progression(nudge), 0) })} — {t('ถ้าคนไข้ไม่ว่าง บอกแอปไว้ อาจารย์จะได้ไม่เข้าใจว่าเคสค้าง')}
+            {tText(nudge.detail)} · {t('ขั้น {n}', { n: Math.max(progression(nudge), 0) })}
           </p>
           <div className="waitnudge__btns">
             <button className="btn" onClick={() => setWaitFor(nudge)}>{t('คนไข้ไม่ว่าง / รอ')}</button>

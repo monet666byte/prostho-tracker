@@ -396,6 +396,16 @@
 }
 .phone .homegroup > .minirow:active, .phone .homestats > button.card:active { transform: none; box-shadow: none; background: rgba(255, 255, 255, 0.5); }
 
+/* ── ป้ายเล็กในการ์ดเป็นตัวหนังสือล้วน ไม่มีพื้นสี — ผู้ใช้ลองบน iPhone แล้วว่าป้ายสีรกตา ── */
+.phone .badge--stale, .phone .badge--pending { background: none; padding: 0; font-weight: 600; }
+.phone .reqparts__doing { background: none; padding: 0; }
+/* แบนเนอร์ "ไม่ขยับ": ปุ่มพอดีคำ ไม่ยืดครึ่งแถว */
+.phone .waitnudge__btns { margin-top: 4px; }
+.phone .waitnudge__btns .btn { flex: none; width: auto; height: 40px; min-height: 40px; padding: 0 14px; font-size: 13px; }
+/* หน้าคนไข้: "นัดได้ปกติ ›" ตัวเล็กไม่มีกล่อง (ยังเป็นปุ่ม) · ตอนตั้งรอคนไข้ยังเป็นป้ายเด่นเหมือนเดิม */
+.phone .waitline:not(.waitline--on) { min-height: 28px; margin-top: 2px; padding: 0; background: none; color: var(--text-muted); font-weight: 500; }
+.phone .waitline:not(.waitline--on) .waitline__dot { background: var(--success); }
+
 /* ── เครื่องที่ขอให้ลดการเคลื่อนไหว ── */
 @media (prefers-reduced-motion: reduce) {
   .phone .btn::before, .phone .btn::after, .phone .herocase__btn::before, .phone .herocase__btn::after,
