@@ -254,6 +254,9 @@ function CasePanel({
   intro: boolean;
 }) {
   const [dx, setDx] = useState(0);
+  // ป้าย "ค้าง x วัน" ไม่ขึ้นในแผง — ผู้ใช้ว่ารก ให้แบนเนอร์เตือนใต้แผงบอกแทน
+  // แต่ถ้าแบนเนอร์ใช้ไม่ได้ (เซิร์ฟเวอร์ยังไม่มีช่องรอคนไข้) ต้องคงป้ายไว้ ไม่งั้นเคสค้างหายจากหน้าแรกเงียบๆ
+  const waitReady = useWaitFeature();
   const drag = useRef<{ x: number; y: number; moved: boolean; horizontal: boolean | null } | null>(null);
   const last = cases.length - 1;
   // แผงสูงเท่าเคสที่โชว์อยู่ — ไม่งั้นเคสสั้นเหลือที่ว่างเท่าเคสที่สูงที่สุด (กางรายการขั้นย่อยแล้วสูงขึ้นตาม)
@@ -321,7 +324,7 @@ function CasePanel({
               key={w.id} ref={(el) => { pages.current[i] = el; }}
               className="hp__page" aria-hidden={i !== index} inert={i !== index ? true : undefined}
             >
-              <PanelSlide w={w} pending={pending.has(w.id)} stale={isStale(w, settings)} onPass={() => onPass(w.id)} intro={intro && i === index} />
+              <PanelSlide w={w} pending={pending.has(w.id)} stale={!waitReady && isStale(w, settings)} onPass={() => onPass(w.id)} intro={intro && i === index} />
             </div>
           ))}
         </div>
