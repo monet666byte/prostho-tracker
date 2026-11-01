@@ -232,6 +232,12 @@
 }
 .phone .hp,
 .phone .s-header.pagepanel { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+/* แผงหน้าแรกเป็นการ์ดแล้วดูเหมือนการ์ดข้างล่าง — ให้ลอยด้วยเงาน้ำเงิน และกว้างกว่าการ์ดอื่นข้างละ 8px */
+.phone .hp {
+  margin: 6px -8px;
+  border-radius: 26px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 22px 36px -16px rgba(40, 60, 170, 0.55), 0 8px 14px -8px rgba(30, 40, 120, 0.35);
+}
 
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::before,
 .phone .btn:not(.btn--ghost):not(.btn--sec):not(.btn--success)::after,
