@@ -134,5 +134,12 @@ from (
     exists (select 1 from information_schema.columns
             where table_schema = 'public' and table_name = 'workpieces' and column_name = 'wait_reason')
     and exists (select 1 from pg_constraint where conname = 'workpieces_wait_reason_check')
+
+  -- 0034 ดูสองร่องรอย (คอลัมน์เวลาที่ขอ · ด่านนักศึกษาคงคำขอไว้)
+  union all select '0034 อาจารย์ขอให้แก้คาบ (นักศึกษาลบคำขอเองไม่ได้)',
+    exists (select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = 'checkins' and column_name = 'returned_at')
+    and exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
+                and prosrc like '%new.returned_at%:=%old.returned_at%')
 ) x
 order by x.label;

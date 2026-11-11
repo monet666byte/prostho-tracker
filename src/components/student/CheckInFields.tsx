@@ -5,13 +5,13 @@
  * ป้ายหัวข้อกับกรอบรอบนอกยังอยู่ที่หน้าจอ เพราะสองที่ใช้ markup คนละแบบ
  * (หน้าคาบใช้ label.field · แผ่นถามใช้ div + aria-label) — ห้ามฝืนรวม
  */
-import { Check } from '@phosphor-icons/react';
+import { Check, CopySimple } from '@phosphor-icons/react';
 import type { CSSProperties } from 'react';
-import { ACTIVITY_GROUPS } from '../../domain/checkin';
+import { ACTIVITY_GROUPS, lastFilledCheckIn } from '../../domain/checkin';
 import { WAIT_REASONS, isActiveWork } from '../../domain/rules';
-import type { WaitReason, WorkpieceView } from '../../domain/types';
+import type { CheckIn, WaitReason, WorkpieceView } from '../../domain/types';
 import { setPatientWait } from '../../data/repo';
-import { toISODate } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { patientWithHn } from '../../lib/privacy';
 import { waitReasonLabel } from '../../lib/waitReason';
@@ -33,6 +33,42 @@ export function ActivityChips({ selected, onChange }: { selected: string[]; onCh
         </div>
       ))}
     </>
+  );
+}
+
+/**
+ * แถวเดียว "เหมือนคาบก่อน" — แตะแล้วเติมกิจกรรม + ผู้ป่วยจากคาบล่าสุดที่กรอกไว้
+ * นักศึกษาส่วนใหญ่ทำเคสเดิมต่อหลายคาบ จึงไม่ต้องไล่ติ๊กใหม่ทุกครั้ง
+ * โชว์เฉพาะตอนยังไม่เลือกกิจกรรม — เลือกเองแล้วแถวหายไป ไม่ค้างเกะกะ
+ * ผู้ป่วยที่ไม่อยู่ในรายการแล้ว (จบเคส/ย้ายออก) ไม่เติมให้ เหลือแค่กิจกรรม
+ */
+export function SameAsLast({
+  checkins, beforeDate, excludeId, patients, onUse,
+}: {
+  checkins: CheckIn[];
+  beforeDate: string;
+  excludeId?: string;
+  patients: [string, string][];
+  onUse: (activities: string[], patientId: string) => void;
+}) {
+  const last = lastFilledCheckIn(checkins, beforeDate, excludeId);
+  if (!last) return null;
+  const patient = patients.find(([id]) => id === last.patientId);
+  const detail = [patient?.[1], ...last.activities.map((a) => t(a))].filter(Boolean).join(' · ');
+  return (
+    <button
+      type="button"
+      className="card"
+      onClick={() => onUse([...last.activities], patient ? patient[0] : '')}
+      style={{ width: '100%', padding: '10px 12px', margin: '0 0 12px', display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left', borderColor: 'var(--accent-ring)' }}
+    >
+      <CopySimple size={18} color="var(--accent)" style={{ flex: 'none' }} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('เหมือนคาบก่อน ({d})', { d: thaiShort(last.date) })}</span>
+        <span style={{ display: 'block', font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</span>
+      </span>
+      <span style={{ flex: 'none', font: '600 12px var(--font-head)', color: 'var(--accent)' }}>{t('ใช้')}</span>
+    </button>
   );
 }
 

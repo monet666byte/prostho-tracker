@@ -1,13 +1,16 @@
-import { ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle } from '@phosphor-icons/react';
 import { Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
-import { evaluateCheckIn, reviseCheckIn, setCheckInPunctual } from '../../data/repo';
+import { evaluateCheckIn, requestCheckInFix, reviseCheckIn, setCheckInPunctual } from '../../data/repo';
+import { useReturnFeature } from '../../data/returnFeature';
 import {
-  CRITERIA, MAX_TOTAL, SCORE_SLOTS, isValidScore, missingCriteria, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
+  CRITERIA, MAX_TOTAL, RETURN_REASONS, SCORE_SLOTS, isValidScore, missingCriteria, returnFixed, returnOpen, returnReasonText,
+  rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
@@ -16,7 +19,7 @@ import {
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
 import { patientLabel } from '../../lib/privacy';
-import type { CheckIn } from '../../domain/types';
+import type { CheckIn, ReturnReason } from '../../domain/types';
 import { currentActor, useApp } from '../../store/app';
 import { groupShort } from '../../domain/group';
 
@@ -188,6 +191,11 @@ export default function Evaluate() {
   /* คาบที่กำลังแก้ป้ายตรงต่อเวลา + เหตุผลที่อาจารย์พิมพ์ (ไม่บังคับ แต่ลงไปใน audit ถ้าพิมพ์) */
   const [punctualId, setPunctualId] = useState<string | null>(null);
   const [punctualNote, setPunctualNote] = useState('');
+  /* "ขอให้แก้" (0034) — คาบที่กำลังเลือกเหตุผล · ไม่มีคอลัมน์บนเซิร์ฟเวอร์ = ไม่มีปุ่ม */
+  const returnOn = useReturnFeature();
+  const [returnId, setReturnId] = useState<string | null>(null);
+  const [returnPick, setReturnPick] = useState<ReturnReason[]>([]);
+  const [returnNote, setReturnNote] = useState('');
   const signing = useRef(false);
   // แก้คะแนนที่ลงไปแล้ว — คาบที่กำลังแก้ และคะแนนชุดใหม่ที่กำลังกรอก
   const [reviseId, setReviseId] = useState<string | null>(null);
@@ -257,6 +265,20 @@ export default function Evaluate() {
   const punctualStudent = punctualRow ? studentById.get(punctualRow.studentId) : undefined;
 
   const closePunctual = () => { setPunctualId(null); setPunctualNote(''); };
+  const returnRow = returnId ? inGroup.find((c) => c.id === returnId) ?? null : null;
+  const returnStudent = returnRow ? studentById.get(returnRow.studentId) : undefined;
+  const closeReturn = () => { setReturnId(null); setReturnPick([]); setReturnNote(''); };
+  async function saveReturn(id: string, reasons: ReturnReason[], note: string) {
+    const res = await requestCheckInFix(id, reasons, note, teacher?.name ?? currentActor());
+    closeReturn();
+    if (res.ok) {
+      showToast({ message: reasons.length ? t('ส่งกลับให้นักศึกษาแก้แล้ว — คาบยังอยู่ในรายการรอประเมิน') : t('ยกเลิกคำขอให้แก้แล้ว'), tone: 'success' });
+    } else if (res.reason === 'graduated') {
+      showToast({ message: t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้'), tone: 'warning' });
+    } else {
+      showToast({ message: t('ทำไม่สำเร็จ — คาบนี้อาจถูกลบหรือประเมินไปแล้ว'), tone: 'warning' });
+    }
+  }
 
   async function savePunctual(id: string, next: boolean) {
     const res = await setCheckInPunctual(id, next, teacher?.name ?? currentActor(), punctualNote);
@@ -360,6 +382,20 @@ export default function Evaluate() {
     }
   }
 
+  /* มาจากปุ่ม "ประเมิน" ข้างชื่อ (?student=) — เปิดโหมดทีละคนที่คาบแรกของคนนั้น
+     ครั้งนี้ครั้งเดียว ไม่จำลงเครื่อง (โหมดที่อาจารย์เลือกเองยังเป็นค่าเดิม) · ใช้แล้วลบออกจากที่อยู่
+     คนนั้นไม่มีคาบรอแล้ว (มีคนประเมินไปก่อน) = เปิดรายการปกติ */
+  const [params, setParams] = useSearchParams();
+  const wantStudent = params.get('student');
+  useEffect(() => {
+    if (!wantStudent || pendingAll.length === 0) return;
+    const first = pending.find((c) => c.studentId === wantStudent);
+    if (!first && pendingAll.some((c) => c.studentId === wantStudent)) return; // ยังไม่เข้า snapshot — รอรอบหน้า
+    if (first) { setModeState('focus'); setFocusId(first.id); setActiveCrit(0); }
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantStudent, pendingKey, snapshot]);
+
   const current = mode === 'focus' ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
   const currentIndex = current ? pending.findIndex((c) => c.id === current.id) : -1;
   const goFocus = (step: number) => {
@@ -368,7 +404,7 @@ export default function Evaluate() {
   };
 
   /* ปุ่มลัดของโหมดทีละคน — ใช้ e.code ให้ทำงานแม้แป้นพิมพ์เป็นภาษาไทย (เลข 1 บนแป้นไทยคือ "ๅ")
-     ไม่ทำงานตอนพิมพ์ในช่องกรอก หรือมีกล่องแก้ป้ายตรงเวลา/แก้คะแนนเปิดอยู่
+     ไม่ทำงานตอนพิมพ์ในช่องกรอก หรือมีกล่องแก้ป้ายตรงเวลา/แก้คะแนน/ขอให้แก้เปิดอยู่
      กล่องยืนยันลงนามเปิดอยู่: Enter = ยืนยัน · Esc = ยกเลิก (กล่องนี้ยังบอกชื่อ นศ. ทุกครั้งเหมือนเดิม) */
   useEffect(() => {
     if (mode !== 'focus') return;
@@ -376,7 +412,7 @@ export default function Evaluate() {
       const tg = e.target as HTMLElement | null;
       if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (punctualId || reviseId) return;
+      if (punctualId || reviseId || returnId) return;
       if (confirmRow) {
         if (e.key === 'Enter') { e.preventDefault(); void sign(confirmRow.id); }
         else if (e.key === 'Escape') { e.preventDefault(); setConfirmId(null); }
@@ -452,7 +488,28 @@ export default function Evaluate() {
             {c.noPatient && <> · {t('ไม่มีผู้ป่วย')}</>}
             {/* นักศึกษาแก้บันทึกหลังเช็คอิน — โชว์ให้อาจารย์เห็นตรงๆ ว่ามีการแก้และเมื่อไหร่ (รายละเอียดเต็มอยู่ audit log) */}
             {c.editedAt && <> · {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</>}
+            {/* ข้อมูลในคาบผิด → ส่งกลับให้แก้ แทนการลงคะแนนไปทั้งที่ผิด (คำขอค้าง/แก้แล้ว มีบรรทัดของตัวเองข้างล่าง) */}
+            {returnOn && !locked && !c.returnedAt && (
+              <> · <button className="textbtn evalreturn__ask" onClick={() => setReturnId(c.id)}>{t('ขอให้แก้')}</button></>
+            )}
           </div>
+          {returnOpen(c) && (
+            <div className="evalreturn">
+              <ArrowBendUpLeft size={13} weight="bold" style={{ flex: 'none', marginTop: 2 }} />
+              <span>
+                {t('ส่งกลับให้แก้')} · {returnReasonText(c.returnReasons)}
+                {c.returnNote && <> · “{c.returnNote}”</>}
+                {c.returnedBy && <small> — {t(c.returnedBy)}</small>}
+              </span>
+              {!locked && <button className="textbtn" onClick={() => void saveReturn(c.id, [], '')}>{t('ยกเลิก')}</button>}
+            </div>
+          )}
+          {returnFixed(c) && (
+            <div className="evalreturn evalreturn--fixed">
+              <CheckCircle size={13} weight="fill" style={{ flex: 'none', marginTop: 2 }} />
+              <span>{t('นศ. แก้ตามที่ขอแล้ว')} · {returnReasonText(c.returnReasons)}</span>
+            </div>
+          )}
           <div className="evalact">
             {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
             {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
@@ -836,6 +893,39 @@ export default function Evaluate() {
             </label>
             <ConfirmActions onCancel={closePunctual} onConfirm={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
               {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
+            </ConfirmActions>
+          </ConfirmBox>
+        )}
+
+        {returnRow && (
+          <ConfirmBox onBackdrop={closeReturn}>
+            <div className="confirmbox__q">{t('ขอให้แก้คาบของ')}</div>
+            <div className="confirmbox__who">{personName(returnStudent, '')}</div>
+            <div className="confirmbox__meta">
+              <span className="mono">{returnStudent?.code}</span> · {t('คาบ')} {thaiShort(returnRow.date)}
+            </div>
+            <div className="actgrid" role="group" aria-label={t('เหตุผล')} style={{ marginTop: 12 }}>
+              {RETURN_REASONS.map((r) => {
+                const on = returnPick.includes(r.key);
+                return (
+                  <button key={r.key} type="button" data-on={on} aria-pressed={on}
+                    onClick={() => setReturnPick(on ? returnPick.filter((x) => x !== r.key) : [...returnPick, r.key])}>
+                    {t(r.label)}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="field" style={{ marginTop: 10, textAlign: 'left' }}>
+              <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('บอกเพิ่ม (ไม่บังคับ)')}</span>
+              <input className="input" value={returnNote} onChange={(e) => setReturnNote(e.target.value)} placeholder={t('เช่น คาบนี้ทำ Bite registration')} />
+            </label>
+            <p className="confirmbox__note" style={{ textAlign: 'left' }}>
+              {t('นักศึกษาเห็นคำขอในหน้าคาบคลินิก · คาบยังรอประเมิน แก้แล้วกลับมาให้คะแนนได้ตามปกติ')}
+            </p>
+            <ConfirmActions onCancel={closeReturn} disabled={returnPick.length === 0}
+              onConfirm={() => void saveReturn(returnRow.id, returnPick, returnNote)}>
+              <ArrowBendUpLeft size={17} weight="bold" />
+              {t('ส่งกลับให้แก้')}
             </ConfirmActions>
           </ConfirmBox>
         )}

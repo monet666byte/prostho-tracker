@@ -158,6 +158,11 @@ function applyTriggers(table, incoming) {
       row.punctual = old.punctual;
       row.checkin_at = old.checkin_at;
       row.score_history = old.score_history;
+      /* 0034 — คำขอให้แก้เป็นของอาจารย์ นักศึกษาลบ/แก้เองไม่ได้ */
+      row.return_reasons = old.return_reasons;
+      row.return_note = old.return_note;
+      row.returned_by = old.returned_by;
+      row.returned_at = old.returned_at;
       return row;
     }
     if (table === 'checkins') {

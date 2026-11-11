@@ -75,6 +75,22 @@ export function isFollowUpGroup(followUp: number, size: number): boolean {
 }
 const DAY = 86_400_000;
 
+/**
+ * จำนวนนักศึกษาที่มีคาบรอประเมิน แยกตามกลุ่ม — นับเป็น "คน" หน่วยเดียวกับเลขแดงข้างเมนูประเมิน
+ * ใช้ทำเลขกำกับกลุ่มในตัวเลือกกลุ่ม (อาจารย์ดูกลุ่มหนึ่งอยู่ ยังเห็นว่ากลุ่มอื่นมีคนรอ)
+ */
+export function pendingPeopleByGroup(checkins: CheckIn[], groupOf: (studentId: string) => string | undefined): Map<string, number> {
+  const seen = new Map<string, Set<string>>();
+  checkins.forEach((c) => {
+    if (c.status !== 'pending') return;
+    const g = groupOf(c.studentId);
+    if (!g) return;
+    if (!seen.has(g)) seen.set(g, new Set());
+    seen.get(g)!.add(c.studentId);
+  });
+  return new Map([...seen.entries()].map(([g, set]) => [g, set.size]));
+}
+
 export function todaySummary(input: TodayInput): TodaySummary {
   const { settings, now = new Date() } = input;
   const ids = new Set(input.students.map((s) => s.id));

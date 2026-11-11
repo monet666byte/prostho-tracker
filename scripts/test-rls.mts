@@ -1035,6 +1035,23 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const row33 = (await db.query<{ 'สถานะ': string; migration: string }>(
     (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0033'));
   check('check-migrations.sql ตอบว่า 0033 รันแล้ว', !!row33 && row33['สถานะ'].startsWith('✓'), row33);
+
+  // ── ㉓ อาจารย์ขอให้แก้คาบ (0034) — ช่องของอาจารย์ นักศึกษาลบ/ปลอมเองไม่ได้ ──
+  console.log('\n㉓ ขอให้แก้คาบ (0034)');
+  await db.exec(`insert into checkins (id, student_id, date, activities, created_at) values ('cRet', 'sA', '2026-10-20', '{Lab work}', '2026-10-20T02:00:00Z')`);
+  const ask = await commit(U.T1, `update checkins set return_reasons = '{patient,other}', return_note = 'ผู้ป่วยไม่ใช่คนนี้', returned_by = 'อ. หนึ่ง', returned_at = now() where id = 'cRet' returning return_reasons, status`);
+  check('อาจารย์ขอให้แก้ได้ · คาบยังรอประเมิน', ask.ok && (ask.rows[0]?.return_reasons as string[])?.length === 2 && ask.rows[0]?.status === 'pending', ask);
+  const wipe = await commit(U.A, `update checkins set return_reasons = null, returned_at = null, note = 'แก้แล้ว', edited_at = '2026-10-21T02:00:00Z' where id = 'cRet' returning return_reasons, returned_at, note`);
+  check('นศ. แก้คาบได้ แต่คำขอของอาจารย์ยังอยู่', wipe.ok && wipe.rows[0]?.note === 'แก้แล้ว' && wipe.rows[0]?.returned_at !== null && (wipe.rows[0]?.return_reasons as string[])?.length === 2, wipe);
+  const fake = await commit(U.A, `insert into checkins (id, student_id, date, created_at, return_reasons, returned_by, returned_at) values ('cRet2', 'sA', '2026-10-22', '2026-10-22T02:00:00Z', '{time}', 'อ. ปลอม', now()) returning returned_by, return_reasons`);
+  check('นศ. สร้างคาบพร้อมคำขอปลอมไม่ได้ (ล้างเป็น null)', fake.ok && fake.rows[0]?.returned_by === null && fake.rows[0]?.return_reasons === null, fake);
+  const bad = await commit(U.T1, `update checkins set return_reasons = '{whatever}' where id = 'cRet' returning id`);
+  check('เหตุผลนอกรายการถูกปฏิเสธ', !bad.ok, bad);
+  const keepT = await commit(U.T1, `update checkins set return_reasons = null, return_note = null, returned_by = null, returned_at = null, note = 'ทับ' where id = 'cRet' returning return_reasons, note`);
+  check('อาจารย์ยกเลิกคำขอได้ แต่โน้ต นศ. ยังเป็นของ นศ.', keepT.ok && keepT.rows[0]?.return_reasons === null && keepT.rows[0]?.note === 'แก้แล้ว', keepT);
+  const row34 = (await db.query<{ migration: string; สถานะ: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0034'));
+  check('check-migrations.sql ตอบว่า 0034 รันแล้ว', !!row34 && row34['สถานะ'].startsWith('✓'), row34);
 }
 
 await db.close();

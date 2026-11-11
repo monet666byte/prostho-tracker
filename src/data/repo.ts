@@ -7,7 +7,7 @@
  */
 
 import { CATALOG_VERSION, dentureLabel, isArchWork, typeMeta } from '../domain/catalog';
-import { CRITERIA, totalScore } from '../domain/checkin';
+import { CRITERIA, RETURN_REASONS, returnOpen, totalScore } from '../domain/checkin';
 import { cohortOf, entryYearFromDtmu, isAlumni, isWithinRetention } from '../domain/cohort';
 import { groupCodeFor, studentIdFor } from '../domain/group';
 import { patientNamesOn, pdpaPolicy } from './pdpaSync';
@@ -18,7 +18,7 @@ import { clampPerformedAt, toISODate } from '../lib/date';
 import { hasTeacherEvidence, isActiveWork, isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, WaitReason, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, ReturnReason, WaitReason, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { SECT2_GATE_OF, sect2GateValue } from '../domain/sect2';
 import { saId, saStudentCanEdit } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
@@ -745,12 +745,14 @@ export async function updateCheckIn(
   });
   const row = await db.checkins.get(id);
   // กดปุ่มบันทึกซ้ำโดยไม่ได้แก้อะไร ไม่ควรงอกบรรทัดใน audit — ประวัติต้องอ่านแล้วเชื่อได้
-  if (before && row && JSON.stringify(before) === JSON.stringify(row)) return;
+  // ยกเว้นคาบที่อาจารย์ขอให้แก้: บางเหตุผลแก้ที่อื่น (เช่น ไปบันทึก step) กดบันทึกที่นี่ = ตอบว่าแก้แล้ว
+  const answering = !!before && returnOpen(before);
+  if (before && row && JSON.stringify(before) === JSON.stringify(row) && !answering) return;
   // แก้จริง → ประทับเวลาไว้ ป้าย "แก้ไขล่าสุด" ฝั่งอาจารย์อ่านจากตรงนี้
   await db.checkins.update(id, { editedAt: new Date().toISOString() });
   await logAudit(
     // ต้องมีวันที่ ไม่งั้นย้อนดูไม่ออกว่าแก้คาบไหน (บรรทัดอื่นในระบบมีวันที่หมด)
-    `เติมรายละเอียดคาบ ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.join(', ') || 'ไม่ระบุกิจกรรม'}`,
+    `${answering ? 'แก้คาบตามที่อาจารย์ขอ' : 'เติมรายละเอียดคาบ'} ${checkInDateLabel(row?.date ?? '')} · ${patch.activities.join(', ') || 'ไม่ระบุกิจกรรม'}`,
     actor,
     { studentId: row?.studentId },
   );
@@ -921,6 +923,35 @@ export async function setCheckInPunctual(
       + ` · ${row.punctual ? 'ตรงเวลา' : 'มาสาย'}→${punctual ? 'ตรงเวลา' : 'มาสาย'}`
       + (row.checkinAt ? ` · เวลาที่ระบบจับได้ ${row.checkinAt}` : '')
       + (note?.trim() ? ` · เหตุผล: ${note.trim()}` : ''),
+    by,
+    { studentId: row.studentId },
+  );
+  return { ok: true };
+}
+
+/**
+ * อาจารย์ขอให้นักศึกษาแก้คาบ (0034) — แทนการลงคะแนนทั้งที่ข้อมูลในคาบผิด
+ * reasons ว่าง = ยกเลิกคำขอ · คาบยังรอประเมินเหมือนเดิม · ข้อความ audit ไม่มีชื่อ/HN ผู้ป่วย
+ */
+export async function requestCheckInFix(
+  id: string,
+  reasons: ReturnReason[],
+  note: string,
+  by: string,
+): Promise<{ ok: boolean; reason?: 'missing' | 'evaluated' | 'graduated' }> {
+  const row = await db.checkins.get(id);
+  if (!row) return { ok: false, reason: 'missing' };
+  if (row.status === 'evaluated') return { ok: false, reason: 'evaluated' };
+  if (await isGraduatedStudent(row.studentId)) return { ok: false, reason: 'graduated' };
+  const cancel = reasons.length === 0;
+  await db.checkins.update(id, cancel
+    ? { returnReasons: undefined, returnNote: undefined, returnedBy: undefined, returnedAt: undefined }
+    : { returnReasons: [...reasons], returnNote: note.trim() || undefined, returnedBy: by, returnedAt: new Date().toISOString() });
+  const student = await db.students.get(row.studentId);
+  await logAudit(
+    cancel
+      ? `ยกเลิกคำขอให้แก้คาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId}`
+      : `ขอให้แก้คาบ ${checkInDateLabel(row.date)} ของ ${student?.name ?? row.studentId} · ${reasons.map((r) => RETURN_REASONS.find((x) => x.key === r)?.label ?? r).join(', ')}`,
     by,
     { studentId: row.studentId },
   );

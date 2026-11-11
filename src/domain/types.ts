@@ -229,8 +229,19 @@ export interface CheckIn {
   scoreHistory?: { scores: Record<string, number>; by?: string; at?: string; replacedAt?: string }[];
   /** ครั้งล่าสุดที่นักศึกษาแก้กิจกรรม/คนไข้/โน้ตหลังเช็คอิน (ISO) — โชว์ป้ายให้อาจารย์เห็นว่าคาบนี้มีการแก้ */
   editedAt?: string;
+  /**
+   * อาจารย์ "ขอให้แก้" คาบนี้ (migration 0034) — ช่องของอาจารย์ นักศึกษาเขียนไม่ได้ (เซิร์ฟเวอร์คงค่าเดิมไว้)
+   * คาบยังเป็น pending · ค้างอยู่ไหมคิดที่ returnOpen() ใน domain/checkin.ts
+   */
+  returnReasons?: ReturnReason[];
+  returnNote?: string;
+  returnedBy?: string;
+  returnedAt?: string;
   createdAt: string;
 }
+
+/** เหตุผลที่อาจารย์ขอให้แก้คาบ — ค่าต้องตรงกับ check ใน 0034 */
+export type ReturnReason = 'patient' | 'activity' | 'time' | 'step' | 'other';
 
 /** คอลัมน์ "Report issues" ของ tab Progress checked — ต่อนักศึกษา 1 ช่อง */
 export interface ReportIssue {

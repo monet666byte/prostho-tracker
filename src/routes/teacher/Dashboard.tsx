@@ -10,7 +10,7 @@ import { TypeDonut } from '../../components/charts/TypeDonut';
 import { TraceDrawer, TraceRow, type TraceContent } from '../../components/teacher/TraceDrawer';
 import { DataAge } from '../../components/teacher/DataAge';
 import { RequirementSlots } from '../../components/teacher/RequirementSlots';
-import { isFollowUpGroup, todaySummary } from '../../domain/today';
+import { isFollowUpGroup, pendingPeopleByGroup, todaySummary } from '../../domain/today';
 import { lastPullAt, pullAll } from '../../data/cloudSync';
 import { cloudEnabled } from '../../lib/cloud';
 import { KINDS, kindOf, kindsPresent, typeMeta, workLabel, workMeta, type WorkKind } from '../../domain/catalog';
@@ -165,6 +165,11 @@ export default function Dashboard() {
   const activeGroups = useMemo(() => summarizeGroups(activeSummaries), [activeSummaries]);
   const zoneGroup = activeGroups.find((g) => g.code === group) ?? activeGroups.find((g) => g.code === ownGroup) ?? activeGroups[0];
   const zoneGroupCodes = useMemo(() => sortGroupCodes(activeGroups.map((g) => g.code), activeStudents), [activeGroups, activeStudents]);
+  /* คนรอประเมินต่อกลุ่ม — เลขต่อท้ายในตัวเลือกกลุ่ม (ตัวนับเดียวกับเลขแดงในแถบซ้าย) */
+  const pendingByGroup = useMemo(() => {
+    const groupOf = new Map(activeStudents.map((st) => [st.id, st.group]));
+    return pendingPeopleByGroup(everyCheckIn, (id) => groupOf.get(id));
+  }, [everyCheckIn, activeStudents]);
 
   // แถวที่แสดงในตาราง: พิมพ์ค้นหา = มองข้ามกลุ่ม หาทั้งรุ่น · ไม่พิมพ์ = เฉพาะกลุ่มที่เลือก
   // หน้าแรกค้นในรุ่นเดียวกับกลุ่มที่ดูอยู่ · หน้ารุ่นที่จบแล้วค้นในรุ่นที่เลือก (summaries)
@@ -364,6 +369,8 @@ export default function Dashboard() {
     showToast({ message: t('จดไว้แล้วว่าจะเตือน {n} — ระบบแจ้งเตือนจริงยังไม่เปิดใช้ ต้องบอกปากเปล่าก่อนนะครับ', { n: name }), tone: 'warning' });
   };
   const openStudent = (st: { id: string; group: string }) => { setGroup(st.group); navigate(`/teacher/review?student=${st.id}`); };
+  /* ปุ่ม "ประเมิน" ข้างชื่อ — เปิดหน้าประเมินที่คาบของคนนั้นเลย (เดิมพาไปหน้ารวมแล้วต้องไล่หาชื่อเอง) */
+  const evaluateStudent = (st: { id: string; group: string }) => { setGroup(st.group); navigate(`/teacher/evaluate?student=${st.id}`); };
 
   /* รายคนใต้บรรทัด "รอประเมิน" / "ต้องตาม" — มาจาก pendingList / followUpList ตัวเดียวกับตัวเลขบนบรรทัด
      โชว์ไม่เกิน QUEUE_MAX คน ที่เหลือเป็นแถว "อีก N คน" */
@@ -393,7 +400,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <span className="todaykid__age">{p.oldestDays > 0 ? t('{n} วันก่อน', { n: p.oldestDays }) : t('วันนี้')}</span>
-              <button className="todaykid__btn" onClick={() => navigate('/teacher/evaluate')}>{t('ประเมิน')}</button>
+              <button className="todaykid__btn" onClick={() => evaluateStudent(st)}>{t('ประเมิน')}</button>
             </div>
           );
         })}
@@ -900,6 +907,7 @@ export default function Dashboard() {
                   {zoneGroupCodes.map((code) => (
                     <option key={code} value={code}>
                       {groupShort(code)} · {t('ปี {n}', { n: activeGroups.find((g) => g.code === code)?.year ?? '' })}
+                      {code !== zoneGroup?.code && pendingByGroup.get(code) ? ` · ${t('รอประเมิน {n}', { n: pendingByGroup.get(code)! })}` : ''}
                     </option>
                   ))}
                 </select>
@@ -976,7 +984,14 @@ export default function Dashboard() {
                             <small>{[advisorsOf(g.code), t('{n} คน', { n: g.students.length })].filter(Boolean).join(' · ')}</small>
                             <span className="homegsec__mini">
                               <span>{t('ต้องตาม')} <em className={followIn(g.code) ? 'is-warn' : undefined}>{followIn(g.code)}/{g.students.length}</em></span>
-                              <span>{t('รอประเมิน')} <em>{pendingIn(g.code)}</em></span>
+                              {/* มีคนรอ = เลขแดง แตะแล้วไปประเมินกลุ่มนั้น · ไม่มี = เลข 0 ธรรมดา */}
+                              {pendingIn(g.code) > 0 ? (
+                                <button className="homegsec__due" onClick={() => { setGroup(g.code); navigate('/teacher/evaluate'); }}>
+                                  {t('รอประเมิน')} <em>{pendingIn(g.code)}</em>
+                                </button>
+                              ) : (
+                                <span>{t('รอประเมิน')} <em>0</em></span>
+                              )}
                             </span>
                           </div>
                           {renderStudentTable(slowestFirst(g.students).slice(0, HOME_TABLE_ROWS), true)}

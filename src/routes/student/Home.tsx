@@ -1,8 +1,8 @@
-import { Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Hourglass, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, Bell, BookOpen, Camera, CaretRight, Check, CheckCircle, HandTap, Hourglass, Lock, MagnifyingGlass, MapPin, Medal, PencilSimple, Plus } from '@phosphor-icons/react';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PendingBadge, SelfBadge, StaleBadge, TypeBadge } from '../../components/ui/Bits';
-import { ActivityChips, PatientSelect, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
+import { ActivityChips, PatientSelect, SameAsLast, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
@@ -13,7 +13,7 @@ import { WaitSheet } from '../../components/student/WaitSheet';
 import { useWaitFeature } from '../../data/waitFeature';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
-import { daysUntil, toISODate, weekMonday } from '../../lib/date';
+import { daysUntil, thaiShort, toISODate, weekMonday } from '../../lib/date';
 import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
@@ -23,7 +23,7 @@ import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { activeStepGroup, caseCountTotals, groupByReqRow, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
-import { NO_PATIENT_ACTIVITY } from '../../domain/checkin';
+import { NO_PATIENT_ACTIVITY, returnOpen, returnReasonText } from '../../domain/checkin';
 import { isSect2Evaluated } from '../../domain/sect2';
 import { isSect3Evaluated } from '../../domain/sect3';
 import { FIRSTS } from './Achievements';
@@ -441,6 +441,7 @@ export default function Home() {
   const checkins = useCheckIns(session?.studentId);
   const today = toISODate(new Date());
   const todayCheckIn = checkins.find((c) => c.date === today);
+  const returnAsk = checkins.filter(returnOpen).sort((a, b) => a.date.localeCompare(b.date))[0];
   const checkedInToday = !!todayCheckIn;
   const todaySteps = useStepsOnDates(session ? [{ studentId: session.studentId, date: today }] : []);
   const todayStepCount = (todaySteps.get(`${session?.studentId}|${today}`) ?? []).length;
@@ -539,6 +540,16 @@ export default function Home() {
             <h3 style={{ margin: 0, font: '700 17px var(--font-head)' }}>{t('เช็คอินคาบวันนี้')}</h3>
             {/* คำอธิบายวิธีใช้ตัดออก — ปุ่ม "ไว้ก่อน" ข้างล่างบอกอยู่แล้วว่าไม่กรอกก็ได้ */}
 
+            {askActs.length === 0 && (
+              <div style={{ marginTop: 12 }}>
+                <SameAsLast
+                  checkins={checkins}
+                  beforeDate={today}
+                  patients={askPatients}
+                  onUse={(acts, pid) => { setAskActs(acts); setAskPatient(pid); }}
+                />
+              </div>
+            )}
             <div style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 7 }}>{t('กิจกรรมในคาบ')}</div>
             <ActivityChips selected={askActs} onChange={setAskActs} />
 
@@ -667,7 +678,22 @@ export default function Home() {
         />
       )}
 
-      {nudge && (
+      {/* อาจารย์ขอให้แก้คาบ — การ์ดเตือนครั้งละใบ (คาบเก่าสุดก่อน) · มีใบนี้แล้วการ์ดถามรอคนไข้รอไว้ก่อน */}
+      {returnAsk ? (
+        <section className="waitnudge" aria-label={t('อาจารย์ขอให้แก้คาบ')}>
+          <span className="waitnudge__title">
+            <ArrowBendUpLeft size={17} weight="bold" color="var(--warning)" />
+            {t('อาจารย์ขอให้แก้คาบ {d}', { d: thaiShort(returnAsk.date) })}
+          </span>
+          <p className="waitnudge__sub">
+            {returnReasonText(returnAsk.returnReasons)}
+            {returnAsk.returnNote && <> · “{returnAsk.returnNote}”</>}
+          </p>
+          <div className="waitnudge__btns">
+            <button className="btn" onClick={() => navigate(`/app/checkin?fix=${returnAsk.id}`)}>{t('แก้คาบนี้')}</button>
+          </div>
+        </section>
+      ) : nudge && (
         <section className="waitnudge" aria-label={t('เคสที่ไม่ขยับนาน')}>
           <span className="waitnudge__title">
             <Hourglass size={17} weight="fill" color="var(--warning)" />

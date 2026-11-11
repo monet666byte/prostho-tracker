@@ -172,6 +172,11 @@ function applyTriggers(table, incoming) {
       row.punctual = old.punctual;
       row.checkin_at = old.checkin_at;
       row.score_history = old.score_history;
+      /* 0034 — คำขอให้แก้เป็นของอาจารย์ นักศึกษาลบ/แก้เองไม่ได้ */
+      row.return_reasons = old.return_reasons;
+      row.return_note = old.return_note;
+      row.returned_by = old.returned_by;
+      row.returned_at = old.returned_at;
       return row;
     }
     if (table === 'checkins') {
@@ -651,9 +656,10 @@ console.log('\n⑫ ตู้กลางปฏิเสธการแก้ช�
 /* ══ ⑧ ตู้กลางปลอมต้องตรงกับ SQL จริง ═════════════════════════════════════
    `CLAUDE.md` เตือนไว้ว่ากับดักของวิธีนี้คือ "แก้ migration แล้วลืมแก้ตู้ปลอม
    → เทสต์ผ่านทั้งที่ของจริงพัง" · ข้อนี้เทียบรายชื่อช่องให้เอง ไม่ต้องพึ่งความจำใคร */
-console.log('\n⑧ ตู้กลางปลอมต้องตรงกับ 0020 ตัวจริง');
+console.log('\n⑧ ตู้กลางปลอมต้องตรงกับ guard_checkin_scoring ตัวล่าสุด (0034)');
 {
-  const sql = readFileSync(join(root, 'supabase/migrations/0020_checkin_field_owner.sql'), 'utf8');
+  // ไฟล์ล่าสุดที่ replace ฟังก์ชันนี้ — replace อีกเมื่อไหร่ เปลี่ยนชื่อไฟล์ตรงนี้
+  const sql = readFileSync(join(root, 'supabase/migrations/0034_checkin_return.sql'), 'utf8');
   // เอาเฉพาะบล็อกหลังด่านของนักศึกษา (`return new;` ตัวที่สอง) = กฎของฝั่งอาจารย์
   const teacherBlock = sql.slice(sql.indexOf('ใหม่ใน 0020'));
   const inSql = new Set(
@@ -671,6 +677,15 @@ console.log('\n⑧ ตู้กลางปลอมต้องตรงกั�
   check('ทุกช่องที่ SQL คงไว้ ตู้ปลอมก็คงไว้', onlySql.length === 0, onlySql);
   check('ตู้ปลอมไม่ได้คงช่องที่ SQL ไม่ได้คง', onlyMirror.length === 0, onlyMirror);
   check('ช่องโน้ตอยู่ในรายการ (หัวใจของบั๊กข้อ ②)', inSql.has('note') && inMirror.has('note'));
+
+  // ฝั่งนักศึกษา — บล็อกระหว่าง "if not is_teacher() then" ตัวที่สอง กับ "ใหม่ใน 0020"
+  const studentSql = sql.slice(sql.indexOf('if not is_teacher() then'), sql.indexOf('ใหม่ใน 0020'));
+  const inSqlS = new Set([...studentSql.matchAll(/new\.([a-z_]+)\s*:=\s*old\.\1/g)].map((m) => m[1]));
+  const mirrorS = self.slice(self.indexOf("if (table === 'checkins' && !IS_TEACHER)"), self.indexOf('0020 · ทิศกลับ'));
+  const inMirrorS = new Set([...mirrorS.matchAll(/row\.([a-z_]+)\s*=\s*old\.\1/g)].map((m) => m[1]));
+  const diffS = [...new Set([...inSqlS, ...inMirrorS])].filter((f) => inSqlS.has(f) !== inMirrorS.has(f));
+  check('ฝั่งนักศึกษา: ตู้ปลอมคงช่องเดียวกับ SQL', inSqlS.size >= 11 && diffS.length === 0, { sql: [...inSqlS], diff: diffS });
+  check('คำขอให้แก้ (0034) อยู่ในช่องที่นักศึกษาแตะไม่ได้', inSqlS.has('returned_at') && inSqlS.has('return_reasons'));
 }
 
 /* ══ ⑨ คนละช่องของแถวเดียวกัน จากหลายเครื่องพร้อมกัน ════════════════════════

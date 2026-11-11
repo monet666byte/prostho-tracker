@@ -1031,6 +1031,12 @@ button.casemap__step[data-on='true'] { color: var(--accent); font-weight: 700; b
 .evalpatient { font: 500 11px var(--font-mono); color: var(--text-faint); }
 .evalsteps { margin-top: 4px; font: 400 11.5px/1.5 var(--font-body); color: var(--text-faint); }
 .evalsteps--done { color: var(--success-dark); font-family: var(--font-mono); font-size: 11px; }
+/* คำขอให้แก้ (0034) — บรรทัดเดียวใต้กิจกรรม · ค้าง = ส้ม · แก้แล้ว = เขียว */
+.evalreturn { margin-top: 6px; display: flex; align-items: flex-start; gap: 6px; font: 500 11.5px/1.5 var(--font-body); color: var(--warning-dark); overflow-wrap: anywhere; }
+.evalreturn small { color: var(--text-faint); font-weight: 400; }
+.evalreturn .textbtn { margin-left: auto; padding: 0 2px; font-size: 11px; color: var(--text-muted); }
+.evalreturn--fixed { color: var(--success-dark); }
+.evalline .evalreturn__ask { padding: 0; font-family: inherit; font-size: inherit; font-weight: 500; color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
 .evalcard--calm .scorerow { padding: 5px 0; border-bottom: 1px solid var(--border); gap: 10px; }
 .evalcard--calm .scorerow__label { font: 400 12.5px var(--font-body); color: var(--text-secondary); white-space: normal; }
 .evalcard--calm .scorerow[data-changed='true'] .scorerow__label { color: var(--text); font-weight: 600; }
@@ -1907,6 +1913,9 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .homegsec__mini { margin-left: auto; display: flex; gap: 14px; font: 400 12px var(--font-body); color: var(--text-muted); }
 .homegsec__mini em { font-style: normal; font-weight: 700; color: var(--text); }
 .homegsec__mini em.is-warn { color: var(--danger); }
+.homegsec__due { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: inherit; display: inline-flex; align-items: center; gap: 5px; }
+.homegsec__mini .homegsec__due em { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--danger); color: #fff; font: 600 10.5px/18px var(--font-mono); text-align: center; }
+@media (hover: hover) { .homegsec__due:hover { color: var(--text); } }
 /* คอลัมน์ "กำลังทำ" ในตารางนักศึกษาหน้าแรก */
 .nowcell { min-width: 0; }
 .nowcell__step { display: inline; margin-left: 6px; font: 400 11.5px var(--font-body); color: var(--text-secondary); }

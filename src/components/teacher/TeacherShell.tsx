@@ -22,6 +22,7 @@ import { groupShort, sortGroupCodes } from '../../domain/group';
    พอ import แบบนี้ assetsInlineLimit ของโหมด share จะฝังเป็น data URI ให้เอง ไม่ว่าไฟล์จะใหญ่แค่ไหน */
 import logoMark from '../../assets/logo-mark.svg';
 import { CLINIC_LAST_YEAR, CLINIC_START_YEAR, studentCohortLabel, studentYear } from '../../domain/cohort';
+import { pendingPeopleByGroup } from '../../domain/today';
 
 /** คีย์เมนู — ต้องตรงกันทุกหน้าเพื่อไม่ให้เมนูซ้ายเปลี่ยนไปมา */
 export type TeacherNav = 'overview' | 'mygroup' | 'cohort' | 'evaluate' | 'sa' | 'sect2' | 'sect3' | 'exams' | 'settings' | 'roster' | 'alumni';
@@ -133,11 +134,8 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
   const checkins = useAllCheckIns();
   const groupById = new Map(students.map((st) => [st.id, st.group]));
   // งานค้างของอาจารย์ = นักศึกษาที่เช็คอินแล้วยังไม่ได้ประเมิน (นับเป็นคน — หน่วยที่อาจารย์คิด)
-  const pendingEval = new Set(
-    checkins
-      .filter((c) => c.status === 'pending' && groupById.get(c.studentId) === teacherGroup)
-      .map((c) => c.studentId),
-  ).size;
+  const pendingByGroup = pendingPeopleByGroup(checkins, (id) => groupById.get(id));
+  const pendingEval = pendingByGroup.get(teacherGroup) ?? 0;
   /* ปีของกลุ่ม = ชั้นปีของนักศึกษาในกลุ่มนั้น (คำนวณจากรุ่น) — ห้ามอ่านจากเลขในรหัสกลุ่ม
      เพราะรหัสใหม่คือ TH54-PT1 ที่ 54 = เลขรุ่น เดิมแปลเป็น "ปี 54" แล้วโชว์ "จบแล้ว" ทุกกลุ่ม
  */
@@ -218,7 +216,9 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               {groupCodes.map((code) => (
                 /* ชั้นปีเกิน 6 = รุ่นที่เรียนจบไปแล้ว — เขียน "จบแล้ว" ไม่ใช่ "ปี 7" ซึ่งไม่มีจริง */
                 <option key={code} value={code}>
-                  {`${groupShort(code)} · ${labelOfGroup(code)}`}
+                  {/* กลุ่มอื่นที่มีคนรอประเมินมีเลขต่อท้าย — ดูกลุ่มหนึ่งอยู่ก็รู้ว่ากลุ่มอื่นมีงานรอ
+                      กลุ่มที่เลือกอยู่ไม่ต่อท้าย: มีเลขแดงข้างเมนูประเมินแล้ว และช่องแคบ ต่อแล้วโดนตัด */}
+                  {`${groupShort(code)} · ${labelOfGroup(code)}${code !== teacherGroup && pendingByGroup.get(code) ? ` · ${t('รอประเมิน {n}', { n: pendingByGroup.get(code)! })}` : ''}`}
                 </option>
               ))}
             </select>

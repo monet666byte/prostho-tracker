@@ -1,8 +1,8 @@
-import { CalendarCheck, CheckCircle, Clock, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowBendUpLeft, CalendarCheck, CheckCircle, Clock, NotePencil, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Empty } from '../../components/ui/Bits';
-import { ActivityChips, PatientSelect, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
+import { ActivityChips, PatientSelect, SameAsLast, NoPatientWait, applyNoPatientWait, EMPTY_NO_PATIENT_WAIT, type NoPatientWaitValue } from '../../components/student/CheckInFields';
 import { useWaitFeature } from '../../data/waitFeature';
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
@@ -10,7 +10,7 @@ import { Shell } from '../../components/student/Shell';
 import { CheckInCalendar } from '../../components/student/CheckInCalendar';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { deleteCheckIn, updateCheckIn } from '../../data/repo';
-import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, totalScore } from '../../domain/checkin';
+import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, returnOpen, returnReasonText, totalScore } from '../../domain/checkin';
 import { useCheckIns, usePatientNamesOn, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -59,6 +59,17 @@ export default function CheckInPage() {
     setNote(entry.note ?? '');
     setFormOpen(true);
   }
+  /* มาจากการ์ด "อาจารย์ขอให้แก้" บนหน้าแรก (?fix=) — เปิดฟอร์มแก้คาบนั้นเลย ใช้แล้วลบออกจากที่อยู่ */
+  const [params, setParams] = useSearchParams();
+  const fixId = params.get('fix');
+  useEffect(() => {
+    if (!fixId) return;
+    const entry = checkins.find((c) => c.id === fixId);
+    if (!entry && checkins.length === 0) return; // รายการยังโหลดไม่เสร็จ
+    if (entry) openEditForm(entry);
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixId, checkins]);
   const noPatient = activities.includes(NO_PATIENT_ACTIVITY);
   const patients = useCheckInPatients(works, namesOn);
 
@@ -141,7 +152,19 @@ export default function CheckInPage() {
             : t('เช็คอินล่วงหน้าก่อนเริ่มคาบได้เลย · เวลาเช็คอินระบบบันทึกให้เอง แก้ไม่ได้ (นับตรงเวลาเมื่อก่อน 9:15 เช้า / 13:15 บ่าย)')}
         </p>
 
-        <div className="field" style={{ marginTop: 12 }}>
+        {activities.length === 0 && (
+          <div style={{ marginTop: 12 }}>
+            <SameAsLast
+              checkins={checkins}
+              beforeDate={editingId ? (editingEntry?.date ?? date) : (scan.required ? today : date)}
+              excludeId={editingId ?? undefined}
+              patients={patients}
+              onUse={(acts, pid) => { setActivities(acts); setPatientId(pid); }}
+            />
+          </div>
+        )}
+
+        <div className="field" style={{ marginTop: activities.length === 0 ? 0 : 12 }}>
           <label>{t('กิจกรรมในคาบ')}</label>
           <ActivityChips selected={activities} onChange={setActivities} />
         </div>
@@ -273,10 +296,24 @@ export default function CheckInPage() {
                   <span className="checkrow__score" style={{ color: total === MAX_TOTAL ? 'var(--success-dark)' : undefined }}>
                     {total}/{MAX_TOTAL}
                   </span>
+                ) : returnOpen(c) ? (
+                  <span className="checkrow__wait" style={{ color: 'var(--warning-dark)' }}>{t('ขอให้แก้')}</span>
                 ) : (
                   <span className="checkrow__wait">{t('รอประเมิน')}</span>
                 )}
               </div>
+              {/* อาจารย์ขอให้แก้ — เห็นได้โดยไม่ต้องกางแถว พร้อมปุ่มแก้ (แก้แล้วกลับเข้าคิวประเมินเอง) */}
+              {returnOpen(c) && (
+                <div className="checkrow__return" onClick={(e) => e.stopPropagation()}>
+                  <ArrowBendUpLeft size={15} weight="bold" style={{ flex: 'none', marginTop: 2 }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {returnReasonText(c.returnReasons)}
+                    {c.returnNote && <> · “{c.returnNote}”</>}
+                    {c.returnedBy && <small> — {t(c.returnedBy)}</small>}
+                  </span>
+                  <button className="checkrow__fix" onClick={() => openEditForm(c)}>{t('แก้คาบนี้')}</button>
+                </div>
+              )}
 
               {open && c.scores && (
                 <div style={{ marginTop: 11, borderTop: '1px solid var(--divider)', paddingTop: 10, display: 'grid', gap: 5 }}>

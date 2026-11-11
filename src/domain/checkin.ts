@@ -4,7 +4,7 @@
  * เด็กเลือกจากรายการแทนการเขียนมือ · อาจารย์ให้คะแนน 0–3 แทนการเซ็นสมุด
  */
 
-import type { CheckIn } from './types';
+import type { CheckIn, ReturnReason } from './types';
 import { t } from '../lib/i18n';
 
 /** คอลัมน์คะแนนตาม Part B ของสมุดจริง
@@ -185,6 +185,48 @@ export function supersededTitle(c: Pick<CheckIn, 'scoreHistory'>): string {
     return `${who} ${t('เคยให้')} ${total ?? 0}/${MAX_TOTAL}`;
   });
   return `${t('คะแนนชุดก่อนหน้ายังเก็บไว้ครบ')} — ${lines.join(' · ')}`;
+}
+
+/** คาบล่าสุดก่อนวันที่ที่กำหนดซึ่งกรอกกิจกรรมแล้ว — ไม่นับคาบที่กำลังแก้อยู่ (ปุ่ม "เหมือนคาบก่อน") */
+export function lastFilledCheckIn(checkins: CheckIn[], beforeDate: string, excludeId?: string): CheckIn | undefined {
+  return checkins
+    .filter((c) => c.id !== excludeId && c.activities.length > 0 && c.date < beforeDate)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+
+/* ── อาจารย์ขอให้แก้คาบ (0034) ───────────────────────────────────────────────
+   ไม่มีสถานะใหม่ — คาบยัง pending ให้ตัวนับรอประเมินทุกตัวทำงานเหมือนเดิม
+   "ค้าง" = ยังไม่ประเมิน และนักศึกษายังไม่ได้แก้หลังเวลาที่ขอ */
+
+export const RETURN_REASONS: ReadonlyArray<{ key: ReturnReason; label: string }> = [
+  { key: 'patient', label: 'ผู้ป่วยไม่ตรง' },
+  { key: 'activity', label: 'กิจกรรมไม่ตรง' },
+  { key: 'time', label: 'วัน/เวลาไม่ถูก' },
+  { key: 'step', label: 'ยังไม่บันทึก step' },
+  { key: 'other', label: 'อื่นๆ' },
+];
+
+/** ข้อความเหตุผลสำหรับหน้าจอ (ผ่าน t()) — เหตุผลที่ไม่รู้จักข้ามไป ไม่ทำจอพัง */
+export function returnReasonText(reasons: readonly string[] | undefined): string {
+  return (reasons ?? [])
+    .map((k) => RETURN_REASONS.find((r) => r.key === k)?.label)
+    .filter((x): x is string => !!x)
+    .map((x) => t(x))
+    .join(' · ');
+}
+
+/** อาจารย์ขอให้แก้ และนักศึกษายังไม่ได้แก้หลังจากนั้น */
+export function returnOpen(c: Pick<CheckIn, 'status' | 'returnedAt' | 'editedAt'>): boolean {
+  if (c.status !== 'pending' || !c.returnedAt) return false;
+  // เทียบเป็นเวลา ไม่เทียบสตริง — ตู้ส่ง timestamptz กลับมาเป็น "+00:00" และตัดเลขศูนย์ท้ายมิลลิวินาที
+  const edited = c.editedAt ? Date.parse(c.editedAt) : NaN;
+  const returned = Date.parse(c.returnedAt);
+  return !(Number.isFinite(edited) && Number.isFinite(returned) && edited > returned);
+}
+
+/** นักศึกษาแก้ตามที่ขอแล้ว (ยังรอประเมิน) — ป้ายให้อาจารย์รู้ว่ากลับมาดูได้ */
+export function returnFixed(c: Pick<CheckIn, 'status' | 'returnedAt' | 'editedAt'>): boolean {
+  return c.status === 'pending' && !!c.returnedAt && !returnOpen(c);
 }
 
 /** คาบของเดือนหนึ่ง (month 0–11) — ปฏิทินคาบฝั่งนักศึกษา · เทียบจากสตริงวันที่ ไม่ผ่าน Date กันเขตเวลาเลื่อนวัน */

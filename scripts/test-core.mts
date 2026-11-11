@@ -22,8 +22,8 @@ import {
   entryYearFromDtmu, isActiveStudent, isAlumni, isUpcoming, isWithinRetention, studentYear,
 } from '../src/domain/cohort.ts';
 import {
-  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, isValidScore, missingCriteria, rubricText, scoreLevels,
-  supersededBy, supersededTitle, totalScore,
+  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, isValidScore, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
+  returnReasonText, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
 import { hasTeacherEvidence, procList } from '../src/domain/rules.ts';
@@ -238,6 +238,27 @@ ok('ให้ศูนย์ทุกข้อ = 0 (ต่างจาก null)'
   const title = supersededTitle(withHistory);
   ok('ข้อความเต็มพูดถึงทุกชุดที่เคยมี ไม่ใช่แค่ชุดล่าสุด',
     title.includes('อ. ก.') && title.includes('อ. ข.') && title.includes('24') && title.includes('8'), title);
+}
+
+console.log('\n④ข checkin.ts — ขอให้แก้คาบ (0034) · เหมือนคาบก่อน');
+{
+  const base = { status: 'pending' as const, returnedAt: '2026-11-10T03:00:00.000Z' };
+  ok('ขอแล้ว ยังไม่แก้ = ค้าง', returnOpen(base) && !returnFixed(base));
+  ok('แก้ก่อนอาจารย์ขอ ไม่นับว่าแก้แล้ว', returnOpen({ ...base, editedAt: '2026-11-10T02:00:00.000Z' }));
+  const fixed = { ...base, editedAt: '2026-11-10T04:00:00.000Z' };
+  ok('แก้หลังขอ = ไม่ค้าง · ขึ้น "แก้แล้ว"', !returnOpen(fixed) && returnFixed(fixed));
+  // ตู้ส่ง timestamptz กลับมาเป็น +00:00 ตัดศูนย์ท้าย — เทียบสตริงตรงๆ จะผิด
+  ok('เทียบเป็นเวลา ไม่ใช่สตริง (+00:00 กับ Z)',
+    !returnOpen({ status: 'pending', returnedAt: '2026-11-10T03:00:00.5+00:00', editedAt: '2026-11-10T03:00:00.600Z' }));
+  ok('ประเมินแล้ว = ไม่ค้างและไม่ขึ้นป้าย', !returnOpen({ ...base, status: 'evaluated' }) && !returnFixed({ ...base, status: 'evaluated' }));
+  ok('ไม่เคยขอ = ไม่มีอะไร', !returnOpen({ status: 'pending' }) && !returnFixed({ status: 'pending' }));
+  ok('ข้อความเหตุผล ข้ามค่าที่ไม่รู้จัก ไม่พัง', returnReasonText(['patient', 'x' as never, 'step']) === 'ผู้ป่วยไม่ตรง · ยังไม่บันทึก step', returnReasonText(['patient', 'step']));
+
+  const mk = (id: string, date: string, activities: string[]) => ({ id, date, activities }) as CheckIn;
+  const list = [mk('a', '2026-11-03', ['Lab work']), mk('b', '2026-11-06', []), mk('c', '2026-11-05', ['Try in']), mk('d', '2026-11-10', ['Delivery'])];
+  ok('เหมือนคาบก่อน = คาบล่าสุดก่อนวันนั้นที่มีกิจกรรม (ข้ามคาบว่าง)', lastFilledCheckIn(list, '2026-11-07')?.id === 'c');
+  ok('ไม่นับคาบที่กำลังแก้อยู่เอง', lastFilledCheckIn(list, '2026-11-11', 'd')?.id === 'c');
+  ok('ไม่มีคาบก่อนหน้า = ไม่มีปุ่ม', lastFilledCheckIn(list, '2026-11-03') === undefined);
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
