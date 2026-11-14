@@ -4,7 +4,8 @@
  * เด็กเลือกจากรายการแทนการเขียนมือ · อาจารย์ให้คะแนน 0–3 แทนการเซ็นสมุด
  */
 
-import type { CheckIn, ReturnReason } from './types';
+import type { CheckIn, ProgressUpdate, ReturnReason, WorkType, Workpiece } from './types';
+import { orderOf } from './catalog';
 import { t } from '../lib/i18n';
 
 /** คอลัมน์คะแนนตาม Part B ของสมุดจริง
@@ -233,4 +234,98 @@ export function returnFixed(c: Pick<CheckIn, 'status' | 'returnedAt' | 'editedAt
 export function checkinsInMonth<T extends { date: string }>(list: T[], year: number, month: number): T[] {
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
   return list.filter((c) => c.date.startsWith(prefix));
+}
+
+/* ── ประวัติคาบรายคน แยกตามประเภทงาน ─────────────────────────────────────────
+   คาบไม่ได้เก็บว่าเป็นงานชิ้นไหน — เก็บแค่คนไข้ จึงต้องไล่ คาบ → คนไข้ → เคสของนักศึกษาคนนั้น
+   คนไข้คนเดียวมีหลายงานได้ (เช่น CD บน + RPD ล่าง) ถ้าเดาเข้ากลุ่มใดกลุ่มหนึ่ง เลขในกลุ่มจะคลาดเงียบๆ
+   จึงตัดสินตามลำดับนี้ และไม่เดาเกินหลักฐาน:
+     1. เคสของคนไข้นั้นมีประเภทเดียว → ประเภทนั้น
+     2. หลายประเภท → ดู step ที่บันทึกว่าทำวันเดียวกับคาบ ถ้าชี้ประเภทเดียว → ประเภทนั้น
+     3. ยังเหลือหลายประเภท → กลุ่ม "หลายงาน" (บอกประเภทที่เป็นไปได้)
+     4. ไม่มีคนไข้ / คนไข้ไม่มีเคสของนักศึกษาคนนี้ → กลุ่ม "ไม่ผูกกับเคส" */
+
+export type SessionWork =
+  | { kind: 'type'; type: WorkType }
+  | { kind: 'multi'; types: WorkType[] }
+  | { kind: 'none' };
+
+const sortTypes = (types: Iterable<WorkType>): WorkType[] =>
+  [...new Set(types)].sort((a, b) => orderOf(a) - orderOf(b));
+
+export function sessionWork(
+  c: Pick<CheckIn, 'studentId' | 'patientId' | 'noPatient' | 'date'>,
+  works: Pick<Workpiece, 'id' | 'studentId' | 'patientId' | 'type'>[],
+  updates: Pick<ProgressUpdate, 'workpieceId' | 'performedAt' | 'reversal'>[],
+): SessionWork {
+  if (c.noPatient || !c.patientId) return { kind: 'none' };
+  const mine = works.filter((w) => w.studentId === c.studentId && w.patientId === c.patientId);
+  const types = sortTypes(mine.map((w) => w.type));
+  if (types.length === 0) return { kind: 'none' };
+  if (types.length === 1) return { kind: 'type', type: types[0] };
+  const typeById = new Map(mine.map((w) => [w.id, w.type]));
+  const sameDay = sortTypes(
+    updates
+      .filter((u) => !u.reversal && u.performedAt === c.date && typeById.has(u.workpieceId))
+      .map((u) => typeById.get(u.workpieceId)!),
+  );
+  if (sameDay.length === 1) return { kind: 'type', type: sameDay[0] };
+  return { kind: 'multi', types: sameDay.length ? sameDay : types };
+}
+
+export interface WorkHistoryGroup {
+  /** ประเภทงาน หรือ 'multi' / 'none' */
+  key: WorkType | 'multi' | 'none';
+  /** ประเภทที่เป็นไปได้ของกลุ่ม 'multi' (รวมทุกคาบในกลุ่ม) */
+  types: WorkType[];
+  /** เก่า → ใหม่ */
+  sessions: CheckIn[];
+  evaluated: number;
+  pending: number;
+  /** หัวข้อที่ได้ต่ำกว่า 3 บ่อยที่สุด — มีเฉพาะเมื่อต่ำตั้งแต่ 2 คาบ (ครั้งเดียวยังไม่นับว่า "ซ้ำ") */
+  repeatLow?: { key: string; count: number };
+}
+
+/** จัดคาบของนักศึกษาหนึ่งคนเป็นกลุ่มตามประเภทงาน · ลำดับกลุ่มตาม catalog แล้วตามด้วย "หลายงาน" / "ไม่ผูกกับเคส" */
+export function groupSessionsByWork(
+  sessions: CheckIn[],
+  works: Pick<Workpiece, 'id' | 'studentId' | 'patientId' | 'type'>[],
+  updates: Pick<ProgressUpdate, 'workpieceId' | 'performedAt' | 'reversal'>[],
+): WorkHistoryGroup[] {
+  const byKey = new Map<WorkHistoryGroup['key'], { types: Set<WorkType>; sessions: CheckIn[] }>();
+  for (const c of sessions) {
+    const sw = sessionWork(c, works, updates);
+    const key = sw.kind === 'type' ? sw.type : sw.kind;
+    const g = byKey.get(key) ?? { types: new Set<WorkType>(), sessions: [] };
+    if (sw.kind === 'multi') sw.types.forEach((x) => g.types.add(x));
+    g.sessions.push(c);
+    byKey.set(key, g);
+  }
+  const rank = (k: WorkHistoryGroup['key']) => (k === 'multi' ? 1000 : k === 'none' ? 1001 : orderOf(k));
+  return [...byKey.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([key, g]) => {
+      const list = [...g.sessions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+      const done = list.filter((c) => c.status === 'evaluated' && c.scores);
+      let repeatLow: WorkHistoryGroup['repeatLow'];
+      for (const cr of CRITERIA) {
+        const count = done.filter((c) => (c.scores?.[cr.key] ?? 3) < 3).length;
+        if (count >= 2 && count > (repeatLow?.count ?? 0)) repeatLow = { key: cr.key, count };
+      }
+      return {
+        key,
+        types: sortTypes(g.types),
+        sessions: list,
+        evaluated: done.length,
+        pending: list.filter((c) => c.status !== 'evaluated').length,
+        repeatLow,
+      };
+    });
+}
+
+/** คะแนนต่ำสุดของคาบ — ใช้ให้สีชิปในประวัติ (ข้อที่แย่ที่สุดของคาบนั้น) · ยังไม่ประเมิน = undefined */
+export function lowestScore(c: Pick<CheckIn, 'scores'>): number | undefined {
+  if (!c.scores) return undefined;
+  const vals = CRITERIA.map((cr) => c.scores![cr.key]).filter((v): v is number => typeof v === 'number');
+  return vals.length ? Math.min(...vals) : undefined;
 }

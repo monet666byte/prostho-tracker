@@ -3,6 +3,7 @@ import { Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 
 import { useSearchParams } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
+import { SessionHistory } from '../../components/teacher/SessionHistory';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
@@ -14,7 +15,7 @@ import {
 } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
-  useAllCheckIns, useAllPatients, useAllStudents, useIdentityLevel, usePatientNamesOn, useStepsOnDates, useTeacher,
+  useAllCheckIns, useAllPatients, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useIdentityLevel, usePatientNamesOn, useStepsOnDates, useTeacher,
 } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
@@ -132,6 +133,8 @@ export default function Evaluate() {
   const idLevel = useIdentityLevel('session-eval');
   const namesOn = usePatientNamesOn();
   const checkins = useAllCheckIns();
+  const works = useAllWorkpieces();
+  const progressUpdates = useAllProgressUpdates();
 
   const group = useApp((st) => st.teacherGroup);
   /* คะแนนที่กำลังกรอก ต่อ check-in — เริ่มแบบยังไม่เลือกสักข้อ และลงนามไม่ได้จนกว่าจะครบ 8 ข้อ
@@ -184,6 +187,8 @@ export default function Evaluate() {
     });
   const selectedId = chartStudent ?? groupStudents[0]?.id ?? null;
   const selectedRows = evaluatedInGroup.filter((c) => c.studentId === selectedId);
+  // ประวัติรายคนรวมคาบที่ยังรอประเมินด้วย — อาจารย์เห็นว่ากลุ่มงานไหนยังค้าง
+  const selectedSessions = useMemo(() => inGroup.filter((c) => c.studentId === selectedId), [inGroup, selectedId]);
   const groupProfile = useMemo(() => criterionAvg(evaluatedInGroup), [evaluatedInGroup]);
   const stepsByKey = useStepsOnDates(inGroup.map((c) => ({ studentId: c.studentId, date: c.date })));
   // ชั้นที่ 3 — ยืนยันโดยระบุชื่อ: ต่อให้หน้าจอขยับ ก่อนบันทึกจะมีกล่องบอกชื่อ นศ. เสมอ
@@ -864,6 +869,11 @@ export default function Evaluate() {
               </div>
             </div>
           )}
+          <SessionHistory
+            sessions={selectedSessions}
+            works={works}
+            updates={progressUpdates}
+          />
         </div>
         {/* กล่องยืนยันก่อนลงนาม — ชั้นสุดท้ายกันประเมินผิดคน โชว์ชื่อ+รหัส+วันที่+คะแนนตัวใหญ่ */}
         {/* แก้ป้ายตรงต่อเวลา — โชว์เวลาที่ระบบจับได้คู่กับเกณฑ์ ให้อาจารย์ตัดสินบนข้อเท็จจริง

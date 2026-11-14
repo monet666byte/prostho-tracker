@@ -1607,4 +1607,17 @@ export const DICT: Record<string, string> = {
   'ยังไม่ถึงเป้า': 'Below target',
   'เส้นประ "เป้าตอนนี้" เป็นค่าประมาณ: เริ่มนับหลังขึ้นคลินิก 3 เดือน แล้วไต่ตรงถึงครบเกณฑ์ที่คาบสุดท้ายของปี 6 · ยังไม่ได้ยืนยันกับภาค':
     'The dashed "target now" line is an estimate: counting starts 3 months into clinic and rises evenly to the full requirement at the last Year 6 session · not yet confirmed by the department',
+  'คนไข้มีหลายงาน': 'Patient has several cases',
+  '{types} — ไม่มี step ที่บันทึกวันเดียวกับคาบ จึงระบุไม่ได้ว่าทำงานไหน': '{types} — no step was recorded on the same day, so the case cannot be told',
+  'ไม่ผูกกับเคส': 'Not linked to a case',
+  'ไม่มีผู้ป่วย หรือคนไข้ไม่มีเคสของนักศึกษาคนนี้': 'No patient, or the patient has no case for this student',
+  'ประวัติคาบ': 'Session history',
+  'เรียงประวัติ': 'Sort history',
+  'ตามวัน': 'By date',
+  'ตามประเภทงาน': 'By case type',
+  'ยังไม่มีคาบของคนนี้': 'No sessions for this student yet',
+  'รอ {n}': '{n} waiting',
+  'ต่ำกว่า 3 ซ้ำ: {s} ({n} จาก {m} คาบ)': 'Repeatedly below 3: {s} ({n} of {m} sessions)',
+  'ไม่มีหัวข้อที่ต่ำซ้ำ': 'No repeated low item',
+  'สีชิป = ข้อที่ได้ต่ำสุดของคาบนั้น · เลข = คะแนนรวม': 'Chip colour = lowest item in that session · number = total score',
 };

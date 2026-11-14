@@ -1941,3 +1941,30 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .homefocus > .zone--year { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .homefocus > .zone--year > .zone__head, .homefocus > .zone--year > .yearalert { grid-column: 1 / -1; }
 }
+
+/* ── ประวัติคาบรายคน (ตามวัน / ตามประเภทงาน) — ใต้กราฟคะแนนรายคนในหน้าประเมิน ──
+   สีชิป = ข้อที่ได้ต่ำสุดของคาบ ใช้ชุดไฟจราจรเดียวกับช่องคะแนน */
+.shist { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); display: grid; gap: 12px; }
+.shist__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.shist__head .seg button { display: inline-flex; align-items: center; gap: 5px; }
+.shist__title { font: 600 14px var(--font-head); }
+.shist__sub { font: 400 12px var(--font-body); }
+.shist__empty { padding: 18px 16px; text-align: center; font: 500 12px var(--font-body); color: var(--text-muted); }
+.shist__groups { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
+.shist__group { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; background: var(--surface, #fff); }
+.shist__group[data-loose='true'] { border-style: dashed; background: var(--fill); }
+.shist__ghead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.shist__ghead b { font: 600 14px var(--font-head); flex: 1; min-width: 0; }
+.shist__ghead .faint { font: 400 12px var(--font-body); flex: none; }
+.shist__dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.shist__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.shist__chip { border-radius: 9px; padding: 3px 9px; font: 600 12px var(--font-head); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.shist__chip small { font-size: 10.5px; font-weight: 500; opacity: 0.7; }
+.shist__chip[data-low='3'] { background: #d1f0e0; color: #05603a; }
+.shist__chip[data-low='2'] { background: #fdf1b8; color: #6b5300; }
+.shist__chip[data-low='1'] { background: #fddcbc; color: #9a3f06; }
+.shist__chip[data-low='0'] { background: #fbd0ca; color: #b42318; }
+.shist__chip[data-low='pending'] { background: var(--accent-tint, #eef2fb); color: var(--accent, #34509c); font-weight: 500; }
+.shist__note { font: 400 12.5px/1.5 var(--font-body); color: var(--text-secondary); }
+.shist__note.faint { color: var(--text-faint); }
+.shist__legend { font: 400 11.5px var(--font-body); margin: 0; grid-column: 1 / -1; }

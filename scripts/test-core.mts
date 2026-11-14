@@ -22,7 +22,7 @@ import {
   entryYearFromDtmu, isActiveStudent, isAlumni, isUpcoming, isWithinRetention, studentYear,
 } from '../src/domain/cohort.ts';
 import {
-  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, isValidScore, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
+  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, groupSessionsByWork, isValidScore, lowestScore, sessionWork, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
   returnReasonText, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
@@ -382,6 +382,51 @@ console.log('\nhasTeacherEvidence — เคสที่อาจารย์ป
   ok('ใบประเมินของเคสอื่น / ใบที่ไม่ผูกเคส → ไม่เกี่ยว', !hasTeacherEvidence('w1', { ...none, sect2: [{ workpieceId: 'w2' }, {}] }));
   ok('ผลตรวจงานที่มีชื่อผู้ตรวจ → ลบไม่ได้', hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1', by: 'อ. หนึ่ง' }] }));
   ok('แถวผลตรวจเปล่า (ยังไม่มีใครตรวจ) → ยังลบได้', !hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1' }, { workpieceId: 'w1', by: '  ' }] }));
+}
+
+console.log('\n④ค checkin.ts — ประวัติคาบรายคน แยกตามประเภทงาน');
+{
+  const W = (id: string, patientId: string, type: WorkType, studentId = 's1') => ({ id, studentId, patientId, type });
+  const works = [W('wA', 'pA', 'CD'), W('wB1', 'pB', 'CD'), W('wB2', 'pB', 'RPD'), W('wC1', 'pC', 'CD'), W('wC2', 'pC', 'RPD'), W('wX', 'pA', 'RPD', 's2')];
+  const ups = [
+    { workpieceId: 'wB2', performedAt: '2026-10-07', reversal: false },
+    { workpieceId: 'wB1', performedAt: '2026-10-09', reversal: true },
+    { workpieceId: 'wC1', performedAt: '2026-10-08' }, { workpieceId: 'wC2', performedAt: '2026-10-08' },
+  ];
+  const ci = (id: string, date: string, patientId?: string, extra: Partial<CheckIn> = {}): CheckIn => ({
+    id, studentId: 's1', date, punctual: true, noPatient: !patientId, patientId, activities: [], status: 'pending', createdAt: date + 'T08:00:00Z', ...extra,
+  });
+  const sw = (c: CheckIn) => sessionWork(c, works, ups);
+  ok('คนไข้มีงานประเภทเดียว → ประเภทนั้น', JSON.stringify(sw(ci('1', '2026-10-01', 'pA'))) === JSON.stringify({ kind: 'type', type: 'CD' }));
+  ok('งานของ นศ. คนอื่นกับคนไข้เดียวกันไม่ถูกนับ (pA ของ s2 เป็น RPD)', sw(ci('1', '2026-10-01', 'pA')).kind === 'type');
+  ok('คนไข้มีหลายงาน + step วันนั้นชี้งานเดียว → ประเภทนั้น', JSON.stringify(sw(ci('2', '2026-10-07', 'pB'))) === JSON.stringify({ kind: 'type', type: 'RPD' }));
+  ok('step ที่ "เลิกทำ" ไม่นับเป็นหลักฐาน → ยังเป็นหลายงาน', sw(ci('3', '2026-10-09', 'pB')).kind === 'multi');
+  ok('คนไข้มีหลายงาน ไม่มี step วันนั้น → หลายงาน ไม่เดา', JSON.stringify(sw(ci('4', '2026-10-20', 'pB'))) === JSON.stringify({ kind: 'multi', types: ['CD', 'RPD'] }));
+  ok('step วันนั้นมีทั้งสองงาน → หลายงาน', sw(ci('5', '2026-10-08', 'pC')).kind === 'multi');
+  ok('ไม่มีผู้ป่วย → ไม่ผูกกับเคส', sw(ci('6', '2026-10-01')).kind === 'none');
+  ok('คนไข้ที่ไม่มีเคสของ นศ. คนนี้ → ไม่ผูกกับเคส', sw(ci('7', '2026-10-01', 'pZ')).kind === 'none');
+
+  const full = Object.fromEntries(CRITERIA.map((c) => [c.key, 3]));
+  const ev = (id: string, date: string, p: string | undefined, low: Record<string, number> = {}) =>
+    ci(id, date, p, { status: 'evaluated', scores: { ...full, ...low } });
+  const sessions = [
+    ci('p1', '2026-10-21', 'pA'),
+    ev('e3', '2026-10-14', 'pA', { skill: 2 }),
+    ev('e1', '2026-10-02', 'pA', { skill: 1, time: 1 }),
+    ev('e2', '2026-10-07', 'pB', { time: 0 }),
+    ev('e4', '2026-10-20', 'pB'),
+    ev('e5', '2026-10-03', undefined),
+  ];
+  const groups = groupSessionsByWork(sessions, works, ups);
+  ok('ลำดับกลุ่ม: ตาม catalog แล้วหลายงาน แล้วไม่ผูกกับเคส', groups.map((g) => g.key).join(',') === 'CD,RPD,multi,none', groups.map((g) => g.key).join(','));
+  const cd = groups[0];
+  ok('คาบในกลุ่มเรียงเก่า → ใหม่', cd.sessions.map((c) => c.id).join(',') === 'e1,e3,p1');
+  ok('นับประเมินแล้ว/รอประเมินแยกกัน', cd.evaluated === 2 && cd.pending === 1);
+  ok('หัวข้อต่ำซ้ำ = ต่ำกว่า 3 ตั้งแต่ 2 คาบ (Skill 2 คาบ · Time คาบเดียวไม่นับ)', cd.repeatLow?.key === 'skill' && cd.repeatLow.count === 2);
+  ok('ต่ำครั้งเดียวไม่ขึ้นว่า "ซ้ำ"', groups[1].repeatLow === undefined);
+  ok('ทุกคาบอยู่ในกลุ่มเดียวเท่านั้น (ผลรวมเท่าจำนวนคาบ ไม่นับซ้ำ)', groups.reduce((n, g) => n + g.sessions.length, 0) === sessions.length);
+  ok('กลุ่มหลายงานบอกประเภทที่เป็นไปได้', groups[2].types.join(',') === 'CD,RPD');
+  ok('คะแนนต่ำสุดของคาบ', lowestScore(sessions[2]) === 1 && lowestScore(sessions[0]) === undefined && lowestScore(sessions[4]) === 3);
 }
 
 console.log('\nsyncNotice.ts — แถบเตือนหน้าแรกของนักศึกษา');
