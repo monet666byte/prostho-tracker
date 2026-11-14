@@ -21,8 +21,8 @@ export function ActivityChips({ selected, onChange }: { selected: string[]; onCh
   return (
     <>
       {ACTIVITY_GROUPS.map((g) => (
-        <div key={g.label} className="actgroup">
-          <div className="actgroup__label">{t(g.label)}</div>
+        <div key={g.label} className="actpick">
+          <div className="actpick__label">{t(g.label)}</div>
           <div className="actgrid">
             {g.items.map((a) => (
               <button key={a} data-on={selected.includes(a)} onClick={() => onChange(selected.includes(a) ? selected.filter((x) => x !== a) : [...selected, a])}>

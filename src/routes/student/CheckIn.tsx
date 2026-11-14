@@ -127,7 +127,7 @@ export default function CheckInPage() {
 
   const overlay = formOpen ? (
     <div className="backdrop" onClick={() => { setFormOpen(false); setEditingId(null); }}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet cisheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" />
         <h3 className="h3">{editingId ? t('แก้ไขคาบ {d}', { d: thaiShort(editingEntry?.date ?? date) }) : t('เช็คอินคาบคลินิก')}</h3>
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
@@ -137,7 +137,7 @@ export default function CheckInPage() {
           </label>
           <span
             style={{
-              marginTop: 22, height: 44, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 7,
+              alignSelf: 'flex-end', height: 44, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 7,
               padding: '0 13px', background: 'var(--fill)', font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)',
               flex: 'none',
             }}

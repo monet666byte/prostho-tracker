@@ -57,6 +57,7 @@
     "dexie": "^4.4.5",
     "dexie-react-hooks": "^4.4.0",
     "jsqr": "^1.4.0",
+    "liquid-glass-js": "0.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",

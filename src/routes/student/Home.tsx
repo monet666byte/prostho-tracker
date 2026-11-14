@@ -6,6 +6,7 @@ import { ActivityChips, PatientSelect, SameAsLast, NoPatientWait, applyNoPatient
 import { checkInNow } from '../../components/student/checkInNow';
 import { useScanCheckIn } from '../../components/student/ScanCheckIn';
 import { ConfirmSheet } from '../../components/student/ConfirmSheet';
+import { GlassButton } from '../../components/student/GlassButton';
 import { recordStepLabel } from '../../components/student/stepLabel';
 import { Shell } from '../../components/student/Shell';
 import { SyncBanner } from '../../components/student/SyncBanner';
@@ -229,7 +230,7 @@ function PanelSlide({
               </div>
             </>
           )}
-          <button className="hp__btn" onClick={onPass}>{btnLabel}</button>
+          <GlassButton onClick={onPass}>{btnLabel}</GlassButton>
         </div>
       ) : (
         <div className="hp__info">
@@ -300,6 +301,8 @@ function CasePanel({
   return (
     <>
     <section className={`hp${intro ? ' hp--intro' : ''}`} aria-roledescription="carousel" aria-label={t('งานถัดไป')}>
+      {/* พื้นแผงเปล่าให้ปุ่มกระจกหักเห (GlassButton) — ตัวจริงมองไม่เห็น */}
+      <div className="hp__glassbg" aria-hidden />
       <div
         className="hp__viewport"
         style={{ height }}
@@ -604,6 +607,45 @@ export default function Home() {
           <Bell size={18} weight="fill" />
         </Link>
         </div>
+        {/* เช็คอินเป็นบรรทัดสถานะใต้คำทักทาย ไม่ใช่กล่องลอย · จุดแดงที่หมุด + ปุ่ม = ยังไม่เช็คอิน */}
+        {(() => {
+          const inner = (
+            <>
+              {checkedInToday ? (
+                <span className="homecheck__ok"><Check size={13} weight="bold" /></span>
+              ) : (
+                <span className="homecheck__pin">
+                  <MapPin size={20} />
+                  <span className="homecheck__dot" aria-hidden />
+                </span>
+              )}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span className="homecheck__title">
+                  {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
+                </span>              {checkedInToday && (
+                  <span className="homecheck__sub">
+                    {(todayCheckIn?.activities.length ?? 0) > 0
+                      ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
+                      : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })}
+                  </span>
+                )}
+                {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก) */}
+                {checkedInToday && (
+                  <span className="homecheck__cheer">{cheerLine(works, checkins, settings, undefined, namesOn)}</span>
+                )}
+              </span>
+              {checkedInToday
+                ? <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
+                : <span className="homecheck__go">{t('เช็คอิน')}</span>}
+            </>
+          );
+          // ยังไม่เช็คอิน = แตะเดียวเช็คอินทันที · เช็คอินแล้ว = พาไปหน้าคาบ (เติมกิจกรรม/ดูประวัติ)
+          return checkedInToday ? (
+            <Link to="/app/checkin" className="homecheck">{inner}</Link>
+          ) : (
+            <button className="homecheck" onClick={quickCheckIn}>{inner}</button>
+          );
+        })()}
       </header>
 
 
@@ -613,41 +655,6 @@ export default function Home() {
       <div className="homegrid" style={{ padding: '6px 16px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
       <div className="homecol">
       <SyncBanner />
-      {(() => {
-        const inner = (
-          <>
-            {checkedInToday ? (
-              <span className="homecheck__ok"><Check size={13} weight="bold" /></span>
-            ) : (
-              <MapPin size={21} color="var(--text-secondary)" style={{ flex: 'none' }} />
-            )}
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span className="homecheck__title">
-                {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
-              </span>              {checkedInToday && (
-                <span className="homecheck__sub">
-                  {(todayCheckIn?.activities.length ?? 0) > 0
-                    ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
-                    : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })}
-                </span>
-              )}
-              {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก) */}
-              {checkedInToday && (
-                <span className="homecheck__cheer">{cheerLine(works, checkins, settings, undefined, namesOn)}</span>
-              )}
-            </span>
-            {checkedInToday
-              ? <CaretRight size={15} color="var(--text-disabled)" style={{ flex: 'none' }} />
-              : <span className="homecheck__go">{t('เช็คอิน')}</span>}
-          </>
-        );
-        // ยังไม่เช็คอิน = แตะเดียวเช็คอินทันที · เช็คอินแล้ว = พาไปหน้าคาบ (เติมกิจกรรม/ดูประวัติ)
-        return checkedInToday ? (
-          <Link to="/app/checkin" className="homecheck">{inner}</Link>
-        ) : (
-          <button className="homecheck" onClick={quickCheckIn}>{inner}</button>
-        );
-      })()}
 
       {/* ทางลัด 4 วง — แบบประเมินตนเองโผล่เฉพาะช่วงที่ภาคเปิด (เหมือนแถวในกล่อง "ของฉัน") */}
       <nav className={`homeqa${intro ? ' homeqa--intro' : ''}`} aria-label={t('ทางลัด')}>
