@@ -159,7 +159,7 @@
 /* ตอนหด ก้อนสีสว่างหลุดออกนอกแถบที่เตี้ยลง เหลือแต่พื้นเข้ม (วัดได้ความสว่าง 53 จาก 72 ตอนกาง)
    ยกพื้นให้สว่างขึ้นเฉพาะตอนหด → แถบสีเท่าตอนกาง · ประกาศชุดสีใหม่ทั้งชุด */
 .phone .screen[data-scrolled='true'] .s-header.pagepanel {
-  --gbase: color-mix(in oklch, var(--panel), black 12%);
+  --gbase: color-mix(in oklch, var(--panel), black 6%); /* ตามสัดส่วนเดิม (ฐานกาง 40 → หด 12) หลังยกฐานกางเป็น 20 */
   --g1: color-mix(in oklch, var(--gbase), #4338ca 55%);
   --g3: color-mix(in oklch, var(--gbase), #2b5ce6 55%);
   --g1s: color-mix(in oklch, var(--g1), transparent 30%);
@@ -195,11 +195,11 @@
   --g3s: color-mix(in oklch, var(--g3), transparent 55%);
   --gspeed: 3.6s; /* ผู้ใช้ลองแล้วว่ายังเร็วไปนิด — จาก 3s */
 }
-/* แผงน้ำเงิน: น้ำเงินคราม (ผู้ใช้เลือกแบบ "คราม สว่างกว่า" แล้วขอสว่างขึ้นอีกนิด) — ฐานดำ 40% · ก้อนคราม #4338ca 55% · ก้อนน้ำเงินสด 55% · ก้อนทึบ (โปร่ง 30%) ให้สีเต็มแผง
+/* แผงน้ำเงิน: น้ำเงินคราม — ฐานดำ 20% (เดิม 40% ผู้ใช้ว่าการ์ดเข้มไป เลือกจากภาพเทียบ 40/30/20) · ก้อนคราม #4338ca 55% · ก้อนน้ำเงินสด 55% · ก้อนทึบ (โปร่ง 30%) ให้สีเต็มแผง
    ตัวหนังสือในแผงเป็นขาวล้วน (ด้านล่าง) · ประกาศทั้งชุดใหม่ */
 .phone .hp,
 .phone .s-header.pagepanel {
-  --gbase: color-mix(in oklch, var(--panel), black 40%);
+  --gbase: color-mix(in oklch, var(--panel), black 20%);
   --g1: color-mix(in oklch, var(--gbase), #4338ca 55%);
   --g3: color-mix(in oklch, var(--gbase), #2b5ce6 55%);
   --g1s: color-mix(in oklch, var(--g1), transparent 30%);
