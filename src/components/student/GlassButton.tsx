@@ -41,7 +41,7 @@ export function GlassButton({ onClick, children }: { onClick: () => void; childr
       try {
         glass = new LiquidGlass({
           background: bg, width: w, height: h, radius: h / 2, zIndex: 0, draggable: false,
-          scale: 30, depth: 14, chroma: 0.04, edge: 0.6, glow: 0.25, tint: 0.08,
+          scale: 30, depth: 14, chroma: 0.04, edge: 0.7, glow: 0.3, tint: 0.16,
         });
       } catch {
         return;
