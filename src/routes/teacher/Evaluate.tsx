@@ -1,9 +1,11 @@
-import { ArrowBendUpLeft, ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle, X } from '@phosphor-icons/react';
 import { Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { SessionHistory } from '../../components/teacher/SessionHistory';
+import { CritIcon } from '../../components/teacher/critIcons';
+import { usePhone } from '../../hooks/usePhone';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
@@ -137,6 +139,10 @@ export default function Evaluate() {
   const progressUpdates = useAllProgressUpdates();
 
   const group = useApp((st) => st.teacherGroup);
+  /* มือถือ (≤780px) = แบบ E: ทีละคนเสมอ · ช่องคะแนน 2×4 · แตะช่องเปิดแผ่นเกณฑ์ */
+  const phone = usePhone();
+  const navigate = useNavigate();
+  const [sheetKey, setSheetKey] = useState<string | null>(null);
   /* คะแนนที่กำลังกรอก ต่อ check-in — เริ่มแบบยังไม่เลือกสักข้อ และลงนามไม่ได้จนกว่าจะครบ 8 ข้อ
      เดิมเริ่มที่ 3 ทุกข้อ: อาจารย์กดลงนามได้โดยไม่ได้ดูทีละข้อ · ไม่เริ่มที่ 0 เพราะข้อที่กดตกจะกลายเป็น 0 เงียบๆ */
   const [drafts, setDrafts] = useState<Record<string, Record<string, number>>>({});
@@ -401,7 +407,7 @@ export default function Evaluate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantStudent, pendingKey, snapshot]);
 
-  const current = mode === 'focus' ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
+  const current = mode === 'focus' || phone ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
   const currentIndex = current ? pending.findIndex((c) => c.id === current.id) : -1;
   const goFocus = (step: number) => {
     const next = pending[currentIndex + step];
@@ -641,6 +647,332 @@ export default function Evaluate() {
     );
   };
 
+  /** หน้าประเมินบนมือถือ (แบบ E) — ข้อมูล/กติกาเดียวกับจอใหญ่ทุกอย่าง ต่างแค่หน้าตา
+   *  ช่องว่าง = ยังไม่ให้คะแนน (ไม่มีค่าเริ่ม) · สีช่องตามคะแนนแบบไฟจราจร 3 เขียว → 0 แดง */
+  function renderPhone() {
+    const c = current;
+    const student = c ? studentById.get(c.studentId) : undefined;
+    const patient = c?.patientId ? patientById.get(c.patientId) : undefined;
+    const draft = c ? draftFor(c.id) : {};
+    const missing = missingCriteria(draft).length;
+    const anyPicked = missing < CRITERIA.length;
+    const locked = student ? isAlumni(student) : false;
+    const steps = c ? stepsByKey.get(`${c.studentId}|${c.date}`) ?? [] : [];
+    const sheetCrit = sheetKey ? CRITERIA.find((cr) => cr.key === sheetKey) : undefined;
+    const pick = (key: string, n: number) => {
+      if (!c || locked) return;
+      setDrafts((prev) => ({ ...prev, [c.id]: { ...(prev[c.id] ?? {}), [key]: n } }));
+      setSheetKey(null);
+    };
+    const skip = () => {
+      if (pending.length < 2) return;
+      const next = pending[(currentIndex + 1) % pending.length];
+      setFocusId(next.id); setSheetKey(null);
+    };
+
+    return (
+      <TeacherShell active="evaluate">
+        <main className="main tev">
+          <header className="tev__top">
+            <button className="tph__round" onClick={() => navigate('/teacher')} aria-label={t('กลับหน้าแรก')}>
+              <CaretLeft size={19} weight="bold" />
+            </button>
+            <div className="tev__title">
+              <b>{t('ประเมินรายคาบ')}</b>
+              <small>
+                {groupShort(group)}
+                {c ? ` · ${t('คนที่ {i} จาก {n}', { i: currentIndex + 1, n: pending.length })}` : ''}
+              </small>
+            </div>
+            {c && pending.length > 1 && (
+              <button className="tev__skip" onClick={skip}>{t('ข้าม')}</button>
+            )}
+          </header>
+
+          {incoming.length > 0 && (
+            <button className="tev__incoming" onClick={showIncoming}>
+              <ArrowClockwise size={15} weight="bold" />
+              {t('มีเช็คอินใหม่ {n} รายการ — แตะเพื่อแสดง', { n: incoming.length })}
+            </button>
+          )}
+
+          {!c ? (
+            <div className="tev__done">
+              <CheckCircle size={40} weight="fill" />
+              <b>{t('ประเมินครบทุกคนแล้ว')}</b>
+              <button className="tph__start" onClick={() => navigate('/teacher')}>{t('กลับหน้าแรก')}</button>
+            </div>
+          ) : (
+            <>
+              <section className="tev__info">
+                <div className="tev__inforow">
+                  <div className="tev__who">
+                    <b>{personName(student, '')}</b>
+                    <span className="mono">{student?.code}</span>
+                  </div>
+                  <div className="tev__total">
+                    <b>{anyPicked ? totalScore(draft) ?? 0 : '–'}<small>/{MAX_TOTAL}</small></b>
+                    <span>{missing ? t('เหลือ {n} ข้อ', { n: missing }) : t('ครบแล้ว')}</span>
+                  </div>
+                </div>
+                <div className="tev__act">
+                  {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                  {patient && (() => {
+                    const lb = patientLabel(patient, idLevel, namesOn);
+                    return <span className="mono"> · {t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}</span>;
+                  })()}
+                </div>
+                <div className="tev__meta">
+                  {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}
+                  <button className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`} onClick={() => setPunctualId(c.id)}>
+                    {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
+                  </button>
+                  {c.noPatient && <span>{t('ไม่มีผู้ป่วย')}</span>}
+                  {c.editedAt && <span>{t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</span>}
+                  {returnOn && !locked && !c.returnedAt && (
+                    <button className="textbtn" onClick={() => setReturnId(c.id)}>{t('ขอให้แก้')}</button>
+                  )}
+                </div>
+                {returnOpen(c) && (
+                  <div className="evalreturn">
+                    <ArrowBendUpLeft size={13} weight="bold" style={{ flex: 'none', marginTop: 2 }} />
+                    <span>
+                      {t('ส่งกลับให้แก้')} · {returnReasonText(c.returnReasons)}
+                      {c.returnNote && <> · “{c.returnNote}”</>}
+                    </span>
+                    {!locked && <button className="textbtn" onClick={() => void saveReturn(c.id, [], '')}>{t('ยกเลิก')}</button>}
+                  </div>
+                )}
+                {returnFixed(c) && (
+                  <div className="evalreturn evalreturn--fixed">
+                    <CheckCircle size={13} weight="fill" style={{ flex: 'none', marginTop: 2 }} />
+                    <span>{t('นศ. แก้ตามที่ขอแล้ว')} · {returnReasonText(c.returnReasons)}</span>
+                  </div>
+                )}
+                {c.note && <div className="tev__steps" style={{ overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>}
+                <div className="tev__steps" data-done={steps.length > 0}>
+                  {steps.length ? <><CheckCircle size={14} weight="fill" /> {steps.join(' · ')}</> : t('ไม่มีบันทึก step เสร็จวันนั้น')}
+                </div>
+              </section>
+
+              <div className="tev__grid">
+                {CRITERIA.map((cr) => {
+                  const v = draft[cr.key];
+                  const picked = isValidScore(cr.key, v);
+                  return (
+                    <button key={cr.key} className="tev__tile" data-v={picked ? v : undefined}
+                      onClick={() => setSheetKey(cr.key)}
+                      aria-label={`${cr.label} — ${picked ? t('ได้ {n}', { n: v! }) : t('ยังไม่เลือก')}`}>
+                      <span className="tev__tilehead">
+                        <CritIcon critKey={cr.key} />
+                        <span className="tev__val">{picked ? <>{v}<small>/3</small></> : '–'}</span>
+                      </span>
+                      <span className="tev__name">{t(cr.short)}</span>
+                      <span className="tev__th">{t(cr.th)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="tev__hint">{t('แตะช่องเพื่อให้คะแนน · เกณฑ์อยู่ในช่องที่เปิดขึ้นมา')}</p>
+              {anyPicked && !locked && (
+                <button className="tev__clear textbtn" onClick={() => { const next = { ...drafts }; delete next[c.id]; setDrafts(next); }}>
+                  {t('ล้างที่เลือก')}
+                </button>
+              )}
+
+              <div className="tev__foot">
+                <button className="tev__save" disabled={locked || missing > 0} onClick={() => setConfirmId(c.id)}>
+                  {!locked && !missing && <Signature size={18} weight="bold" />}
+                  {locked ? t('รุ่นนี้จบแล้ว') : missing ? t('ให้คะแนนอีก {n} ข้อ', { n: missing }) : t('บันทึกผล · ลงนาม')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {c && sheetCrit && (
+            <div className="tsheet tev__sheet" role="dialog" aria-modal="true" aria-label={sheetCrit.label}>
+              <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setSheetKey(null)} />
+              <div className="tsheet__body">
+                <span className="tsheet__grab" aria-hidden />
+                <div className="tev__sheethead">
+                  <span className="tev__sheeticon"><CritIcon critKey={sheetCrit.key} size={26} /></span>
+                  <div>
+                    <b>{sheetCrit.label}</b>
+                    <small>{t(sheetCrit.th)}</small>
+                  </div>
+                  <button className="tsheet__x" onClick={() => setSheetKey(null)} aria-label={t('ปิด')}><X size={18} weight="bold" /></button>
+                </div>
+                <div className="tev__opts" role="radiogroup" aria-label={sheetCrit.label}>
+                  {[...scoreLevels(sheetCrit.key)].reverse().map((n) => (
+                    <button key={n} className="tev__opt" data-v={n} data-on={draft[sheetCrit.key] === n}
+                      role="radio" aria-checked={draft[sheetCrit.key] === n} disabled={locked}
+                      onClick={() => pick(sheetCrit.key, n)}>
+                      <span className="tev__optn">{n}</span>
+                      <span className="tev__optt">{rubricText(sheetCrit.key, n)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {dialogs}
+        </main>
+      </TeacherShell>
+    );
+  }
+
+  const dialogs = (
+    <>
+      {/* กล่องยืนยันก่อนลงนาม — ชั้นสุดท้ายกันประเมินผิดคน โชว์ชื่อ+รหัส+วันที่+คะแนนตัวใหญ่ */}
+      {/* แก้ป้ายตรงต่อเวลา — โชว์เวลาที่ระบบจับได้คู่กับเกณฑ์ ให้อาจารย์ตัดสินบนข้อเท็จจริง
+          ไม่ใช่กดเปลี่ยนลอยๆ · เวลาที่ระบบจับได้เป็นข้อเท็จจริง ตรงนี้แก้แค่ "คำตัดสิน" */}
+      {punctualRow && (
+        <ConfirmBox onBackdrop={closePunctual}>
+          <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
+          <div className="confirmbox__who">{personName(punctualStudent, '')}</div>
+          <div className="confirmbox__meta">
+            <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
+            {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
+          </div>
+          <p className="confirmbox__note" style={{ textAlign: 'left' }}>
+            {t('ตอนนี้ระบบบันทึกว่า')} <b>{punctualRow.punctual ? t('ตรงเวลา') : t('มาสาย')}</b>
+            {' — '}{t('เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย')}
+            <br />
+            {t('เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม')}
+          </p>
+          <label className="field" style={{ marginTop: 4 }}>
+            <span>{t('เหตุผล (ไม่บังคับ · ลงใน audit log)')}</span>
+            <input
+              className="input"
+              value={punctualNote}
+              onChange={(e) => setPunctualNote(e.target.value)}
+              placeholder={t('เช่น มาทันแต่ลืมเช็คอิน')}
+            />
+          </label>
+          <ConfirmActions onCancel={closePunctual} onConfirm={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
+            {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
+          </ConfirmActions>
+        </ConfirmBox>
+      )}
+
+      {returnRow && (
+        <ConfirmBox onBackdrop={closeReturn}>
+          <div className="confirmbox__q">{t('ขอให้แก้คาบของ')}</div>
+          <div className="confirmbox__who">{personName(returnStudent, '')}</div>
+          <div className="confirmbox__meta">
+            <span className="mono">{returnStudent?.code}</span> · {t('คาบ')} {thaiShort(returnRow.date)}
+          </div>
+          <div className="actgrid" role="group" aria-label={t('เหตุผล')} style={{ marginTop: 12 }}>
+            {RETURN_REASONS.map((r) => {
+              const on = returnPick.includes(r.key);
+              return (
+                <button key={r.key} type="button" data-on={on} aria-pressed={on}
+                  onClick={() => setReturnPick(on ? returnPick.filter((x) => x !== r.key) : [...returnPick, r.key])}>
+                  {t(r.label)}
+                </button>
+              );
+            })}
+          </div>
+          <label className="field" style={{ marginTop: 10, textAlign: 'left' }}>
+            <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('บอกเพิ่ม (ไม่บังคับ)')}</span>
+            <input className="input" value={returnNote} onChange={(e) => setReturnNote(e.target.value)} placeholder={t('เช่น คาบนี้ทำ Bite registration')} />
+          </label>
+          <p className="confirmbox__note" style={{ textAlign: 'left' }}>
+            {t('นักศึกษาเห็นคำขอในหน้าคาบคลินิก · คาบยังรอประเมิน แก้แล้วกลับมาให้คะแนนได้ตามปกติ')}
+          </p>
+          <ConfirmActions onCancel={closeReturn} disabled={returnPick.length === 0}
+            onConfirm={() => void saveReturn(returnRow.id, returnPick, returnNote)}>
+            <ArrowBendUpLeft size={17} weight="bold" />
+            {t('ส่งกลับให้แก้')}
+          </ConfirmActions>
+        </ConfirmBox>
+      )}
+
+      {confirmRow && (
+        <ConfirmBox onBackdrop={() => setConfirmId(null)}>
+          <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
+          <div className="confirmbox__who">{personName(confirmStudent, '')}</div>
+          <div className="confirmbox__meta">
+            <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
+            {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
+          </div>
+          <div className="confirmbox__score">
+            {totalScore(draftFor(confirmRow.id)) ?? 0}<span>/{MAX_TOTAL}</span>
+          </div>
+          <p className="confirmbox__note">
+            <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+            {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
+          </p>
+          <ConfirmActions onCancel={() => setConfirmId(null)} onConfirm={() => sign(confirmRow.id)}>
+            <Signature size={17} weight="bold" />
+            {t('ยืนยัน · ลงนาม')}
+          </ConfirmActions>
+        </ConfirmBox>
+      )}
+
+      {/* กล่องแก้คะแนนที่ลงไปแล้ว — โชว์ค่าเดิมคู่ค่าใหม่ทุกหัวข้อ ไม่ให้แก้แบบไม่รู้ตัว */}
+      {reviseRow && (
+        <ConfirmBox onBackdrop={closeRevise} wide>
+          <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
+          <div className="confirmbox__who">{personName(reviseStudent, '')}</div>
+          <div className="confirmbox__meta">
+            <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
+            {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
+          </div>
+          {supersededBy(reviseRow) && (
+            <div className="confirmbox__meta" style={{ color: 'var(--warning-dark)' }}>
+              <WarningCircle size={11} weight="fill" /> {supersededTitle(reviseRow)}
+            </div>
+          )}
+
+          <div className="revisegrid">
+            {CRITERIA.map((cr) => {
+              const was = reviseBefore[cr.key] ?? 0;
+              const now = reviseDraft[cr.key] ?? 0;
+              return (
+                <div key={cr.key} className="scorerow" data-changed={was !== now}>
+                  <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
+                  {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
+                  <ScoreButtons
+                    critKey={cr.key}
+                    label={cr.label}
+                    value={now}
+                    onPick={(n) => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="revisesum">
+            {reviseDiffs.length === 0 ? (
+              <span className="faint">{t('ยังไม่ได้แก้อะไร')}</span>
+            ) : (
+              <>
+                <b>{t('แก้ {n} หัวข้อ', { n: reviseDiffs.length })}</b>
+                <span className="mono">
+                  {totalScore(reviseBefore) ?? 0} → {totalScore(reviseDraft) ?? 0}/{MAX_TOTAL}
+                </span>
+              </>
+            )}
+          </div>
+
+          <p className="confirmbox__note">
+            <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
+            {t('การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}
+          </p>
+
+          <ConfirmActions onCancel={closeRevise} onConfirm={saveRevise} disabled={reviseDiffs.length === 0}>
+            <PencilSimple size={17} weight="bold" />
+            {t('ยืนยันการแก้')}
+          </ConfirmActions>
+        </ConfirmBox>
+      )}
+    </>
+  );
+
+  if (phone) return renderPhone();
+
   return (
     <TeacherShell active="evaluate">
       <main className="main">
@@ -875,151 +1207,7 @@ export default function Evaluate() {
             updates={progressUpdates}
           />
         </div>
-        {/* กล่องยืนยันก่อนลงนาม — ชั้นสุดท้ายกันประเมินผิดคน โชว์ชื่อ+รหัส+วันที่+คะแนนตัวใหญ่ */}
-        {/* แก้ป้ายตรงต่อเวลา — โชว์เวลาที่ระบบจับได้คู่กับเกณฑ์ ให้อาจารย์ตัดสินบนข้อเท็จจริง
-            ไม่ใช่กดเปลี่ยนลอยๆ · เวลาที่ระบบจับได้เป็นข้อเท็จจริง ตรงนี้แก้แค่ "คำตัดสิน" */}
-        {punctualRow && (
-          <ConfirmBox onBackdrop={closePunctual}>
-            <div className="confirmbox__q">{t('แก้ป้ายตรงต่อเวลาของ')}</div>
-            <div className="confirmbox__who">{personName(punctualStudent, '')}</div>
-            <div className="confirmbox__meta">
-              <span className="mono">{punctualStudent?.code}</span> · {t('คาบ')} {thaiShort(punctualRow.date)}
-              {punctualRow.checkinAt ? ` · ${t('เช็คอิน {time} น.', { time: punctualRow.checkinAt })}` : ''}
-            </div>
-            <p className="confirmbox__note" style={{ textAlign: 'left' }}>
-              {t('ตอนนี้ระบบบันทึกว่า')} <b>{punctualRow.punctual ? t('ตรงเวลา') : t('มาสาย')}</b>
-              {' — '}{t('เกณฑ์ที่ใช้: คาบเช้าเกิน 09:15 · คาบบ่ายเกิน 13:15 นับเป็นสาย')}
-              <br />
-              {t('เวลาที่ระบบจับได้ไม่ถูกแก้ — ที่แก้คือคำตัดสินว่านับเป็นสายไหม')}
-            </p>
-            <label className="field" style={{ marginTop: 4 }}>
-              <span>{t('เหตุผล (ไม่บังคับ · ลงใน audit log)')}</span>
-              <input
-                className="input"
-                value={punctualNote}
-                onChange={(e) => setPunctualNote(e.target.value)}
-                placeholder={t('เช่น มาทันแต่ลืมเช็คอิน')}
-              />
-            </label>
-            <ConfirmActions onCancel={closePunctual} onConfirm={() => void savePunctual(punctualRow.id, !punctualRow.punctual)}>
-              {punctualRow.punctual ? t('เปลี่ยนเป็น "มาสาย"') : t('เปลี่ยนเป็น "ตรงเวลา"')}
-            </ConfirmActions>
-          </ConfirmBox>
-        )}
-
-        {returnRow && (
-          <ConfirmBox onBackdrop={closeReturn}>
-            <div className="confirmbox__q">{t('ขอให้แก้คาบของ')}</div>
-            <div className="confirmbox__who">{personName(returnStudent, '')}</div>
-            <div className="confirmbox__meta">
-              <span className="mono">{returnStudent?.code}</span> · {t('คาบ')} {thaiShort(returnRow.date)}
-            </div>
-            <div className="actgrid" role="group" aria-label={t('เหตุผล')} style={{ marginTop: 12 }}>
-              {RETURN_REASONS.map((r) => {
-                const on = returnPick.includes(r.key);
-                return (
-                  <button key={r.key} type="button" data-on={on} aria-pressed={on}
-                    onClick={() => setReturnPick(on ? returnPick.filter((x) => x !== r.key) : [...returnPick, r.key])}>
-                    {t(r.label)}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="field" style={{ marginTop: 10, textAlign: 'left' }}>
-              <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>{t('บอกเพิ่ม (ไม่บังคับ)')}</span>
-              <input className="input" value={returnNote} onChange={(e) => setReturnNote(e.target.value)} placeholder={t('เช่น คาบนี้ทำ Bite registration')} />
-            </label>
-            <p className="confirmbox__note" style={{ textAlign: 'left' }}>
-              {t('นักศึกษาเห็นคำขอในหน้าคาบคลินิก · คาบยังรอประเมิน แก้แล้วกลับมาให้คะแนนได้ตามปกติ')}
-            </p>
-            <ConfirmActions onCancel={closeReturn} disabled={returnPick.length === 0}
-              onConfirm={() => void saveReturn(returnRow.id, returnPick, returnNote)}>
-              <ArrowBendUpLeft size={17} weight="bold" />
-              {t('ส่งกลับให้แก้')}
-            </ConfirmActions>
-          </ConfirmBox>
-        )}
-
-        {confirmRow && (
-          <ConfirmBox onBackdrop={() => setConfirmId(null)}>
-            <div className="confirmbox__q">{t('ยืนยันบันทึกคะแนนของ')}</div>
-            <div className="confirmbox__who">{personName(confirmStudent, '')}</div>
-            <div className="confirmbox__meta">
-              <span className="mono">{confirmStudent?.code}</span> · {t('คาบ')} {thaiShort(confirmRow.date)}
-              {confirmRow.checkinAt ? ` · ${t('{time} น.', { time: confirmRow.checkinAt })}` : ''}
-            </div>
-            <div className="confirmbox__score">
-              {totalScore(draftFor(confirmRow.id)) ?? 0}<span>/{MAX_TOTAL}</span>
-            </div>
-            <p className="confirmbox__note">
-              <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-              {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
-            </p>
-            <ConfirmActions onCancel={() => setConfirmId(null)} onConfirm={() => sign(confirmRow.id)}>
-              <Signature size={17} weight="bold" />
-              {t('ยืนยัน · ลงนาม')}
-            </ConfirmActions>
-          </ConfirmBox>
-        )}
-
-        {/* กล่องแก้คะแนนที่ลงไปแล้ว — โชว์ค่าเดิมคู่ค่าใหม่ทุกหัวข้อ ไม่ให้แก้แบบไม่รู้ตัว */}
-        {reviseRow && (
-          <ConfirmBox onBackdrop={closeRevise} wide>
-            <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
-            <div className="confirmbox__who">{personName(reviseStudent, '')}</div>
-            <div className="confirmbox__meta">
-              <span className="mono">{reviseStudent?.code}</span> · {t('คาบ')} {thaiShort(reviseRow.date)}
-              {reviseRow.evaluatedBy ? ` · ${t('ประเมินโดย {who}', { who: t(reviseRow.evaluatedBy) })}` : ''}
-            </div>
-            {supersededBy(reviseRow) && (
-              <div className="confirmbox__meta" style={{ color: 'var(--warning-dark)' }}>
-                <WarningCircle size={11} weight="fill" /> {supersededTitle(reviseRow)}
-              </div>
-            )}
-
-            <div className="revisegrid">
-              {CRITERIA.map((cr) => {
-                const was = reviseBefore[cr.key] ?? 0;
-                const now = reviseDraft[cr.key] ?? 0;
-                return (
-                  <div key={cr.key} className="scorerow" data-changed={was !== now}>
-                    <span className="scorerow__label" title={t(cr.th)}>{cr.label}</span>
-                    {was !== now && <span className="revisewas">{t('เดิม')} {was}</span>}
-                    <ScoreButtons
-                      critKey={cr.key}
-                      label={cr.label}
-                      value={now}
-                      onPick={(n) => setReviseDraft({ ...reviseDraft, [cr.key]: n })}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="revisesum">
-              {reviseDiffs.length === 0 ? (
-                <span className="faint">{t('ยังไม่ได้แก้อะไร')}</span>
-              ) : (
-                <>
-                  <b>{t('แก้ {n} หัวข้อ', { n: reviseDiffs.length })}</b>
-                  <span className="mono">
-                    {totalScore(reviseBefore) ?? 0} → {totalScore(reviseDraft) ?? 0}/{MAX_TOTAL}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <p className="confirmbox__note">
-              <WarningCircle size={14} weight="fill" style={{ verticalAlign: -2, marginRight: 4 }} />
-              {t('การแก้จะถูกบันทึกในประวัติพร้อมค่าเดิม ลบทิ้งไม่ได้ และชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}
-            </p>
-
-            <ConfirmActions onCancel={closeRevise} onConfirm={saveRevise} disabled={reviseDiffs.length === 0}>
-              <PencilSimple size={17} weight="bold" />
-              {t('ยืนยันการแก้')}
-            </ConfirmActions>
-          </ConfirmBox>
-        )}
+        {dialogs}
       </main>
     </TeacherShell>
   );

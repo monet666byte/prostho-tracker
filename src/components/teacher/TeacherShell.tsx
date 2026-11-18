@@ -1,4 +1,4 @@
-import { Archive, ArrowUUpLeft, CaretDoubleLeft, ChartLineUp, ClipboardText, Eye, GearSix, House, IdentificationCard, ListChecks, MagnifyingGlass, Printer, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
+import { Archive, ArrowUUpLeft, CaretDoubleLeft, DotsThree, X, ChartLineUp, ClipboardText, Eye, GearSix, House, IdentificationCard, ListChecks, MagnifyingGlass, Printer, SquaresFour, Table, Users, SealCheck} from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { DemoBar } from '../DemoBar';
@@ -70,6 +70,12 @@ const COHORT_NAV: NavItem[] = [
   { key: 'roster', label: t('รายชื่อ & นำเข้า'), short: t('รายชื่อ'), to: '/teacher/roster', Icon: IdentificationCard },
 ];
 
+/** เปิดช่องค้นหา (⌘K) จากหน้าไหนก็ได้ — หน้าแรกมือถือมีปุ่มค้นหาของตัวเอง แต่ตัวค้นหาอยู่ในเชลล์ */
+const SEARCH_EVENT = 'pt-teacher-search';
+export function openTeacherSearch() {
+  window.dispatchEvent(new Event(SEARCH_EVENT));
+}
+
 /** ถามเรื่องกลุ่มที่ปรึกษาไปแล้วในการเปิดแอปครั้งนี้ — อยู่นอกคอมโพเนนต์เพราะเชลล์ถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า */
 let advisorPromptShown = false;
 
@@ -108,9 +114,14 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
         setPaletteOpen((o) => !o);
       }
     };
+    const onSearch = () => setPaletteOpen(true);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener(SEARCH_EVENT, onSearch);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener(SEARCH_EVENT, onSearch); };
   }, []);
+  /* มือถือ: แถบล่าง 3 ปุ่ม (วันนี้ · กลุ่ม · เพิ่มเติม) แทนแถบเมนูบนที่เลื่อนข้าง ~11 แท็บ
+     เมนูที่เหลือ + ตัวเลือกกลุ่ม + ออกจากระบบ อยู่ในแผ่น "เพิ่มเติม" */
+  const [moreOpen, setMoreOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const toggleRail = () => setRail((r) => {
     try { localStorage.setItem(RAIL_KEY, r ? '0' : '1'); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
@@ -156,6 +167,16 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
     if (y > CLINIC_LAST_YEAR) return `${t('จบแล้ว')} ${studentCohortLabel(st)}`;
     if (y < CLINIC_START_YEAR) return `${t('ยังไม่เริ่ม')} ${studentCohortLabel(st)}`;
     return `${t('ปี')} ${y}`;
+  };
+
+  const doSignOut = async () => {
+    const res = await wipeLocalDataOnSignOut();
+    await signOut();
+    /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน TeacherShell ตัวนี้เอง
+       พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
+       ข้อความจึงไม่มีทางถึงตาผู้ใช้ */
+    noteSignOutOutcome(res);
+    navigate('/login');
   };
 
   /* ตัวเรียงอยู่ใน domain/group.ts (sortGroupCodes) เพราะเป็นกฎ ไม่ใช่การจัดหน้า —
@@ -277,15 +298,7 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
               {/* เครื่องอาจารย์ถือข้อมูลทั้งชั้นปี 96 คน — ข้อนี้สำคัญกว่าฝั่งนักศึกษา
                   ล้างเฉพาะตอน sync ครบ · "ปิดแอป" ไม่เข้าทางนี้ (ASVS V14.3.1) */}
               <button
-                onClick={async () => {
-                  const res = await wipeLocalDataOnSignOut();
-                  await signOut();
-                  /* ห้ามใช้ showToast ที่นี่ — ToastView อยู่ข้างใน TeacherShell ตัวนี้เอง
-                     พอ navigate ไป /login เชลล์ถูกถอด toast ตายไปพร้อมกัน
-                     ข้อความจึงไม่มีทางถึงตาผู้ใช้ */
-                  noteSignOutOutcome(res);
-                  navigate('/login');
-                }}
+                onClick={doSignOut}
                 className="linkbtn"
                 style={{ marginTop: 4, font: '500 10.5px var(--font-body)', color: 'var(--text-faint)' }}
                 title={cloudEnabled ? t('ล้างข้อมูลออกจากเครื่องนี้ด้วย (ถ้า sync ครบแล้ว) · ปิดแอปเฉย ๆ ไม่ล้าง') : undefined}
@@ -312,6 +325,66 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
             <ArrowUUpLeft size={13} weight="bold" />
             {t('กลับกลุ่มฉัน')}
           </button>
+        </div>
+      )}
+      {/* หน้าประเมินมีแถบบันทึกติดล่างของตัวเอง — ไม่ซ้อนแถบเมนู (กลับหน้าแรกด้วยปุ่มย้อนกลับบนหัว) */}
+      {active !== 'evaluate' && (
+        <nav className="ttabs" aria-label={t('เมนู')}>
+          <NavLink to="/teacher" end className={active === 'overview' ? 'on' : undefined} aria-label={t('วันนี้')}>
+            <House size={23} weight={active === 'overview' ? 'fill' : 'regular'} />
+            {pendingEval > 0 && active !== 'overview' && <span className="ttabs__dot" aria-hidden />}
+          </NavLink>
+          <NavLink to="/teacher/group" className={active === 'mygroup' ? 'on' : undefined} aria-label={t('กลุ่ม')}>
+            <Users size={23} weight={active === 'mygroup' ? 'fill' : 'regular'} />
+          </NavLink>
+          <button
+            className={active !== 'overview' && active !== 'mygroup' ? 'on' : undefined}
+            onClick={() => setMoreOpen(true)}
+            aria-label={t('เพิ่มเติม')}
+            aria-expanded={moreOpen}
+          >
+            <DotsThree size={26} weight="bold" />
+          </button>
+        </nav>
+      )}
+      {moreOpen && (
+        <div className="tsheet" role="dialog" aria-modal="true" aria-label={t('เพิ่มเติม')}>
+          <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setMoreOpen(false)} />
+          <div className="tsheet__body">
+            <span className="tsheet__grab" aria-hidden />
+            <div className="tsheet__head">
+              <b>{personName(teacher, t('อาจารย์'))}</b>
+              <button className="tsheet__x" onClick={() => setMoreOpen(false)} aria-label={t('ปิด')}><X size={16} weight="bold" /></button>
+            </div>
+            <label className="tsheet__group">
+              <span>{t('กลุ่มที่ดู')}</span>
+              <select value={teacherGroup} onChange={(e) => setTeacherGroup(e.target.value)}>
+                {groupCodes.map((code) => (
+                  <option key={code} value={code}>
+                    {`${groupShort(code)} · ${labelOfGroup(code)}${code !== teacherGroup && pendingByGroup.get(code) ? ` · ${t('รอประเมิน {n}', { n: pendingByGroup.get(code)! })}` : ''}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="tsheet__list" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) setMoreOpen(false); }}>
+              {[...GROUP_NAV.filter((n) => n.key !== 'mygroup'), ...COHORT_NAV.filter((n) => n.key !== 'roster' || canSeeRoster)].map(({ key, label, to, Icon }) => (
+                <NavLink key={key} to={to} className={key === active ? 'on' : undefined}>
+                  <Icon size={20} weight={key === active ? 'fill' : 'regular'} />
+                  <span>{label}</span>
+                  {key === 'evaluate' && pendingEval > 0 && <span className="count">{pendingEval}</span>}
+                </NavLink>
+              ))}
+              <button onClick={() => { setMoreOpen(false); setPaletteOpen(true); }}>
+                <MagnifyingGlass size={20} /><span>{t('ค้นหา')}</span>
+              </button>
+              {cloudEnabled && session?.teacherId && (
+                <button onClick={() => { setMoreOpen(false); setAdvisorDialog('manage'); }}>
+                  <Users size={20} /><span>{t('เลือกกลุ่มที่ปรึกษาของฉัน')}</span>
+                </button>
+              )}
+            </div>
+            <button className="tsheet__out" onClick={doSignOut}>{t('ออกจากระบบ')}</button>
+          </div>
         </div>
       )}
       {advisorDialog && (

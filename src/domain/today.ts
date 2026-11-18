@@ -5,7 +5,7 @@
  * ไฟล์นี้นับอย่างเดียว ข้อความ/ปุ่มอยู่ที่หน้าจอ · ไม่ใช้ AI ตัวเลขทุกตัวมาจากกติกาเดียวกับหน้าอื่น
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
-import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, progression } from './rules';
+import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, maxProgression, progression } from './rules';
 import type { CheckIn, DentureClass, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
 
@@ -31,6 +31,8 @@ export interface PendingPerson {
   oldestDays: number;
   /** กิจกรรมของคาบที่รอล่าสุด — ข้อความที่เก็บไว้ตามที่นักศึกษาเลือก (ไม่แปล) */
   activities: string[];
+  /** วันที่ของคาบที่รอล่าสุด (ISO date) */
+  latestDate: string;
 }
 
 /** คนที่ต้องตาม — หนึ่งแถวต่อคน พร้อมงานค้างของคนนั้น (อาจไม่มี ถ้าเสี่ยงเพราะเหตุอื่น) */
@@ -53,6 +55,8 @@ export interface TodaySummary {
   /** คนที่ต้องตาม = เสี่ยงสูง + จับตา — หน้าจอแสดงสองสี แดง = ต้องตาม */
   followUp: number;
   stale: number;
+  /** งานค้างรายชิ้น (isStale) เรียงค้างนานสุดก่อน — หน้าแรกมือถือใช้ทำรายการ "อยู่ step เดิมมาสักพัก" */
+  staleList: Array<{ studentId: string; workId: string; type: WorkType; dentureClass?: DentureClass; progression: number; max: number; days: number }>;
   /** step ที่งานค้างกองมากสุด + ประเภทที่เจอบ่อยสุดใน step นั้น (ไว้เปิดกราฟให้ตรง) · ไม่มีงานค้าง = null */
   staleTop: { progression: number; type: WorkType } | null;
   /** กลุ่มที่ต้องตามตั้งแต่ ⅓ ของกลุ่ม (isFollowUpGroup) เรียงคนต้องตามมากสุดก่อน · เท่ากันคงลำดับกลุ่มเดิม */
@@ -107,12 +111,15 @@ export function todaySummary(input: TodayInput): TodaySummary {
   const pendingList: PendingPerson[] = [...pendingBy.entries()]
     .map(([studentId, list]) => {
       const latest = [...list].sort((a, b) => b.date.localeCompare(a.date))[0];
-      return { studentId, count: list.length, oldestDays: Math.max(...list.map(ageOf)), activities: latest.activities ?? [] };
+      return { studentId, count: list.length, oldestDays: Math.max(...list.map(ageOf)), activities: latest.activities ?? [], latestDate: latest.date };
     })
     .sort((a, b) => b.oldestDays - a.oldestDays || a.studentId.localeCompare(b.studentId));
   const pendingPeople = pendingList.length;
 
   const staleWorks = works.filter((w) => isStale(w, settings, now));
+  const staleList: TodaySummary['staleList'] = staleWorks
+    .map((w) => ({ studentId: w.studentId, workId: w.id, type: w.type, dentureClass: w.dentureClass, progression: Math.max(0, progression(w)), max: maxProgression(w), days: daysSinceUpdate(w, now) }))
+    .sort((a, b) => b.days - a.days || a.studentId.localeCompare(b.studentId));
 
   /* คนเดียวมีหลายแถวในรายการเสี่ยงได้ไม่ควรเกิด แต่กันไว้ — นับครั้งเดียว เอาระดับที่สูงกว่า */
   const riskBy = new Map<string, { risk: Exclude<RiskLevel, 'ok'>; reason: string }>();
@@ -170,7 +177,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleTop, followUpGroups, waitingList, doneThisWeek,
+    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, doneThisWeek,
     needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || followUpGroups.length > 0,
   };
 }

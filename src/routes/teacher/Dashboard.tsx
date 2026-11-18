@@ -4,6 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { LinkRequestsPanel } from '../../components/teacher/LinkRequestsPanel';
+import { PhoneHome } from '../../components/teacher/PhoneHome';
+import { usePhone } from '../../hooks/usePhone';
+import { openTeacherSearch } from '../../components/teacher/TeacherShell';
 import { StepInfo } from '../../components/StepInfo';
 import { TodayCard, TodayLines, type TodayLine } from '../../components/teacher/TodayCard';
 import { TypeDonut } from '../../components/charts/TypeDonut';
@@ -27,7 +30,7 @@ import {
 import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { waitReasonLabel } from '../../lib/waitReason';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { signOutToReLogin, useApp } from '../../store/app';
@@ -44,6 +47,7 @@ const EMPTY_TEACHERS: Teacher[] = [];
 export default function Dashboard() {
   const { settings, showToast } = useApp();
   const navigate = useNavigate();
+  const phone = usePhone();
   const link = useSyncStatus();
   const unsentCount = usePendingPushCount();
   const syncProblemList = useSyncProblems();
@@ -785,6 +789,46 @@ export default function Dashboard() {
       </tbody>
     </table>
   );
+
+  /* มือถือ: หน้าแรกแบบ B3 — งานประเมินขึ้นก่อน ส่วนสรุปทั้งชั้นปี/ตารางอยู่ในแท็บกลุ่มและเพิ่มเติม
+     จอใหญ่ใช้หน้าเดิมทั้งหมด · ตัวเลขมาจาก today ตัวเดียวกัน */
+  if (phone && !alumniPage) {
+    const studentName = (id: string) => personName(activeStudents.find((st) => st.id === id), '');
+    const groupLabel = (code: string) => `${groupShort(code)} · ${t('ปี {n}', { n: activeGroups.find((g) => g.code === code)?.year ?? '' })}`;
+    const todayIso = toISODate(new Date());
+    const homeIds = new Set(activeStudents.filter((st) => homeCodes.includes(st.group)).map((st) => st.id));
+    const todayRows = everyCheckIn.filter((c) => c.date === todayIso && homeIds.has(c.studentId));
+    const otherPending = myGroupCodes
+      .filter((code) => !homeCodes.includes(code) && (pendingByGroup.get(code) ?? 0) > 0)
+      .map((code) => ({ code, n: pendingByGroup.get(code)! }));
+    const groupOfStudent = (id: string) => activeStudents.find((st) => st.id === id)?.group;
+    return (
+      <TeacherShell active="overview">
+        <PhoneHome
+          name={me ? personName(me) : ''}
+          groupCodes={zoneGroupCodes}
+          groupLabel={groupLabel}
+          current={zoneGroup?.code ?? group}
+          onPickGroup={(code) => { setGroup(code); setQuery(''); }}
+          otherPending={otherPending}
+          summary={today}
+          studentName={studentName}
+          ring={todayRows.length ? { done: todayRows.filter((c) => c.status === 'evaluated').length, total: todayRows.length } : null}
+          onSearch={openTeacherSearch}
+          onStart={() => {
+            const first = today.pendingList[0];
+            const g = first && groupOfStudent(first.studentId);
+            if (g) setGroup(g);
+            navigate('/teacher/evaluate');
+          }}
+          onOpenEval={(id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?student=${id}`); }}
+          onOpenStudent={(id) => { const g = groupOfStudent(id); if (g) openStudent({ id, group: g }); }}
+          onGoGroup={() => navigate('/teacher/group')}
+          extra={<LinkRequestsPanel />}
+        />
+      </TeacherShell>
+    );
+  }
 
   return (
     <TeacherShell active={alumniPage ? 'alumni' : 'overview'}>
