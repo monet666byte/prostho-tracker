@@ -332,10 +332,15 @@ export function TeacherShell({ active, children }: { active: TeacherNav; childre
         <nav className="ttabs" aria-label={t('เมนู')}>
           <NavLink to="/teacher" end className={active === 'overview' ? 'on' : undefined} aria-label={t('วันนี้')}>
             <House size={23} weight={active === 'overview' ? 'fill' : 'regular'} />
-            {pendingEval > 0 && active !== 'overview' && <span className="ttabs__dot" aria-hidden />}
           </NavLink>
           <NavLink to="/teacher/group" className={active === 'mygroup' ? 'on' : undefined} aria-label={t('กลุ่ม')}>
             <Users size={23} weight={active === 'mygroup' ? 'fill' : 'regular'} />
+          </NavLink>
+          {/* จุดแดง = กลุ่มที่ดูมีคนรอประเมิน */}
+          <NavLink to="/teacher/evaluate"
+            aria-label={pendingEval > 0 ? t('ประเมินรายคาบ — รอ {n} คน', { n: pendingEval }) : t('ประเมินรายคาบ')}>
+            <Table size={23} weight="regular" />
+            {pendingEval > 0 && <span className="ttabs__dot" aria-hidden />}
           </NavLink>
           <button
             className={active !== 'overview' && active !== 'mygroup' ? 'on' : undefined}

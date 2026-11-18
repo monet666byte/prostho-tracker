@@ -1988,7 +1988,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .window .side { display: none; }
   .window .main { background: transparent; padding-bottom: 104px; }
   .ttabs {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center;
     position: fixed; z-index: 40; left: 14px; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom));
     height: 58px; padding: 0 5px; box-sizing: border-box; border-radius: 30px;
     background: rgba(255, 255, 255, 0.62);

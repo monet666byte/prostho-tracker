@@ -1638,4 +1638,5 @@ export const DICT: Record<string, string> = {
   'ให้คะแนนอีก {n} ข้อ': 'Score {n} more',
   'ได้ {n}': 'scored {n}',
   'ไม่มีงานรอประเมินแล้ว': 'Nothing left to evaluate',
+  'ประเมินรายคาบ — รอ {n} คน': 'Period evaluation — {n} waiting',
 };
