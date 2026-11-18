@@ -1639,6 +1639,7 @@ export const DICT: Record<string, string> = {
   'แตะชื่อ = ประเมินคนนั้น': 'Tap a name to evaluate',
   'ย่อ': 'Show less',
   'ดูอีก {n} คน': 'Show {n} more',
+  'คาบที่ {i} จาก {n} ของคนนี้': 'session {i} of {n} for this student',
   'แจ้งเตือน — {n} เรื่อง': 'Notifications — {n}',
   'นศ. แก้คาบตามที่ขอแล้ว': 'Students fixed the sessions you sent back',
   'แตะ = ประเมิน': 'Tap to evaluate',

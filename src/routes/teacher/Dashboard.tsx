@@ -236,6 +236,15 @@ export default function Dashboard() {
     risk: riskInput,
     groups: zoneGroup ? undefined : groups,
   }), [zoneGroup, homeCodes, activeStudents, students, allWorks, everyCheckIn, settings, riskInput, groups]);
+  /* มือถือ (B3): นับเฉพาะกลุ่มที่เลือกอยู่ — ชุดเดียวกับหน้าประเมิน (ประเมินทีละกลุ่ม)
+     กลุ่มอื่นที่ดูแลขึ้นเป็นชิปเลขแดงแทน · เดิมนับรวมทุกกลุ่มที่ดูแล หน้าแรกจึงบอก 5 คน แต่หน้าประเมินมีแค่ 3 */
+  const phoneToday = useMemo(() => (phone && zoneGroup ? todaySummary({
+    students: activeStudents.filter((s) => s.group === zoneGroup.code),
+    works: allWorks,
+    checkins: everyCheckIn,
+    settings,
+    risk: riskInput,
+  }) : null), [phone, zoneGroup, activeStudents, allWorks, everyCheckIn, settings, riskInput]);
   /* ทั้งชั้นปีตามแท็บปีในโซนขวา — ใช้แค่บรรทัดระดับชั้นปี */
   const yearToday = useMemo(() => todaySummary({
     students, works: allWorks, checkins: everyCheckIn, settings, risk: riskInput, groups,
@@ -792,11 +801,12 @@ export default function Dashboard() {
 
   /* มือถือ: หน้าแรกแบบ B3 — งานประเมินขึ้นก่อน ส่วนสรุปทั้งชั้นปี/ตารางอยู่ในแท็บกลุ่มและเพิ่มเติม
      จอใหญ่ใช้หน้าเดิมทั้งหมด · ตัวเลขมาจาก today ตัวเดียวกัน */
-  if (phone && !alumniPage) {
+  if (phone && !alumniPage && phoneToday && zoneGroup) {
+    const cur = zoneGroup.code;
     const studentName = (id: string) => personName(activeStudents.find((st) => st.id === id), '');
     const groupLabel = (code: string) => `${groupShort(code)} · ${t('ปี {n}', { n: activeGroups.find((g) => g.code === code)?.year ?? '' })}`;
     const otherPending = myGroupCodes
-      .filter((code) => !homeCodes.includes(code) && (pendingByGroup.get(code) ?? 0) > 0)
+      .filter((code) => code !== cur && (pendingByGroup.get(code) ?? 0) > 0)
       .map((code) => ({ code, n: pendingByGroup.get(code)! }));
     const groupOfStudent = (id: string) => activeStudents.find((st) => st.id === id)?.group;
     return (
@@ -805,18 +815,13 @@ export default function Dashboard() {
           name={me ? personName(me) : ''}
           groupCodes={zoneGroupCodes}
           groupLabel={groupLabel}
-          current={zoneGroup?.code ?? group}
+          current={cur}
           onPickGroup={(code) => { setGroup(code); setQuery(''); }}
           otherPending={otherPending}
-          summary={today}
+          summary={phoneToday}
           studentName={studentName}
           onSearch={openTeacherSearch}
-          onStart={() => {
-            const first = today.pendingList[0];
-            const g = first && groupOfStudent(first.studentId);
-            if (g) setGroup(g);
-            navigate('/teacher/evaluate');
-          }}
+          onStart={() => { setGroup(cur); navigate('/teacher/evaluate'); }}
           onOpenEval={(id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?student=${id}`); }}
           onOpenStudent={(id) => { const g = groupOfStudent(id); if (g) openStudent({ id, group: g }); }}
         />

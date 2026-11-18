@@ -230,6 +230,28 @@ export function returnFixed(c: Pick<CheckIn, 'status' | 'returnedAt' | 'editedAt
   return c.status === 'pending' && !!c.returnedAt && !returnOpen(c);
 }
 
+/**
+ * ลำดับในคิวรอประเมิน นับเป็น "คน" ให้ตรงกับหน้าแรก (todaySummary.pendingList นับคน)
+ * คนเดียวค้างหลายคาบ = คนเดียว · session/sessions บอกว่าเป็นคาบที่เท่าไหร่ของคนนั้น
+ * ลำดับคนตามที่ปรากฏในคิวครั้งแรก · ไม่เจอ id = null
+ */
+export function queuePosition(
+  queue: Array<Pick<CheckIn, 'id' | 'studentId'>>,
+  id: string,
+): { person: number; people: number; session: number; sessions: number } | null {
+  const cur = queue.find((c) => c.id === id);
+  if (!cur) return null;
+  const people: string[] = [];
+  queue.forEach((c) => { if (!people.includes(c.studentId)) people.push(c.studentId); });
+  const mine = queue.filter((c) => c.studentId === cur.studentId);
+  return {
+    person: people.indexOf(cur.studentId) + 1,
+    people: people.length,
+    session: mine.findIndex((c) => c.id === id) + 1,
+    sessions: mine.length,
+  };
+}
+
 /** คาบของเดือนหนึ่ง (month 0–11) — ปฏิทินคาบฝั่งนักศึกษา · เทียบจากสตริงวันที่ ไม่ผ่าน Date กันเขตเวลาเลื่อนวัน */
 export function checkinsInMonth<T extends { date: string }>(list: T[], year: number, month: number): T[] {
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;

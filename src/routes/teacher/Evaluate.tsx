@@ -6,6 +6,7 @@ import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { SessionHistory } from '../../components/teacher/SessionHistory';
 import { CritIcon } from '../../components/teacher/critIcons';
 import { usePhone } from '../../hooks/usePhone';
+import { useEvalDrafts } from '../../hooks/useEvalDrafts';
 import { Radar } from '../../components/charts/Radar';
 import { ConfirmActions, ConfirmBox } from '../../components/ui/ConfirmBox';
 import type { ProfileAxis } from '../../domain/analytics';
@@ -13,7 +14,7 @@ import { evaluateCheckIn, requestCheckInFix, reviseCheckIn, setCheckInPunctual }
 import { useReturnFeature } from '../../data/returnFeature';
 import {
   CRITERIA, MAX_TOTAL, RETURN_REASONS, SCORE_SLOTS, isValidScore, missingCriteria, returnFixed, returnOpen, returnReasonText,
-  rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
+  queuePosition, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
@@ -145,7 +146,7 @@ export default function Evaluate() {
   const [sheetKey, setSheetKey] = useState<string | null>(null);
   /* คะแนนที่กำลังกรอก ต่อ check-in — เริ่มแบบยังไม่เลือกสักข้อ และลงนามไม่ได้จนกว่าจะครบ 8 ข้อ
      เดิมเริ่มที่ 3 ทุกข้อ: อาจารย์กดลงนามได้โดยไม่ได้ดูทีละข้อ · ไม่เริ่มที่ 0 เพราะข้อที่กดตกจะกลายเป็น 0 เงียบๆ */
-  const [drafts, setDrafts] = useState<Record<string, Record<string, number>>>({});
+  const [drafts, setDrafts] = useEvalDrafts(session?.teacherId, group);
   /* เกณฑ์ที่กางอยู่ (แตะชื่อหัวข้อ) — เปิดได้ทีละข้อทั้งหน้า
      กางเป็นแถวเต็มกว้างใต้ "คู่แถว" ที่หัวข้อนั้นอยู่ ไม่ใช่ใต้หัวข้อเดียว — การ์ดจอกว้างเรียงหัวข้อสองคอลัมน์
      ถ้ากางในคอลัมน์เดียว อีกคอลัมน์จะเหลือช่องโล่งสูงเท่าเกณฑ์ · cols = จำนวนคอลัมน์ ณ ตอนกด (อ่านจากกริดจริง) */
@@ -244,7 +245,9 @@ export default function Evaluate() {
   const [snapshot, setSnapshot] = useState<string[]>([]);
   // "กำลังทำงานอยู่" = แตะปุ่มคะแนนของใครไปแล้ว หรือเปิดกล่องยืนยันค้างไว้
   // ตอนนี้เท่านั้นที่ล็อกรายการ — ถ้ายังไม่ได้แตะอะไร ของใหม่ไหลเข้ามาได้ตามปกติ
-  const busyScoring = Object.keys(drafts).length > 0 || confirmId !== null;
+  // นับเฉพาะคะแนนค้างของคาบที่ยังรออยู่จริง — คะแนนค้างที่กู้กลับมาของคาบที่คนอื่นประเมินไปแล้วไม่ล็อกรายการ
+  const pendingIds = useMemo(() => new Set(pendingAll.map((c) => c.id)), [pendingAll]);
+  const busyScoring = Object.keys(drafts).some((id) => pendingIds.has(id)) || confirmId !== null;
   /**
    * การล็อกรายการมีไว้กันการ์ดขยับใต้นิ้ว "ภายในกลุ่มเดียวกัน" เท่านั้น
    *
@@ -259,14 +262,22 @@ export default function Evaluate() {
     const switchedGroup = snapGroup.current !== group;
     if (switchedGroup) {
       snapGroup.current = group;
-      setDrafts({});
+      // คะแนนค้างเก็บแยกกลุ่มแล้ว (useEvalDrafts) — สลับกลุ่มไม่ต้องล้าง กลับมากลุ่มเดิมยังอยู่
       setConfirmId(null);
       setSnapshot(pendingAll.map((c) => c.id));
       return;
     }
-    if (!busyScoring) setSnapshot(pendingAll.map((c) => c.id));
+    // snapshot ว่าง = เพิ่งเปิดหน้า (อาจมีคะแนนค้างที่กู้กลับมา) ต้องตั้งชุดแรกเสมอ ไม่งั้นรายการว่าง
+    if (!busyScoring || snapshot.length === 0) setSnapshot(pendingAll.map((c) => c.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busyScoring, pendingKey, group]);
+
+  /* ลบคะแนนค้างของคาบที่ไม่รอแล้ว (ประเมินแล้ว — อาจโดยอาจารย์ท่านอื่น) · คาบที่ยังโหลดไม่ถึงไม่แตะ */
+  useEffect(() => {
+    const done = Object.keys(drafts).filter((id) => inGroup.some((c) => c.id === id && c.status !== 'pending'));
+    if (done.length) setDrafts((d) => { const next = { ...d }; done.forEach((id) => delete next[id]); return next; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingKey]);
 
   const confirmRow = confirmId ? pendingAll.find((c) => c.id === confirmId) ?? null : null;
   const confirmStudent = confirmRow ? studentById.get(confirmRow.studentId) : undefined;
@@ -409,6 +420,11 @@ export default function Evaluate() {
 
   const current = mode === 'focus' || phone ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
   const currentIndex = current ? pending.findIndex((c) => c.id === current.id) : -1;
+  /* "คนที่ i จาก n" นับเป็นคน ให้ตรงกับหน้าแรก · คนเดียวหลายคาบบอกเพิ่มว่าคาบที่เท่าไหร่ของคนนั้น */
+  const qpos = current ? queuePosition(pending, current.id) : null;
+  const personLabel = qpos ? t('คนที่ {i} จาก {n}', { i: qpos.person, n: qpos.people }) : '';
+  const sessionLabel = qpos && qpos.sessions > 1 ? t('คาบที่ {i} จาก {n} ของคนนี้', { i: qpos.session, n: qpos.sessions }) : '';
+  const queueLabel = sessionLabel ? `${personLabel} · ${sessionLabel}` : personLabel;
   const goFocus = (step: number) => {
     const next = pending[currentIndex + step];
     if (next) { setFocusId(next.id); setActiveCrit(0); }
@@ -681,7 +697,7 @@ export default function Evaluate() {
               <b>{t('ประเมินรายคาบ')}</b>
               <small>
                 {groupShort(group)}
-                {c ? ` · ${t('คนที่ {i} จาก {n}', { i: currentIndex + 1, n: pending.length })}` : ''}
+                {c ? ` · ${personLabel}` : ''}
               </small>
             </div>
             {c && pending.length > 1 && (
@@ -722,6 +738,7 @@ export default function Evaluate() {
                     return <span className="mono"> · {t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}</span>;
                   })()}
                 </div>
+                {sessionLabel && <span className="tev__multi">{sessionLabel}</span>}
                 <div className="tev__meta">
                   {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}
                   <button className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`} onClick={() => setPunctualId(c.id)}>
@@ -1044,7 +1061,7 @@ export default function Evaluate() {
               </div>
               <div className="evalfocus__main">
                 <div className="evalfocus__bar">
-                  <span>{t('คนที่ {i} จาก {n}', { i: currentIndex + 1, n: pending.length })}</span>
+                  <span>{queueLabel}</span>
                   <button className="evalfocus__nav" onClick={() => goFocus(-1)} disabled={currentIndex <= 0} aria-label={t('คนก่อนหน้า')}><CaretLeft size={15} weight="bold" /></button>
                   <button className="evalfocus__nav" onClick={() => goFocus(1)} disabled={currentIndex >= pending.length - 1} aria-label={t('คนถัดไป')}><CaretRight size={15} weight="bold" /></button>
                 </div>

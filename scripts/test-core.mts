@@ -22,7 +22,7 @@ import {
   entryYearFromDtmu, isActiveStudent, isAlumni, isUpcoming, isWithinRetention, studentYear,
 } from '../src/domain/cohort.ts';
 import {
-  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, groupSessionsByWork, isValidScore, lowestScore, sessionWork, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
+  ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, groupSessionsByWork, isValidScore, queuePosition, lowestScore, sessionWork, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
   returnReasonText, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
@@ -382,6 +382,15 @@ console.log('\nhasTeacherEvidence — เคสที่อาจารย์ป
   ok('ใบประเมินของเคสอื่น / ใบที่ไม่ผูกเคส → ไม่เกี่ยว', !hasTeacherEvidence('w1', { ...none, sect2: [{ workpieceId: 'w2' }, {}] }));
   ok('ผลตรวจงานที่มีชื่อผู้ตรวจ → ลบไม่ได้', hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1', by: 'อ. หนึ่ง' }] }));
   ok('แถวผลตรวจเปล่า (ยังไม่มีใครตรวจ) → ยังลบได้', !hasTeacherEvidence('w1', { ...none, reviews: [{ workpieceId: 'w1' }, { workpieceId: 'w1', by: '  ' }] }));
+}
+
+console.log('\n④ง checkin.ts — ลำดับในคิวประเมินนับเป็นคน (ตรงกับหน้าแรก)');
+{
+  const q = [{ id: 'a1', studentId: 'A' }, { id: 'b1', studentId: 'B' }, { id: 'b2', studentId: 'B' }, { id: 'c1', studentId: 'C' }];
+  const p = queuePosition(q, 'b2');
+  ok('4 คาบ 3 คน → "คนที่ 2 จาก 3" · คาบที่ 2 จาก 2 ของคนนั้น', JSON.stringify(p) === JSON.stringify({ person: 2, people: 3, session: 2, sessions: 2 }), JSON.stringify(p));
+  ok('คนท้ายคิว = คนที่ 3 ไม่ใช่ 4', queuePosition(q, 'c1')?.person === 3);
+  ok('ไม่เจอ id = null', queuePosition(q, 'zz') === null);
 }
 
 console.log('\n④ค checkin.ts — ประวัติคาบรายคน แยกตามประเภทงาน');
