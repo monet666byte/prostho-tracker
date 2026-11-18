@@ -5,6 +5,7 @@
  * ไฟล์นี้นับอย่างเดียว ข้อความ/ปุ่มอยู่ที่หน้าจอ · ไม่ใช้ AI ตัวเลขทุกตัวมาจากกติกาเดียวกับหน้าอื่น
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
+import { returnFixed } from './checkin';
 import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, maxProgression, progression } from './rules';
 import type { CheckIn, DentureClass, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
@@ -63,6 +64,8 @@ export interface TodaySummary {
   followUpGroups: Array<{ code: string; year: number; followUp: number; size: number }>;
   /** เคสที่หยุดรอคนไข้อยู่ (ไม่นับเป็นค้าง/ต้องตาม) — นัดใกล้สุดก่อน · ไม่มีนัดไว้ท้าย */
   waitingList: Array<{ studentId: string; workId: string; type: WorkType; dentureClass?: DentureClass; reason: WaitReason; until?: string }>;
+  /** คาบที่อาจารย์ขอให้แก้ แล้ว นศ. แก้แล้ว ยังรอประเมิน (returnFixed) — แก้ล่าสุดก่อน · ใช้กับกระดิ่งบนมือถือ */
+  fixedList: Array<{ checkinId: string; studentId: string; date: string; editedAt: string }>;
   /** ชิ้นงานที่จบใน 7 วันล่าสุด — ไม่นับงานจากชีต (completedAt ของมันคือวันนำเข้า ไม่ใช่วันจบจริง) */
   doneThisWeek: number;
   /** มีเรื่องที่อาจารย์ต้องทำหรือต้องดู — ไม่มี = "วันนี้ไม่มีอะไรน่าห่วง" */
@@ -115,6 +118,11 @@ export function todaySummary(input: TodayInput): TodaySummary {
     })
     .sort((a, b) => b.oldestDays - a.oldestDays || a.studentId.localeCompare(b.studentId));
   const pendingPeople = pendingList.length;
+
+  const fixedList: TodaySummary['fixedList'] = pending
+    .filter((c) => returnFixed(c))
+    .map((c) => ({ checkinId: c.id, studentId: c.studentId, date: c.date, editedAt: c.editedAt ?? '' }))
+    .sort((a, b) => b.editedAt.localeCompare(a.editedAt));
 
   const staleWorks = works.filter((w) => isStale(w, settings, now));
   const staleList: TodaySummary['staleList'] = staleWorks
@@ -177,7 +185,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, doneThisWeek,
+    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, fixedList, doneThisWeek,
     needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || followUpGroups.length > 0,
   };
 }

@@ -2094,6 +2094,14 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .tph__tag { flex: none; font: 600 13px var(--font-body); color: #475467; white-space: nowrap; }
   .tph__chev { flex: none; color: #98a2b3; }
   .tph > .panel { margin: 0; }
+  .tph__round { position: relative; }
+  .tph__belldot { position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #d92d20; box-shadow: 0 0 0 2px #fff; }
+  .tph__dot--fixed { background: #079455; }
+  .tph__card--flat { box-shadow: none; background: #f8f9fb; }
+  .tph__bellempty { display: flex; flex-direction: column; gap: 4px; padding: 18px 16px 24px; border-radius: 18px; background: #f8f9fb; text-align: center; }
+  .tph__bellempty b { font: 600 16px var(--font-head); color: #101828; }
+  .tph__bellempty span { font: 400 14px/1.5 var(--font-body); color: #667085; }
+  .tsheet .panel { margin: 0 !important; }
 }
 @media (max-width: 780px) and (prefers-reduced-motion: reduce) {
   .tph__hero::before, .tph__hero::after { animation: none; }

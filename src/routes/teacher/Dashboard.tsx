@@ -819,7 +819,6 @@ export default function Dashboard() {
           }}
           onOpenEval={(id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?student=${id}`); }}
           onOpenStudent={(id) => { const g = groupOfStudent(id); if (g) openStudent({ id, group: g }); }}
-          extra={<LinkRequestsPanel />}
         />
       </TeacherShell>
     );

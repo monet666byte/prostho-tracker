@@ -1639,5 +1639,12 @@ export const DICT: Record<string, string> = {
   'แตะชื่อ = ประเมินคนนั้น': 'Tap a name to evaluate',
   'ย่อ': 'Show less',
   'ดูอีก {n} คน': 'Show {n} more',
+  'แจ้งเตือน — {n} เรื่อง': 'Notifications — {n}',
+  'นศ. แก้คาบตามที่ขอแล้ว': 'Students fixed the sessions you sent back',
+  'แตะ = ประเมิน': 'Tap to evaluate',
+  'คาบ {d}': 'Session {d}',
+  'แก้เมื่อ {d}': 'fixed {d}',
+  'ยังไม่มีเรื่องใหม่': 'Nothing new',
+  'จุดแดงจะขึ้นเมื่อ นศ. แก้คาบตามที่ขอ หรือ นศ. ขอผูกบัญชีรออาจารย์ยืนยัน': 'A red dot appears when a student fixes a session you sent back, or asks to link their account',
   'ประเมินรายคาบ — รอ {n} คน': 'Period evaluation — {n} waiting',
 };

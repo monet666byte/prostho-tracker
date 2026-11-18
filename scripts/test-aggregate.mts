@@ -335,6 +335,23 @@ console.log('\ntodaySummary');
   ok('ไม่มีอะไรค้าง → ไม่มีเรื่องน่าห่วง', !s.needsAttention && s.stale === 0 && s.staleTop === null);
   ok('ลิสต์ว่างไม่พัง', todaySummary({ students: [], works: [], checkins: [], settings: S, risk: [] }).pendingPeople === 0);
 }
+{
+  // กระดิ่งบนมือถือ: คาบที่ขอให้แก้ แล้ว นศ. แก้แล้ว — ยังรอประเมินเท่านั้น · ยังไม่แก้/ประเมินแล้ว/คนนอกขอบเขต ไม่นับ
+  const st = student({ id: 'fx' });
+  const base = { activities: [], punctual: true, createdAt: '2026-11-01T08:00:00Z' };
+  const c = (id: string, extra: Partial<CheckIn>) => ({ ...base, id, studentId: 'fx', date: '2026-11-10', status: 'pending', ...extra } as CheckIn);
+  const checkins = [
+    c('fixed-old', { returnedAt: '2026-11-10T09:00:00Z', editedAt: '2026-11-10T10:00:00Z' }),
+    c('fixed-new', { date: '2026-11-11', returnedAt: '2026-11-11T09:00:00Z', editedAt: '2026-11-12T08:00:00Z' }),
+    c('still-open', { returnedAt: '2026-11-10T09:00:00Z', editedAt: '2026-11-10T08:00:00Z' }),
+    c('evaluated', { status: 'evaluated', returnedAt: '2026-11-10T09:00:00Z', editedAt: '2026-11-10T10:00:00Z' }),
+    c('no-return', { editedAt: '2026-11-10T10:00:00Z' }),
+    { ...c('outsider', { returnedAt: '2026-11-10T09:00:00Z', editedAt: '2026-11-10T10:00:00Z' }), studentId: 'other' },
+  ];
+  const s = todaySummary({ students: [st], works: [], checkins, settings: S, risk: [] });
+  const got = s.fixedList.map((x) => x.checkinId).join(',');
+  ok('แก้ตามที่ขอแล้ว = รอประเมิน + ขอแก้ + แก้หลังขอ · แก้ล่าสุดก่อน', got === 'fixed-new,fixed-old', got);
+}
 
 
 console.log('\nmonthlyReport — รายงานประจำเดือน');

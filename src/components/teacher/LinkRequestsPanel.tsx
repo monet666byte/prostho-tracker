@@ -14,14 +14,13 @@ import { useApp } from '../../store/app';
  * ไม่มีคำขอ: หน้าภาพรวมไม่แสดงอะไรเลย (ไม่กินที่) · หน้ารายชื่อ (alwaysShow) แสดงกล่องว่าง
  * — ผู้ใช้หากล่องนี้ไม่เจอเพราะมันหายไปตอนไม่มีคำขอ ไม่รู้ว่าคำขอจะมาโผล่ตรงไหน
  */
-export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean } = {}) {
-  const showToast = useApp((s) => s.showToast);
+/** คำขอผูกบัญชีที่รอยืนยัน — โหลดทุก 1 นาที + ตอนกลับมาที่แท็บ · ไม่ต่อ cloud = ไม่โหลด
+ *  แยกออกมาให้กระดิ่งบนมือถือนับจากชุดเดียวกับกล่อง (ไม่ยิงซ้ำสองชุด) */
+export function useLinkRequests(enabled = true) {
   const [rows, setRows] = useState<PendingLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   /* ยังไม่เคยโหลดเสร็จ = ห้ามบอกว่า "ยังไม่มีคำขอ" (อาจมีอยู่แต่ยังโหลดไม่ถึง) */
   const [loaded, setLoaded] = useState(false);
-  const [confirm, setConfirm] = useState<{ row: PendingLink; approve: boolean } | null>(null);
-  const guard = useRef(false);
 
   const load = useCallback(async () => {
     const r = await pendingLinkRequests();
@@ -31,13 +30,24 @@ export function LinkRequestsPanel({ alwaysShow = false }: { alwaysShow?: boolean
   }, []);
 
   useEffect(() => {
-    if (!cloudEnabled) return;
+    if (!cloudEnabled || !enabled) return;
     void load();
     const id = setInterval(() => void load(), 60_000);
     const onFocus = () => void load();
     window.addEventListener('focus', onFocus);
     return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
-  }, [load]);
+  }, [load, enabled]);
+
+  return { rows, error, setError, loaded, load };
+}
+export type LinkRequests = ReturnType<typeof useLinkRequests>;
+
+export function LinkRequestsPanel({ alwaysShow = false, data }: { alwaysShow?: boolean; data?: LinkRequests } = {}) {
+  const showToast = useApp((s) => s.showToast);
+  const own = useLinkRequests(!data);
+  const { rows, error, setError, loaded, load } = data ?? own;
+  const [confirm, setConfirm] = useState<{ row: PendingLink; approve: boolean } | null>(null);
+  const guard = useRef(false);
 
   async function decide() {
     if (!confirm || guard.current) return;

@@ -1,5 +1,7 @@
-import { CaretDown, CaretRight, MagnifyingGlass } from '@phosphor-icons/react';
-import { useState, type ReactNode } from 'react';
+import { Bell, CaretDown, CaretRight, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { useState } from 'react';
+import { cloudEnabled } from '../../lib/cloud';
+import { LinkRequestsPanel, useLinkRequests } from './LinkRequestsPanel';
 import { typeMeta } from '../../domain/catalog';
 import type { TodaySummary } from '../../domain/today';
 import { thaiShort } from '../../lib/date';
@@ -16,7 +18,7 @@ import { greeting } from './TodayCard';
  */
 export function PhoneHome({
   name, groupCodes, groupLabel, current, onPickGroup, otherPending, summary, studentName,
-  onSearch, onStart, onOpenEval, onOpenStudent, extra,
+  onSearch, onStart, onOpenEval, onOpenStudent,
 }: {
   name: string;
   groupCodes: string[];
@@ -31,9 +33,14 @@ export function PhoneHome({
   onStart: () => void;
   onOpenEval: (studentId: string) => void;
   onOpenStudent: (studentId: string) => void;
-  extra?: ReactNode;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  /* กระดิ่ง = เรื่องที่รอให้อาจารย์ทำ แต่ไม่ได้อยู่ในรายชื่อรอประเมิน:
+     นศ. แก้คาบตามที่ขอแล้ว (todaySummary.fixedList) · นศ. ขอผูกบัญชี (เฉพาะต่อ cloud) */
+  const links = useLinkRequests();
+  const fixed = summary.fixedList;
+  const bellCount = fixed.length + links.rows.length;
   const pend = summary.pendingList;
   const PEND_MAX = 3;
   const pendShown = showAll ? pend : pend.slice(0, PEND_MAX);
@@ -66,6 +73,11 @@ export function PhoneHome({
         </div>
         <button className="tph__round" onClick={onSearch} aria-label={t('ค้นหา')}>
           <MagnifyingGlass size={20} />
+        </button>
+        <button className="tph__round" onClick={() => setBellOpen(true)} aria-expanded={bellOpen}
+          aria-label={bellCount ? t('แจ้งเตือน — {n} เรื่อง', { n: bellCount }) : t('แจ้งเตือน')}>
+          <Bell size={20} />
+          {bellCount > 0 && <span className="tph__belldot" aria-hidden />}
         </button>
       </header>
 
@@ -142,7 +154,43 @@ export function PhoneHome({
           ))}
         </section>
       )}
-      {extra}
+      {bellOpen && (
+        <div className="tsheet" role="dialog" aria-modal="true" aria-label={t('แจ้งเตือน')}>
+          <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setBellOpen(false)} />
+          <div className="tsheet__body">
+            <span className="tsheet__grab" aria-hidden />
+            <div className="tsheet__head">
+              <b>{t('แจ้งเตือน')}</b>
+              <button className="tsheet__x" onClick={() => setBellOpen(false)} aria-label={t('ปิด')}><X size={16} weight="bold" /></button>
+            </div>
+            {fixed.length > 0 && (
+              <section className="tph__card tph__card--flat">
+                <div className="tph__sect">
+                  <h2>{t('นศ. แก้คาบตามที่ขอแล้ว')}</h2>
+                  <span>{t('แตะ = ประเมิน')}</span>
+                </div>
+                {fixed.map((f) => (
+                  <button key={f.checkinId} className="tph__row" onClick={() => { setBellOpen(false); onOpenEval(f.studentId); }}>
+                    <span className="tph__dot tph__dot--fixed" aria-hidden />
+                    <span className="tph__who">
+                      <b>{studentName(f.studentId)}</b>
+                      <small>{t('คาบ {d}', { d: thaiShort(f.date) })}{f.editedAt ? ` · ${t('แก้เมื่อ {d}', { d: thaiShort(f.editedAt) })}` : ''}</small>
+                    </span>
+                    <CaretRight size={18} className="tph__chev" aria-hidden />
+                  </button>
+                ))}
+              </section>
+            )}
+            {cloudEnabled && <LinkRequestsPanel alwaysShow data={links} />}
+            {bellCount === 0 && !links.error && (
+              <div className="tph__bellempty">
+                <b>{t('ยังไม่มีเรื่องใหม่')}</b>
+                <span>{t('จุดแดงจะขึ้นเมื่อ นศ. แก้คาบตามที่ขอ หรือ นศ. ขอผูกบัญชีรออาจารย์ยืนยัน')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
