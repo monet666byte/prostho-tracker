@@ -30,7 +30,7 @@ import {
 import { defaultYearView, useYearView, type YearView } from '../../hooks/useYearView';
 import { YearSeg } from '../../components/teacher/YearSeg';
 import { personName, t, tText } from '../../lib/i18n';
-import { thaiShort, toISODate } from '../../lib/date';
+import { thaiShort } from '../../lib/date';
 import { waitReasonLabel } from '../../lib/waitReason';
 import { alumniReady, ensureAlumniSeeded } from '../../data/seed';
 import { signOutToReLogin, useApp } from '../../store/app';
@@ -795,9 +795,6 @@ export default function Dashboard() {
   if (phone && !alumniPage) {
     const studentName = (id: string) => personName(activeStudents.find((st) => st.id === id), '');
     const groupLabel = (code: string) => `${groupShort(code)} · ${t('ปี {n}', { n: activeGroups.find((g) => g.code === code)?.year ?? '' })}`;
-    const todayIso = toISODate(new Date());
-    const homeIds = new Set(activeStudents.filter((st) => homeCodes.includes(st.group)).map((st) => st.id));
-    const todayRows = everyCheckIn.filter((c) => c.date === todayIso && homeIds.has(c.studentId));
     const otherPending = myGroupCodes
       .filter((code) => !homeCodes.includes(code) && (pendingByGroup.get(code) ?? 0) > 0)
       .map((code) => ({ code, n: pendingByGroup.get(code)! }));
@@ -813,7 +810,6 @@ export default function Dashboard() {
           otherPending={otherPending}
           summary={today}
           studentName={studentName}
-          ring={todayRows.length ? { done: todayRows.filter((c) => c.status === 'evaluated').length, total: todayRows.length } : null}
           onSearch={openTeacherSearch}
           onStart={() => {
             const first = today.pendingList[0];
@@ -823,7 +819,6 @@ export default function Dashboard() {
           }}
           onOpenEval={(id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?student=${id}`); }}
           onOpenStudent={(id) => { const g = groupOfStudent(id); if (g) openStudent({ id, group: g }); }}
-          onGoGroup={() => navigate('/teacher/group')}
           extra={<LinkRequestsPanel />}
         />
       </TeacherShell>
