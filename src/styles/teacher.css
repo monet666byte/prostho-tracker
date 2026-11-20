@@ -2128,27 +2128,38 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .tev__done b { font: 600 18px var(--font-head); color: #101828; }
   .tev__done .tph__start { align-self: center; background: var(--panel); color: #fff; }
 
+  /* การ์ดข้อมูลคน: จัดด้วยตัวอักษรล้วน ไม่มีไอคอน · ป้ายซ้ายเทาเล็ก ค่าขวาเข้ม · ปุ่มท้ายการ์ด */
   .tev__info {
-    margin: 0 16px; padding: 16px; border-radius: 22px; display: flex; flex-direction: column; gap: 6px;
-    background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(255, 255, 255, 0.9);
+    flex: none; margin: 0 16px; border-radius: 22px; overflow: hidden; display: flex; flex-direction: column;
+    background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.9);
     box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05), 0 10px 26px rgba(16, 24, 40, 0.07);
   }
-  .tev__inforow { display: flex; align-items: flex-start; gap: 12px; }
-  .tev__who { flex: 1; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; }
-  .tev__who b { font: 700 21px/1.3 var(--font-head); color: #101828; }
-  .tev__who .mono { font-size: 13px; color: #667085; }
+  .tev__inforow { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; }
+  .tev__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tev__who b { font: 700 21px/1.25 var(--font-head); color: #101828; overflow-wrap: anywhere; }
+  .tev__who .mono { margin-top: 2px; font-size: 13px; color: #667085; }
   .tev__total { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
-  .tev__total b { font: 700 32px/1 var(--font-head); color: #101828; font-variant-numeric: tabular-nums; }
+  .tev__total b { font: 700 30px/1 var(--font-head); color: #101828; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tev__total b small { font: 500 15px var(--font-head); color: #98a2b3; }
-  .tev__total span { margin-top: 4px; font: 500 12.5px var(--font-body); color: #667085; white-space: nowrap; }
-  .tev__act { font: 500 14.5px/1.45 var(--font-body); color: #344054; }
-  .tev__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font: 400 13.5px var(--font-body); color: #525c6e; }
-  .tev__meta .evalpunct { min-height: 28px; }
-  .tev__multi { align-self: flex-start; padding: 2px 10px; border-radius: 99px; background: #eef2fb; color: var(--panel); font: 600 12.5px var(--font-head); }
-  .tev__meta .textbtn { min-height: 28px; font-size: 13.5px; }
-  .tev__steps { display: flex; align-items: flex-start; gap: 5px; font: 400 13px/1.45 var(--font-body); color: #667085; }
-  .tev__steps[data-done="true"] { color: #05603a; }
-  .tev__steps svg { flex: none; margin-top: 2px; }
+  .tev__seg { display: flex; gap: 3px; width: 88px; margin-top: 8px; }
+  .tev__seg i { flex: 1; height: 4px; border-radius: 2px; background: #e4e7ec; }
+  .tev__seg i[data-v="3"] { background: #3fa874; }
+  .tev__seg i[data-v="2"] { background: #e3b82b; }
+  .tev__seg i[data-v="1"] { background: #ef8a3c; }
+  .tev__seg i[data-v="0"] { background: #e0533f; }
+  .tev__facts { margin: 0; padding: 8px 18px 10px; border-top: 1px solid #eef0f4; display: flex; flex-direction: column; }
+  .tev__facts > div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 5px 0; }
+  .tev__facts dt { font: 500 13px/1.6 var(--font-body); color: #98a2b3; }
+  .tev__facts dd { margin: 0; font: 400 15px/1.45 var(--font-body); color: #344054; overflow-wrap: anywhere; }
+  .tev__facts dd small { font-size: 13px; color: #667085; }
+  .tev__facts [data-tone="warn"] dd { color: var(--warning-dark); }
+  .tev__facts [data-tone="ok"] dd { color: #05603a; }
+  .tev__multi { margin-left: 8px; padding: 1px 9px; border-radius: 99px; background: #eef2fb; color: var(--panel); font: 600 12.5px var(--font-head); white-space: nowrap; }
+  .tev__acts { display: flex; border-top: 1px solid #eef0f4; }
+  .tev__acts button { flex: 1; min-height: 46px; border: 0; background: none; font: 600 14.5px var(--font-head); color: var(--panel); }
+  .tev__acts button + button { border-left: 1px solid #eef0f4; }
+  .tev__acts .is-ok { color: #05603a; }
+  .tev__acts .is-late { color: #9a3f06; }
 
   .tev__grid { margin: 0 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .tev__tile {

@@ -425,6 +425,7 @@ export default function Evaluate() {
   const personLabel = qpos ? t('คนที่ {i} จาก {n}', { i: qpos.person, n: qpos.people }) : '';
   const sessionLabel = qpos && qpos.sessions > 1 ? t('คาบที่ {i} จาก {n} ของคนนี้', { i: qpos.session, n: qpos.sessions }) : '';
   const queueLabel = sessionLabel ? `${personLabel} · ${sessionLabel}` : personLabel;
+  const phoneSessionLabel = qpos && qpos.sessions > 1 ? t('{i} จาก {n} คาบ', { i: qpos.session, n: qpos.sessions }) : '';
   const goFocus = (step: number) => {
     const next = pending[currentIndex + step];
     if (next) { setFocusId(next.id); setActiveCrit(0); }
@@ -694,11 +695,14 @@ export default function Evaluate() {
               <CaretLeft size={19} weight="bold" />
             </button>
             <div className="tev__title">
-              <b>{t('ประเมินรายคาบ')}</b>
-              <small>
-                {groupShort(group)}
-                {c ? ` · ${personLabel}` : ''}
-              </small>
+              {c ? (
+                <b>{groupShort(group)} · {personLabel}</b>
+              ) : (
+                <>
+                  <b>{t('ประเมินรายคาบ')}</b>
+                  <small>{groupShort(group)}</small>
+                </>
+              )}
             </div>
             {c && pending.length > 1 && (
               <button className="tev__skip" onClick={skip}>{t('ข้าม')}</button>
@@ -728,47 +732,80 @@ export default function Evaluate() {
                   </div>
                   <div className="tev__total">
                     <b>{anyPicked ? totalScore(draft) ?? 0 : '–'}<small>/{MAX_TOTAL}</small></b>
-                    <span>{missing ? t('เหลือ {n} ข้อ', { n: missing }) : t('ครบแล้ว')}</span>
+                    {/* 8 ขีด = 8 หัวข้อ สีตามคะแนน · แทนคำว่า "เหลือ n ข้อ" ที่ซ้ำกับปุ่มล่าง */}
+                    <span className="tev__seg" aria-label={missing ? t('เหลือ {n} ข้อ', { n: missing }) : t('ครบแล้ว')}>
+                      {CRITERIA.map((cr) => (
+                        <i key={cr.key} data-v={isValidScore(cr.key, draft[cr.key]) ? draft[cr.key] : undefined} />
+                      ))}
+                    </span>
                   </div>
                 </div>
-                <div className="tev__act">
-                  {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
-                  {patient && (() => {
-                    const lb = patientLabel(patient, idLevel, namesOn);
-                    return <span className="mono"> · {t(lb.name)}{lb.hn ? ` (HN ${lb.hn})` : ''}</span>;
-                  })()}
-                </div>
-                {sessionLabel && <span className="tev__multi">{sessionLabel}</span>}
-                <div className="tev__meta">
-                  {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}
-                  <button className={`evalpunct${c.punctual ? '' : ' evalpunct--late'}`} onClick={() => setPunctualId(c.id)}>
+                <dl className="tev__facts">
+                  <div>
+                    <dt>{t('กิจกรรม')}</dt>
+                    <dd>
+                      {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                      {phoneSessionLabel && <span className="tev__multi">{phoneSessionLabel}</span>}
+                    </dd>
+                  </div>
+                  {(patient || c.noPatient) && (
+                    <div>
+                      <dt>{t('ผู้ป่วย')}</dt>
+                      <dd>
+                        {patient ? (() => {
+                          const lb = patientLabel(patient, idLevel, namesOn);
+                          // HN ที่ถูกปิดเป็นจุดทั้งหมดไม่บอกอะไร — แสดงเฉพาะตอนเห็นเลขจริง
+                          const hn = lb.hn && /\d/.test(lb.hn) ? ` (HN ${lb.hn})` : '';
+                          return `${t(lb.name)}${hn}`;
+                        })() : t('ไม่มีผู้ป่วย')}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>{t('เวลา')}</dt>
+                    <dd>
+                      {thaiShort(c.date)}{c.checkinAt ? ` · ${c.checkinAt}` : ''}
+                      {c.editedAt && <small> · {t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</small>}
+                    </dd>
+                  </div>
+                  {steps.length > 0 && (
+                    <div>
+                      <dt>Step</dt>
+                      <dd>{steps.join(' · ')}</dd>
+                    </div>
+                  )}
+                  {c.note && (
+                    <div>
+                      <dt>{t('โน้ต')}</dt>
+                      <dd style={{ overflowWrap: 'anywhere' }}>{c.note}</dd>
+                    </div>
+                  )}
+                  {returnOpen(c) && (
+                    <div data-tone="warn">
+                      <dt>{t('ส่งกลับให้แก้')}</dt>
+                      <dd>
+                        {returnReasonText(c.returnReasons)}
+                        {c.returnNote && <> · “{c.returnNote}”</>}
+                      </dd>
+                    </div>
+                  )}
+                  {returnFixed(c) && (
+                    <div data-tone="ok">
+                      <dt>{t('นศ. แก้แล้ว')}</dt>
+                      <dd>{returnReasonText(c.returnReasons)}</dd>
+                    </div>
+                  )}
+                </dl>
+                {/* ปุ่มท้ายการ์ด ตัวหนังสือล้วน · ปุ่มเดียวก็เต็มแถว */}
+                <div className="tev__acts">
+                  <button className={c.punctual ? 'is-ok' : 'is-late'} onClick={() => setPunctualId(c.id)}>
                     {c.punctual ? t('ตรงเวลา') : t('มาสาย')}
                   </button>
-                  {c.noPatient && <span>{t('ไม่มีผู้ป่วย')}</span>}
-                  {c.editedAt && <span>{t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</span>}
-                  {returnOn && !locked && !c.returnedAt && (
-                    <button className="textbtn" onClick={() => setReturnId(c.id)}>{t('ขอให้แก้')}</button>
-                  )}
-                </div>
-                {returnOpen(c) && (
-                  <div className="evalreturn">
-                    <ArrowBendUpLeft size={13} weight="bold" style={{ flex: 'none', marginTop: 2 }} />
-                    <span>
-                      {t('ส่งกลับให้แก้')} · {returnReasonText(c.returnReasons)}
-                      {c.returnNote && <> · “{c.returnNote}”</>}
-                    </span>
-                    {!locked && <button className="textbtn" onClick={() => void saveReturn(c.id, [], '')}>{t('ยกเลิก')}</button>}
-                  </div>
-                )}
-                {returnFixed(c) && (
-                  <div className="evalreturn evalreturn--fixed">
-                    <CheckCircle size={13} weight="fill" style={{ flex: 'none', marginTop: 2 }} />
-                    <span>{t('นศ. แก้ตามที่ขอแล้ว')} · {returnReasonText(c.returnReasons)}</span>
-                  </div>
-                )}
-                {c.note && <div className="tev__steps" style={{ overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>}
-                <div className="tev__steps" data-done={steps.length > 0}>
-                  {steps.length ? <><CheckCircle size={14} weight="fill" /> {steps.join(' · ')}</> : t('ไม่มีบันทึก step เสร็จวันนั้น')}
+                  {returnOpen(c) && !locked ? (
+                    <button onClick={() => void saveReturn(c.id, [], '')}>{t('ยกเลิกที่ขอให้แก้')}</button>
+                  ) : returnOn && !locked && !c.returnedAt ? (
+                    <button onClick={() => setReturnId(c.id)}>{t('ขอให้แก้')}</button>
+                  ) : null}
                 </div>
               </section>
 
