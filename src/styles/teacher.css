@@ -2115,68 +2115,62 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .tev [data-v="1"] { --sc-bg: #fddcbc; --sc-fg: #9a3f06; --sc-bd: #f3b88a; }
   .tev [data-v="0"] { --sc-bg: #fbd0ca; --sc-fg: #b42318; --sc-bd: #eea197; }
   .tev__top {
-    position: sticky; top: 0; z-index: 4; display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 4; display: grid; align-items: center; gap: 12px;
+    grid-template-columns: minmax(44px, 1fr) minmax(0, auto) minmax(44px, 1fr);
     padding: 12px 16px 10px; background: rgba(255, 255, 255, 0.62);
     -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
   }
-  .tev__title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tev__title { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .tev__title > span { font: 500 14px/1.3 var(--font-body); color: #667085; }
   .tev__title b { font: 700 18px/1.3 var(--font-head); color: #101828; }
   .tev__title small { font: 400 13px var(--font-body); color: #525c6e; }
-  .tev__skip { flex: none; height: 38px; padding: 0 16px; border: 0; border-radius: 99px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); font: 600 14px var(--font-head); color: var(--panel); }
+  .tev__top > .tph__round { justify-self: start; }
+  .tev__skip { justify-self: end; flex: none; height: 38px; padding: 0 16px; border: 0; border-radius: 99px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); font: 600 14px var(--font-head); color: var(--panel); }
   .tev__incoming { margin: 0 16px; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--accent-ring); border-radius: 14px; background: var(--accent-tint); font: 600 13px var(--font-body); color: var(--accent-hover); text-align: left; }
   .tev__done { margin: 40px 16px 0; display: flex; flex-direction: column; align-items: center; gap: 14px; color: #05603a; }
   .tev__done b { font: 600 18px var(--font-head); color: #101828; }
   .tev__done .tph__start { align-self: center; background: var(--panel); color: #fff; }
 
-  /* การ์ดข้อมูลคน: จัดด้วยตัวอักษรล้วน ไม่มีไอคอน · ป้ายซ้ายเทาเล็ก ค่าขวาเข้ม · ปุ่มท้ายการ์ด */
-  .tev__info {
-    flex: none; margin: 0 16px; border-radius: 22px; overflow: hidden; display: flex; flex-direction: column;
-    background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05), 0 10px 26px rgba(16, 24, 40, 0.07);
-  }
-  .tev__inforow { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px; }
-  .tev__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .tev__who b { font: 700 21px/1.25 var(--font-head); color: #101828; overflow-wrap: anywhere; }
-  .tev__who .mono { margin-top: 2px; font-size: 13px; color: #667085; }
-  .tev__total { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
-  .tev__total b { font: 700 30px/1 var(--font-head); color: #101828; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .tev__total b small { font: 500 15px var(--font-head); color: #98a2b3; }
-  .tev__seg { display: flex; gap: 3px; width: 88px; margin-top: 8px; }
-  .tev__seg i { flex: 1; height: 4px; border-radius: 2px; background: #e4e7ec; }
-  .tev__seg i[data-v="3"] { background: #3fa874; }
-  .tev__seg i[data-v="2"] { background: #e3b82b; }
-  .tev__seg i[data-v="1"] { background: #ef8a3c; }
-  .tev__seg i[data-v="0"] { background: #e0533f; }
-  .tev__facts { margin: 0; padding: 8px 18px 10px; border-top: 1px solid #eef0f4; display: flex; flex-direction: column; }
-  .tev__facts > div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 5px 0; }
-  .tev__facts dt { font: 500 13px/1.6 var(--font-body); color: #98a2b3; }
-  .tev__facts dd { margin: 0; font: 400 15px/1.45 var(--font-body); color: #344054; overflow-wrap: anywhere; }
-  .tev__facts dd small { font-size: 13px; color: #667085; }
-  .tev__facts [data-tone="warn"] dd { color: var(--warning-dark); }
-  .tev__facts [data-tone="ok"] dd { color: #05603a; }
-  .tev__multi { margin-left: 8px; padding: 1px 9px; border-radius: 99px; background: #eef2fb; color: var(--panel); font: 600 12.5px var(--font-head); white-space: nowrap; }
-  .tev__acts { display: flex; border-top: 1px solid #eef0f4; }
-  .tev__acts button { flex: 1; min-height: 46px; border: 0; background: none; font: 600 14.5px var(--font-head); color: var(--panel); }
-  .tev__acts button + button { border-left: 1px solid #eef0f4; }
-  .tev__acts .is-ok { color: #05603a; }
-  .tev__acts .is-late { color: #9a3f06; }
+  /* ส่วนบนไม่มีกรอบ: ชื่อเป็นหัวเรื่อง · ลำดับความสำคัญบอกด้วยขนาด/น้ำหนัก/สีตัวอักษรอย่างเดียว */
+  .tev__hd { flex: none; padding: 6px 22px 4px; display: flex; flex-direction: column; align-items: flex-start; }
+  .tev__eye { font: 500 13px/1.5 var(--font-body); color: #667085; letter-spacing: 0.01em; }
+  .tev__punct { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .tev__punct.is-ok { color: #05603a; text-decoration-color: rgba(5, 96, 58, 0.35); }
+  .tev__punct.is-late { color: #9a3f06; text-decoration-color: rgba(154, 63, 6, 0.35); }
+  .tev__h1 { margin: 6px 0 0; font: 700 34px/1.12 var(--font-head); color: #101828; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+  .tev__code { margin-top: 4px; font-size: 13px; color: #98a2b3; }
+  .tev__act { margin-top: 14px; font: 600 17px/1.4 var(--font-head); color: #1d2939; overflow-wrap: anywhere; }
+  .tev__act em { margin-left: 8px; font: 500 13px var(--font-body); font-style: normal; color: var(--panel); white-space: nowrap; }
+  .tev__line { margin-top: 2px; font: 400 14.5px/1.5 var(--font-body); color: #475467; overflow-wrap: anywhere; }
+  .tev__muted { font-size: 13px; color: #98a2b3; }
+  .tev__line[data-tone="warn"] { margin-top: 8px; color: var(--warning-dark); }
+  .tev__line[data-tone="ok"] { margin-top: 8px; color: #05603a; }
+  .tev__link { margin-top: 10px; min-height: 36px; padding: 0; border: 0; background: none; font: 600 14.5px var(--font-head); color: var(--panel); cursor: pointer; }
 
-  .tev__grid { margin: 0 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .tev__tile {
-    min-height: 98px; padding: 12px 14px; box-sizing: border-box; border-radius: 22px; text-align: left; cursor: pointer;
-    display: flex; flex-direction: column; gap: 2px; min-width: 0;
-    background: var(--sc-bg, rgba(255, 255, 255, 0.72)); border: 1px solid var(--sc-bd, rgba(255, 255, 255, 0.78));
-    color: var(--sc-fg, #101828); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-    transition: background-color 0.18s, border-color 0.18s;
+  .tev__scrow { flex: none; display: flex; align-items: baseline; justify-content: space-between; margin: 10px 18px 0; }
+  .tev__scrow span { font: 500 13px var(--font-body); color: #667085; letter-spacing: 0.02em; }
+  .tev__scrow b { font: 700 22px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tev__scrow small { font: 500 14px var(--font-body); color: #98a2b3; }
+
+  /* แถวให้คะแนน: แตะเลขครั้งเดียว · เลือกแล้วสีตามคะแนน */
+  .tev__rows {
+    flex: none; margin: 0 16px; border-radius: 22px; overflow: hidden;
+    background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05), 0 10px 26px rgba(16, 24, 40, 0.06);
   }
-  .tev__tile:active { transform: scale(0.98); }
-  .tev__tilehead { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
-  .tev__tilehead svg { color: var(--sc-fg, var(--panel)); }
-  .tev__val { font: 700 28px/1 var(--font-head); font-variant-numeric: tabular-nums; color: var(--sc-fg, #98a2b3); }
-  .tev__val small { font: 500 13px var(--font-head); opacity: 0.7; }
-  .tev__name { font: 600 14.5px/1.3 var(--font-head); }
-  .tev__th { font: 400 12.5px/1.35 var(--font-body); color: var(--sc-fg, #667085); opacity: 0.85; overflow-wrap: anywhere; }
-  .tev__hint { margin: 0 20px; font: 400 13px var(--font-body); color: #667085; text-align: center; }
+  .tev__row { padding: 11px 14px 12px 18px; border-top: 1px solid #eef0f4; }
+  .tev__row:first-child { border-top: 0; }
+  .tev__rowh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .tev__rowh b { min-width: 0; font: 600 15px var(--font-head); color: #1d2939; }
+  .tev__rowh b small { margin-left: 4px; font: 400 12.5px var(--font-body); color: #98a2b3; }
+  .tev__crit { flex: none; min-height: 32px; margin: -8px -4px -8px 0; padding: 0 4px; border: 0; background: none; font: 500 12.5px var(--font-body); color: var(--panel); cursor: pointer; }
+  .tev__pick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .tev__pick button {
+    height: 40px; border-radius: 11px; display: grid; place-items: center; cursor: pointer;
+    font: 600 16px var(--font-head); color: #667085; background: #f6f7f9; border: 1px solid #eceef2;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .tev__pick button[data-v] { background: var(--sc-bg); color: var(--sc-fg); border-color: var(--sc-bd); font-weight: 700; }
+  .tev__pick button:disabled { cursor: default; }
   .tev__clear { align-self: center; min-height: 36px; font-size: 14px; }
 
   .tev__foot {
@@ -2210,6 +2204,5 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .tev__optt { font: 400 14.5px/1.5 var(--font-body); color: #344054; padding-top: 6px; }
 }
 @media (max-width: 780px) and (prefers-reduced-motion: reduce) {
-  .tev__tile { transition: none; }
-  .tev__tile:active { transform: none; }
+  .tev__pick button { transition: none; }
 }
