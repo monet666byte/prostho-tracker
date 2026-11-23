@@ -1044,7 +1044,7 @@ export default function Evaluate() {
             {t('ตรวจชื่อให้ตรงกับนักศึกษาที่อยู่ตรงหน้าก่อนกดยืนยัน')}
           </p>
           <ConfirmActions onCancel={() => setConfirmId(null)} onConfirm={() => sign(confirmRow.id)}>
-            <Signature size={17} weight="bold" />
+            {!phone && <Signature size={17} weight="bold" />}
             {t('ยืนยัน · ลงนาม')}
           </ConfirmActions>
         </ConfirmBox>
