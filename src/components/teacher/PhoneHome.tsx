@@ -5,7 +5,7 @@ import { LinkRequestsPanel, useLinkRequests } from './LinkRequestsPanel';
 import { typeMeta } from '../../domain/catalog';
 import { MAX_TOTAL } from '../../domain/checkin';
 import type { TodaySummary } from '../../domain/today';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
 import { waitReasonLabel } from '../../lib/waitReason';
 import { greeting } from './TodayCard';
@@ -90,9 +90,16 @@ export function PhoneHome({
       </header>
 
       <section className="tph__hero" aria-label={t('สรุปวันนี้')}>
-        <span className="tph__date">{t('วันนี้ · {d}', { d: thaiShort(now) })}</span>
+        {/* เลขนี้นับทุกคาบที่ยังไม่ประเมิน ไม่ใช่เฉพาะวันนี้ — บอกวันของคาบเก่าสุดแทนคำว่า "วันนี้" */}
         {pend.length ? (
-          <div className="tph__big"><b>{pend.length}</b><span>{t('คนรอประเมิน')}</span></div>
+          <>
+            <div className="tph__big"><b>{pend.length}</b><span>{t('คนรอประเมิน')}</span></div>
+            <span className="tph__date">
+              {summary.oldestPendingDate && summary.oldestPendingDate < toISODate(now)
+                ? t('เก่าสุด {d}', { d: thaiShort(summary.oldestPendingDate) })
+                : t('เป็นคาบวันนี้ทั้งหมด')}
+            </span>
+          </>
         ) : (
           <div className="tph__big"><span>{t('ประเมินครบแล้ว')}</span></div>
         )}

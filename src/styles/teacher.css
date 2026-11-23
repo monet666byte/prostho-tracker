@@ -2062,8 +2062,9 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
     background: radial-gradient(closest-side, var(--g3) 0%, var(--g3s) 45%, transparent 100%), radial-gradient(closest-side at 26% 30%, var(--g1) 0%, transparent 100%);
     animation: lq-panel-b 10.1s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
   }
-  .tph__date { font: 400 14px var(--font-body); opacity: 0.85; }
+  .tph__date { display: block; margin: 0 0 14px; font: 400 14px var(--font-body); opacity: 0.85; }
   .tph__big { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 12px; }
+  .tph__big:has(+ .tph__date) { margin-bottom: 2px; }
   .tph__big b { font: 600 44px/1.1 var(--font-head); }
   .tph__big span { font: 400 18px var(--font-head); }
   .tph__start {

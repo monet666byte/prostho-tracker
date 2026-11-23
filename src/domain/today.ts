@@ -53,6 +53,9 @@ export interface TodaySummary {
   followUpList: FollowUpPerson[];
   /** คาบรอประเมินที่เก่าที่สุด ผ่านมากี่วัน (ไม่มีคาบรอ = 0) */
   oldestPendingDays: number;
+  /** วันที่ของคาบรอประเมินที่เก่าที่สุด (YYYY-MM-DD) · ไม่มีคาบรอ = null
+   *  เทียบกับวันนี้ด้วย toISODate(now) — แผงหน้าแรกมือถือบอก "เก่าสุด …" แทนคำว่า "วันนี้" ที่ทำให้เข้าใจว่าคนรอมาวันนี้ทั้งหมด */
+  oldestPendingDate: string | null;
   /** คนที่ต้องตาม = เสี่ยงสูง + จับตา — หน้าจอแสดงสองสี แดง = ต้องตาม */
   followUp: number;
   stale: number;
@@ -111,6 +114,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
     return Number.isFinite(t) ? Math.floor((now.getTime() - t) / DAY) : 0;
   };
   const oldestPendingDays = pending.reduce((mx, c) => Math.max(mx, ageOf(c)), 0);
+  const oldestPendingDate = pending.reduce<string | null>((mn, c) => (mn === null || c.date < mn ? c.date : mn), null);
   const pendingBy = new Map<string, CheckIn[]>();
   pending.forEach((c) => pendingBy.set(c.studentId, [...(pendingBy.get(c.studentId) ?? []), c]));
   const pendingList: PendingPerson[] = [...pendingBy.entries()]
@@ -192,7 +196,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, fixedList, evaluatedList, doneThisWeek,
+    pendingPeople, pendingList, followUpList, oldestPendingDays, oldestPendingDate, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, fixedList, evaluatedList, doneThisWeek,
     needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || followUpGroups.length > 0,
   };
 }
