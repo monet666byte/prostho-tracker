@@ -17,6 +17,7 @@ import { thaiShort, relative } from '../../lib/date';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { waitReasonLabel } from '../../lib/waitReason';
 import { currentActor, useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import type { Photo } from '../../domain/types';
 
 type Filter = 'all' | 'stale' | 'done';
@@ -37,6 +38,7 @@ export default function Review() {
 
   const groupCode = useApp((st) => st.teacherGroup);
   const navigate = useNavigate();
+  const phone = usePhone();
   const [params] = useSearchParams();
   const [studentId, setStudentId] = useState<string | undefined>(params.get('student') ?? undefined);
   // เปลี่ยนกลุ่ม (จาก sidebar) แล้วเด้งไปคนแรกของกลุ่มใหม่
@@ -109,6 +111,45 @@ export default function Review() {
   return (
     <TeacherShell active="mygroup">
       <main className="main">
+        {/* มือถือ: ชื่อคนเป็นหัวเรื่อง · ตัวเลือกคน/เกณฑ์/ตัวกรอง ย่อเป็นลิงก์ตัวอักษร */}
+        {phone && (
+          <>
+            <button className="tpg__back" onClick={() => navigate('/teacher/group')}>‹ {t('สรุปกลุ่ม')}</button>
+            <div className="tpg__hd">
+              <h1 className="tpg__h1">{personName(active, '—')}</h1>
+              {active && <div className="tpg__code mono">{active.code}</div>}
+              <div className="tpg__links">
+                <button aria-expanded={showReq} onClick={() => setShowReq(!showReq)}>
+                  {t('รายปี')} {thisYear.done}/{thisYear.required} ›
+                </button>
+                {groupStudents.length > 1 && (
+                  <label>
+                    {t('เปลี่ยนคน')}
+                    <select value={activeId ?? ''} onChange={(e) => setStudentId(e.target.value)}>
+                      {groupStudents.map((st) => (
+                        <option key={st.id} value={st.id}>{personName(st)} · {st.code}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            </div>
+            <div className="tpg__tabs" role="group">
+              {(
+                [
+                  ['all', t('ทั้งหมด'), works.length],
+                  ['stale', t('ค้างนาน'), staleCount],
+                  ['done', t('จบเคสแล้ว'), doneCount],
+                ] as Array<[Filter, string, number]>
+              ).map(([k, label, n]) => (
+                <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)}>
+                  {label}<b>{n}</b>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {!phone && <>
         <button
           onClick={() => navigate('/teacher/group')}
           className="linkbtn"
@@ -180,9 +221,10 @@ export default function Review() {
             </button>
           ))}
         </div>
+        </>}
 
-        <div style={{ display: 'grid', gridTemplateColumns: showReq ? 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))' : '1fr', gap: 13, alignItems: 'start' }}>
-          <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: showReq && !phone ? 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))' : '1fr', gap: 13, alignItems: 'start' }}>
+          <div className={phone ? 'tpg__card' : undefined} style={phone ? undefined : { display: 'grid', gap: 10 }}>
           {list.length === 0 && (
             <div className="dashed" style={{ padding: '22px 16px', textAlign: 'center', font: '500 12px var(--font-body)', color: 'var(--text-muted)' }}>
               {t('ไม่มีชิ้นงานในหมวดนี้')}
@@ -202,7 +244,37 @@ export default function Review() {
                   <span>{t('ไม่นับเป็นงานที่กำลังทำ')}</span>
                 </div>
               )}
-              <article className={`reviewcard${isReturned(w) ? ' returned' : ''}`} data-work={w.id} style={{ display: 'block' }} title={w.returnNote ?? undefined}>
+              <article className={phone ? `tpg__case${isReturned(w) ? ' returned' : ''}` : `reviewcard${isReturned(w) ? ' returned' : ''}`} data-work={w.id} style={phone ? undefined : { display: 'block' }} title={w.returnNote ?? undefined}>
+                {phone && (
+                  /* มือถือ: เหลือ ประเภท · ชื่องาน · ผู้ป่วย+HN · แถบขั้น — ป้ายมุมขวาเฉพาะเรื่องที่ผิดปกติ */
+                  <button className="tpg__casebtn" aria-expanded={opened} onClick={() => setExpanded(opened ? null : w.id)}>
+                    <span className="tpg__casehd">
+                      <span className="tpg__ty" style={{ color: meta.ink }}>{workLabel(w)}</span>
+                      <span className="tpg__flags">
+                        {[
+                          isReturned(w) ? t('คืนเคส') : null,
+                          isStale(w, settings) ? t('ค้าง {d} วัน', { d: daysSinceUpdate(w) }) : null,
+                          requirementFlag(w) === 'off' && !isReturned(w) ? t('ไม่นับเกณฑ์') : null,
+                          isWaitingForPatient(w) && !isReturned(w) ? t('รอคนไข้') : null,
+                          pending.has(w.id) ? t('รอ sync') : null,
+                          reviewConflicts.has(w.id) ? t('มีคำตัดสินของท่านอื่น') : null,
+                        ].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span className="tpg__ti">{tText(w.detail)}</span>
+                    <span className="tpg__pt">
+                      {patientWithHn(w.patient, namesOn, t)}
+                      {w.patient.note && <em> · {t(w.patient.note)}</em>}
+                    </span>
+                    {!isReturned(w) && (
+                      <>
+                        <span className="tpg__bar"><i style={{ width: `${stepFraction(w) * 100}%`, background: meta.color }} /></span>
+                        <span className="tpg__st">{Math.max(progression(w), 0)}/{maxProgression(w)}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {!phone && <>
                 {/* หัวแถว = ปุ่มเปิด/ปิดทั้งแถบ กดง่ายสำหรับผู้ใช้สูงอายุ */}
                 <button
                   onClick={() => setExpanded(opened ? null : w.id)}
@@ -279,6 +351,7 @@ export default function Review() {
                   </div>
                   )}
                 </button>
+                </>}
 
                 {opened && (
                   <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
@@ -389,7 +462,7 @@ export default function Review() {
           </div>
 
           {showReq && (
-          <div className="panel" style={{ position: 'sticky', top: 0 }}>
+          <div className="panel" style={phone ? { order: -1 } : { position: 'sticky', top: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
               <h3 style={{ flex: 1 }}>{t('เกณฑ์ของ')} {personName(active, '')}</h3>
               <button className="iconbtn iconbtn--plain" style={{ width: 34, height: 34 }} onClick={() => setShowReq(false)} aria-label={t('ปิด')}>

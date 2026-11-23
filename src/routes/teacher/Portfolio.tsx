@@ -67,6 +67,7 @@ export default function Portfolio() {
           scope="group"
           icon={tab === 'sect2' ? ClipboardText : ListChecks}
           title={tab === 'sect2' ? t('ตรวจและวางแผนการรักษา') : t('ความรู้และทักษะ')}
+          phoneTitle={tab === 'sect2' ? t('แผนการรักษา') : t('ความรู้และทักษะ')}
         />
 
         <div className="salayout">

@@ -13,6 +13,7 @@ import {
 } from '../../hooks/data';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import type { Teacher } from '../../domain/types';
@@ -32,6 +33,7 @@ export default function MyGroup() {
   const checkinsAll = useAllCheckIns();
   const updatesAll = useAllProgressUpdates();
   const navigate = useNavigate();
+  const phone = usePhone();
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [view, setViewState] = useState<'table' | 'board'>(() => {
     try { return localStorage.getItem(GROUP_VIEW_KEY) === 'board' ? 'board' : 'table'; } catch { return 'table'; }
@@ -109,15 +111,32 @@ export default function MyGroup() {
           icon={Users}
           title={t('สรุปกลุ่ม')}
           sub={advisors ? `${t('อาจารย์ที่ปรึกษา')} ${advisors}` : undefined}
-          right={group ? (
+          phoneSub={null}
+          right={group && !phone ? (
             <button className="btn btn--sec scopehead__btn" onClick={() => navigate(`/teacher/report?scope=group&group=${encodeURIComponent(group)}`)}>
               <Printer size={15} /> {t('รายงานประจำเดือน')}
             </button>
           ) : undefined}
         />
 
+        {/* มือถือ: ตัวเลขสามตัวไม่มีกรอบ คำเดียวใต้เลข — สาเหตุรายคนอยู่ในแถวด้านล่างแล้ว */}
+        {phone && (
+          <div className="tpg__stats">
+            <div data-tone={gHigh + gWatch > 0 ? 'warn' : undefined}>
+              <b>{gHigh + gWatch}</b><span>{t('ต้องตาม')}</span>
+            </div>
+            <button onClick={() => navigate('/teacher/evaluate')} disabled={!pendingPeople}>
+              <b>{pendingPeople}</b><span>{t('รอประเมิน')}</span>
+            </button>
+            <div>
+              <b>{groupRisks.reduce((sum, r) => sum + r.completedThisYear, 0)}<small> / {groupRisks.length * settings.req.perYear}</small></b>
+              <span>{t('จบเคส')}</span>
+            </div>
+          </div>
+        )}
+
         {/* หน้าสรุปกลุ่มแบบ "ตัดของซ้ำ" — ตัวเลข 3 กล่องมีกรอบสี → การ์ดเดียวคั่นเส้น แบบหน้าภาพรวม */}
-        <div className="kpis kpis--strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {!phone && <div className="kpis kpis--strip" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {/* ยุบการ์ด "ติด step/เงียบหาย" มาเป็นบรรทัดสาเหตุของ "ต้องตาม" — สองการ์ดเดิมชี้คนกลุ่มเดียวกัน */}
           <div className="kpi">
             <div className="kpi__value" style={{ color: gHigh ? 'var(--danger)' : 'var(--success)' }}>
@@ -152,9 +171,60 @@ export default function MyGroup() {
             </div>
             <div className="kpi__label">{t('จบเคสปีนี้')} · {t('เกณฑ์รายปี คนละ {n} ชิ้น', { n: settings.req.perYear })}</div>
           </div>
-        </div>
+        </div>}
 
-        <div className="panel grppanel" ref={panelRef} style={{ marginTop: 18 }} onMouseLeave={() => setPeek(null)}>
+        {/* มือถือ: รายชื่อแถวละคน (ตารางเดิมล้นขอบจอ) · แตะแถว = ตรวจงานรายคน ซึ่งมีงานทุกชิ้นของคนนั้น */}
+        {phone && (
+          <>
+            <div className="tpg__lab">
+              <button onClick={() => setView(view === 'board' ? 'table' : 'board')}>{view === 'board' ? t('ตาราง') : t('กระดาน')}</button>
+            </div>
+            {view === 'board' ? (
+              <div className="tpg__card tpg__card--pad">
+                <CaseBoard
+                  works={groupWorks}
+                  students={groupStudents}
+                  checkins={groupCheckins}
+                  settings={settings}
+                  onOpen={(st) => navigate(`/teacher/review?student=${st.id}`)}
+                />
+              </div>
+            ) : (
+              <div className="tpg__card">
+                {groupRisks.map((r) => {
+                  const main = r.pieces[0];
+                  return (
+                    <button key={r.student.id} className="tpg__row" onClick={() => navigate(`/teacher/review?student=${r.student.id}`)}>
+                      <span className="tpg__dot" data-risk={r.risk === 'ok' ? 'ok' : 'warn'}
+                        role="img" aria-label={r.risk === 'ok' ? t('ตามแผน') : t('ต้องตาม')} />
+                      <span className="tpg__who">
+                        <b>{personName(r.student)}<span className="mono">{r.student.code}</span></b>
+                        <small>
+                          {main ? (
+                            <>
+                              <i style={{ color: workMeta(main).ink }}>{workLabel(main)}</i>
+                              {' · '}{t('ขั้น {n}', { n: Math.min(main.max, main.progression + 1) })}
+                            </>
+                          ) : t('ไม่มีเคสในมือ')}
+                        </small>
+                      </span>
+                      <span className="tpg__num" title={t('จบแล้ว {a} จากทั้งหมด {b} ชิ้นในมือ', { a: r.piecesDone, b: r.piecesTotal })}>
+                        {r.piecesDone}/{r.piecesTotal}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {group && (
+              <button className="tpg__foot" onClick={() => navigate(`/teacher/report?scope=group&group=${encodeURIComponent(group)}`)}>
+                {t('พิมพ์รายงานประจำเดือน')}
+              </button>
+            )}
+          </>
+        )}
+
+        {!phone && <div className="panel grppanel" ref={panelRef} style={{ marginTop: 18 }} onMouseLeave={() => setPeek(null)}>
           <div className="grphead">
             <h3>{t('นักศึกษาในกลุ่ม')}</h3>
             <div className="seg seg--sm" role="group" aria-label={t('มุมมอง')}>
@@ -359,7 +429,7 @@ export default function MyGroup() {
               </div>
             );
           })()}
-        </div>
+        </div>}
 
         <div className="panel" style={{ marginTop: 16 }}>
           <h3>{t('เปรียบเทียบกลุ่มกับค่าเฉลี่ยชั้นปี')}</h3>

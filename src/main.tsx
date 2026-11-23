@@ -23,6 +23,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/student.css';
 import './styles/teacher.css';
+import './styles/teacher-phone.css';
 import './styles/student-tablet.css';
 import './styles/liquid.css';
 import App from './App';

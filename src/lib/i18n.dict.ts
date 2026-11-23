@@ -800,6 +800,8 @@ export const DICT: Record<string, string> = {
   'อาจารย์ที่ปรึกษา': 'Advisors:',
   'เกณฑ์สะสม': 'cumulative:',
   'รายปี': 'yearly',
+  'เปลี่ยนคน': 'Switch student',
+  'พิมพ์รายงานประจำเดือน': 'Print monthly report',
   'ซ่อนเกณฑ์': 'Hide requirements',
   'ดูเกณฑ์': 'Show requirements',
   'ทั้งหมด': 'All',

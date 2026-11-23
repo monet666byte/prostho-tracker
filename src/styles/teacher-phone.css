@@ -1,0 +1,114 @@
+/* ══ หน้าอาจารย์บนมือถือ — หน้ารองให้หน้าตาเดียวกับหน้าแรก/หน้าประเมิน ══
+   หัวเรื่องตัวใหญ่ · ตัวเลขไม่มีกรอบ · รายการเป็นการ์ดขาวแผ่นเดียวคั่นเส้น
+   ตัดตัวหนังสือให้เหลือชื่อ ตัวเลข และเรื่องผิดปกติ
+   แยกไฟล์จาก teacher.css · import หลัง teacher.css จึงชนะกฎความเจาะจงเท่ากันด้วยลำดับ */
+
+@media (max-width: 780px) {
+  /* ── หัวหน้า (ScopeHead) ── */
+  .tpg__hd { padding: 16px 22px 6px; }
+  .tpg__eye { font: 500 13px/1.5 var(--font-body); color: #667085; }
+  .tpg__h1 {
+    margin: 4px 0 0; font: 700 34px/1.12 var(--font-head); color: #101828;
+    letter-spacing: -0.01em; overflow-wrap: anywhere;
+  }
+  .tpg__sub { margin: 6px 0 0; font: 400 14.5px/1.5 var(--font-body); color: #475467; }
+  .tpg__right { margin-top: 12px; }
+  .tpg__code { margin-top: 4px; font: 400 13px var(--font-mono); color: #98a2b3; }
+
+  .tpg__back {
+    display: inline-flex; align-items: center; min-height: 36px; margin: 2px 0 0 22px; padding: 0;
+    background: none; border: 0; cursor: pointer; font: 500 14px var(--font-body); color: #667085;
+  }
+  .tpg__back + .tpg__hd { padding-top: 4px; }
+
+  /* ลิงก์ตัวอักษรใต้ชื่อ (รายปี · เปลี่ยนคน) */
+  .tpg__links { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .tpg__links > button, .tpg__links > label {
+    position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0;
+    background: none; border: 0; cursor: pointer; font: 600 14.5px var(--font-head); color: var(--panel);
+  }
+  /* ตัวเลือกคนซ่อนทับคำ "เปลี่ยนคน" — แตะแล้วได้รายชื่อแบบของระบบ */
+  .tpg__links select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+
+  /* ── ตัวเลขสามตัว ── */
+  .tpg__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 14px 22px 4px; }
+  .tpg__stats > * {
+    display: block; min-width: 0; padding: 0; text-align: left;
+    background: none; border: 0; font: inherit; color: inherit;
+  }
+  .tpg__stats > button { cursor: pointer; }
+  .tpg__stats b {
+    display: block; font: 700 28px/1.1 var(--font-head); color: #101828; font-variant-numeric: tabular-nums;
+  }
+  .tpg__stats b small { font: 500 14px var(--font-body); color: #98a2b3; }
+  .tpg__stats span { display: block; margin-top: 2px; font: 500 13px/1.4 var(--font-body); color: #667085; }
+  .tpg__stats [data-tone='warn'] b { color: #b42318; }
+
+  /* ป้ายเหนือการ์ด — ลิงก์สลับมุมมองชิดขวา */
+  .tpg__lab { display: flex; justify-content: flex-end; margin: 14px 22px 6px; }
+  .tpg__lab button {
+    min-height: 36px; padding: 0; background: none; border: 0; cursor: pointer;
+    font: 600 13.5px var(--font-head); color: var(--panel);
+  }
+
+  /* ── การ์ดขาวแผ่นเดียว ── */
+  .tpg__card {
+    margin: 0 16px; border-radius: 22px; overflow: hidden; background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05), 0 10px 26px rgba(16, 24, 40, 0.06);
+  }
+  .tpg__card--pad { padding: 12px; overflow-x: auto; }
+
+  .tpg__row {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 18px;
+    background: none; border: 0; border-top: 1px solid #eef0f4; cursor: pointer; text-align: left; font: inherit;
+  }
+  .tpg__row:first-child { border-top: 0; }
+  .tpg__row:active { background: #f5f7fb; }
+  .tpg__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #0e9f6e; }
+  .tpg__dot[data-risk='warn'] { background: #e9553f; }
+  .tpg__who { flex: 1; min-width: 0; }
+  .tpg__who b { display: block; font: 600 15.5px var(--font-head); color: #1d2939; overflow-wrap: anywhere; }
+  .tpg__who b .mono { margin-left: 8px; font: 400 12.5px var(--font-mono); color: #98a2b3; }
+  .tpg__who small {
+    display: block; margin-top: 1px; font: 400 13px/1.45 var(--font-body); color: #667085;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tpg__who small i { font-style: normal; font-weight: 600; }
+  .tpg__num { flex: none; font: 600 15px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; }
+
+  .tpg__foot {
+    display: block; margin: 16px auto 4px; min-height: 40px; padding: 0 12px;
+    background: none; border: 0; cursor: pointer; font: 600 14.5px var(--font-head); color: var(--panel);
+  }
+
+  /* ── แท็บตัวอักษร (ตรวจงานรายคน) ── */
+  .tpg__tabs { display: flex; gap: 22px; margin: 14px 22px 14px; border-bottom: 1px solid #e4e7ec; overflow-x: auto; }
+  .tpg__tabs button {
+    flex: none; padding: 6px 0 10px; background: none; border: 0; cursor: pointer;
+    font: 500 14.5px var(--font-head); color: #667085;
+  }
+  .tpg__tabs button b { margin-left: 4px; font-weight: 500; color: #98a2b3; font-variant-numeric: tabular-nums; }
+  .tpg__tabs button[aria-pressed='true'] { color: #101828; font-weight: 600; box-shadow: inset 0 -2px 0 #101828; }
+
+  /* ── เคสในการ์ด ── */
+  .tpg__case { border-top: 1px solid #eef0f4; }
+  .tpg__case:first-child, .returnedhead + .tpg__case { border-top: 0; }
+  .tpg__case.returned { opacity: 0.6; }
+  .tpg__case > div { margin: 0 18px 16px; } /* ส่วนที่กางออก (รายละเอียด · รูป · คอมเมนต์) */
+  .tpg__casebtn {
+    display: block; width: 100%; padding: 16px 18px; background: none; border: 0;
+    cursor: pointer; text-align: left; font: inherit;
+  }
+  .tpg__casebtn > span { display: block; }
+  .tpg__casehd { display: flex !important; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .tpg__ty { flex: none; font: 600 13px var(--font-head); }
+  .tpg__flags { min-width: 0; text-align: right; font: 500 13px var(--font-body); color: #9a3f06; }
+  .tpg__ti { margin-top: 2px; font: 600 17px/1.35 var(--font-head); color: #101828; }
+  .tpg__pt { margin-top: 2px; font: 400 14px/1.5 var(--font-body); color: #475467; overflow-wrap: anywhere; }
+  .tpg__pt em { font-style: normal; color: #9a3f06; }
+  .tpg__bar { margin-top: 10px; height: 4px; border-radius: 2px; background: #eef0f4; overflow: hidden; }
+  .tpg__bar i { display: block; height: 100%; border-radius: 2px; }
+  .tpg__st { margin-top: 8px; font: 700 15px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; }
+  .tpg__card .returnedhead { margin: 0; padding: 12px 18px 4px; border-top: 1px solid #eef0f4; }
+  .tpg__card > .dashed { margin: 12px; }
+}
