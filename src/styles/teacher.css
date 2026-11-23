@@ -2087,6 +2087,9 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   .tph__more { min-height: 44px; border: 0; border-top: 1px solid #eef0f4; background: none; font: 500 14px var(--font-head); color: #2c3f9a; cursor: pointer; }
   .tph__dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #2b5ce6; }
   .tph__dot--stuck { background: #e8780c; }
+  .tph__dot--done { background: #98a2b3; }
+  .tph__score { flex: none; font: 600 15px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tph__score small { font: 500 12px var(--font-body); color: #98a2b3; }
   .tph__dot--wait { background: #98a2b3; }
   .tph__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .tph__who b { font: 600 15.5px var(--font-head); color: #101828; }
@@ -2171,6 +2174,11 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
   }
   .tev__pick button[data-v] { background: var(--sc-bg); color: var(--sc-fg); border-color: var(--sc-bd); font-weight: 700; }
   .tev__pick button:disabled { cursor: default; }
+  /* หน้าแก้คะแนน: ข้อที่เปลี่ยนพื้นอ่อนลง + "เดิม a → b" แทนลิงก์เกณฑ์ */
+  .tev__row[data-changed] { background: #f7f9fd; }
+  .tev__was { flex: none; min-height: 32px; margin: -8px -4px -8px 0; padding: 0 4px; border: 0; background: none; font: 600 12.5px var(--font-head); color: #9a3f06; white-space: nowrap; cursor: pointer; }
+  .tev__from { margin-right: 6px; font: 500 16px var(--font-head); color: #98a2b3; }
+  .tev__fine { flex: none; margin: 2px 22px 0; font: 400 12.5px/1.5 var(--font-body); color: #667085; text-align: center; }
   .tev__clear { align-self: center; min-height: 36px; font-size: 14px; }
 
   .tev__foot {

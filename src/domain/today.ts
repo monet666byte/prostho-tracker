@@ -5,7 +5,7 @@
  * ไฟล์นี้นับอย่างเดียว ข้อความ/ปุ่มอยู่ที่หน้าจอ · ไม่ใช้ AI ตัวเลขทุกตัวมาจากกติกาเดียวกับหน้าอื่น
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
-import { returnFixed } from './checkin';
+import { returnFixed, totalScore } from './checkin';
 import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, maxProgression, progression } from './rules';
 import type { CheckIn, DentureClass, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
@@ -66,6 +66,8 @@ export interface TodaySummary {
   waitingList: Array<{ studentId: string; workId: string; type: WorkType; dentureClass?: DentureClass; reason: WaitReason; until?: string }>;
   /** คาบที่อาจารย์ขอให้แก้ แล้ว นศ. แก้แล้ว ยังรอประเมิน (returnFixed) — แก้ล่าสุดก่อน · ใช้กับกระดิ่งบนมือถือ */
   fixedList: Array<{ checkinId: string; studentId: string; date: string; editedAt: string }>;
+  /** คาบที่ประเมินแล้ว คาบล่าสุดก่อน (วันเดียวกัน = ลงคะแนนล่าสุดก่อน) — หน้าแรกมือถือใช้เป็นทางเข้าแก้คะแนน */
+  evaluatedList: Array<{ checkinId: string; studentId: string; date: string; activities: string[]; total: number }>;
   /** ชิ้นงานที่จบใน 7 วันล่าสุด — ไม่นับงานจากชีต (completedAt ของมันคือวันนำเข้า ไม่ใช่วันจบจริง) */
   doneThisWeek: number;
   /** มีเรื่องที่อาจารย์ต้องทำหรือต้องดู — ไม่มี = "วันนี้ไม่มีอะไรน่าห่วง" */
@@ -123,6 +125,11 @@ export function todaySummary(input: TodayInput): TodaySummary {
     .filter((c) => returnFixed(c))
     .map((c) => ({ checkinId: c.id, studentId: c.studentId, date: c.date, editedAt: c.editedAt ?? '' }))
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt));
+
+  const evaluatedList: TodaySummary['evaluatedList'] = input.checkins
+    .filter((c) => c.status === 'evaluated' && ids.has(c.studentId))
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.evaluatedAt ?? '').localeCompare(a.evaluatedAt ?? ''))
+    .map((c) => ({ checkinId: c.id, studentId: c.studentId, date: c.date, activities: c.activities ?? [], total: totalScore(c.scores) ?? 0 }));
 
   const staleWorks = works.filter((w) => isStale(w, settings, now));
   const staleList: TodaySummary['staleList'] = staleWorks
@@ -185,7 +192,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   }).length;
 
   return {
-    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, fixedList, doneThisWeek,
+    pendingPeople, pendingList, followUpList, oldestPendingDays, followUp, stale: staleWorks.length, staleList, staleTop, followUpGroups, waitingList, fixedList, evaluatedList, doneThisWeek,
     needsAttention: pendingPeople > 0 || followUp > 0 || staleWorks.length > 0 || followUpGroups.length > 0,
   };
 }

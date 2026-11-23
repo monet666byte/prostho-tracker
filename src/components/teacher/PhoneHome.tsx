@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { cloudEnabled } from '../../lib/cloud';
 import { LinkRequestsPanel, useLinkRequests } from './LinkRequestsPanel';
 import { typeMeta } from '../../domain/catalog';
+import { MAX_TOTAL } from '../../domain/checkin';
 import type { TodaySummary } from '../../domain/today';
 import { thaiShort } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -18,7 +19,7 @@ import { greeting } from './TodayCard';
  */
 export function PhoneHome({
   name, groupCodes, groupLabel, current, onPickGroup, otherPending, summary, studentName,
-  onSearch, onStart, onOpenEval, onOpenStudent,
+  onSearch, onStart, onOpenEval, onOpenStudent, onOpenRevise,
 }: {
   name: string;
   groupCodes: string[];
@@ -33,8 +34,10 @@ export function PhoneHome({
   onStart: () => void;
   onOpenEval: (studentId: string) => void;
   onOpenStudent: (studentId: string) => void;
+  onOpenRevise: (checkinId: string, studentId: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [showAllDone, setShowAllDone] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   /* กระดิ่ง = เรื่องที่รอให้อาจารย์ทำ แต่ไม่ได้อยู่ในรายชื่อรอประเมิน:
      นศ. แก้คาบตามที่ขอแล้ว (todaySummary.fixedList) · นศ. ขอผูกบัญชี (เฉพาะต่อ cloud) */
@@ -44,6 +47,11 @@ export function PhoneHome({
   const pend = summary.pendingList;
   const PEND_MAX = 3;
   const pendShown = showAll ? pend : pend.slice(0, PEND_MAX);
+  /* ประเมินแล้วล่าสุด = ทางเข้าแก้คะแนนบนมือถือ · กางได้ไม่เกิน 20 คาบ (ทั้งปีหลายร้อยคาบ) */
+  const done = summary.evaluatedList;
+  const DONE_MAX = 3;
+  const DONE_OPEN = 20;
+  const doneShown = done.slice(0, showAllDone ? DONE_OPEN : DONE_MAX);
   const stuck = summary.staleList.slice(0, 6);
   const waiting = summary.waitingList.slice(0, 3);
   const now = new Date();
@@ -125,6 +133,34 @@ export function PhoneHome({
           <div className="tph__empty">{t('ไม่มีงานรอประเมินแล้ว')}</div>
         )}
       </section>
+
+      {done.length > 0 && (
+        <section className="tph__card">
+          <div className="tph__sect">
+            <h2>{t('ประเมินแล้วล่าสุด')}</h2>
+            <span>{t('แตะ = แก้คะแนน')}</span>
+          </div>
+          {doneShown.map((d) => (
+            <button key={d.checkinId} className="tph__row" onClick={() => onOpenRevise(d.checkinId, d.studentId)}>
+              <span className="tph__dot tph__dot--done" aria-hidden />
+              <span className="tph__who">
+                <b>{studentName(d.studentId)}</b>
+                <small>
+                  {d.activities.length ? d.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                  {' · '}{thaiShort(d.date)}
+                </small>
+              </span>
+              <span className="tph__score">{d.total}<small>/{MAX_TOTAL}</small></span>
+              <CaretRight size={18} className="tph__chev" aria-hidden />
+            </button>
+          ))}
+          {done.length > DONE_MAX && (
+            <button className="tph__more" onClick={() => setShowAllDone(!showAllDone)}>
+              {showAllDone ? t('ย่อ') : t('ดูอีก {n} คาบ', { n: Math.min(done.length, DONE_OPEN) - DONE_MAX })}
+            </button>
+          )}
+        </section>
+      )}
 
       {(stuck.length > 0 || waiting.length > 0) && (
         <section className="tph__card">

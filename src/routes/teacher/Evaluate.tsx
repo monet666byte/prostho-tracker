@@ -380,21 +380,27 @@ export default function Evaluate() {
     setReviseDraft({});
   }
 
+  /* มือถือเข้าหน้าแก้จากการ์ด "ประเมินแล้วล่าสุด" บนหน้าแรก — แก้เสร็จ/ยกเลิก กลับไปที่นั่น */
+  function leaveRevise() {
+    closeRevise();
+    if (phone) navigate('/teacher');
+  }
+
   async function saveRevise() {
     if (!reviseRow || signing.current) return;
     signing.current = true;
     try {
       const res = await reviseCheckIn(reviseRow.id, reviseDraft, teacher?.name ?? currentActor());
       if (res.ok) {
-        closeRevise();
+        leaveRevise();
         showToast({
           message: t('แก้คะแนนแล้ว {n} หัวข้อ — บันทึกไว้ในประวัติเรียบร้อย', { n: res.changed }),
           tone: 'success',
         });
       } else if (res.reason === 'nochange') {
-        closeRevise();
+        leaveRevise();
       } else if (res.reason === 'graduated') {
-        closeRevise();
+        leaveRevise();
         showToast({ message: t('รุ่นนี้เรียนจบแล้ว — แก้ไขไม่ได้'), tone: 'warning' });
       } else {
         showToast({ message: t('แก้ไม่สำเร็จ — คาบนี้อาจถูกลบหรือเปลี่ยนสถานะไปแล้ว'), tone: 'warning' });
@@ -417,6 +423,18 @@ export default function Evaluate() {
     setParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantStudent, pendingKey, snapshot]);
+
+  /* มาจากการ์ด "ประเมินแล้วล่าสุด" บนหน้าแรกมือถือ (?revise=) — เปิดหน้าแก้คะแนนของคาบนั้น
+     ยังไม่เจอในกลุ่มนี้ = รอข้อมูลรอบหน้า ไม่ลบที่อยู่ทิ้ง */
+  const wantRevise = params.get('revise');
+  useEffect(() => {
+    if (!wantRevise) return;
+    const row = evaluatedAll.find((c) => c.id === wantRevise);
+    if (!row) return;
+    openRevise(row);
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantRevise, evaluatedAll.length]);
 
   const current = mode === 'focus' || phone ? (pending.find((c) => c.id === focusId) ?? pending[0]) : undefined;
   const currentIndex = current ? pending.findIndex((c) => c.id === current.id) : -1;
@@ -664,9 +682,132 @@ export default function Evaluate() {
     );
   };
 
+  /** แผ่นเกณฑ์ของหัวข้อเดียว (มือถือ) — อ่านคำอธิบายทุกระดับ และแตะเลือกได้ */
+  function renderCritSheet(crit: (typeof CRITERIA)[number], value: number | undefined, disabled: boolean, onPick: (n: number) => void) {
+    return (
+      <div className="tsheet tev__sheet" role="dialog" aria-modal="true" aria-label={crit.label}>
+        <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setSheetKey(null)} />
+        <div className="tsheet__body">
+          <span className="tsheet__grab" aria-hidden />
+          <div className="tev__sheethead">
+            <span className="tev__sheeticon"><CritIcon critKey={crit.key} size={26} /></span>
+            <div>
+              <b>{crit.label}</b>
+              <small>{t(crit.th)}</small>
+            </div>
+            <button className="tsheet__x" onClick={() => setSheetKey(null)} aria-label={t('ปิด')}><X size={18} weight="bold" /></button>
+          </div>
+          <div className="tev__opts" role="radiogroup" aria-label={crit.label}>
+            {[...scoreLevels(crit.key)].reverse().map((n) => (
+              <button key={n} className="tev__opt" data-v={n} data-on={value === n}
+                role="radio" aria-checked={value === n} disabled={disabled}
+                onClick={() => onPick(n)}>
+                <span className="tev__optn">{n}</span>
+                <span className="tev__optt">{rubricText(crit.key, n)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /** แก้คะแนนคาบที่ลงนามแล้วบนมือถือ — หน้าตาเดียวกับหน้าประเมิน เปิดมาพร้อมค่าที่ลงไว้
+   *  ข้อที่เปลี่ยนบอก "เดิม a → b" แทนลิงก์เกณฑ์ · บันทึกครั้งเดียว (หน้านี้คือหน้ายืนยันแล้ว เหมือนกล่องบนจอใหญ่) */
+  function renderPhoneRevise(c: CheckIn) {
+    const st = reviseStudent;
+    const patient = c.patientId ? patientById.get(c.patientId) : undefined;
+    const locked = st ? isAlumni(st) : false;
+    const changed = reviseDiffs.length;
+    const sheetCrit = sheetKey ? CRITERIA.find((cr) => cr.key === sheetKey) : undefined;
+    const setScore = (key: string, n: number) => { if (!locked) setReviseDraft((prev) => ({ ...prev, [key]: n })); };
+    return (
+      <TeacherShell active="evaluate">
+        <main className="main tev">
+          <header className="tev__top">
+            <button className="tph__round" onClick={leaveRevise} aria-label={t('กลับหน้าแรก')}>
+              <CaretLeft size={19} weight="bold" />
+            </button>
+            <div className="tev__title"><span>{t('แก้คะแนน')} · {groupShort(group)}</span></div>
+          </header>
+
+          <section className="tev__hd">
+            <div className="tev__eye">
+              {thaiShort(c.date)} · {t('ลงนามแล้ว')}{c.evaluatedBy ? ` · ${t(c.evaluatedBy)}` : ''}
+            </div>
+            <h1 className="tev__h1">{personName(st, '')}</h1>
+            <div className="tev__code mono">{st?.code}</div>
+            <div className="tev__act">
+              {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+            </div>
+            {(patient || c.noPatient) && (
+              <div className="tev__line">
+                {patient ? (() => {
+                  const lb = patientLabel(patient, idLevel, namesOn);
+                  const hn = lb.hn && /\d/.test(lb.hn) ? ` (HN ${lb.hn})` : '';
+                  return `${t('ผู้ป่วย')} ${t(lb.name)}${hn}`;
+                })() : t('ไม่มีผู้ป่วย')}
+              </div>
+            )}
+            {supersededBy(c) && <div className="tev__line" data-tone="warn">{supersededTitle(c)}</div>}
+          </section>
+
+          <div className="tev__scrow">
+            <span>{t('คะแนนคาบนี้')}</span>
+            <b>
+              {changed > 0 && <span className="tev__from">{totalScore(reviseBefore) ?? 0} →</span>}
+              {totalScore(reviseDraft) ?? 0}<small> / {MAX_TOTAL}</small>
+            </b>
+          </div>
+
+          <div className="tev__rows">
+            {CRITERIA.map((cr) => {
+              const was = reviseBefore[cr.key] ?? 0;
+              const now = reviseDraft[cr.key] ?? 0;
+              const levels = scoreLevels(cr.key);
+              return (
+                <div key={cr.key} className="tev__row" data-changed={was !== now || undefined}>
+                  <div className="tev__rowh">
+                    <b id={`tev-${cr.key}`}>{t(cr.short)}<small>{t(cr.th)}</small></b>
+                    {was !== now ? (
+                      <button className="tev__was" onClick={() => setSheetKey(cr.key)}>
+                        {t('เดิม {a} → {b}', { a: was, b: now })}
+                      </button>
+                    ) : (
+                      <button className="tev__crit" onClick={() => setSheetKey(cr.key)}>{t('เกณฑ์')}</button>
+                    )}
+                  </div>
+                  <div className="tev__pick" role="radiogroup" aria-labelledby={`tev-${cr.key}`}>
+                    {[3, 2, 1, 0].map((n) => levels.includes(n) ? (
+                      <button key={n} role="radio" aria-checked={now === n} data-v={now === n ? n : undefined}
+                        disabled={locked} onClick={() => setScore(cr.key, n)}>
+                        {n}
+                      </button>
+                    ) : <span key={n} aria-hidden />)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="tev__fine">{t('การแก้บันทึกไว้ในประวัติพร้อมค่าเดิม ลบไม่ได้ · ชื่อผู้ประเมินจะเปลี่ยนเป็นคุณ')}</p>
+
+          <div className="tev__foot">
+            <button className="tev__save" disabled={locked || changed === 0} onClick={() => void saveRevise()}>
+              {locked ? t('รุ่นนี้จบแล้ว') : changed ? t('บันทึกการแก้ · {n} หัวข้อ', { n: changed }) : t('ยังไม่ได้แก้')}
+            </button>
+          </div>
+
+          {sheetCrit && renderCritSheet(sheetCrit, reviseDraft[sheetCrit.key], locked, (n) => { setScore(sheetCrit.key, n); setSheetKey(null); })}
+          {dialogs}
+        </main>
+      </TeacherShell>
+    );
+  }
+
   /** หน้าประเมินบนมือถือ (แบบ E) — ข้อมูล/กติกาเดียวกับจอใหญ่ทุกอย่าง ต่างแค่หน้าตา
    *  ช่องว่าง = ยังไม่ให้คะแนน (ไม่มีค่าเริ่ม) · สีช่องตามคะแนนแบบไฟจราจร 3 เขียว → 0 แดง */
   function renderPhone() {
+    if (reviseRow) return renderPhoneRevise(reviseRow);
     const c = current;
     const student = c ? studentById.get(c.studentId) : undefined;
     const patient = c?.patientId ? patientById.get(c.patientId) : undefined;
@@ -814,32 +955,7 @@ export default function Evaluate() {
             </>
           )}
 
-          {c && sheetCrit && (
-            <div className="tsheet tev__sheet" role="dialog" aria-modal="true" aria-label={sheetCrit.label}>
-              <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setSheetKey(null)} />
-              <div className="tsheet__body">
-                <span className="tsheet__grab" aria-hidden />
-                <div className="tev__sheethead">
-                  <span className="tev__sheeticon"><CritIcon critKey={sheetCrit.key} size={26} /></span>
-                  <div>
-                    <b>{sheetCrit.label}</b>
-                    <small>{t(sheetCrit.th)}</small>
-                  </div>
-                  <button className="tsheet__x" onClick={() => setSheetKey(null)} aria-label={t('ปิด')}><X size={18} weight="bold" /></button>
-                </div>
-                <div className="tev__opts" role="radiogroup" aria-label={sheetCrit.label}>
-                  {[...scoreLevels(sheetCrit.key)].reverse().map((n) => (
-                    <button key={n} className="tev__opt" data-v={n} data-on={draft[sheetCrit.key] === n}
-                      role="radio" aria-checked={draft[sheetCrit.key] === n} disabled={locked}
-                      onClick={() => pick(sheetCrit.key, n)}>
-                      <span className="tev__optn">{n}</span>
-                      <span className="tev__optt">{rubricText(sheetCrit.key, n)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {c && sheetCrit && renderCritSheet(sheetCrit, draft[sheetCrit.key], locked, (n) => pick(sheetCrit.key, n))}
           {dialogs}
         </main>
       </TeacherShell>
@@ -936,7 +1052,7 @@ export default function Evaluate() {
       )}
 
       {/* กล่องแก้คะแนนที่ลงไปแล้ว — โชว์ค่าเดิมคู่ค่าใหม่ทุกหัวข้อ ไม่ให้แก้แบบไม่รู้ตัว */}
-      {reviseRow && (
+      {reviseRow && !phone && (
         <ConfirmBox onBackdrop={closeRevise} wide>
           <div className="confirmbox__q">{t('แก้คะแนนของ')}</div>
           <div className="confirmbox__who">{personName(reviseStudent, '')}</div>

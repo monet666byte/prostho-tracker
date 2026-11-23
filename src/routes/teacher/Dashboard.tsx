@@ -824,6 +824,7 @@ export default function Dashboard() {
           onStart={() => { setGroup(cur); navigate('/teacher/evaluate'); }}
           onOpenEval={(id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?student=${id}`); }}
           onOpenStudent={(id) => { const g = groupOfStudent(id); if (g) openStudent({ id, group: g }); }}
+          onOpenRevise={(checkinId, id) => { const g = groupOfStudent(id); if (g) setGroup(g); navigate(`/teacher/evaluate?revise=${checkinId}`); }}
         />
       </TeacherShell>
     );
