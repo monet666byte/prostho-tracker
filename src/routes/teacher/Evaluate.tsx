@@ -948,8 +948,7 @@ export default function Evaluate() {
 
               <div className="tev__foot">
                 <button className="tev__save" disabled={locked || missing > 0} onClick={() => setConfirmId(c.id)}>
-                  {!locked && !missing && <Signature size={18} weight="bold" />}
-                  {locked ? t('รุ่นนี้จบแล้ว') : missing ? t('ให้คะแนนอีก {n} ข้อ', { n: missing }) : t('บันทึกผล · ลงนาม')}
+                  {locked ? t('รุ่นนี้จบแล้ว') : missing ? t('ให้คะแนนอีก {n} ข้อ', { n: missing }) : t('บันทึก')}
                 </button>
               </div>
             </>
