@@ -1972,7 +1972,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
 .shist__legend { font: 400 11.5px var(--font-body); margin: 0; grid-column: 1 / -1; }
 
 /* ══ มือถืออาจารย์ (≤780px) — หน้าตา "เข้าชุด นศ." ═══════════════════════════════
-   ฟอนต์ Prompt/Sarabun + พื้นฟ้าจางมีแสงเฉียง + แผงน้ำเงินก้อนสีไหล (ชุดเดียวกับ liquid.css ฝั่ง นศ.)
+   ฟอนต์ Prompt/Sarabun + พื้นฟ้าจางมีแสงนุ่มมุมขวาบน (ไม่ใช้แสงเฉียงเป็นเส้น — ดูเป็นแถบชัดเกิน) + แผงน้ำเงินก้อนสีไหล (ชุดเดียวกับ liquid.css ฝั่ง นศ.)
    แถบเมนูบนที่เลื่อนข้าง ~11 แท็บ ถูกแทนด้วยแถบล่างลอย 3 ปุ่ม + แผ่น "เพิ่มเติม" (TeacherShell) */
 .ttabs, .tsheet { display: none; }
 @media (max-width: 780px) {
@@ -1981,8 +1981,7 @@ button.todaycard__line:focus-visible { outline: 2px solid var(--accent); outline
     --font-body: 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
     font-family: var(--font-body);
     background:
-      linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.85) 34%, transparent 50%),
-      linear-gradient(115deg, transparent 50%, color-mix(in srgb, #c3d2ff 28%, transparent) 66%, transparent 84%),
+      radial-gradient(120% 55% at 100% 0%, color-mix(in srgb, #c3d2ff 30%, transparent) 0%, transparent 70%),
       linear-gradient(180deg, color-mix(in srgb, var(--panel) 4%, #f6f7fa) 0%, color-mix(in srgb, var(--panel) 6%, #f4f6fa) 42%, color-mix(in srgb, var(--panel) 2%, #f8f9fb) 100%);
   }
   .window .side { display: none; }
