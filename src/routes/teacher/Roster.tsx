@@ -6,7 +6,7 @@
  *
  * เดิมต้องพิมพ์ SQL ทุกครั้งที่เพิ่มคน — หน้านี้ทำให้ภาคทำเองได้
  */
-import { CheckCircle, Clock, IdentificationCard, Trash } from '@phosphor-icons/react';
+import { CheckCircle, Clock, IdentificationCard, Trash, X } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
@@ -17,6 +17,7 @@ import { useAllStudents } from '../../hooks/data';
 import { cloudEnabled, supabase } from '../../lib/cloud';
 import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
 import { parseRoster } from '../../data/repo';
@@ -120,6 +121,11 @@ export default function Roster() {
   const [confirmDel, setConfirmDel] = useState<Invite | null>(null);
   /* ฟอร์มผูกอีเมลกับคนที่มีอยู่แล้ว — ใช้น้อย ซ่อนไว้หลังลิงก์ในแผง "เพิ่มทีละคน" */
   const [showLink, setShowLink] = useState(false);
+  /* มือถือ: ทางเพิ่มคนสี่ทางเป็นเมนู แตะแล้วฟอร์มขึ้นเป็นแผ่นจากล่าง · แตะชื่อในรายชื่อ = แผ่นรายละเอียด */
+  const phone = usePhone();
+  const [addSheet, setAddSheet] = useState<null | 'file' | 'one' | 'paste' | 'link'>(null);
+  const [invSheet, setInvSheet] = useState<Invite | null>(null);
+  const [onlyPending, setOnlyPending] = useState(false);
 
   async function load() {
     if (!supabase || !isAdmin) return;
@@ -211,39 +217,8 @@ export default function Roster() {
     );
   }
 
-  return (
-    <TeacherShell active="roster">
-      <main className="main">
-        <ScopeHead scope="setup" icon={IdentificationCard} title={t('รายชื่อ & นำเข้าข้อมูล')} />
-
-        {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก
-            ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}
-        <div className="tabs tabs--line" role="tablist">
-          <button role="tab" aria-selected={tab === 'people'} data-on={tab === 'people'} onClick={() => setTab('people')}>{t('รายชื่อนักศึกษา')}</button>
-          <button role="tab" aria-selected={tab === 'sheet'} data-on={tab === 'sheet'} onClick={() => setTab('sheet')}>{t('งานเก่าจากชีต')}</button>
-        </div>
-
-        {tab === 'sheet' && <ImportSheetBody />}
-
-        {tab === 'people' && <LinkRequestsPanel alwaysShow />}
-        {tab === 'people' && <AdvisorEditor />}
-
-        {tab === 'people' && error && (
-          <div style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, font: '500 12px var(--font-body)' }}>
-            {error}
-          </div>
-        )}
-
-        {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (DTMU56 เป็นต้นไปมีรายชื่อให้) */}
-        {tab === 'people' && (<>
-        <FileImportPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} />
-        <AddPersonPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
-
-        {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ */}
-        <details className="roster-more" open={rosterText.trim() !== '' || undefined}>
-        <summary>{t('หรือก๊อปตารางมาวางเอง')}</summary>
-        {/* ไอคอนหน้าหัวข้อ + คำอธิบายยาว → หัวข้อกับคำอธิบายบรรทัดเดียว · ช่องรุ่นกับช่องวางอยู่แถวเดียวกัน
- */}
+  /* ทางสำรอง: ก๊อปตารางมาวาง — จอใหญ่อยู่ในกล่องพับ · มือถืออยู่ในแผ่นจากล่าง */
+  const pastePanel = (
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('วางรายชื่อ')}</h3>
@@ -329,10 +304,10 @@ export default function Roster() {
           </button>
           )}
         </div>
+  );
 
-        </details>
-
-        {showLink && <div className="panel" style={{ marginBottom: 16 }}>
+  const linkPanel = (
+        <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h3>{t('ผูกอีเมลกับคนที่มีในระบบแล้ว')}</h3>
             <span className="sub">{t('เช่น อาจารย์อยากเข้าด้วยอีกอีเมล — คนใหม่ใช้ "เพิ่มทีละคน" ด้านบน')}</span>
@@ -365,11 +340,136 @@ export default function Roster() {
             <button className="btn" style={{ width: 'auto', padding: '0 18px', height: 44 }} disabled={busy || !email.trim() || !personId} onClick={addInvite}>
               {t('+ เพิ่ม')}
             </button>
-            <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px', height: 44 }} onClick={() => setShowLink(false)}>
+            <button className="btn btn--sec" style={{ width: 'auto', padding: '0 14px', height: 44 }} onClick={() => { setShowLink(false); setAddSheet(null); }}>
               {t('ปิด')}
             </button>
           </div>
-        </div>}
+        </div>
+  );
+
+  const nLinked = invites?.filter((inv) => linked.has(inv.email.toLowerCase())).length ?? 0;
+  const nPending = (invites?.length ?? 0) - nLinked;
+  const shownInvites = (invites ?? []).filter((inv) => !onlyPending || !linked.has(inv.email.toLowerCase()));
+  /** บรรทัดรองในรายชื่อบนมือถือ — นักศึกษาบอกรหัส+กลุ่ม · อาจารย์บอกบทบาท (อีเมลอยู่ในแผ่นรายละเอียด) */
+  const whoLine = (inv: Invite) => {
+    if (inv.role === 'student') {
+      const st = students.find((x) => x.id === inv.student_id);
+      return [t('นักศึกษา'), st?.code, st ? groupShort(st.group) : null].filter(Boolean).join(' · ');
+    }
+    return inv.is_admin ? `${t('อาจารย์')} · ${t('หัวหน้ารายวิชา')}` : t('อาจารย์');
+  };
+
+  return (
+    <TeacherShell active="roster">
+      <main className="main">
+        <ScopeHead scope="setup" icon={IdentificationCard} title={t('รายชื่อ & นำเข้าข้อมูล')}
+          phoneTitle={t('รายชื่อ')} phoneEye={t('หัวหน้ารายวิชา')} />
+
+        {/* รวมสองงานที่เคยแยกเป็นคนละเมนู — ผู้ใช้ถามว่าทำไมต้องแยก
+            ต่างกันแค่ "คน" กับ "งาน" แต่ทำพร้อมกันตอนต้นปี จึงอยู่หน้าเดียวกันแบบสลับแท็บ */}
+        <div className="tabs tabs--line" role="tablist">
+          <button role="tab" aria-selected={tab === 'people'} data-on={tab === 'people'} onClick={() => setTab('people')}>{phone ? t('คนในระบบ') : t('รายชื่อนักศึกษา')}</button>
+          <button role="tab" aria-selected={tab === 'sheet'} data-on={tab === 'sheet'} onClick={() => setTab('sheet')}>{t('งานเก่าจากชีต')}</button>
+        </div>
+
+        {tab === 'sheet' && <ImportSheetBody />}
+
+        {tab === 'people' && <LinkRequestsPanel alwaysShow />}
+        {tab === 'people' && <AdvisorEditor />}
+
+        {tab === 'people' && error && (
+          <div style={{ background: 'var(--danger-tint)', color: 'var(--danger-dark)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, font: '500 12px var(--font-body)' }}>
+            {error}
+          </div>
+        )}
+
+        {/* นำเข้ารายชื่อรุ่นใหม่จาก roster ที่ภาคส่งมา (DTMU56 เป็นต้นไปมีรายชื่อให้) */}
+        {tab === 'people' && phone && (<>
+          <div className="tpg__stats">
+            <div><b>{invites ? invites.length : '–'}</b><span>{t('ในรายชื่อ')}</span></div>
+            <div data-tone="ok"><b>{invites ? nLinked : '–'}</b><span>{t('สมัครแล้ว')}</span></div>
+            <div><b>{invites ? nPending : '–'}</b><span>{t('ยังไม่สมัคร')}</span></div>
+          </div>
+          <div className="tpg__lab tpg__lab--title"><span>{t('เพิ่มคน')}</span></div>
+          <div className="tpg__card">
+            {([
+              ['file', t('นำเข้าจากไฟล์ Excel'), t('แบบฟอร์มขอรายชื่อที่ภาคกรอกแล้ว')],
+              ['one', t('เพิ่มทีละคน'), t('เช่น อาจารย์ที่มาเพิ่มกลางเทอม')],
+              ['paste', t('ก๊อปตารางมาวาง'), ''],
+              ['link', t('ผูกอีเมลเพิ่มให้คนที่มีอยู่'), ''],
+            ] as const).map(([k, h, sub]) => (
+              <button key={k} className="tpg__row" onClick={() => { if (k === 'link') setShowLink(true); setAddSheet(k); }}>
+                <span className="tpg__who"><b className="tpg__act">{h}</b>{sub && <small>{sub}</small>}</span>
+                <span className="tpg__chev" aria-hidden>›</span>
+              </button>
+            ))}
+          </div>
+          <div className="tpg__lab tpg__lab--title">
+            <span>{t('รายชื่อทั้งหมด')}</span>
+            {(nPending > 0 || onlyPending) && (
+              <button onClick={() => setOnlyPending(!onlyPending)}>
+                {onlyPending ? t('ดูทั้งหมด') : t('ยังไม่สมัคร {n}', { n: nPending })} ›
+              </button>
+            )}
+          </div>
+          <div className="tpg__card">
+            {invites === null && <p className="tpg__empty">{t('กำลังโหลด…')}</p>}
+            {invites?.length === 0 && <p className="tpg__empty">{t('ยังไม่มีใครในรายชื่อ')}</p>}
+            {shownInvites.map((inv) => {
+              const active = linked.has(inv.email.toLowerCase());
+              return (
+                <button key={inv.email} className="tpg__row" onClick={() => setInvSheet(inv)}>
+                  <span className="tpg__who"><b>{t(nameOf(inv))}</b><small>{whoLine(inv)}</small></span>
+                  <span className="tpg__st" data-on={active}>{active ? t('สมัครแล้ว') : t('ยังไม่สมัคร')}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>)}
+
+        {phone && addSheet && (
+          <div className="tsheet" role="dialog" aria-modal="true" aria-label={t('เพิ่มคน')}>
+            <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => { setAddSheet(null); setShowLink(false); }} />
+            <div className="tsheet__body tpg__sheetbody">
+              <span className="tsheet__grab" aria-hidden />
+              <button className="tsheet__x tpg__sheetx" aria-label={t('ปิด')} onClick={() => { setAddSheet(null); setShowLink(false); }}><X size={18} weight="bold" /></button>
+              {addSheet === 'file' && <FileImportPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} />}
+              {addSheet === 'one' && <AddPersonPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} onLinkExisting={() => { setShowLink(true); setAddSheet('link'); }} />}
+              {addSheet === 'paste' && pastePanel}
+              {addSheet === 'link' && linkPanel}
+            </div>
+          </div>
+        )}
+
+        {phone && invSheet && (
+          <div className="tsheet" role="dialog" aria-modal="true" aria-label={t(nameOf(invSheet))}>
+            <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setInvSheet(null)} />
+            <div className="tsheet__body tpg__sheetbody">
+              <span className="tsheet__grab" aria-hidden />
+              <div className="tpg__inv">
+                <b>{t(nameOf(invSheet))}</b>
+                <span className="mono">{invSheet.email}</span>
+                <small>{whoLine(invSheet)} · {linked.has(invSheet.email.toLowerCase()) ? t('สมัครแล้ว') : t('ยังไม่สมัคร')}</small>
+              </div>
+              <button className="tpg__danger" onClick={() => { setConfirmDel(invSheet); setInvSheet(null); }}>{t('เอาออกจากรายชื่อ')}</button>
+            </div>
+          </div>
+        )}
+
+        {tab === 'people' && !phone && (<>
+        <FileImportPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} />
+        <AddPersonPanel invited={invitedIndex} invitesError={invites === null ? error : null} onDone={() => void load()} onLinkExisting={() => setShowLink(true)} />
+
+        {/* ทางสำรอง: ก๊อปตารางมาวาง — พับไว้ ทางหลักคือเลือกไฟล์ */}
+        <details className="roster-more" open={rosterText.trim() !== '' || undefined}>
+        <summary>{t('หรือก๊อปตารางมาวางเอง')}</summary>
+        {/* ไอคอนหน้าหัวข้อ + คำอธิบายยาว → หัวข้อกับคำอธิบายบรรทัดเดียว · ช่องรุ่นกับช่องวางอยู่แถวเดียวกัน
+ */}
+        {pastePanel}
+
+        </details>
+
+        {showLink && linkPanel}
 
         <div className="panel">
           <div className="panelhead">

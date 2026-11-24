@@ -213,4 +213,27 @@
   .tpg__find select { flex: none; }
   .tpg__find input { flex: 1; min-width: 0; }
   .tpg__num[data-tone='ok'] { color: #067647; }
+
+  /* ── รายชื่อ (หัวหน้ารายวิชา) ── */
+  .window .main .tabs--line { margin: 14px 22px 4px; }
+  .window .main .tabs--line button { font: 500 14.5px var(--font-head); }
+  .tpg__lab--title { justify-content: space-between; align-items: baseline; margin-top: 24px; }
+  .tpg__lab--title > span { font: 600 15px var(--font-head); color: #101828; }
+  .tpg__stats [data-tone='ok'] b { color: #067647; }
+  .tpg__act { color: var(--panel) !important; }
+  .tpg__chev { flex: none; font: 400 20px var(--font-body); color: #98a2b3; }
+  .tpg__st { flex: none; font: 600 13.5px var(--font-head); color: #98a2b3; }
+  .tpg__st[data-on='true'] { color: #067647; }
+  .tpg__empty { margin: 0; padding: 16px 18px; font: 400 14px var(--font-body); color: #667085; }
+  .tpg__sheetbody { padding-left: 4px; padding-right: 4px; }
+  .tpg__sheetbody .panel { box-shadow: none !important; background: none !important; margin: 0 !important; }
+  .tpg__sheetx { position: absolute; top: 12px; right: 14px; z-index: 1; }
+  .tpg__inv { display: flex; flex-direction: column; gap: 4px; padding: 6px 18px 8px; }
+  .tpg__inv b { font: 700 22px/1.25 var(--font-head); color: #101828; padding-right: 30px; }
+  .tpg__inv .mono { font: 500 14.5px var(--font-mono); color: #344054; overflow-wrap: anywhere; }
+  .tpg__inv small { font: 400 14px var(--font-body); color: #667085; }
+  .tpg__danger {
+    margin: 6px 14px 4px; min-height: 48px; border: 0; border-radius: 14px; background: #fef3f2; cursor: pointer;
+    font: 600 15.5px var(--font-head); color: #b42318;
+  }
 }

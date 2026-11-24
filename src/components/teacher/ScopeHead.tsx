@@ -16,7 +16,7 @@ import { useApp } from '../../store/app';
  * - setup: ไม่มีพื้น สำหรับหน้าตั้งค่า/ข้อมูล
  */
 export function ScopeHead({
-  scope, icon: IconC, title, sub, right, phoneTitle, phoneSub,
+  scope, icon: IconC, title, sub, right, phoneTitle, phoneSub, phoneEye,
 }: {
   scope: 'group' | 'year' | 'setup';
   icon: Icon;
@@ -29,6 +29,8 @@ export function ScopeHead({
   phoneTitle?: ReactNode;
   /** มือถือ: null = ไม่แสดงบรรทัดรอง (ตัดตัวหนังสือ) · ไม่ใส่ = ใช้ sub */
   phoneSub?: ReactNode | null;
+  /** มือถือ: บรรทัดเล็กเหนือชื่อหน้า สำหรับหน้าที่ไม่ใช่ของกลุ่ม · หน้ากลุ่มได้ชื่อกลุ่มเอง */
+  phoneEye?: ReactNode;
 }) {
   const phone = usePhone();
   const group = useApp((st) => st.teacherGroup);
@@ -41,7 +43,8 @@ export function ScopeHead({
   }
   /* มือถือ: ไม่มีกล่อง/ไอคอน — บรรทัดเล็กสีเทาบอกกลุ่ม แล้วชื่อหน้าตัวใหญ่ (ชุดเดียวกับหน้าประเมิน) */
   if (phone) {
-    const eye = scope === 'group' && group ? [groupShort(group), yearLabelOf(students.filter((s) => s.group === group))].filter(Boolean).join(' · ') : '';
+    const eye = phoneEye ?? (scope === 'group' && group ? [groupShort(group), yearLabelOf(students.filter((s) => s.group === group))]
+      .filter(Boolean).join(' · ') : '');
     const line = phoneSub === null ? null : phoneSub ?? sub;
     return (
       <div className="tpg__hd">
