@@ -1,4 +1,4 @@
-import { ArrowBendUpLeft, ArrowClockwise, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle, X } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, CaretDown, CaretLeft, CaretRight, CheckCircle, ListBullets, PencilSimple, Signature, Table, UserFocus, WarningCircle, X } from '@phosphor-icons/react';
 import { Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
@@ -20,7 +20,7 @@ import { isAlumni } from '../../domain/cohort';
 import {
   useAllCheckIns, useAllPatients, useAllProgressUpdates, useAllStudents, useAllWorkpieces, useIdentityLevel, usePatientNamesOn, useStepsOnDates, useTeacher,
 } from '../../hooks/data';
-import { thaiShort } from '../../lib/date';
+import { thaiShort, toISODate } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
 import { patientLabel } from '../../lib/privacy';
 import type { CheckIn, ReturnReason } from '../../domain/types';
@@ -222,6 +222,8 @@ export default function Evaluate() {
     try { localStorage.setItem(EVAL_MODE_KEY, m); } catch { /* โหมดส่วนตัว — จำไม่ได้ก็ไม่เป็นไร */ }
   };
   const [focusId, setFocusId] = useState<string | null>(null);
+  // มือถือ: แผ่นรายชื่อคนที่รอประเมิน (แตะหัว "คนที่ i จาก n")
+  const [pickOpen, setPickOpen] = useState(false);
   const [activeCrit, setActiveCrit] = useState(0);
 
   /**
@@ -836,7 +838,11 @@ export default function Evaluate() {
               <CaretLeft size={19} weight="bold" />
             </button>
             <div className="tev__title">
-              {c ? (
+              {c && pending.length > 1 ? (
+                <button className="tev__who" aria-haspopup="dialog" aria-expanded={pickOpen} onClick={() => setPickOpen(true)}>
+                  {groupShort(group)} · {personLabel}<CaretDown size={12} weight="bold" aria-hidden />
+                </button>
+              ) : c ? (
                 <span>{groupShort(group)} · {personLabel}</span>
               ) : (
                 <>
@@ -955,6 +961,41 @@ export default function Evaluate() {
           )}
 
           {c && sheetCrit && renderCritSheet(sheetCrit, draft[sheetCrit.key], locked, (n) => pick(sheetCrit.key, n))}
+          {/* เลือกคนเองได้ ไม่ต้องกดข้ามทีละคน · ลำดับเดียวกับคิว · วันที่สีส้ม = คาบค้างจากวันก่อน */}
+          {c && pickOpen && (
+            <div className="tsheet tev__sheet" role="dialog" aria-modal="true" aria-label={t('รอประเมิน')}>
+              <button className="tsheet__scrim" aria-label={t('ปิด')} onClick={() => setPickOpen(false)} />
+              <div className="tsheet__body tev__pickbody">
+                <span className="tsheet__grab" aria-hidden />
+                <div className="tev__pickhd">
+                  <b>{t('รอประเมิน')}</b>
+                  <small>{t('{n} คน', { n: qpos?.people ?? pending.length })} · {groupShort(group)}</small>
+                </div>
+                <div className="tev__picklist">
+                  {pending.map((p) => {
+                    const st = studentById.get(p.studentId);
+                    const on = p.id === c.id;
+                    return (
+                      <button key={p.id} className="tev__pickrow" aria-current={on ? 'true' : undefined}
+                        onClick={() => {
+                          setFocusId(p.id); setSheetKey(null); setPickOpen(false);
+                          document.querySelector('.tev')?.scrollTo(0, 0);
+                        }}>
+                        <span className="tev__pickwho">
+                          <b>{personName(st, '')}<span className="mono">{st?.code}</span></b>
+                          <small>
+                            {p.date < toISODate(new Date()) ? <em>{thaiShort(p.date)}</em> : thaiShort(p.date)}
+                            {' · '}{p.activities.length ? p.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                          </small>
+                        </span>
+                        {on && <span className="tev__picknow">{t('กำลังดู')}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           {dialogs}
         </main>
       </TeacherShell>

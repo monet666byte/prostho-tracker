@@ -171,6 +171,7 @@ export const DICT: Record<string, string> = {
   'เสร็จแล้ว {n} ขั้น': '{n} steps done',
   'ประเมินแล้ว': 'Evaluated',
   'รอประเมิน': 'Awaiting evaluation',
+  'กำลังดู': 'Viewing',
   'ขั้นย่อย': 'sub-step',
   'สถานะ': 'Status',
   'ยังไม่เริ่ม': 'Not started',
