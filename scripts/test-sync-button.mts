@@ -49,10 +49,22 @@ class Table {
   }
   async put(r: Row) { await this.bulkPut([r]); }
   async get(id: unknown) { return this.rows.find((x) => x.id === id); }
+  async update(id: unknown, patch: Row) {
+    const r = this.rows.find((x) => x.id === id);
+    if (r) Object.assign(r, patch);
+    return r ? 1 : 0;
+  }
   where(col: string) {
     const self = this;
     return {
-      equals: (v: unknown) => ({ async toArray() { return self.rows.filter((r) => r[col] === v); } }),
+      equals: (v: unknown) => {
+        const hit = () => self.rows.filter((r) => r[col] === v);
+        return {
+          async toArray() { return hit(); },
+          async first() { return hit()[0]; },
+          and: (fn: (r: Row) => boolean) => ({ async first() { return hit().filter(fn)[0]; }, async toArray() { return hit().filter(fn); } }),
+        };
+      },
       anyOf: (vs: unknown[]) => ({ async toArray() { return self.rows.filter((r) => vs.includes(r[col])); } }),
     };
   }
@@ -62,7 +74,7 @@ const G = globalThis as any;
 function freshDb() {
   const tables: Record<string, Table> = {
     queue: new Table(), updates: new Table(), audit: new Table(),
-    workpieces: new Table(), photos: new Table(),
+    workpieces: new Table(), photos: new Table(), checkins: new Table(),
   };
   return {
     ...tables,
@@ -116,6 +128,10 @@ swap(
   "import { flushNow, pendingPushCount } from './cloudSync';",
   `const flushNow = async () => { (globalThis as any).__FLUSHED__++; await (globalThis as any).__ON_FLUSH__(); };
 const pendingPushCount = () => (globalThis as any).__PENDING__;`,
+);
+swap(
+  "import { wipReady } from './wipFeature';",
+  `const wipReady = async () => true;`,
 );
 swap(
   "import { db, kvGet, kvSet } from './db';",
@@ -275,6 +291,52 @@ console.log('\n⑦ รูปต้องผูกกับ step ที่แน�
   ok('step สามไม่มีรูปใหม่ → ต้องว่าง ไม่ใช่ได้ทั้ง A และ B', JSON.stringify(ups[2]) === '[]', JSON.stringify(ups[2]));
   const all = ups.flat();
   ok('ไม่มีรูปใบไหนถูกนับซ้ำ', new Set(all).size === all.length, all.join(','));
+}
+
+console.log('\n⑧ "ทำวันนี้ ยังไม่เสร็จ" จดลงคาบของวันนั้น · ผ่าน step แล้วถอนออกเอง');
+/* สแกน QR แค่ลงเวลา — กิจกรรมของคาบมาจากเคส: step ที่เสร็จอ่านจาก updates · ยังไม่เสร็จเก็บใน checkins.wip */
+{
+  const db = freshDb();
+  db._tables.workpieces.rows.push({
+    id: 'w1', patientId: 'p1', studentId: 's1', type: 'CD', detail: 'CD',
+    acceptedDate: '2026-06-15', minimumRequirement: true, payment: 'ชำระแล้ว',
+    sect2Removable: true, sect2Fixed: true, procIndex: 2,
+    lastUpdatedAt: '2026-09-10T00:00:00.000Z', catalogVersion: 'DTPT502-2569',
+  });
+  G.__DB__ = db;
+  G.__FLUSHED__ = 0;
+  G.__PENDING__ = 0;
+  G.__PHOTOS__ = { uploaded: 0, failed: 0 };
+  G.__ON_FLUSH__ = async () => {};
+  const m = await load();
+
+  const none = await m.markStepInProgress({ workpieceId: 'w1', date: '2026-09-15', actor: 'นศ.' });
+  ok('ยังไม่เช็คอินวันนั้น → ไม่จด และบอกเหตุผล', !none.ok && none.reason === 'no-checkin', JSON.stringify(none));
+
+  db._tables.checkins.rows.push({ id: 'c1', studentId: 's1', date: '2026-09-15', punctual: true, noPatient: false, activities: [], status: 'pending', createdAt: '2026-09-15T02:00:00Z' });
+  const r1 = await m.markStepInProgress({ workpieceId: 'w1', date: '2026-09-15', note: '  ปั้นขอบถาดไปครึ่งหนึ่ง  ', actor: 'นศ.' });
+  const c1 = () => db._tables.checkins.rows[0] as any;
+  ok('จดได้ · คืนชื่อขั้น', r1.ok && typeof r1.step === 'string' && r1.step.length > 0, JSON.stringify(r1));
+  ok('คาบมีรายการเดียวของเคสนี้ · โน้ตตัดช่องว่างแล้ว', c1().wip?.length === 1 && c1().wip[0].workpieceId === 'w1' && c1().wip[0].note === 'ปั้นขอบถาดไปครึ่งหนึ่ง', JSON.stringify(c1().wip));
+  ok('step ไม่ขยับ', (db._tables.workpieces.rows[0] as any).procIndex === 2);
+  ok('ไม่มีแถว updates เกิดขึ้น (ไม่นับเกณฑ์)', db._tables.updates.rows.length === 0);
+  ok('คาบที่ยังไม่บอกผู้ป่วย ได้ผู้ป่วยของเคสนี้', c1().patientId === 'p1', c1().patientId);
+
+  await m.markStepInProgress({ workpieceId: 'w1', date: '2026-09-15', note: 'เสร็จไปสามในสี่', actor: 'นศ.' });
+  ok('กดซ้ำวันเดียวกัน = แก้รายการเดิม ไม่งอกเพิ่ม', c1().wip?.length === 1 && c1().wip[0].note === 'เสร็จไปสามในสี่', JSON.stringify(c1().wip));
+
+  await m.clearStepInProgress('c1', 'w1', 'นศ.');
+  ok('เลิกทำ → ถอนรายการออก', !c1().wip, JSON.stringify(c1().wip));
+
+  await m.markStepInProgress({ workpieceId: 'w1', date: '2026-09-15', actor: 'นศ.' });
+  await m.advanceStep({ workpieceId: 'w1', performedAt: '2026-09-15', actor: 'นศ.', offline: false, withPhoto: false });
+  ok('ตอนเช้ายังไม่เสร็จ ตอนบ่ายผ่าน step → รายการยังไม่เสร็จหายไปเอง', !c1().wip, JSON.stringify(c1().wip));
+  ok('step ขยับตามปกติ', (db._tables.workpieces.rows[0] as any).procIndex === 3);
+
+  db._tables.checkins.rows.push({ id: 'c2', studentId: 's1', date: '2026-09-16', punctual: true, noPatient: true, activities: ['ไม่มีผู้ป่วย (no patient)'], status: 'pending', createdAt: '2026-09-16T02:00:00Z' });
+  await m.advanceStep({ workpieceId: 'w1', performedAt: '2026-09-16', actor: 'นศ.', offline: false, withPhoto: false });
+  const c2 = db._tables.checkins.rows[1] as any;
+  ok('คาบ "ไม่มีผู้ป่วย" ไม่ถูกเติมผู้ป่วยทับ', c2.noPatient === true && !c2.patientId, JSON.stringify(c2));
 }
 
 console.log(bad ? `\n❌ ไม่ผ่าน ${bad} ข้อ` : '\n✅ ผ่านหมด');

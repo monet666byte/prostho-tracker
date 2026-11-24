@@ -141,5 +141,12 @@ from (
             where table_schema = 'public' and table_name = 'checkins' and column_name = 'returned_at')
     and exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
                 and prosrc like '%new.returned_at%:=%old.returned_at%')
+
+  -- 0035 ดูสองร่องรอย (คอลัมน์ wip · ด่านอาจารย์คง wip ของนักศึกษาไว้)
+  union all select '0035 คาบเก็บ "ทำแล้ว ยังไม่เสร็จ" (อาจารย์เขียนทับไม่ได้)',
+    exists (select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = 'checkins' and column_name = 'wip')
+    and exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
+                and prosrc like '%new.wip%:=%old.wip%')
 ) x
 order by x.label;

@@ -1052,6 +1052,21 @@ console.log('\n⑮ ปิดช่องก่อนส่งมอบ (0027)');
   const row34 = (await db.query<{ migration: string; สถานะ: string }>(
     (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0034'));
   check('check-migrations.sql ตอบว่า 0034 รันแล้ว', !!row34 && row34['สถานะ'].startsWith('✓'), row34);
+
+  // ── ㉔ "ทำแล้ว ยังไม่เสร็จ" (0035) — ช่องของนักศึกษา อาจารย์เขียนทับไม่ได้ ──
+  console.log('\n㉔ ยังไม่เสร็จในคาบ (0035)');
+  await db.exec(`insert into checkins (id, student_id, date, activities, created_at) values ('cWip', 'sA', '2026-10-23', '{}', '2026-10-23T02:00:00Z')`);
+  const wipMine = await commit(U.A, `update checkins set wip = '[{"workpieceId":"w1","procIndex":3,"step":"CD-2 Custom trays","note":"ครึ่งหนึ่ง"}]' where id = 'cWip' returning wip`);
+  check('นศ. จด "ยังไม่เสร็จ" ลงคาบของตัวเองได้', wipMine.ok && (wipMine.rows[0]?.wip as unknown[])?.length === 1, wipMine);
+  const wipOver = await commit(U.T1, `update checkins set wip = null where id = 'cWip' returning wip`);
+  check('อาจารย์ส่งค่าเก่าทับ → ของ นศ. ยังอยู่', wipOver.ok && (wipOver.rows[0]?.wip as unknown[])?.length === 1, wipOver);
+  const wipOther = await commit(U.B, `update checkins set wip = '[]' where id = 'cWip' returning id`);
+  check('นศ. คนอื่นแก้ช่องนี้ของคาบคนอื่นไม่ได้', !wipOther.ok || wipOther.rows.length === 0, wipOther);
+  const wipShape = await commit(U.A, `update checkins set wip = '{"not":"array"}' where id = 'cWip' returning id`);
+  check('ค่าที่ไม่ใช่ array ถูกปฏิเสธ', !wipShape.ok, wipShape);
+  const row35 = (await db.query<{ migration: string; สถานะ: string }>(
+    (await import('node:fs')).readFileSync(new URL('../supabase/check-migrations.sql', import.meta.url), 'utf8'))).rows.find((r) => r.migration.startsWith('0035'));
+  check('check-migrations.sql ตอบว่า 0035 รันแล้ว', !!row35 && row35['สถานะ'].startsWith('✓'), row35);
 }
 
 await db.close();

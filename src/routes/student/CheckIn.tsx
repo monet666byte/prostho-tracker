@@ -10,7 +10,7 @@ import { Shell } from '../../components/student/Shell';
 import { CheckInCalendar } from '../../components/student/CheckInCalendar';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { deleteCheckIn, updateCheckIn } from '../../data/repo';
-import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, returnOpen, returnReasonText, totalScore } from '../../domain/checkin';
+import { CRITERIA, MAX_SCORE, MAX_TOTAL, NO_PATIENT_ACTIVITY, periodLabels, periodSummary, returnOpen, returnReasonText, totalScore } from '../../domain/checkin';
 import { useCheckIns, usePatientNamesOn, useStepsOnDates, useWorkpieces } from '../../hooks/data';
 import { thaiShort, toISODate } from '../../lib/date';
 import { t } from '../../lib/i18n';
@@ -43,7 +43,6 @@ export default function CheckInPage() {
   const todayEntry = checkins.find((c) => c.date === today);
   const editingEntry = editingId ? checkins.find((c) => c.id === editingId) : undefined;
   const doneToday = !!todayEntry;
-  const todayNeedsDetail = !!todayEntry && todayEntry.activities.length === 0;
 
   function openFillForm() {
     if (todayEntry) openEditForm(todayEntry);
@@ -78,6 +77,9 @@ export default function CheckInPage() {
     session ? checkins.map((c) => ({ studentId: session.studentId, date: c.date })) : [],
   );
   const noPatientCount = checkins.filter((c) => c.noPatient).length;
+  /* กิจกรรมของคาบวันนี้ขึ้นเองจาก step ที่บันทึกที่เคส (เสร็จ + ยังไม่เสร็จ) — ว่างทั้งหมดถึงค่อยชวนเลือกเอง */
+  const todayLabels = todayEntry ? periodLabels(todayEntry, stepsByDate.get(`${todayEntry.studentId}|${today}`) ?? []) : [];
+  const todayNeedsDetail = !!todayEntry && todayLabels.length === 0;
 
   async function submit() {
     if (!session) return;
@@ -212,7 +214,7 @@ export default function CheckInPage() {
             <span style={{ flex: 1 }}>
               <span style={{ display: 'block', font: '600 12.5px var(--font-head)' }}>{t('เช็คอินแล้ว {time} น. ✓', { time: todayEntry?.checkinAt ?? '' })}</span>
               <span style={{ display: 'block', font: '400 10.5px var(--font-body)', color: 'var(--text-muted)', marginTop: 1 }}>
-                {t('ว่างเมื่อไหร่ แตะตรงนี้เพื่อเติมว่าคาบนี้ทำอะไรบ้าง')}
+                {t('บันทึก step ที่เคสแล้วกิจกรรมขึ้นเอง · ไม่ได้ทำเคส แตะเพื่อเลือกเอง')}
               </span>
             </span>
           </button>
@@ -222,8 +224,11 @@ export default function CheckInPage() {
             style={{ padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'center', background: 'var(--success-tint)', borderColor: '#CDEEDF' }}
           >
             <CheckCircle size={20} weight="fill" color="var(--success)" style={{ flex: 'none' }} />
-            <span style={{ font: '500 12.5px var(--font-body)', color: 'var(--success-dark)' }}>
+            <span style={{ flex: 1, minWidth: 0, font: '500 12.5px var(--font-body)', color: 'var(--success-dark)' }}>
               {t('เช็คอินคาบวันนี้แล้ว — รออาจารย์ประเมิน')}
+              <span style={{ display: 'block', font: '400 11px/1.5 var(--font-body)', color: 'var(--text-muted)', marginTop: 2, overflowWrap: 'anywhere' }}>
+                {todayLabels.join(' · ')}
+              </span>
             </span>
           </div>
         ) : (
@@ -281,7 +286,7 @@ export default function CheckInPage() {
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
                   >
-                    {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                    {periodSummary(c, stepsByDate.get(`${c.studentId}|${c.date}`) ?? [])}
                   </span>
                 </span>
                 {!c.punctual && (
@@ -373,6 +378,12 @@ export default function CheckInPage() {
                       <span className="faint">{t('ยังไม่มีบันทึก')}</span>
                     )}
                   </div>
+                  {(c.wip ?? []).map((x) => (
+                    <div key={x.workpieceId} style={{ marginTop: 4, font: '400 10.5px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+                      {t('ยังไม่เสร็จ')}: <span className="mono" style={{ color: 'var(--text-secondary)' }}>{x.step}</span>
+                      {x.note && <> · {x.note}</>}
+                    </div>
+                  ))}
                   {c.note && (
                     <div style={{ marginTop: 5, font: '400 11px var(--font-body)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{t('โน้ต')}: {c.note}</div>
                   )}

@@ -1,6 +1,5 @@
 import { CheckCircle, Keyboard, WarningCircle, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { checkCheckinCode, TYPED_CODE_LENGTH } from '../../domain/checkinQr';
 import { tapFeedback } from '../../lib/haptic';
 import { t } from '../../lib/i18n';
@@ -22,14 +21,14 @@ type Stamp = { checkinAt: string; punctual: boolean };
 export function useScanCheckIn() {
   const { settings } = useApp();
   const required = !!settings.checkinScan;
-  const [phase, setPhase] = useState<null | { kind: 'scan' } | { kind: 'done'; stamp: Stamp; fillLink: boolean }>(null);
-  const job = useRef<{ run: () => Promise<Stamp>; fillLink: boolean; resolve: (v: { stamp: Stamp; scanned: boolean } | null) => void; reject: (e: unknown) => void } | null>(null);
+  const [phase, setPhase] = useState<null | { kind: 'scan' } | { kind: 'done'; stamp: Stamp }>(null);
+  const job = useRef<{ run: () => Promise<Stamp>; resolve: (v: { stamp: Stamp; scanned: boolean } | null) => void; reject: (e: unknown) => void } | null>(null);
 
   const checkIn = useCallback(
-    async (run: () => Promise<Stamp>, opts: { fillLink?: boolean } = {}): Promise<{ stamp: Stamp; scanned: boolean } | null> => {
+    async (run: () => Promise<Stamp>): Promise<{ stamp: Stamp; scanned: boolean } | null> => {
       if (!required) return { stamp: await run(), scanned: false };
       return new Promise((resolve, reject) => {
-        job.current = { run, fillLink: !!opts.fillLink, resolve, reject };
+        job.current = { run, resolve, reject };
         setPhase({ kind: 'scan' });
       });
     },
@@ -42,7 +41,7 @@ export function useScanCheckIn() {
     try {
       const stamp = await j.run();
       tapFeedback(30);
-      setPhase({ kind: 'done', stamp, fillLink: j.fillLink });
+      setPhase({ kind: 'done', stamp });
       j.resolve({ stamp, scanned: true });
     } catch (e) {
       setPhase(null);
@@ -63,7 +62,7 @@ export function useScanCheckIn() {
   const overlay: ReactNode = phase?.kind === 'scan'
     ? <ScanScreen onAccept={accept} onClose={cancel} />
     : phase?.kind === 'done'
-      ? <DoneScreen stamp={phase.stamp} fillLink={phase.fillLink} onClose={closeDone} />
+      ? <DoneScreen stamp={phase.stamp} onClose={closeDone} />
       : null;
 
   return { checkIn, overlay, required };
@@ -253,8 +252,8 @@ function CodeEntry({ reason, onBackToCamera, onSubmit, bad, clearBad, onClose }:
 
 /* ── สแกนผ่านแล้ว ──────────────────────────────────────────────────────── */
 
-function DoneScreen({ stamp, fillLink, onClose }: { stamp: Stamp; fillLink: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
+/** สแกนแค่ลงเวลา — กิจกรรมของคาบมาจาก step ที่บันทึกที่เคส จึงไม่มีปุ่มชวนไปเติมกิจกรรม */
+function DoneScreen({ stamp, onClose }: { stamp: Stamp; onClose: () => void }) {
   // ไม่กดอะไร = ปิดเองแล้วกลับหน้าเดิม (เช็คอินด่วนต้องจบเร็ว)
   useEffect(() => {
     const id = setTimeout(onClose, 3500);
@@ -271,14 +270,7 @@ function DoneScreen({ stamp, fillLink, onClose }: { stamp: Stamp; fillLink: bool
         </span>
       </div>
       <div className="qrdone__foot">
-        {fillLink ? (
-          <>
-            <button className="btn" onClick={() => { onClose(); navigate('/app/checkin'); }}>{t('เติมกิจกรรมเลย')}</button>
-            <button className="btn btn--ghost" onClick={onClose}>{t('ไว้ทีหลัง')}</button>
-          </>
-        ) : (
-          <button className="btn" onClick={onClose}>{t('เสร็จ')}</button>
-        )}
+        <button className="btn" onClick={onClose}>{t('เสร็จ')}</button>
       </div>
     </div>
   );

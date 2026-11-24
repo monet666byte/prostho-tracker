@@ -24,12 +24,13 @@ import {
 import {
   ACTIVITIES, ACTIVITY_GROUPS, CRITERIA, MAX_TOTAL, groupSessionsByWork, isValidScore, queuePosition, lowestScore, sessionWork, lastFilledCheckIn, missingCriteria, returnFixed, returnOpen,
   returnReasonText, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
+  periodLabels, periodSummary, stepsOnDateFrom,
 } from '../src/domain/checkin.ts';
 import { cheerLine, dailyQuote } from '../src/domain/cheer.ts';
 import { hasTeacherEvidence, procList } from '../src/domain/rules.ts';
 import { homeSyncNotice, STUCK_AFTER_MS } from '../src/domain/syncNotice.ts';
 import { readDefaultSettings } from './test-helpers.mts';
-import type { CheckIn, Patient, Settings, WorkpieceView, WorkType } from '../src/domain/types.ts';
+import type { CheckIn, Patient, ProgressUpdate, Settings, Workpiece, WorkpieceView, WorkType } from '../src/domain/types.ts';
 
 let bad = 0;
 const ok = (name: string, cond: boolean, extra: unknown = '') => {
@@ -460,6 +461,23 @@ console.log('\nsyncNotice.ts — แถบเตือนหน้าแรก�
   ok('โหมดไม่ต่อเซิร์ฟเวอร์ (เดโม) → ไม่มีแถบเรื่องเซิร์ฟเวอร์ แต่ยังบอกรุ่นใหม่ได้',
     homeSyncNotice({ ...base, cloud: false, link: 'auth' }) === null
     && homeSyncNotice({ ...base, cloud: false, hasUpdate: true }) === 'update');
+}
+
+console.log('\n⑪ กิจกรรมของคาบมาจากเคส — step ที่เสร็จ + ยังไม่เสร็จ + ชิปที่เลือกเอง');
+{
+  const base = { activities: [] as string[], wip: undefined as CheckIn['wip'] };
+  ok('ไม่มีอะไรเลย → "ยังไม่ระบุกิจกรรม"', periodSummary(base) === 'ยังไม่ระบุกิจกรรม');
+  const c = { activities: ['Laboratory work'], wip: [{ workpieceId: 'w2', procIndex: 4, step: 'RPD-4 Try in skeleton', note: 'ครึ่งหนึ่ง' }] };
+  const labels = periodLabels(c, ['CD-5 Posterior teeth : Set up']);
+  ok('เรียง เสร็จ → ยังไม่เสร็จ → ชิป', JSON.stringify(labels) === JSON.stringify(['CD-5 Posterior teeth : Set up', 'RPD-4 Try in skeleton · ยังไม่เสร็จ', 'Laboratory work']), JSON.stringify(labels));
+  ok('ป้ายซ้ำไม่ขึ้นสองที', periodLabels({ activities: ['A'], wip: undefined }, ['A']).length === 1);
+
+  const w = (id: string, studentId: string) => ({ id, studentId, type: 'CD', procIndex: 3 }) as unknown as Workpiece;
+  const u = (workpieceId: string, performedAt: string, procIndex: number, extra: Partial<ProgressUpdate> = {}) =>
+    ({ id: `${workpieceId}-${procIndex}-${performedAt}`, workpieceId, procIndex, performedAt, createdAt: `${performedAt}T0${procIndex}:00:00Z`, ...extra }) as unknown as ProgressUpdate;
+  const ups = [u('w1', '2026-09-15', 2), u('w1', '2026-09-15', 1), u('w1', '2026-09-15', 3, { reversal: true }), u('w1', '2026-09-14', 0), u('wX', '2026-09-15', 1)];
+  const got = stepsOnDateFrom(ups, [w('w1', 's1'), w('wX', 's2')], 's1', '2026-09-15', (_w, i) => `step ${i}`);
+  ok('เอาเฉพาะของคนนั้น วันนั้น ไม่นับเลิกทำ · เรียงตามเวลากด', JSON.stringify(got) === JSON.stringify(['step 1', 'step 2']), JSON.stringify(got));
 }
 
 console.log(bad ? `\n❌ ไม่ผ่าน ${bad} ข้อ` : '\n✅ ผ่านหมด');

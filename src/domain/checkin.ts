@@ -188,6 +188,45 @@ export function supersededTitle(c: Pick<CheckIn, 'scoreHistory'>): string {
   return `${t('คะแนนชุดก่อนหน้ายังเก็บไว้ครบ')} — ${lines.join(' · ')}`;
 }
 
+/* ── สิ่งที่ทำในคาบ = step ที่เสร็จวันนั้น + เคสที่ "ยังไม่เสร็จ" + ชิปที่เลือกเอง ──────────
+   สแกน QR แค่ลงเวลา นักศึกษาไม่ต้องกรอกกิจกรรมซ้ำกับที่บันทึกที่เคสแล้ว
+   step เสร็จมาจากแถว updates (ส่งเข้ามาเป็น steps) · ยังไม่เสร็จมาจาก c.wip · ชิปคือ c.activities ของเดิม */
+
+/** ป้ายของรายการ "ยังไม่เสร็จ" หนึ่งรายการ */
+export function wipLabel(step: string): string {
+  return t('{s} · ยังไม่เสร็จ', { s: step });
+}
+
+/** ทุกอย่างที่คาบนี้ทำ เรียงตามลำดับ: เสร็จ → ยังไม่เสร็จ → ชิปที่เลือกเอง (แปลภาษาแล้ว) */
+export function periodLabels(c: Pick<CheckIn, 'activities' | 'wip'>, steps: readonly string[] = []): string[] {
+  const out = [...steps, ...(c.wip ?? []).map((w) => wipLabel(w.step)), ...(c.activities ?? []).map((a) => t(a))];
+  return [...new Set(out)];
+}
+
+/** บรรทัดเดียวสำหรับรายการ — ไม่มีอะไรเลย = "ยังไม่ระบุกิจกรรม" */
+export function periodSummary(c: Pick<CheckIn, 'activities' | 'wip'>, steps: readonly string[] = []): string {
+  const all = periodLabels(c, steps);
+  return all.length ? all.join(' · ') : t('ยังไม่ระบุกิจกรรม');
+}
+
+/**
+ * step ที่ผ่านในวันหนึ่งของนักศึกษาคนหนึ่ง จากข้อมูลที่มีอยู่ในมือแล้ว (ไม่อ่านฐานข้อมูล)
+ * ตรรกะเดียวกับ stepsOnDate ใน data/repo.ts — ใช้ในหน้าที่โหลด updates ทั้งก้อนไว้แล้ว
+ */
+export function stepsOnDateFrom(
+  updates: readonly ProgressUpdate[], works: readonly Workpiece[], studentId: string, date: string,
+  label: (w: Workpiece, procIndex: number) => string | null,
+): string[] {
+  const mine = new Map(works.filter((w) => w.studentId === studentId).map((w) => [w.id, w]));
+  return updates
+    .filter((u) => !u.reversal && u.performedAt === date && mine.has(u.workpieceId))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .flatMap((u) => {
+      const s = label(mine.get(u.workpieceId)!, u.procIndex);
+      return s ? [s] : [];
+    });
+}
+
 /** คาบล่าสุดก่อนวันที่ที่กำหนดซึ่งกรอกกิจกรรมแล้ว — ไม่นับคาบที่กำลังแก้อยู่ (ปุ่ม "เหมือนคาบก่อน") */
 export function lastFilledCheckIn(checkins: CheckIn[], beforeDate: string, excludeId?: string): CheckIn | undefined {
   return checkins

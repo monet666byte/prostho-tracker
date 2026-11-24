@@ -195,12 +195,20 @@ export function riskRows(
         : lang === 'en' ? 'no active case' : 'ไม่มีเคสในมือ';
       const passed = stepDates.get(student.id) ?? new Set<string>();
       let stuckPeriods = 0;
+      /* คาบที่นักศึกษากด "ยังไม่เสร็จ" ยังนับว่าติด แต่คำเปลี่ยน — อาจารย์รู้ว่ายังลงมืออยู่ ไม่ได้ทิ้งเคส */
+      let wipPeriods = 0;
+      let wipStep = '';
       for (const c of myCheckins) {
         if (passed.has(c.date)) break;
         /* คาบที่บอกว่า "ไม่มีผู้ป่วย" ไม่ใช่คาบที่ลงมือแล้วไม่ผ่าน — ไม่นับเป็นติด และไม่ตัดลำดับ */
         if (c.noPatient) continue;
         stuckPeriods++;
+        if (c.wip?.length) {
+          wipPeriods++;
+          wipStep ||= c.wip[0].step;
+        }
       }
+      const allWip = stuckPeriods > 0 && wipPeriods === stuckPeriods;
 
       /* เคสที่รอคนไข้ไม่นับว่าเงียบ — ถ้าทุกเคสในมือรอคนไข้อยู่ ถือว่ายังไม่เงียบ */
       const moving = active.filter((w) => !isWaitingForPatient(w, now));
@@ -237,10 +245,14 @@ export function riskRows(
         // มาเรียนแต่งานไม่ขยับหลายคาบติด = ติดเทคนิค — สัญญาณคนละแบบกับหายตัว
         if (stuckPeriods >= 3 && risk !== 'high') {
           risk = 'high';
-          reason = EN ? `Stuck at ${stuckStep} for ${stuckPeriods} periods — likely a technique issue, worth checking chairside` : `ติด ${stuckStep} มา ${stuckPeriods} คาบแล้ว — น่าจะติดเทคนิค ควรเข้าไปดูหน้างาน`;
+          reason = allWip
+            ? (EN ? `Working on ${wipStep} for ${stuckPeriods} periods, not done yet — worth checking chairside what is blocking` : `ทำ ${wipStep} มา ${stuckPeriods} คาบ ยังไม่เสร็จ — ควรเข้าไปดูหน้างานว่าติดตรงไหน`)
+            : (EN ? `Stuck at ${stuckStep} for ${stuckPeriods} periods — likely a technique issue, worth checking chairside` : `ติด ${stuckStep} มา ${stuckPeriods} คาบแล้ว — น่าจะติดเทคนิค ควรเข้าไปดูหน้างาน`);
         } else if (stuckPeriods === 2 && risk === 'ok') {
           risk = 'medium';
-          reason = EN ? `Stuck at ${stuckStep} for 2 periods — keep an eye on it` : `ติด ${stuckStep} มา 2 คาบ — จับตาว่าติดอะไร`;
+          reason = allWip
+            ? (EN ? `Working on ${wipStep} for 2 periods, not done yet — keep an eye on it` : `ทำ ${wipStep} มา 2 คาบ ยังไม่เสร็จ — จับตาว่าติดอะไร`)
+            : (EN ? `Stuck at ${stuckStep} for 2 periods — keep an eye on it` : `ติด ${stuckStep} มา 2 คาบ — จับตาว่าติดอะไร`);
         }
       }
 

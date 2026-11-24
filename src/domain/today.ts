@@ -5,9 +5,9 @@
  * ไฟล์นี้นับอย่างเดียว ข้อความ/ปุ่มอยู่ที่หน้าจอ · ไม่ใช้ AI ตัวเลขทุกตัวมาจากกติกาเดียวกับหน้าอื่น
  * (คนเสี่ยงจาก riskRows · งานค้างจาก isStale · กลุ่มจาก summarizeGroups)
  */
-import { returnFixed, totalScore } from './checkin';
-import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, maxProgression, progression } from './rules';
-import type { CheckIn, DentureClass, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
+import { periodLabels, returnFixed, stepsOnDateFrom, totalScore } from './checkin';
+import { daysSinceUpdate, isComplete, isStale, isWaitingForPatient, maxProgression, procAt, procLabel, progression } from './rules';
+import type { CheckIn, DentureClass, ProgressUpdate, Settings, Student, WaitReason, WorkType, Workpiece } from './types';
 import type { RiskLevel } from './analytics';
 
 export interface TodayInput {
@@ -20,6 +20,8 @@ export interface TodayInput {
   risk: Array<{ studentId: string; risk: RiskLevel; reason?: string }>;
   /** กลุ่มในชั้นปี (จาก summarizeGroups) — ใช้เฉพาะสรุปทั้งชั้นปี */
   groups?: Array<{ code: string; year: number; students: Array<{ student: { id: string } }> }>;
+  /** ประวัติ step — มีแล้วรายการคาบจะบอก step ที่เสร็จวันนั้นด้วย (ไม่มี = กิจกรรมที่นักศึกษาเลือกเอง + ยังไม่เสร็จ) */
+  updates?: ProgressUpdate[];
   now?: Date;
 }
 
@@ -109,6 +111,13 @@ export function todaySummary(input: TodayInput): TodaySummary {
   const works = input.works.filter((w) => ids.has(w.studentId));
 
   const pending = input.checkins.filter((c) => c.status === 'pending' && ids.has(c.studentId));
+  /* สิ่งที่คาบนั้นทำ = step ที่เสร็จวันนั้น + ยังไม่เสร็จ + ชิปที่เลือกเอง (ตัวเดียวกับหน้าประเมิน) */
+  const labelsOf = (c: CheckIn) => periodLabels(c, input.updates
+    ? stepsOnDateFrom(input.updates, works, c.studentId, c.date, (w, i) => {
+        const p = procAt(w, i);
+        return p ? procLabel(w.type, p) : null;
+      })
+    : []);
   const ageOf = (c: CheckIn) => {
     const t = Date.parse(c.date);
     return Number.isFinite(t) ? Math.floor((now.getTime() - t) / DAY) : 0;
@@ -120,7 +129,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   const pendingList: PendingPerson[] = [...pendingBy.entries()]
     .map(([studentId, list]) => {
       const latest = [...list].sort((a, b) => b.date.localeCompare(a.date))[0];
-      return { studentId, count: list.length, oldestDays: Math.max(...list.map(ageOf)), activities: latest.activities ?? [], latestDate: latest.date };
+      return { studentId, count: list.length, oldestDays: Math.max(...list.map(ageOf)), activities: labelsOf(latest), latestDate: latest.date };
     })
     .sort((a, b) => b.oldestDays - a.oldestDays || a.studentId.localeCompare(b.studentId));
   const pendingPeople = pendingList.length;
@@ -133,7 +142,7 @@ export function todaySummary(input: TodayInput): TodaySummary {
   const evaluatedList: TodaySummary['evaluatedList'] = input.checkins
     .filter((c) => c.status === 'evaluated' && ids.has(c.studentId))
     .sort((a, b) => b.date.localeCompare(a.date) || (b.evaluatedAt ?? '').localeCompare(a.evaluatedAt ?? ''))
-    .map((c) => ({ checkinId: c.id, studentId: c.studentId, date: c.date, activities: c.activities ?? [], total: totalScore(c.scores) ?? 0 }));
+    .map((c) => ({ checkinId: c.id, studentId: c.studentId, date: c.date, activities: labelsOf(c), total: totalScore(c.scores) ?? 0 }));
 
   const staleWorks = works.filter((w) => isStale(w, settings, now));
   const staleList: TodaySummary['staleList'] = staleWorks

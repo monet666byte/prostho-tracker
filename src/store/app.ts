@@ -39,11 +39,17 @@ export interface Toast {
   message: string;
   tone: 'default' | 'success' | 'warning';
   undoWorkpieceId?: string;
+  /** เลิกทำ "ยังไม่เสร็จ" — ถอนรายการของเคสนี้ออกจากคาบ (ไม่แตะ step) */
+  undoWip?: { checkinId: string; workpieceId: string };
 }
 
 export interface SheetState {
   workpieceId: string;
   performedAt: string; // ISO date
+  /** เสร็จแล้ว (ขยับ step) หรือ ทำวันนี้ ยังไม่เสร็จ — ไม่ระบุ = เสร็จแล้ว */
+  mode?: 'done' | 'wip';
+  /** "ทำถึงไหน" ของโหมดยังไม่เสร็จ */
+  note?: string;
 }
 
 interface AppState {
@@ -88,7 +94,7 @@ interface AppState {
   setOffline: (v: boolean) => void;
   showToast: (t: Toast) => void;
   hideToast: () => void;
-  openSheet: (workpieceId: string) => void;
+  openSheet: (workpieceId: string, mode?: 'done' | 'wip') => void;
   patchSheet: (patch: Partial<SheetState>) => void;
   closeSheet: () => void;
   updateSettings: (patch: Partial<Settings>) => Promise<void>;
@@ -437,9 +443,9 @@ export const useApp = create<AppState>((set, get) => ({
     set({ toast: null });
   },
 
-  openSheet(workpieceId) {
+  openSheet(workpieceId, mode) {
     set({
-      sheet: { workpieceId, performedAt: toISODate(new Date()) },
+      sheet: { workpieceId, performedAt: toISODate(new Date()), ...(mode ? { mode } : {}) },
       toast: null,
     });
   },

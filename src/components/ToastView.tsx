@@ -7,7 +7,7 @@
  */
 import { ArrowUUpLeft, CheckCircle } from '@phosphor-icons/react';
 import { useRef } from 'react';
-import { undoStep } from '../data/repo';
+import { clearStepInProgress, undoStep } from '../data/repo';
 import { t } from '../lib/i18n';
 import { currentActor, useApp } from '../store/app';
 
@@ -20,13 +20,14 @@ export function ToastView({ variant = 'phone' }: { variant?: 'phone' | 'desk' })
     <div className={`toast${variant === 'desk' ? ' toast--desk' : ''}`} role="status">
       <CheckCircle size={18} weight="fill" color={toast.tone === 'warning' ? 'var(--warning-toast)' : 'var(--success-toast)'} />
       <span>{toast.message}</span>
-      {toast.undoWorkpieceId && (
+      {(toast.undoWorkpieceId || toast.undoWip) && (
         <button
           onClick={async () => {
             if (undoing.current) return;
             undoing.current = true;
             try {
-              await undoStep(toast.undoWorkpieceId!, currentActor());
+              if (toast.undoWip) await clearStepInProgress(toast.undoWip.checkinId, toast.undoWip.workpieceId, currentActor());
+              else await undoStep(toast.undoWorkpieceId!, currentActor());
               hideToast();
               touch();
             } finally {

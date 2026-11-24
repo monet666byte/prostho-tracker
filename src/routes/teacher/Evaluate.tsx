@@ -14,7 +14,7 @@ import { evaluateCheckIn, requestCheckInFix, reviseCheckIn, setCheckInPunctual }
 import { useReturnFeature } from '../../data/returnFeature';
 import {
   CRITERIA, MAX_TOTAL, RETURN_REASONS, SCORE_SLOTS, isValidScore, missingCriteria, returnFixed, returnOpen, returnReasonText,
-  queuePosition, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
+  periodLabels, periodSummary, queuePosition, rubricText, scoreLevels, supersededBy, supersededTitle, totalScore,
 } from '../../domain/checkin';
 import { isAlumni } from '../../domain/cohort';
 import {
@@ -112,7 +112,7 @@ function ScoreTrend({
         return (
           <g key={c.id}>
             <circle cx={x(i)} cy={y(v)} r={4} fill="var(--accent)" stroke="#fff" strokeWidth={2}>
-              <title>{`${thaiShort(c.date)} · ${v}/${max} · ${c.activities.join(', ')}`}</title>
+              <title>{`${thaiShort(c.date)} · ${v}/${max} · ${periodLabels(c).join(', ')}`}</title>
             </circle>
             <text x={x(i)} y={y(v) - 9} textAnchor="middle" style={{ font: '600 9.5px var(--font-mono)', fill: 'var(--text-muted)' }}>{v}</text>
             {(pts.length <= 5 || i % 2 === 0 || i === pts.length - 1) && (
@@ -198,6 +198,8 @@ export default function Evaluate() {
   const selectedSessions = useMemo(() => inGroup.filter((c) => c.studentId === selectedId), [inGroup, selectedId]);
   const groupProfile = useMemo(() => criterionAvg(evaluatedInGroup), [evaluatedInGroup]);
   const stepsByKey = useStepsOnDates(inGroup.map((c) => ({ studentId: c.studentId, date: c.date })));
+  /* กิจกรรมของคาบ = step ที่เสร็จวันนั้น + เคสที่ "ยังไม่เสร็จ" + ชิปที่นักศึกษาเลือกเอง (คาบนอกกลุ่มไม่มี step ในมือ = ที่เหลือ) */
+  const periodText = (c: CheckIn) => periodSummary(c, stepsByKey.get(`${c.studentId}|${c.date}`) ?? []);
   // ชั้นที่ 3 — ยืนยันโดยระบุชื่อ: ต่อให้หน้าจอขยับ ก่อนบันทึกจะมีกล่องบอกชื่อ นศ. เสมอ
   const [confirmId, setConfirmId] = useState<string | null>(null);
   /* คาบที่กำลังแก้ป้ายตรงต่อเวลา + เหตุผลที่อาจารย์พิมพ์ (ไม่บังคับ แต่ลงไปใน audit ถ้าพิมพ์) */
@@ -559,7 +561,7 @@ export default function Evaluate() {
             </div>
           )}
           <div className="evalact">
-            {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
+            {periodLabels(c, stepsByKey.get(`${c.studentId}|${c.date}`) ?? []).length ? periodText(c) : <i style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('ยังไม่ระบุกิจกรรม')}</i>}
             {/* ให้คะแนน "นักศึกษา" — คนไข้เป็นบริบทว่าคาบนั้นทำอะไร ไม่ใช่สิ่งที่ต้องระบุตัว
                 ระดับที่เห็นมาจาก lib/privacy.ts (สวิตช์ maskByDefault ของภาค) */}
             {patient && (() => {
@@ -584,6 +586,12 @@ export default function Evaluate() {
           ) : (
             <div className="evalsteps">{t('ไม่มีบันทึก step เสร็จวันนั้น')}</div>
           )}
+          {/* ลงมือแล้วแต่ยังไม่เสร็จ — นักศึกษาบอกเองว่าทำถึงไหน */}
+          {(c.wip ?? []).map((x) => (
+            <div key={x.workpieceId} className="evalsteps" style={{ overflowWrap: 'anywhere' }}>
+              {t('ยังไม่เสร็จ')}: {x.step}{x.note ? ` — ${x.note}` : ''}
+            </div>
+          ))}
         </div>
 
         <div className="evalcard__scores">
@@ -740,7 +748,7 @@ export default function Evaluate() {
             <h1 className="tev__h1">{personName(st, '')}</h1>
             <div className="tev__code mono">{st?.code}</div>
             <div className="tev__act">
-              {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+              {periodText(c)}
             </div>
             {(patient || c.noPatient) && (
               <div className="tev__line">
@@ -884,7 +892,7 @@ export default function Evaluate() {
                 <h1 className="tev__h1">{personName(student, '')}</h1>
                 <div className="tev__code mono">{student?.code}</div>
                 <div className="tev__act">
-                  {c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                  {periodText(c)}
                   {phoneSessionLabel && <em>{phoneSessionLabel}</em>}
                 </div>
                 {(patient || c.noPatient) && (
@@ -898,6 +906,11 @@ export default function Evaluate() {
                   </div>
                 )}
                 {steps.length > 0 && <div className="tev__line">Step {steps.join(' · ')}</div>}
+                {(c.wip ?? []).map((x) => (
+                  <div key={x.workpieceId} className="tev__line">
+                    {t('ยังไม่เสร็จ')}: {x.step}{x.note ? ` — ${x.note}` : ''}
+                  </div>
+                ))}
                 {c.note && <div className="tev__line tev__note">“{c.note}”</div>}
                 {c.editedAt && <div className="tev__line tev__muted">{t('นศ. แก้ไข')} {thaiShort(c.editedAt)}</div>}
                 {returnOpen(c) && (
@@ -985,7 +998,7 @@ export default function Evaluate() {
                           <b>{personName(st, '')}<span className="mono">{st?.code}</span></b>
                           <small>
                             {p.date < toISODate(new Date()) ? <em>{thaiShort(p.date)}</em> : thaiShort(p.date)}
-                            {' · '}{p.activities.length ? p.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}
+                            {' · '}{periodText(p)}
                           </small>
                         </span>
                         {on && <span className="tev__picknow">{t('กำลังดู')}</span>}
@@ -1265,7 +1278,7 @@ export default function Evaluate() {
                 <tr key={c.id}>
                   <td style={{ font: '600 11.5px var(--font-body)' }}>{personName(st, '')}</td>
                   <td className="mono" style={{ fontSize: 10.5 }}>{thaiShort(c.date)}</td>
-                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{c.activities.length ? c.activities.map((a) => t(a)).join(' · ') : t('ยังไม่ระบุกิจกรรม')}</td>
+                  <td style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{periodText(c)}</td>
                   <td>
                     {(() => {
                       const sc = totalScore(c.scores) ?? 0;

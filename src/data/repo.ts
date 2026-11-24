@@ -14,11 +14,12 @@ import { patientNamesOn, pdpaPolicy } from './pdpaSync';
 import { caseCode } from '../lib/privacy';
 import { cloudEnabled, supabase } from '../lib/cloud';
 import { flushNow, pendingPushCount } from './cloudSync';
+import { wipReady } from './wipFeature';
 import { clampPerformedAt, toISODate } from '../lib/date';
 import { hasTeacherEvidence, isActiveWork, isComplete, procAt, procLabel, GATE_LABELS } from '../domain/rules';
 import type {
   Arch, AuditEntry, ClinicGroup, KennedyClass, Payment, Photo, ProgressUpdate, QueueItem,
-  CheckIn, DentureClass, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, ReturnReason, WaitReason, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
+  CheckIn, DentureClass, PeriodWip, PhotoStatus, Review, ReviewStatus, Sect2Record, Sect3Record, SelfAssessment, Settings, Student, ReturnReason, WaitReason, WorkType, Workpiece, WorkpieceView, GateKey } from '../domain/types';
 import { SECT2_GATE_OF, sect2GateValue } from '../domain/sect2';
 import { saId, saStudentCanEdit } from '../domain/selfAssessment';
 import { db, kvGet, kvSet } from './db';
@@ -189,9 +190,10 @@ export async function advanceStep(input: AdvanceInput): Promise<AdvanceResult | 
     syncedAt: input.offline ? null : new Date().toISOString(),
   };
 
-  await db.transaction('rw', [db.workpieces, db.updates, db.queue, db.photos, db.audit], async () => {
+  await db.transaction('rw', [db.workpieces, db.updates, db.queue, db.photos, db.audit, db.checkins], async () => {
     await db.workpieces.put(updated);
     await db.updates.add(update);
+    await foldStepIntoPeriod(w, performedAt);
     const siblings = await db.workpieces.where('patientId').equals(w.patientId).toArray();
     for (const sib of siblings) {
       if (sib.id !== w.id && sib.waitReason) {
@@ -274,6 +276,72 @@ export async function undoStep(workpieceId: string, actor: string): Promise<Work
     }
   });
   return updated;
+}
+
+// ── ทำแล้ว ยังไม่เสร็จ (คาบเก็บไว้ · migration 0035) ─────────────────────
+
+/**
+ * ผ่าน step ในวันที่มีคาบ — คาบของวันนั้นรับรู้ว่าเคสนี้ไม่ "ค้างครึ่งทาง" แล้ว
+ * · ถอนรายการ "ยังไม่เสร็จ" ของเคสนี้ (กดยังไม่เสร็จตอนเช้า แล้วทำเสร็จตอนบ่าย)
+ * · คาบที่ยังไม่ได้บอกผู้ป่วย ได้ผู้ป่วยของเคสนี้ไปเลย (ไม่ทับที่นักศึกษาเลือกเอง · ไม่แตะคาบ "ไม่มีผู้ป่วย")
+ * เรียกในธุรกรรมของ advanceStep เท่านั้น (ต้องมี db.checkins ในรายการตาราง)
+ */
+async function foldStepIntoPeriod(w: Workpiece, date: string): Promise<void> {
+  const c = await db.checkins.where('studentId').equals(w.studentId).and((x) => x.date === date).first();
+  if (!c) return;
+  const patch: Partial<CheckIn> = {};
+  if (c.wip?.some((x) => x.workpieceId === w.id)) {
+    const rest = c.wip.filter((x) => x.workpieceId !== w.id);
+    patch.wip = rest.length ? rest : undefined;
+  }
+  if (!c.patientId && !c.noPatient) patch.patientId = w.patientId;
+  if (Object.keys(patch).length) await db.checkins.update(c.id, patch);
+}
+
+export type WipResult =
+  | { ok: true; checkinId: string; step: string }
+  | { ok: false; reason: 'no-checkin' | 'no-step' | 'not-ready' };
+
+/**
+ * "ทำวันนี้ ยังไม่เสร็จ" — step ไม่ขยับ ไม่นับเกณฑ์ แค่จดไว้ในคาบของวันนั้นว่าลงมือเคสนี้แล้ว
+ * ต้องมีคาบของวันนั้นก่อน (ลงมือในคลินิก = เช็คอินแล้ว) · กดซ้ำวันเดียวกัน = แก้ "ทำถึงไหน" ของรายการเดิม
+ */
+export async function markStepInProgress(input: {
+  workpieceId: string; date: string; note?: string; actor: string;
+}): Promise<WipResult> {
+  if (!(await wipReady())) return { ok: false, reason: 'not-ready' };
+  const w = await db.workpieces.get(input.workpieceId);
+  if (!w) return { ok: false, reason: 'no-step' };
+  const next = procAt(w, w.procIndex + 1);
+  if (!next) return { ok: false, reason: 'no-step' };
+  const date = clampPerformedAt(input.date, w.acceptedDate);
+  const c = await db.checkins.where('studentId').equals(w.studentId).and((x) => x.date === date).first();
+  if (!c) return { ok: false, reason: 'no-checkin' };
+
+  const step = procLabel(w.type, next);
+  const note = input.note?.trim() || undefined;
+  const entry: PeriodWip = { workpieceId: w.id, procIndex: next.index, step, ...(note ? { note } : {}) };
+  const wip = [...(c.wip ?? []).filter((x) => x.workpieceId !== w.id), entry];
+  await db.checkins.update(c.id, {
+    wip,
+    ...(!c.patientId && !c.noPatient ? { patientId: w.patientId } : {}),
+  });
+  await logAudit(
+    `ทำ ${step} ${checkInDateLabel(date)} · ยังไม่เสร็จ${note ? ` · ${note}` : ''}`,
+    input.actor,
+    { studentId: w.studentId },
+  );
+  return { ok: true, checkinId: c.id, step };
+}
+
+/** เลิกทำ "ยังไม่เสร็จ" (ปุ่มเลิกทำในแถบแจ้งผล) — ผู้ป่วยที่เติมให้คาบไปแล้วไม่ถอน (นักศึกษาแก้เองได้ในหน้าคาบ) */
+export async function clearStepInProgress(checkinId: string, workpieceId: string, actor: string): Promise<void> {
+  const c = await db.checkins.get(checkinId);
+  const hit = c?.wip?.find((x) => x.workpieceId === workpieceId);
+  if (!c || !hit) return;
+  const rest = c.wip!.filter((x) => x.workpieceId !== workpieceId);
+  await db.checkins.update(c.id, { wip: rest.length ? rest : undefined });
+  await logAudit(`ยกเลิก "ยังไม่เสร็จ" ${hit.step} ${checkInDateLabel(c.date)}`, actor, { studentId: c.studentId });
 }
 
 // ── เปิดชิ้นงานใหม่ ──────────────────────────────────────

@@ -261,6 +261,11 @@ findings as (
               where table_schema = 'public' and table_name = 'checkins' and column_name = 'returned_at')
       and exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
                   and prosrc like '%new.returned_at%:=%old.returned_at%')
+    union all select '0035 step ที่ทำในคาบแต่ยังไม่เสร็จ (อาจารย์ทับไม่ได้)',
+      exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'checkins' and column_name = 'wip')
+      and exists (select 1 from pg_proc where proname = 'guard_checkin_scoring'
+                  and prosrc like '%new.wip%:=%old.wip%')
     /* 0009 ไม่มีตารางใหม่ให้ดู — ดูสามร่องรอยที่ต้องมีพร้อมกัน
        (คอลัมน์ของ 0009 · trigger ที่ห้ามแก้ audit · trigger ที่ประทับผู้กระทำ) */
     union all select '0009 ปิดช่องโหว่ (entry_year + audit แก้ไม่ได้)',

@@ -1,9 +1,11 @@
-import { CalendarBlank, CameraPlus, CheckCircle, HandTap, ImageSquare } from '@phosphor-icons/react';
-import { advanceStep } from '../../data/repo';
+import { CalendarBlank, CameraPlus, CheckCircle, CircleHalf, HandTap, ImageSquare } from '@phosphor-icons/react';
+import { advanceStep, markStepInProgress } from '../../data/repo';
+import { useWipFeature } from '../../data/wipFeature';
+import { recordStepLabel } from './stepLabel';
 import { typeMeta, workLabel } from '../../domain/catalog';
 import { caseCount, completionImpact, nextProc, reqGroupOf } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
-import { usePatientNamesOn, useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
+import { useCheckIns, usePatientNamesOn, useWorkpiece, useWorkpieces, useWorkpiecePhotos } from '../../hooks/data';
 import { patientTitle } from '../../lib/privacy';
 import { CelebrateSheet, celebrate } from './CelebrateSheet';
 import { usePhotoAttach } from './usePhotoAttach';
@@ -33,11 +35,42 @@ function ConfirmStepSheet() {
    */
   const attach = usePhotoAttach(sheet?.workpieceId);
   const shots = useWorkpiecePhotos(sheet?.workpieceId);
+  /* "ยังไม่เสร็จ" จดลงคาบของวันที่เลือก — ต้องมีคาบวันนั้นก่อน · เซิร์ฟเวอร์ยังไม่รัน 0035 = ไม่มีตัวเลือกนี้ */
+  const wipOn = useWipFeature();
+  const checkins = useCheckIns(session?.studentId);
   if (!sheet || !w) return null;
 
   const next = nextProc(w);
   if (!next) return null;
   const meta = typeMeta(w.type);
+  const period = checkins.find((c) => c.date === sheet.performedAt);
+  // เปลี่ยนวันที่ไปวันที่ไม่มีคาบ = กลับเป็น "เสร็จแล้ว" เอง (ปุ่มยังไม่เสร็จกดไม่ได้อยู่แล้ว)
+  const wip = wipOn && sheet.mode === 'wip' && !!period;
+  const isToday = sheet.performedAt === toISODate(new Date());
+
+  async function confirmWip() {
+    if (!sheet || !w || !next) return;
+    tapFeedback();
+    const res = await markStepInProgress({
+      workpieceId: w.id, date: sheet.performedAt, note: sheet.note, actor: currentActor(),
+    });
+    if (!res.ok) {
+      showToast({
+        message: res.reason === 'no-checkin'
+          ? t('ยังไม่ได้เช็คอินวันที่ {d} — เช็คอินก่อนถึงบันทึกว่าทำวันนั้นได้', { d: thaiShort(sheet.performedAt) })
+          : t('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง'),
+        tone: 'warning',
+      });
+      return;
+    }
+    closeSheet();
+    touch();
+    showToast({
+      message: t('บันทึกแล้ว · {s} ทำต่อคาบหน้า', { s: next.name }),
+      tone: 'default',
+      undoWip: { checkinId: res.checkinId, workpieceId: w.id },
+    });
+  }
 
   async function confirm() {
     if (!sheet || !w || !next) return;
@@ -95,10 +128,61 @@ function ConfirmStepSheet() {
     <div className="backdrop" onClick={closeSheet}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" />
-        <h3 className="h3">{t('ทำขั้นนี้เสร็จแล้ว?')}</h3>
-        <p style={{ margin: '5px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
-          {meta.full} · <span className="mono">{next.name}</span>
-        </p>
+        {wipOn ? (
+          <>
+            <h3 className="h3">{next.name}</h3>
+            <p style={{ margin: '5px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+              {meta.full} · {patientTitle(w.patient, namesOn, t)}
+            </p>
+            {/* ปุ่มรองซ้าย ปุ่มหลักขวา — ลำดับเดียวกับปุ่มบนการ์ดน้ำเงินหน้าแรก */}
+            <div className="stepchoice" role="radiogroup" aria-label={t('ผลของ step นี้')}>
+              <button
+                type="button" role="radio" aria-checked={wip}
+                className="stepchoice__opt" data-on={wip}
+                disabled={!period}
+                onClick={() => patchSheet({ mode: 'wip' })}
+              >
+                <span className="stepchoice__h"><CircleHalf size={16} weight="fill" />{t('ยังไม่เสร็จ')}</span>
+                <span className="stepchoice__s">{t('คาบหน้าทำต่อ')}</span>
+              </button>
+              <button
+                type="button" role="radio" aria-checked={!wip}
+                className="stepchoice__opt" data-on={!wip}
+                onClick={() => patchSheet({ mode: 'done' })}
+              >
+                <span className="stepchoice__h"><CheckCircle size={16} weight="fill" />{t('เสร็จแล้ว')}</span>
+                <span className="stepchoice__s">{t('ขยับไป step ถัดไป')}</span>
+              </button>
+            </div>
+            {!period && (
+              <p style={{ margin: '7px 0 0', font: '400 11px/1.5 var(--font-body)', color: 'var(--text-faint)' }}>
+                {t('"ยังไม่เสร็จ" ใช้ได้เมื่อเช็คอินคาบวันที่ {d} แล้ว', { d: thaiShort(sheet.performedAt) })}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <h3 className="h3">{t('ทำขั้นนี้เสร็จแล้ว?')}</h3>
+            <p style={{ margin: '5px 0 0', font: '400 12px/1.6 var(--font-body)', color: 'var(--text-muted)' }}>
+              {meta.full} · <span className="mono">{next.name}</span>
+            </p>
+          </>
+        )}
+
+        {wip && (
+          <label className="field" style={{ marginTop: 14 }}>
+            <span style={{ font: '600 11.5px var(--font-body)', color: 'var(--text-secondary)' }}>{t('ทำถึงไหน (ไม่บังคับ)')}</span>
+            <textarea
+              className="input"
+              rows={2}
+              maxLength={200}
+              value={sheet.note ?? ''}
+              onChange={(e) => patchSheet({ note: e.target.value })}
+              placeholder={t('เช่น เรียงฟันหลังซ้ายแล้ว เหลือขวา')}
+              style={{ height: 'auto', minHeight: 64, paddingTop: 10, resize: 'none' }}
+            />
+          </label>
+        )}
 
         {next.selfPerformed && (
           <div
@@ -133,8 +217,9 @@ function ConfirmStepSheet() {
               />
             </span>
           </label>
-          {attach.input}
-          <button
+          {/* "ยังไม่เสร็จ" ไม่มีแถว step ให้รูปผูก — ซ่อนปุ่มแนบรูป ไม่งั้นแนบแล้วรูปหายเงียบ */}
+          {!wip && attach.input}
+          {!wip && <button
             type="button"
             className="dashed"
             disabled={attach.busy}
@@ -149,17 +234,26 @@ function ConfirmStepSheet() {
           >
             {shots.length ? <ImageSquare size={17} weight="fill" /> : <CameraPlus size={17} />}
             {attach.busy ? t('กำลังย่อรูป…') : shots.length ? t('แนบแล้ว {n} รูป', { n: shots.length }) : t('แนบรูป')}
-          </button>
+          </button>}
         </div>
 
-        <p style={{ margin: '9px 0 0', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
-          {t('แนบภายหลังได้')}
-        </p>
+        {!wip && (
+          <p style={{ margin: '9px 0 0', font: '400 10.5px var(--font-body)', color: 'var(--text-faint)' }}>
+            {t('แนบภายหลังได้')}
+          </p>
+        )}
 
-        <button className="btn" style={{ height: 56, marginTop: 14 }} onClick={confirm}>
-          <CheckCircle size={19} weight="fill" />
-          {t('ใช่ · บันทึกเลย')}
-        </button>
+        {wip ? (
+          <button className="btn btn--sec stepchoice__wipbtn" style={{ height: 56, marginTop: 14 }} onClick={confirmWip}>
+            <CircleHalf size={19} weight="fill" />
+            {isToday ? t('บันทึกว่าทำวันนี้') : t('บันทึกว่าทำวันที่ {d}', { d: thaiShort(sheet.performedAt) })}
+          </button>
+        ) : (
+          <button className="btn" style={{ height: 56, marginTop: 14 }} onClick={confirm}>
+            <CheckCircle size={19} weight="fill" />
+            {wipOn ? recordStepLabel(next.name) : t('ใช่ · บันทึกเลย')}
+          </button>
+        )}
         <button className="btn btn--ghost" style={{ marginTop: 4 }} onClick={closeSheet}>
           {t('ยกเลิก')}
         </button>

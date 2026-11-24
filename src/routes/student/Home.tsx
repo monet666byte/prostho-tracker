@@ -12,6 +12,7 @@ import { Shell } from '../../components/student/Shell';
 import { SyncBanner } from '../../components/student/SyncBanner';
 import { WaitSheet } from '../../components/student/WaitSheet';
 import { useWaitFeature } from '../../data/waitFeature';
+import { useWipFeature } from '../../data/wipFeature';
 import { useCheckInPatients } from '../../components/student/useCheckInPatients';
 import { useCheckIns, usePatientNamesOn, usePending, useSect2, useSect3, useSelfAssessment, useStepsOnDates, useStudent, useWorkpieces } from '../../hooks/data';
 import { daysUntil, thaiShort, toISODate, weekMonday } from '../../lib/date';
@@ -19,12 +20,12 @@ import { firstNameOnly } from '../../domain/group';
 import { personName, t, tSexAge, tText } from '../../lib/i18n';
 import { patientTitle } from '../../lib/privacy';
 import { workLabel, workMeta } from '../../domain/catalog';
-import type { Settings, WorkpieceView } from '../../domain/types';
+import type { PeriodWip, Settings, WorkpieceView } from '../../domain/types';
 import { cheerLine, dailyQuote } from '../../domain/cheer';
 import { activeStepGroup, caseCountTotals, groupByReqRow, currentProc, daysSinceUpdate, isStale, maxProgression, needsWaitNudge, nextProc, procLabel, progression, isActiveWork, stepFraction, stepGroups, stepsPassed } from '../../domain/rules';
 import { currentActor, useApp } from '../../store/app';
 import { tapFeedback } from '../../lib/haptic';
-import { NO_PATIENT_ACTIVITY, returnOpen, returnReasonText } from '../../domain/checkin';
+import { NO_PATIENT_ACTIVITY, periodLabels, returnOpen, returnReasonText } from '../../domain/checkin';
 import { isSect2Evaluated } from '../../domain/sect2';
 import { isSect3Evaluated } from '../../domain/sect3';
 import { FIRSTS } from './Achievements';
@@ -91,12 +92,16 @@ function SubRing({ done, total, open, onToggle, intro }: { done: number; total: 
  * ส่วนกลาง: "กำลังทำ" + ชื่อขั้น + วงแหวนขั้นย่อย · แถบกางรายการขั้นย่อยทั้ง step · ปุ่มบอกชื่องานที่จะบันทึก
  */
 function PanelSlide({
-  w, pending, stale, onPass, intro,
+  w, pending, stale, onPass, onWip, wipToday, intro,
 }: {
   w: WorkpieceView;
   pending: boolean;
   stale: boolean;
   onPass: () => void;
+  /** ปุ่ม "ยังไม่เสร็จ" — ไม่ส่งมา = ยังไม่เช็คอินวันนี้ หรือเซิร์ฟเวอร์ยังไม่รัน 0035 */
+  onWip?: () => void;
+  /** วันนี้กด "ยังไม่เสร็จ" ของเคสนี้ไปแล้ว */
+  wipToday?: PeriodWip;
   /** เล่นแอนิเมชันเปิดแอป (เฉพาะหน้าแรกของแผง ครั้งแรกที่เปิดแอป) */
   intro: boolean;
 }) {
@@ -230,7 +235,14 @@ function PanelSlide({
               </div>
             </>
           )}
-          <GlassButton onClick={onPass}>{btnLabel}</GlassButton>
+          {wipToday && (
+            <div className="hp__wip"><i aria-hidden />{t('วันนี้ทำแล้ว · ยังไม่เสร็จ')}</div>
+          )}
+          {/* ปุ่มรองซ้าย ปุ่มหลักขวา — ลำดับเดียวกับในแผ่นบันทึก */}
+          <div className="hp__actions">
+            {onWip && !wipToday && <button className="hp__ghost" onClick={onWip}>{t('ยังไม่เสร็จ')}</button>}
+            <GlassButton onClick={onPass}>{btnLabel}</GlassButton>
+          </div>
         </div>
       ) : (
         <div className="hp__info">
@@ -244,7 +256,7 @@ function PanelSlide({
 
 /** แผงงานถัดไปแบบปัดซ้าย-ขวาเปลี่ยนเคส (จุดใต้แผงกดได้) */
 function CasePanel({
-  cases, index, onIndex, pending, settings, onPass, intro,
+  cases, index, onIndex, pending, settings, onPass, onWip, wipBy, intro,
 }: {
   cases: WorkpieceView[];
   index: number;
@@ -252,6 +264,8 @@ function CasePanel({
   pending: Set<string>;
   settings: Settings;
   onPass: (id: string) => void;
+  onWip?: (id: string) => void;
+  wipBy: Map<string, PeriodWip>;
   intro: boolean;
 }) {
   const [dx, setDx] = useState(0);
@@ -327,7 +341,11 @@ function CasePanel({
               key={w.id} ref={(el) => { pages.current[i] = el; }}
               className="hp__page" aria-hidden={i !== index} inert={i !== index ? true : undefined}
             >
-              <PanelSlide w={w} pending={pending.has(w.id)} stale={!waitReady && isStale(w, settings)} onPass={() => onPass(w.id)} intro={intro && i === index} />
+              <PanelSlide
+                w={w} pending={pending.has(w.id)} stale={!waitReady && isStale(w, settings)}
+                onPass={() => onPass(w.id)} onWip={onWip ? () => onWip(w.id) : undefined} wipToday={wipBy.get(w.id)}
+                intro={intro && i === index}
+              />
             </div>
           ))}
         </div>
@@ -447,11 +465,15 @@ export default function Home() {
   const returnAsk = checkins.filter(returnOpen).sort((a, b) => a.date.localeCompare(b.date))[0];
   const checkedInToday = !!todayCheckIn;
   const todaySteps = useStepsOnDates(session ? [{ studentId: session.studentId, date: today }] : []);
-  const todayStepCount = (todaySteps.get(`${session?.studentId}|${today}`) ?? []).length;
+  const todayStepList = todaySteps.get(`${session?.studentId}|${today}`) ?? [];
+  const wipOn = useWipFeature();
+  const wipBy = new Map((todayCheckIn?.wip ?? []).map((x) => [x.workpieceId, x]));
+  /* กิจกรรมของคาบวันนี้ = step ที่เสร็จ + ยังไม่เสร็จ + ชิปที่เลือกเอง (ไม่ต้องกรอกซ้ำ) */
+  const todayLabels = todayCheckIn ? periodLabels(todayCheckIn, todayStepList) : [];
 
   // เตือนเติมกิจกรรมแบบสุภาพ: เปิดแอปช่วงบ่ายแล้วคาบวันนี้ยังว่างอยู่ → toast ครั้งเดียวต่อวัน
   // (ผู้ใช้ขอให้มีตัวตาม แต่ต้องไม่จิกจนรำคาญ — โนติเด้งนอกแอปรอ backend phase 2)
-  const todayNeedsDetail = !!todayCheckIn && todayCheckIn.activities.length === 0;
+  const todayNeedsDetail = !!todayCheckIn && todayLabels.length === 0;
   useEffect(() => {
     if (!todayNeedsDetail || new Date().getHours() < 12) return;
     try {
@@ -514,7 +536,7 @@ export default function Home() {
     setAskCheckIn(false);
   }
 
-  // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมมาเติมทีหลังได้
+  // เช็คอินด่วน: แตะการ์ดครั้งเดียวจบ ประทับเวลาทันที — กิจกรรมของคาบมาจาก step ที่บันทึกที่เคส
   // (ผู้ใช้ขอ: 9 โมงต้องรีบทำงาน ไม่มีเวลาวุ่นวายกับมือถือ · กดล่วงหน้าก่อนเริ่มคาบได้)
   async function quickCheckIn() {
     // ref กันแตะรัว — checkedInToday มาจาก liveQuery กว่าจะอัปเดตทันก็แตะไปหลายทีแล้ว
@@ -526,10 +548,11 @@ export default function Home() {
       const res = await scan.checkIn(() => checkInNow({
         studentId: session.studentId, date: today,
         noPatient: false, activities: [], note: '', actor: currentActor(),
-      }), { fillLink: true });
+      }));
       if (!res) return;
       touch();
-      if (!res.scanned) showToast({ message: t('เช็คอินแล้ว {time} น. — กิจกรรมมาเติมทีหลังได้เลย', { time: res.stamp.checkinAt }), tone: 'success' });
+      // กิจกรรมของคาบขึ้นเองจาก step ที่บันทึกที่เคส — ไม่ต้องชวนไปเติม
+      if (!res.scanned) showToast({ message: t('เช็คอินแล้ว {time} น. — บันทึก step ที่เคสได้เลย', { time: res.stamp.checkinAt }), tone: 'success' });
     } finally {
       checkingIn.current = false;
     }
@@ -624,9 +647,9 @@ export default function Home() {
                   {checkedInToday ? t('เช็คอินคาบวันนี้') : t('ยังไม่เช็คอินคาบวันนี้')}
                 </span>              {checkedInToday && (
                   <span className="homecheck__sub">
-                    {(todayCheckIn?.activities.length ?? 0) > 0
-                      ? `${t(todayCheckIn?.activities[0] ?? '')}${todayStepCount > 0 ? ` · ${t('เสร็จแล้ว {n} ขั้น', { n: todayStepCount })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
-                      : t('เช็คอินแล้ว {time} น. · แตะเพื่อเติมกิจกรรมตอนว่าง', { time: todayCheckIn?.checkinAt ?? '' })}
+                    {todayLabels.length > 0
+                      ? `${todayLabels[0]}${todayLabels.length > 1 ? ` ${t('+ อีก {n}', { n: todayLabels.length - 1 })}` : ''} · ${todayCheckIn?.status === 'evaluated' ? t('ประเมินแล้ว') : t('รอประเมิน')}`
+                      : t('เช็คอินแล้ว {time} น. · บันทึก step ที่เคสได้เลย', { time: todayCheckIn?.checkinAt ?? '' })}
                   </span>
                 )}
                 {/* บรรทัดให้กำลังใจรายวัน — โผล่หลังเช็คอินแล้วเท่านั้น (อวยพรก่อนเช็คอินมันแปลก) */}
@@ -682,6 +705,7 @@ export default function Home() {
         <CasePanel
           cases={panelCases} index={slide} onIndex={setSlideAt}
           pending={pending} settings={settings} onPass={(id) => openSheet(id)} intro={intro}
+          onWip={wipOn && checkedInToday ? (id) => openSheet(id, 'wip') : undefined} wipBy={wipBy}
         />
       )}
 

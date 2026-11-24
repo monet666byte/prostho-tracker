@@ -237,7 +237,24 @@ export interface CheckIn {
   returnNote?: string;
   returnedBy?: string;
   returnedAt?: string;
+  /**
+   * เคสที่ลงมือในคาบนี้แต่ step ยังไม่เสร็จ (migration 0035) — ช่องของนักศึกษา อาจารย์เขียนทับไม่ได้
+   * step ที่ "เสร็จ" ไม่เก็บที่นี่ อ่านจากแถว updates ของวันเดียวกัน (stepsOnDate) ความจริงอยู่ที่เดียว
+   * เคสละหนึ่งรายการ · ผ่าน step ของเคสนั้นในวันเดียวกัน = รายการถูกถอนออก
+   */
+  wip?: PeriodWip[];
   createdAt: string;
+}
+
+/** "ทำแล้ว ยังไม่เสร็จ" ของเคสหนึ่งในคาบหนึ่ง — step เก็บเป็นข้อความตอนกด (ชื่อขั้นในแคตตาล็อกเปลี่ยนได้ภายหลัง) */
+export interface PeriodWip {
+  workpieceId: string;
+  /** ลำดับขั้นที่กำลังทำ (procIndex ของ step ถัดไป ตอนที่กด) */
+  procIndex: number;
+  /** ป้ายขั้นแบบเดียวกับ procLabel เช่น "CD-5 Posterior teeth : Set up" */
+  step: string;
+  /** "ทำถึงไหน" — ไม่บังคับ ให้อาจารย์อ่านตอนประเมิน */
+  note?: string;
 }
 
 /** เหตุผลที่อาจารย์ขอให้แก้คาบ — ค่าต้องตรงกับ check ใน 0034 */

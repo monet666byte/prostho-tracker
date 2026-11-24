@@ -235,7 +235,8 @@ export default function Dashboard() {
     settings,
     risk: riskInput,
     groups: zoneGroup ? undefined : groups,
-  }), [zoneGroup, homeCodes, activeStudents, students, allWorks, everyCheckIn, settings, riskInput, groups]);
+    updates: everyUpdate,
+  }), [zoneGroup, homeCodes, activeStudents, students, allWorks, everyCheckIn, settings, riskInput, groups, everyUpdate]);
   /* มือถือ (B3): นับเฉพาะกลุ่มที่เลือกอยู่ — ชุดเดียวกับหน้าประเมิน (ประเมินทีละกลุ่ม)
      กลุ่มอื่นที่ดูแลขึ้นเป็นชิปเลขแดงแทน · เดิมนับรวมทุกกลุ่มที่ดูแล หน้าแรกจึงบอก 5 คน แต่หน้าประเมินมีแค่ 3 */
   const phoneToday = useMemo(() => (phone && zoneGroup ? todaySummary({
@@ -244,7 +245,8 @@ export default function Dashboard() {
     checkins: everyCheckIn,
     settings,
     risk: riskInput,
-  }) : null), [phone, zoneGroup, activeStudents, allWorks, everyCheckIn, settings, riskInput]);
+    updates: everyUpdate,
+  }) : null), [phone, zoneGroup, activeStudents, allWorks, everyCheckIn, settings, riskInput, everyUpdate]);
   /* ทั้งชั้นปีตามแท็บปีในโซนขวา — ใช้แค่บรรทัดระดับชั้นปี */
   const yearToday = useMemo(() => todaySummary({
     students, works: allWorks, checkins: everyCheckIn, settings, risk: riskInput, groups,

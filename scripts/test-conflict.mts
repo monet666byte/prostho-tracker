@@ -173,6 +173,7 @@ function applyTriggers(table, incoming) {
       row.patient_id = old.patient_id;
       row.no_patient = old.no_patient;
       row.photo_count = old.photo_count;
+      row.wip = old.wip; /* 0035 */
       row.created_at = old.created_at;
       row.edited_at = old.edited_at;
       row.student_id = old.student_id;

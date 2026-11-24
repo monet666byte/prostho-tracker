@@ -187,6 +187,7 @@ function applyTriggers(table, incoming) {
       row.patient_id = old.patient_id;
       row.no_patient = old.no_patient;
       row.photo_count = old.photo_count;
+      row.wip = old.wip; /* 0035 */
       row.created_at = old.created_at;
       row.edited_at = old.edited_at;
       row.student_id = old.student_id;
@@ -656,10 +657,10 @@ console.log('\n⑫ ตู้กลางปฏิเสธการแก้ช�
 /* ══ ⑧ ตู้กลางปลอมต้องตรงกับ SQL จริง ═════════════════════════════════════
    `CLAUDE.md` เตือนไว้ว่ากับดักของวิธีนี้คือ "แก้ migration แล้วลืมแก้ตู้ปลอม
    → เทสต์ผ่านทั้งที่ของจริงพัง" · ข้อนี้เทียบรายชื่อช่องให้เอง ไม่ต้องพึ่งความจำใคร */
-console.log('\n⑧ ตู้กลางปลอมต้องตรงกับ guard_checkin_scoring ตัวล่าสุด (0034)');
+console.log('\n⑧ ตู้กลางปลอมต้องตรงกับ guard_checkin_scoring ตัวล่าสุด (0035)');
 {
   // ไฟล์ล่าสุดที่ replace ฟังก์ชันนี้ — replace อีกเมื่อไหร่ เปลี่ยนชื่อไฟล์ตรงนี้
-  const sql = readFileSync(join(root, 'supabase/migrations/0034_checkin_return.sql'), 'utf8');
+  const sql = readFileSync(join(root, 'supabase/migrations/0035_checkin_wip.sql'), 'utf8');
   // เอาเฉพาะบล็อกหลังด่านของนักศึกษา (`return new;` ตัวที่สอง) = กฎของฝั่งอาจารย์
   const teacherBlock = sql.slice(sql.indexOf('ใหม่ใน 0020'));
   const inSql = new Set(
