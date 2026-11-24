@@ -868,7 +868,33 @@ export default function Dashboard() {
           </div>
         )}
 
-        {isAlumniView ? (
+        {isAlumniView && phone ? (
+          /* มือถือ: ตัวเลขสามตัวไม่มีกรอบ + รายชื่อการ์ดเดียว — หน้าตาเดียวกับสรุปกลุ่ม · ตัวเลขชุดเดียวกับจอใหญ่ (alumniOverview) */
+          <>
+            <div className="tpg__stats">
+              <div><b>{alumni.students}</b><span>{t('นักศึกษา · {n} กลุ่ม', { n: groups.length })}</span></div>
+              <div><b>{alumni.reqComplete}<small> / {alumni.students}</small></b><span>{t('ครบเกณฑ์สะสม')}</span></div>
+              <div data-tone={alumni.unfinished ? 'warn' : undefined}><b>{alumni.unfinished}</b><span>{t('ชิ้นงานที่ไม่จบ')}</span></div>
+            </div>
+            <div className="tpg__find" ref={studentsRef}>
+              <select value={selected?.code ?? ''} onChange={(e) => { setGroup(e.target.value); setQuery(''); }} aria-label={t('เลือกกลุ่ม')}>
+                {groups.map((g) => <option key={g.code} value={g.code}>{groupShort(g.code)}</option>)}
+              </select>
+              <input type="search" value={query} placeholder={t('ค้นชื่อ/รหัส ทั้งรุ่น')} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <div className="tpg__card">
+              {shownStudents.map((s) => (
+                <button key={s.student.id} className="tpg__row" onClick={() => openStudent(s.student)}>
+                  <span className="tpg__who">
+                    <b>{personName(s.student)}<span className="mono">{s.student.code}</span></b>
+                    {query && <small>{groupShort(s.student.group)}</small>}
+                  </span>
+                  <span className="tpg__num" data-tone={s.reqDone >= s.reqTotal ? 'ok' : undefined}>{s.reqDone}/{s.reqTotal}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : isAlumniView ? (
           <>
             {/* รุ่นที่จบแล้ว: ตัวเลขที่มีความหมายกับรุ่นเก่า
                 เดิมใช้ชุดของรุ่นที่ยังเรียน → กำลังทำ/ค้าง/รอประเมิน เป็น 0 ทั้งแถว */}

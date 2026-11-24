@@ -19,6 +19,7 @@ import { setStudentGate } from '../../data/repo';
 import { useAllStudents } from '../../hooks/data';
 import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import type { GateKey, Student } from '../../domain/types';
 
 /** ชื่อการสอบที่คนในภาคเรียกกัน — โหมดอังกฤษ t() จะคืนป้ายเดียวกับ GATE_LABELS
@@ -33,6 +34,7 @@ const examName = (k: GateKey) => t(EXAM_TH[k] ?? GATE_LABELS[k]);
 export default function Exams() {
   const { teacherGroup, showToast } = useApp();
   const students = useAllStudents();
+  const phone = usePhone();
   const [busy, setBusy] = useState<string | null>(null);
   /* ⚠️ ต้องเป็น ref ไม่ใช่ state — state ยังไม่อัปเดตภายใน tick เดียวกัน
      กดรัวจะผ่านยามไปทุกครั้ง แล้วลง audit log ทีละแถว (วัดจริง: กด 6 ที ได้ 6 แถว)
@@ -84,6 +86,57 @@ export default function Exams() {
       <main className="main">
         <ScopeHead scope="group" icon={SealCheck} title={t('การสอบ')} />
 
+        {/* มือถือ: ตารางกว้างกว่าจอ → รายชื่อเดียว แต่ละคนมีช่องแตะสองช่อง · ปุ่มติ๊กทั้งกลุ่มอยู่ใต้ตัวเลข */}
+        {phone ? (
+          <>
+            <div className="tpg__stats tpg__stats--2">
+              {EXAM_GATE_KEYS.map((k) => (
+                <div key={k}>
+                  <b>{done(k)}<small> / {roster.length}</small></b>
+                  <span>{examName(k)}</span>
+                  {roster.length > 0 && roster.length - done(k) > 0 && (askAll === k ? (
+                    <span className="tpg__bulk">
+                      <button disabled={busy !== null} onClick={() => void passAll(k)}>{t('ยืนยันผ่าน {n} คน', { n: roster.length - done(k) })}</button>
+                      <button className="tpg__bulk--no" disabled={busy !== null} onClick={() => setAskAll(null)}>{t('ยกเลิก')}</button>
+                    </span>
+                  ) : (
+                    <span className="tpg__bulk">
+                      <button disabled={busy !== null} onClick={() => setAskAll(k)}>{t('ติ๊กผ่านทั้งกลุ่ม')}</button>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="tpg__lab" />
+            <div className="tpg__card">
+              {roster.map((s) => (
+                <div key={s.id} className="tpg__row tpg__row--static">
+                  <span className="tpg__who">
+                    <b>{personName(s)}<span className="mono">{s.code}</span></b>
+                  </span>
+                  {EXAM_GATE_KEYS.map((k) => {
+                    const v = s.gates?.[k] === true;
+                    return (
+                      <button
+                        key={k}
+                        className="tpg__chk"
+                        data-on={v}
+                        aria-pressed={v}
+                        aria-label={`${personName(s)} · ${examName(k)}`}
+                        disabled={busy !== null}
+                        onClick={() => void toggle(s, k, !v)}
+                      >
+                        {v ? <CheckCircle size={20} weight="fill" /> : <Circle size={20} />}
+                        <span>{k === 'designRpd' ? 'Design' : examName(k)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              {!roster.length && <p className="sub" style={{ padding: '14px 18px' }}>{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
+            </div>
+          </>
+        ) : (
         <div className="panel">
           <h3>{t('กลุ่ม')} {groupShort(teacherGroup)} · {roster.length} {t('คน')}</h3>
           <p className="sub">
@@ -170,6 +223,7 @@ export default function Exams() {
             {t('ทั้งสองข้อเป็นเงื่อนไขจบ นักศึกษาเห็นผลในหน้าเกณฑ์ของตัวเอง · ทุกครั้งที่ติ๊กจะถูกบันทึกใน audit log')}
           </p>
         </div>
+        )}
       </main>
     </TeacherShell>
   );

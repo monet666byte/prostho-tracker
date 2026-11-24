@@ -29,6 +29,7 @@ import { useAllCheckIns, useAllStudents, useSelfAssessments } from '../../hooks/
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
 import { currentActor, useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import type { ProfileAxis } from '../../domain/analytics';
 import type { SelfAssessment, Student } from '../../domain/types';
 
@@ -84,6 +85,7 @@ export default function SelfAssessments() {
   const settings = useApp((s) => s.settings);
   const showToast = useApp((s) => s.showToast);
   const navigate = useNavigate();
+  const phone = usePhone();
 
   const groupStudents = useMemo(
     () => students.filter((s) => s.group === group).sort((a, b) => a.code.localeCompare(b.code)),
@@ -139,6 +141,8 @@ export default function SelfAssessments() {
         {/* สองคอลัมน์บนจอกว้าง · จอแคบ (อาจารย์เปิดจากมือถือ) ซ้อนเป็นคอลัมน์เดียว — กฎอยู่ท้าย teacher.css */}
         <div className="salayout">
           {/* ① ใครส่งแล้ว — รายการเดียวคั่นเส้น แบบหน้า Section II/III */}
+          {/* มือถือ: รายชื่อกับคำตอบของคนที่เลือกอยู่คนละจอ — เลือกแล้วรายชื่อหลบ มีลิงก์ย้อนกลับ */}
+          {!(phone && openStudent) && (
           <div className="panel plist">
             <div className="plist__head">{t('นักศึกษา · {n} คน', { n: groupStudents.length })}</div>
             {groupStudents.length === 0 && (
@@ -149,7 +153,7 @@ export default function SelfAssessments() {
               const done = sa?.status === 'submitted';
               const on = openId === s.id;
               return (
-                <button key={s.id} className="plist__row" data-on={on} aria-pressed={on} onClick={() => setOpenId(on ? null : s.id)}>
+                <button key={s.id} className="plist__row" data-on={on} aria-pressed={on} onClick={() => { setOpenId(on ? null : s.id); if (phone) document.querySelector('.main')?.scrollTo(0, 0); }}>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span className="plist__name">{firstNameOnly(personName(s))}</span>
                     <span className="plist__code">{s.code}</span>
@@ -161,10 +165,14 @@ export default function SelfAssessments() {
               );
             })}
           </div>
+          )}
 
           {/* ②③ รายละเอียดคนที่เลือก */}
-          <div style={{ display: 'grid', gap: 12 }}>
-            {!openStudent && (
+          <div className="sadetail" style={{ display: 'grid', gap: 12 }}>
+            {phone && openStudent && (
+              <button className="tpg__back tpg__back--in" onClick={() => setOpenId(null)}>‹ {t('รายชื่อนักศึกษา')}</button>
+            )}
+            {!openStudent && !phone && (
               <div className="card" style={{ padding: '26px 18px', display: 'grid', placeItems: 'center', gap: 8, textAlign: 'center' }}>
                 <StudentIcon size={26} color="var(--text-disabled)" />
                 <span style={{ font: '600 13px var(--font-body)', color: 'var(--text-muted)' }}>{t('เลือกนักศึกษาทางซ้าย')}</span>

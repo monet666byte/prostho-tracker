@@ -136,4 +136,81 @@
   .tev__pickwho small { display: block; margin-top: 1px; font: 400 13.5px/1.45 var(--font-body); color: #667085; }
   .tev__pickwho small em { font-style: normal; color: #9a3f06; }
   .tev__picknow { flex: none; font: 600 13px var(--font-head); color: var(--panel); }
+
+  /* ══ หน้ารองที่เหลือ (Section II/III · ประเมินตนเอง · การสอบ · ศิษย์เก่า · ภาพรวม · รายชื่อ · ตั้งค่า)
+     แผงทุกแผงเป็นการ์ดขาวมุมมนแบบ .tpg__card · ตัวหนังสือในแผงโตขึ้นให้อ่านบนมือถือได้
+     หน้าแรก (.tph) กับหน้าประเมิน (.tev) มีหน้าตาของตัวเองแล้ว จึงไม่แตะ ══ */
+  .window .main:not(.tph):not(.tev) .panel,
+  .window .main:not(.tph):not(.tev) .sadetail > .card {
+    margin-inline: 16px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05), 0 10px 26px rgba(16, 24, 40, 0.06);
+  }
+  .window .main:not(.tph):not(.tev) .tsheet .panel { margin-inline: 0; }
+  .window .main:not(.tph):not(.tev) .panel h3 { font: 600 17px/1.35 var(--font-head); color: #101828; }
+  .window .main:not(.tph):not(.tev) .panel .sub { font: 400 13px/1.5 var(--font-body); color: #667085; }
+  .salayout { gap: 14px; }
+  .tpg__back--in { justify-self: start; margin: 0 0 0 22px; }
+
+  /* รายชื่อในแผง (Section II/III · ประเมินตนเอง) — แถวเดียวกับสรุปกลุ่ม */
+  .plist__head { padding: 16px 18px 6px; font: 500 13px var(--font-body); color: #667085; }
+  .plist__row { gap: 12px; padding: 14px 18px; border-top-color: #eef0f4; }
+  .plist__row[data-on='true'] { box-shadow: none; }
+  .plist__row:active { background: #f5f7fb; }
+  /* ชื่อกับเลข นศ. บรรทัดเดียวกัน เหมือนแถวในสรุปกลุ่ม */
+  .plist__name { display: inline; font: 600 15.5px var(--font-head); color: #1d2939; white-space: normal; overflow-wrap: anywhere; }
+  .plist__code { display: inline; margin-left: 8px; font: 500 13px var(--font-mono); color: #475467; }
+  .plist__count { font: 600 15px var(--font-head); font-variant-numeric: tabular-nums; }
+
+  /* ใบประเมินของคนที่เลือก */
+  .formspanel__head { padding: 18px 18px 12px; row-gap: 2px; }
+  .formspanel__head h3 { flex: 1 1 100%; font-size: 20px !important; }
+  .formspanel__head .sub { font-size: 13.5px !important; }
+  .formspanel__head .textbtn { min-height: 36px; font: 600 14.5px var(--font-head); color: var(--panel); }
+  .frows__group { padding: 14px 18px 4px; font: 600 13px var(--font-head); color: #667085; border-top-color: #eef0f4; }
+  .frow { padding: 14px 18px; gap: 12px; border-top-color: #eef0f4; align-items: flex-start; }
+  .frow:active { background: #f5f7fb; }
+  .frow__code { width: auto !important; min-width: 52px; font: 600 12.5px var(--font-mono); color: #667085; padding-top: 2px; }
+  .frow__t { font: 500 14.5px/1.45 var(--font-body); color: #1d2939; }
+  .frow__s b { font: 600 14px var(--font-head); }
+  .frow__s small { font: 400 12.5px var(--font-body); color: #667085; }
+  .frow__none { font: 500 13.5px var(--font-body); color: #98a2b3; }
+
+  /* ประเมินตนเอง: การ์ดรายละเอียด · ข้อถาม-คำตอบซ้อนบรรทัดแทนสองคอลัมน์ */
+  .sadetail { gap: 14px !important; }
+  .sadetail > .card { padding: 16px 18px !important; }
+  .sadetail > .card > div[style*='font'] { font-size: 15px !important; }
+  .sadetail > .card > span > span:first-child { font-size: 20px !important; color: #101828; } /* ชื่อคนที่เลือก */
+  .sadetail > .card > span > span + span { margin-top: 2px; font-size: 13px !important; color: #667085 !important; }
+  .sadetail div[style*='baseline'] { flex-direction: column; gap: 1px !important; }
+  .sadetail span[style*='210px'] { flex: none !important; font-size: 13px !important; color: #667085 !important; }
+  .sadetail span[style*='overflow-wrap'] { font-size: 14.5px !important; color: #1d2939 !important; }
+
+  /* ── การสอบ ── */
+  .tpg__stats--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tpg__bulk { display: flex !important; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px !important; }
+  .tpg__bulk button {
+    min-height: 36px; padding: 0; background: none; border: 0; cursor: pointer; text-align: left;
+    font: 600 14px var(--font-head); color: var(--panel);
+  }
+  .tpg__bulk .tpg__bulk--no { color: #667085; font-weight: 500; }
+  .tpg__bulk button:disabled { opacity: 0.5; }
+  .tpg__row--static { cursor: default; }
+  .tpg__row--static:active { background: none; }
+  .tpg__chk {
+    flex: none; display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 54px; min-height: 48px; padding: 4px 2px; background: none; border: 0; cursor: pointer;
+    font: 500 12px var(--font-body); color: #98a2b3;
+  }
+  .tpg__chk[data-on='true'] { color: #067647; font-weight: 600; }
+  .tpg__chk:disabled { cursor: default; }
+
+  /* ── ศิษย์เก่า: เลือกกลุ่ม + ค้น ── */
+  .tpg__find { display: flex; gap: 8px; margin: 16px 16px 10px; }
+  .tpg__find select, .tpg__find input {
+    height: 42px; border: 1px solid #e4e7ec; border-radius: 12px; background: #fff;
+    font: 500 16px var(--font-body); color: #101828; padding: 0 12px;
+  }
+  .tpg__find select { flex: none; }
+  .tpg__find input { flex: 1; min-width: 0; }
+  .tpg__num[data-tone='ok'] { color: #067647; }
 }

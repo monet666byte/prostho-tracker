@@ -354,6 +354,7 @@ export const DICT: Record<string, string> = {
   'ครบเกณฑ์สะสม': 'Met cumulative requirement',
   'ชิ้นงานที่จบ': 'Pieces completed',
   'ชิ้นงานที่ไม่จบ (ไม่นับคืนเคส)': 'Pieces not finished (excl. returned)',
+  'ชิ้นงานที่ไม่จบ': 'Unfinished pieces',
   'ชิ้นงานอยู่ step ไหน (ทั้งชั้นปี)': 'Which step pieces are at (whole class)',
   '{n} ชิ้น': '{n} pieces',
   '→ ขึ้นปี 5 ปีการศึกษา {y}': '→ Year 5 in academic year {y}',

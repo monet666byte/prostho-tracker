@@ -24,6 +24,7 @@ import { useAllStudents, useSect2, useSect3 } from '../../hooks/data';
 import { thaiShort } from '../../lib/date';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
+import { usePhone } from '../../hooks/usePhone';
 import type { Student } from '../../domain/types';
 
 type Tab = 'sect2' | 'sect3';
@@ -38,6 +39,7 @@ const SECT2_ROWS = [
 export default function Portfolio() {
   const { teacherGroup, showToast } = useApp();
   const navigate = useNavigate();
+  const phone = usePhone();
   const students = useAllStudents();
   const year = saYearNow();
   /* Section II กับ III เป็นคนละเมนูในแถบซ้ายแล้ว
@@ -72,18 +74,24 @@ export default function Portfolio() {
 
         <div className="salayout">
           {/* รายการเดียวคั่นเส้น — เดิมการ์ดทีละคน + ไอคอนหมวก */}
-          <div className="panel plist">
-            <div className="plist__head">{t('นักศึกษา · {n} คน', { n: roster.length })}</div>
-            {roster.map((s) => (
-              <RosterRow key={s.id} student={s} year={year} tab={tab} on={s.id === selId}
-                onPick={() => { setSelId(s.id); setOpenKey(null); }} />
-            ))}
-            {!roster.length && <p className="sub" style={{ padding: '0 16px 14px' }}>{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
-          </div>
+          {/* มือถือ: รายชื่อกับใบของคนที่เลือกอยู่คนละจอ — เลือกแล้วรายชื่อหลบ มีลิงก์ย้อนกลับ */}
+          {!(phone && student) && (
+            <div className="panel plist">
+              <div className="plist__head">{t('นักศึกษา · {n} คน', { n: roster.length })}</div>
+              {roster.map((s) => (
+                <RosterRow key={s.id} student={s} year={year} tab={tab} on={s.id === selId}
+                  onPick={() => { setSelId(s.id); setOpenKey(null); if (phone) document.querySelector('.main')?.scrollTo(0, 0); }} />
+              ))}
+              {!roster.length && <p className="sub" style={{ padding: '0 16px 14px' }}>{t('ยังไม่มีนักศึกษาในกลุ่มนี้')}</p>}
+            </div>
+          )}
 
           <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
-            {!student && (
+            {!student && !phone && (
               <div className="panel"><p className="sub">{t('เลือกนักศึกษาเพื่อดูใบประเมิน')}</p></div>
+            )}
+            {phone && student && !openKey && (
+              <button className="tpg__back tpg__back--in" onClick={() => setSelId(null)}>‹ {t('รายชื่อนักศึกษา')}</button>
             )}
 
             {/* ── Section II ── */}
