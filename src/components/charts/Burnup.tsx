@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BurnupPoint } from '../../domain/analytics';
+import { burnupNow, type BurnupPoint } from '../../domain/analytics';
 import { t } from '../../lib/i18n';
 
 /**
@@ -33,7 +33,7 @@ export function Burnup({ points, width = 640, height = 220 }: { points: BurnupPo
   const lastYearPts = hasLastYear ? points.map((p, i) => `${x(i)},${y(p.lastYear ?? 0)}`) : [];
   const lastActualIndex = points.reduce((acc, p, i) => (p.actual !== null ? i : acc), 0);
   const last = points[lastActualIndex];
-  const behind = (last.target ?? 0) - (last.actual ?? 0);
+  const { behind } = burnupNow(points);
 
   // เส้นกริดแนวนอน 4 เส้น ปัดเป็นเลขสวย
   const stepRaw = maxY / 4;

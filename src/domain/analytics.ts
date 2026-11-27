@@ -404,6 +404,11 @@ export function bottleneckByStep(works: Workpiece[], settings: Settings, type?: 
   return buckets;
 }
 
+/** ขั้นที่มีชิ้นงานกองมากสุด (เท่ากันเอาขั้นแรก) · -1 = ยังไม่มีงานที่กำลังทำ */
+export function busiestStep(buckets: StepBucket[]): number {
+  return buckets.reduce((best, b, i) => (b.count > (buckets[best]?.count ?? 0) ? i : best), buckets.some((b) => b.count > 0) ? 0 : -1);
+}
+
 /** หนึ่งการ์ดบนกระดานเคส — ชิ้นงานที่กำลังทำหนึ่งชิ้น */
 export interface BoardCard {
   work: Workpiece;
@@ -510,6 +515,11 @@ export function selfPerformedRows(students: Student[], works: Workpiece[]): Self
       return { student, done, available };
     })
     .sort((a, b) => b.done - a.done);
+}
+
+/** คนที่ทำ lab ด้วยตนเองครบทุกขั้นที่มี (มีอย่างน้อยหนึ่งขั้นให้ทำ) */
+export function selfCompleteCount(rows: SelfPerformedRow[]): number {
+  return rows.filter((r) => r.available > 0 && r.done >= r.available).length;
 }
 
 // ── 7. สรุปบรรทัดเดียวสำหรับหัวหน้าหน้า ────────────────────
@@ -736,6 +746,16 @@ export function carriedOverCount(works: Workpiece[], settings: Settings, now = n
   return works.filter(
     (w) => w.fromSheet && w.completedAt && countsForYearlyReq(w, settings) && (w.countsForYear ?? beYear) === beYear,
   ).length;
+}
+
+/** ยอด ณ เดือนล่าสุดที่มีข้อมูล — ตัวเลขชุดเดียวกับข้อความใต้กราฟ burn-up
+ *  done = จบสะสม · targetNow = เป้าเดือนนี้ · yearTarget = เป้าทั้งปี · behind = ตามหลังเป้าเท่าไหร่ (ติดลบ = นำ) */
+export function burnupNow(points: BurnupPoint[]) {
+  const lastActual = points.reduce((acc, p, i) => (p.actual !== null ? i : acc), 0);
+  const last = points[lastActual];
+  const done = last?.actual ?? 0;
+  const targetNow = last?.target ?? 0;
+  return { done, targetNow, yearTarget: points[points.length - 1]?.target ?? 0, behind: targetNow - done };
 }
 
 export function burnup(students: Student[], works: Workpiece[], settings: Settings, now = new Date()): BurnupPoint[] {

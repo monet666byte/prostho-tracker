@@ -236,4 +236,111 @@
     margin: 6px 14px 4px; min-height: 48px; border: 0; border-radius: 14px; background: #fef3f2; cursor: pointer;
     font: 600 15.5px var(--font-head); color: #b42318;
   }
+
+  /* ── ภาพรวมชั้นปี: การ์ดกระจกใสบนพื้นแสงสีนิ่ง ──
+     พื้นวางที่ตัวเลื่อน (.main) — พื้นหลังของตัวเลื่อนอยู่กับที่ขณะเนื้อหาเลื่อน การ์ดจึงไหลผ่านแสงสี
+     ไม่ใช้ backdrop-filter บนการ์ด (หลายใบซ้อนกันทั้งหน้าหนักเกินบนมือถือ) */
+  .window .main.tan {
+    background:
+      radial-gradient(60% 34% at 92% 18%, rgba(84, 140, 255, 0.34), transparent 70%),
+      radial-gradient(55% 30% at 0% 52%, rgba(40, 190, 200, 0.22), transparent 70%),
+      radial-gradient(60% 30% at 100% 86%, rgba(84, 140, 255, 0.26), transparent 70%),
+      linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.85) 34%, transparent 50%),
+      linear-gradient(180deg, #f2f5fb 0%, #eef2fa 50%, #f4f6fb 100%);
+  }
+  .tan__card, .tan__tile {
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.42) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(255, 255, 255, 0.28),
+      0 14px 30px -16px rgba(28, 44, 92, 0.32);
+  }
+  .tan__card { margin: 14px 16px 0; border-radius: 22px; overflow: hidden; }
+  .tan__pad { padding: 4px 14px 12px; }
+  .tan__big { padding: 16px 18px 4px; }
+  .tan__big small { display: block; font: 500 13.5px/1.45 var(--font-body); color: #667085; }
+  .tan__big b {
+    display: block; margin-top: 6px; font: 700 30px/1.35 var(--font-head); color: #101828; font-variant-numeric: tabular-nums;
+  }
+  .tan__big b[data-tone='warn'] { color: #b42318; }
+  .tan__big b[data-tone='ok'] { color: #067647; }
+  .tan__big b em { font-style: normal; font: 500 15px var(--font-body); color: #667085; margin-left: 6px; }
+
+  /* เลือกประเภท: คำสีน้ำเงิน แตะแล้วได้รายการของระบบ */
+  .tan__pick {
+    position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin: 0 4px 4px;
+    font: 600 14.5px var(--font-head); color: var(--panel); cursor: pointer;
+  }
+  .tan__pick select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  .tan__fit { overflow: hidden; }
+
+  .tan__note { margin: 0; padding: 10px 18px 14px; border-top: 1px solid rgba(255, 255, 255, 0.7); font: 400 14px/1.5 var(--font-body); color: #475467; }
+  .tan__warn { color: #b42318; }
+
+  /* จบสะสม: แถบเดียว + ขีดดำ = เป้าตอนนี้ */
+  .tan__goal { padding: 6px 18px 18px; }
+  .tan__goaltrack {
+    position: relative; height: 12px; border-radius: 6px;
+    background: rgba(255, 255, 255, 0.6); box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.05);
+  }
+  .tan__goaltrack i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: #2a4fb8; }
+  .tan__goaltrack s { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background: #101828; }
+  .tan__goallab { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; font: 400 13px/1.4 var(--font-body); color: #667085; }
+  .tan__goallab b { display: block; font: 700 17px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; }
+  .tan__goallab span:nth-child(2) { text-align: center; }
+  .tan__goallab span:last-child { text-align: right; }
+
+  /* หัวข้อใหญ่คั่นระหว่างกลุ่มช่อง */
+  .tan__sec { margin: 26px 22px 10px; }
+  .tan__sec b { display: block; font: 700 22px/1.35 var(--font-head); color: #101828; }
+  .tan__sec small { display: block; margin-top: 2px; font: 500 13.5px/1.45 var(--font-body); color: #667085; }
+  .tan__sec + .tan__tiles + .tan__card { margin-top: 14px; }
+  .tan__tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 16px; }
+  .tan__tile { min-width: 0; border-radius: 20px; padding: 14px 14px 12px; }
+  .tan__tile small { display: block; font: 500 13px/1.35 var(--font-body); color: #667085; }
+  .tan__tile b {
+    display: block; margin-top: 4px; font: 700 26px/1.35 var(--font-head); color: #101828; font-variant-numeric: tabular-nums;
+  }
+  .tan__tile b em { font-style: normal; font: 500 13px var(--font-body); color: #98a2b3; margin-left: 4px; }
+  .tan__bar {
+    display: flex; height: 6px; margin-top: 8px; border-radius: 3px; overflow: hidden;
+    background: rgba(255, 255, 255, 0.6); box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.05);
+  }
+  .tan__bar i { display: block; height: 100%; }
+  .tan__tile .tan__bar { margin-top: 10px; }
+
+  .tan__row { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-top: 1px solid rgba(255, 255, 255, 0.7); }
+  .tan__big + .tan__row { margin-top: 10px; }
+  .tan__who { flex: 1; min-width: 0; }
+  .tan__who b { display: block; font: 600 15.5px var(--font-head); color: #1d2939; }
+  .tan__who b .mono { margin-left: 8px; font: 500 13px var(--font-mono); color: #475467; }
+  .tan__num { flex: none; text-align: right; font: 600 15px var(--font-head); color: #101828; font-variant-numeric: tabular-nums; }
+  .tan__num small { display: block; font: 500 12px var(--font-body); color: #98a2b3; }
+  .tan__more, .tan__foot {
+    display: block; width: 100%; min-height: 48px; border: 0; background: none; cursor: pointer;
+    font: 600 14.5px var(--font-head); color: var(--panel);
+  }
+  .tan__more { border-top: 1px solid rgba(255, 255, 255, 0.7); }
+  .tan__foot { margin-top: 14px; }
+  .tan__demo { margin: 6px 22px 0; text-align: center; font: 400 12.5px/1.5 var(--font-body); color: #98a2b3; }
+
+  /* แถบเลือกปี: พื้นเทาทึบ (ภาพที่เลนส์หักเห) + เม็ดกระจกพี่น้องลอยทับ */
+  .gseg { position: relative; margin: 14px 22px 2px; }
+  .gseg__track {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 46px; padding: 4px; box-sizing: border-box;
+    border-radius: 23px; background: #e9edf4; box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.04);
+  }
+  .gseg__track button {
+    min-width: 0; border: 0; background: none; cursor: pointer; padding: 0 6px;
+    font: 600 15px var(--font-head); color: #667085; white-space: nowrap;
+  }
+  .gseg__track button[data-on] { color: #101828; }
+  .gseg__thumb {
+    position: absolute; left: 0; top: 4px; height: 38px; border-radius: 19px; overflow: hidden; pointer-events: none;
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 1px 0 #fff, 0 4px 12px -4px rgba(16, 24, 40, 0.25);
+    transition: transform 0.36s cubic-bezier(0.3, 1.25, 0.5, 1), width 0.36s ease;
+  }
+  .gseg__thumb[data-glass='on'] { background: transparent; }
+  @media (prefers-reduced-motion: reduce) { .gseg__thumb { transition: none; } }
 }

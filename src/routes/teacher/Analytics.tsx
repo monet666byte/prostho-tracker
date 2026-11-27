@@ -1,6 +1,6 @@
-import { ChartLineUp, Info, Printer } from '@phosphor-icons/react';
+import { CaretDown, ChartLineUp, Info, Printer } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { TeacherShell } from '../../components/teacher/TeacherShell';
 import { ScopeHead } from '../../components/teacher/ScopeHead';
 import { StepInfo } from '../../components/StepInfo';
@@ -10,12 +10,14 @@ import { ClassPosition } from '../../components/charts/ClassPosition';
 import { KINDS, kindOf, kindsPresent, typeChipLabel, typeMeta, type WorkKind } from '../../domain/catalog';
 import {
   bottleneckByStep, burnup, caseDots, durationByType, funnelByType, headline, selfPerformedRows, carriedOverCount,
-  classPosition, CURVE_MIN_STUDENTS } from '../../domain/analytics';
+  classPosition, CURVE_MIN_STUDENTS, busiestStep, burnupNow, selfCompleteCount } from '../../domain/analytics';
 import { cohortRequirement, cohortYearly } from '../../domain/aggregate';
 import { useAllCheckIns, useAllProgressUpdates, useAllStudents, useAllWorkpieces } from '../../hooks/data';
 import { defaultYearView, useYearView } from '../../hooks/useYearView';
 import { cloudEnabled } from '../../lib/cloud';
 import { YearSeg } from '../../components/teacher/YearSeg';
+import { GlassYearSeg } from '../../components/teacher/GlassYearSeg';
+import { usePhone } from '../../hooks/usePhone';
 import { personName, t } from '../../lib/i18n';
 import { useApp } from '../../store/app';
 import { groupShort, groupYearOf } from '../../domain/group';
@@ -83,12 +85,243 @@ export default function Analytics() {
     [kindWorks, students, settings],
   );
 
+  const phone = usePhone();
+  const [labAll, setLabAll] = useState(false);
+  // มือถือ: ย่อแผนที่เคสให้พอดีความกว้างการ์ด เห็นครบทุกขั้นโดยไม่ต้องเลื่อนข้าง
+  const fitRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = fitRef.current;
+    if (!phone || !box) return;
+    const fit = () => {
+      const map = box.firstElementChild as HTMLElement | null;
+      if (!map) return;
+      map.style.zoom = '';
+      const w = map.scrollWidth;
+      map.style.zoom = w > box.clientWidth ? String(box.clientWidth / w) : '';
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [phone, dots]);
+
   const maxDuration = Math.max(1, ...durations.map((d) => d.maxWeeks));
   /* งานที่นำเข้าจากชีตไม่มีวันที่จบจริง — บอกให้ชัดว่าเส้นเริ่มจากยอดยกมาเท่าไหร่ */
   const carried = carriedOverCount(works, settings);
   const carriedOverNote = carried > 0
     ? <>{t('เริ่มจากยอดยกมาจากชีต {n} ชิ้น (ชีตไม่มีวันที่จบ จึงไม่รู้ว่าจบเดือนไหน)', { n: carried })}</>
     : null;
+
+  if (phone) {
+    const busy = busiestStep(buckets);
+    const bn = burnupNow(burn);
+    const maxMedian = Math.max(1, ...durations.map((d) => d.medianWeeks));
+    const pct = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 100) : 0);
+    const groupReached = myPos.length - myBehind.length;
+    const labRows = labAll ? selfRows : selfRows.slice(0, 5);
+    return (
+      <TeacherShell active="cohort">
+        <main className="main tan">
+          <ScopeHead
+            scope="year"
+            icon={ChartLineUp}
+            title=""
+            phoneEye={t('ทั้งชั้นปี')}
+            phoneTitle={yearView === 'all' ? t('ภาพรวมทุกชั้นปี') : yearView === 'alumni' ? t('รุ่นที่จบแล้ว') : t('ภาพรวมปี {n}', { n: yearView })}
+            phoneSub={t('เหลือ {n} เดือนก่อนคาบคลินิกสุดท้าย', { n: head.monthsLeft })}
+          />
+          <GlassYearSeg view={yearView} onChange={setYearView} />
+
+          {/* ชิ้นงานอยู่ขั้นไหน */}
+          <section className="tan__card">
+            <div className="tan__big">
+              <small>{t('ชิ้นงานอยู่ขั้นไหน')}</small>
+              {busy >= 0
+                ? <b>{t('ขั้น {n}', { n: busy })}<em>{t('มีงานกองมากสุด')}</em></b>
+                : <b>0<em>{t('ชิ้น')}</em></b>}
+            </div>
+            <div className="tan__pad">
+              <label className="tan__pick">
+                {stepKind === 'all' ? t('ทุกประเภท') : KINDS[stepKind].label} · {t('{n} ชิ้น', { n: dotCount(stepKind) })}
+                <CaretDown size={14} weight="bold" aria-hidden />
+                <select
+                  value={stepKind}
+                  aria-label={t('ประเภทงาน')}
+                  onChange={(e) => { setStepKind(e.target.value as WorkKind | 'all'); setOpenStep(-1); }}
+                >
+                  {(['all', ...kindsPresent(works)] as Array<WorkKind | 'all'>).map((k) => (
+                    <option key={k} value={k}>
+                      {k === 'all' ? t('ทุกประเภท') : KINDS[k].label} · {dotCount(k)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div ref={fitRef} className="tan__fit">
+                <CaseMap
+                  dots={dots}
+                  staleDays={settings.stale}
+                  showTypeLegend={false}
+                  showStaleLegend={false}
+                  lively
+                  stepNames={stepKind === 'all' ? undefined : buckets.map((b) => b.label)}
+                  onStepClick={(n) => setOpenStep(shownStep === n ? -1 : n)}
+                  activeStep={shownStep}
+                />
+              </div>
+              {shownStep >= 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <StepInfo
+                    progression={shownStep}
+                    type={stepKind === 'all' ? undefined : KINDS[stepKind].type}
+                    meta={t('{n} ชิ้น', { n: buckets[shownStep].count }) + (
+                      buckets[shownStep].stale ? t(' · ค้างเกิน {d} วัน {c} ชิ้น', { d: settings.stale, c: buckets[shownStep].stale }) : ''
+                    )}
+                    onClose={() => setOpenStep(-1)}
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* อยู่ตรงไหนของชั้นปี */}
+          {yearView !== 'alumni' && (
+            <section className="tan__card">
+              {!singleYear ? (
+                <div className="tan__big"><small>{t('เลือกปี 5 หรือปี 6 — สองชั้นปีอยู่คนละช่วงของหลักสูตร วางรวมกันแล้วเทียบกันไม่ได้')}</small></div>
+              ) : position.points.length === 0 ? (
+                <div className="tan__big"><small>{t('ยังไม่มีนักศึกษาชั้นปีนี้ที่มีชิ้นงานในระบบ')}</small></div>
+              ) : (
+                <>
+                  <div className="tan__big">
+                    <small>
+                      {ownGroup && myPos.length > 0 ? `${t('กลุ่ม {g}', { g: groupShort(ownGroup) })} · ` : ''}
+                      {position.expected !== null
+                        ? t('เป้าตอนนี้ ~{p}% ของเกณฑ์', { p: Math.round(position.expected * 100) })
+                        : t('นักศึกษาอยู่ตรงไหนของชั้นปี')}
+                    </small>
+                    {ownGroup && myPos.length > 0
+                      ? <b>{groupReached}<em>{t('จาก {n} คน ถึงเป้า', { n: myPos.length })}</em></b>
+                      : <b>{position.points.filter((p) => !p.behind).length}<em>{t('จาก {n} คน ถึงเป้า', { n: position.points.length })}</em></b>}
+                  </div>
+                  <div className="tan__pad">
+                    <ClassPosition points={position.points} expected={position.expected} curve={position.curve} myGroup={ownGroup} />
+                  </div>
+                  {position.curve && myBehind.length > 0 && (
+                    <p className="tan__note">
+                      {t('ยังไม่ถึง')}: <span className="tan__warn">{myBehind.map((p) => personName(p.student)).join(' · ')}</span>
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
+          {/* จบสะสมเทียบเป้า */}
+          <section className="tan__card">
+            <div className="tan__big">
+              <small>{t('จบสะสม เทียบเป้าทั้งชั้นปี')}</small>
+              {bn.behind > 0
+                ? <b data-tone="warn">−{bn.behind}<em>{t('ชิ้น ตามหลังเป้า')}</em></b>
+                : <b data-tone="ok">+{-bn.behind}<em>{t('ชิ้น นำหน้าเป้า')}</em></b>}
+            </div>
+            <div className="tan__goal">
+              <div className="tan__goaltrack">
+                <i style={{ width: `${Math.min(100, pct(bn.done, bn.yearTarget))}%` }} />
+                <s style={{ left: `${Math.min(100, pct(bn.targetNow, bn.yearTarget))}%` }} />
+              </div>
+              <div className="tan__goallab">
+                <span><b>{bn.done}</b>{t('จบไปแล้ว')}</span>
+                <span><b>{bn.targetNow}</b>{t('เป้าตอนนี้')}</span>
+                <span><b>{bn.yearTarget}</b>{t('ทั้งปี')}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* เวลาจนจบเคส */}
+          {durations.length > 0 && (
+            <>
+              <div className="tan__sec"><b>{t('เวลาจนจบเคส')}</b><small>{t('ค่ากลาง นับจากวันรับเคส')}</small></div>
+              <div className="tan__tiles">
+                {durations.map((d) => (
+                  <div className="tan__tile" key={d.type}>
+                    <small>{typeChipLabel(d.type)}</small>
+                    <b>{d.medianWeeks}<em>{t('สัปดาห์')}</em></b>
+                    <span className="tan__bar"><i style={{ width: `${(d.medianWeeks / maxMedian) * 100}%`, background: typeMeta(d.type).color }} /></span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* เกณฑ์ */}
+          <section className="tan__card">
+            <div className="tan__big">
+              <small>{t('เกณฑ์รายปี (ปีละ {n} ชิ้น)', { n: yearly.required })}</small>
+              <b>{yearly.passed}<em>{t('จาก {n} คน ผ่านแล้ว', { n: yearly.total })}</em></b>
+            </div>
+            {cohortReq.map((r) => (
+              <div className="tan__row" key={r.group}>
+                <span className="tan__who">
+                  <b>{t(r.label)}</b>
+                  <span className="tan__bar"><i style={{ width: `${pct(r.complete, r.total)}%`, background: 'var(--success)' }} /></span>
+                </span>
+                <span className="tan__num">{pct(r.complete, r.total)}%<small>{t('ครบ · เกณฑ์ {n}', { n: r.required })}</small></span>
+              </div>
+            ))}
+          </section>
+
+          {/* จบเคสแล้วกี่ % */}
+          {funnel.length > 0 && (
+            <>
+              <div className="tan__sec"><b>{t('จบเคสแล้วกี่ %')}</b><small>{t('ต่อประเภทงาน')}</small></div>
+              <div className="tan__tiles">
+                {funnel.map((f) => (
+                  <div className="tan__tile" key={f.type}>
+                    <small>{typeChipLabel(f.type)}</small>
+                    {/* ตัวหารเดียวกับอัตราจบ — ไม่นับเคสที่คืนไปแล้ว */}
+                    <b>{f.completionRate}%<em>{f.completed}/{f.total - f.returned}</em></b>
+                    <span className="tan__bar"><i style={{ width: `${f.completionRate}%`, background: typeMeta(f.type).color }} /></span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* lab ที่ทำเอง */}
+          {selfRows.length > 0 && (
+            <section className="tan__card">
+              <div className="tan__big">
+                <small>{t('lab ที่ทำเอง')}</small>
+                <b>{selfCompleteCount(selfRows)}<em>{t('คน ทำครบทุกขั้น')}</em></b>
+              </div>
+              {labRows.map((r) => (
+                <div className="tan__row" key={r.student.id}>
+                  <span className="tan__who"><b>{personName(r.student)}<span className="mono">{groupShort(r.student.group)}</span></b></span>
+                  <span className="tan__num">{r.done}/{r.available}</span>
+                </div>
+              ))}
+              {selfRows.length > 5 && (
+                <button type="button" className="tan__more" onClick={() => setLabAll((v) => !v)}>
+                  {labAll ? t('ย่อ') : t('ดูทั้งหมด')}
+                </button>
+              )}
+            </section>
+          )}
+
+          <button
+            type="button"
+            className="tan__foot"
+            onClick={() => navigate(`/teacher/report?scope=year${/^\d+$/.test(yearView) ? `&year=${yearView}` : ''}`)}
+          >
+            {t('พิมพ์รายงานประจำเดือน')}
+          </button>
+
+          {!cloudEnabled && <p className="tan__demo">{t('คำนวณสดจากข้อมูลในระบบ — ตอนนี้ยังเป็นข้อมูลสมมติ')}</p>}
+        </main>
+      </TeacherShell>
+    );
+  }
+
   return (
     <TeacherShell active="cohort">
       <main className="main">
